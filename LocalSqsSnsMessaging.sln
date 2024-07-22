@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalSqsSnsMessaging", "src\LocalSqsSnsMessaging\LocalSqsSnsMessaging.csproj", "{3F8B1D7C-A361-4BD4-BF2F-157D75C60ACB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalSqsSnsMessaging.Tests", "tests\LocalSqsSnsMessaging.Tests\LocalSqsSnsMessaging.Tests.csproj", "{249A538D-5746-4684-B937-042353875861}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalSqsSnsMessaging.Tests.Verification", "tests\LocalSqsSnsMessaging.Tests.Verification\LocalSqsSnsMessaging.Tests.Verification.csproj", "{B15EAAEB-45DC-4328-92F0-F53580796960}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalSqsSnsMessaging.Tests.Shared", "tests\LocalSqsSnsMessaging.Tests.Shared\LocalSqsSnsMessaging.Tests.Shared.csproj", "{F3BFACE0-231E-4488-A66F-F083F65BC4D7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalSqsSnsMessaging.Tests.AppHost", "tests\LocalSqsSnsMessaging.Tests.AppHost\LocalSqsSnsMessaging.Tests.AppHost.csproj", "{E201A52C-482F-4099-AECB-AB4D1F5D8350}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3F8B1D7C-A361-4BD4-BF2F-157D75C60ACB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F8B1D7C-A361-4BD4-BF2F-157D75C60ACB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F8B1D7C-A361-4BD4-BF2F-157D75C60ACB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F8B1D7C-A361-4BD4-BF2F-157D75C60ACB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{249A538D-5746-4684-B937-042353875861}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{249A538D-5746-4684-B937-042353875861}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{249A538D-5746-4684-B937-042353875861}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{249A538D-5746-4684-B937-042353875861}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B15EAAEB-45DC-4328-92F0-F53580796960}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B15EAAEB-45DC-4328-92F0-F53580796960}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B15EAAEB-45DC-4328-92F0-F53580796960}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B15EAAEB-45DC-4328-92F0-F53580796960}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3BFACE0-231E-4488-A66F-F083F65BC4D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3BFACE0-231E-4488-A66F-F083F65BC4D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3BFACE0-231E-4488-A66F-F083F65BC4D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3BFACE0-231E-4488-A66F-F083F65BC4D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E201A52C-482F-4099-AECB-AB4D1F5D8350}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E201A52C-482F-4099-AECB-AB4D1F5D8350}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E201A52C-482F-4099-AECB-AB4D1F5D8350}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E201A52C-482F-4099-AECB-AB4D1F5D8350}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
