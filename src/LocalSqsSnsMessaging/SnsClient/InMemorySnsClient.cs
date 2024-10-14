@@ -40,7 +40,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         ArgumentNullException.ThrowIfNull(sqsClient);
         
         // Get the queue's existing policy
-        var queueAttributes = await sqsClient.GetAttributesAsync(sqsQueueUrl).ConfigureAwait(false);
+        var queueAttributes = await sqsClient.GetAttributesAsync(sqsQueueUrl).ConfigureAwait(true);
         
         var sqsQueueArn = queueAttributes["QueueArn"];
 
@@ -61,10 +61,10 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             TopicArn = topicArn,
             Protocol = "sqs",
             Endpoint = sqsQueueArn,
-        }).ConfigureAwait(false);
+        }).ConfigureAwait(true);
 
         var setAttributes = new Dictionary<string, string> { { "Policy", policy.ToJson() } };
-        await sqsClient.SetAttributesAsync(sqsQueueUrl, setAttributes).ConfigureAwait(false);
+        await sqsClient.SetAttributesAsync(sqsQueueUrl, setAttributes).ConfigureAwait(true);
 
         return response.SubscriptionArn;
     }
@@ -77,7 +77,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         Dictionary<string, string> topicSubscriptionMapping = new();
         foreach (var topicArn in topicArns)
         {
-            var subscriptionArn = await SubscribeQueueAsync(topicArn, sqsClient, sqsQueueUrl).ConfigureAwait(false);
+            var subscriptionArn = await SubscribeQueueAsync(topicArn, sqsClient, sqsQueueUrl).ConfigureAwait(true);
             topicSubscriptionMapping.Add(topicArn, subscriptionArn);
         }
 

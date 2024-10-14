@@ -307,7 +307,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
             try
             {
-                await reader.WaitToReadAsync(linkedToken.Token).ConfigureAwait(false);
+                await reader.WaitToReadAsync(linkedToken.Token).ConfigureAwait(true);
             }
             catch (OperationCanceledException)
             {
@@ -562,7 +562,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     
     private async Task SendDelayedMessageAsync(SqsQueueResource queue, Message message, int delaySeconds)
     {
-        await Task.Delay(TimeSpan.FromSeconds(delaySeconds), _bus.TimeProvider).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromSeconds(delaySeconds), _bus.TimeProvider).ConfigureAwait(true);
         queue.Messages.Writer.TryWrite(message);
     }
 

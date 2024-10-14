@@ -21,7 +21,6 @@ public class SqsReceiveMessageAsyncTestsLocalAwsMessaging : SqsReceiveMessageAsy
     protected override async Task AdvanceTime(TimeSpan timeSpan)
     {
         _timeProvider.Advance(timeSpan);
-        // Allow for continuations to complete
-        await Task.Delay(TimeSpan.FromMilliseconds(2));
+        await Task.CompletedTask;
     }
 }
