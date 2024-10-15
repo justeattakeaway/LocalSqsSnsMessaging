@@ -63,6 +63,13 @@ jobs:
       shell: pwsh
       run: ./build.ps1
 
+    - name: Run LocalStack Verification Tests
+      if: runner.os == 'linux'
+      shell: pwsh
+      run: |
+          cd ./tests/LocalSqsSnsMessaging.Tests.Verification
+          dotnet test -c Release
+
     - uses: codecov/codecov-action@e28ff129e5465c2c0dcc6f003fc735cb6ae0c673 # v4.5.0
       name: Upload coverage to Codecov
       with:
