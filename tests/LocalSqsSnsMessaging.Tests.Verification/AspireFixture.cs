@@ -1,3 +1,4 @@
+using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 
 namespace LocalSqsSnsMessaging.Tests.Verification;
