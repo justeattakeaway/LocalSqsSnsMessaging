@@ -1242,7 +1242,10 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         
         foreach (var tag in request.Tags)
         {
-            queue.Tags[tag.Key] = tag.Value;
+            if (tag.Value is not null)
+            {
+                queue.Tags[tag.Key] = tag.Value;
+            }
         }
         
         return Task.FromResult(new TagQueueResponse().SetCommonProperties());
