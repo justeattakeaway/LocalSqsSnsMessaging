@@ -8,20 +8,21 @@ public abstract class SqsReceiveMessageAsyncTests
 {
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
-    
+
     [Fact]
     public async Task ReceiveMessageAsync_QueueNotFound_ThrowsQueueDoesNotExistException()
     {
         var request = new ReceiveMessageRequest { QueueUrl = "nonexistent-queue" };
 
-        await Assert.ThrowsAsync<QueueDoesNotExistException>(() => 
+        await Assert.ThrowsAsync<QueueDoesNotExistException>(() =>
             Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task ReceiveMessageAsync_NoMessages_ReturnsEmptyList()
     {
-        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken);
+        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 0 };
 
@@ -33,7 +34,8 @@ public abstract class SqsReceiveMessageAsyncTests
     [Fact]
     public async Task ReceiveMessageAsync_MessagesAvailable_ReturnsMessages()
     {
-        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken);
+        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, MaxNumberOfMessages = 2 };
 
@@ -55,32 +57,34 @@ public abstract class SqsReceiveMessageAsyncTests
         Assert.Equal("Goodbye, world!", result.Messages[1].Body);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ReceiveMessageAsync_WaitsForMessages_ReturnsMessagesWhenAvailable()
     {
-        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken);
-                var queueUrl = createQueueResponse.QueueUrl;
+        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken);
+        var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 5 };
 
         var task = Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        
+
         await AdvanceTime(TimeSpan.FromSeconds(3));
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
             QueueUrl = queueUrl,
             MessageBody = "Hello, world!"
         }, TestContext.Current.CancellationToken);
-        
+
         var result = await task;
-        
+
         var receivedMessage = Assert.Single(result.Messages);
         Assert.Equal("Hello, world!", receivedMessage.Body);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ReceiveMessageAsync_Timeout_ReturnsEmptyList()
     {
-        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken);
+        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 5 };
 
@@ -96,7 +100,8 @@ public abstract class SqsReceiveMessageAsyncTests
     [Fact]
     public async Task ReceiveMessageAsync_CancellationRequested_ReturnsEmptyList()
     {
-        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken);
+        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 10 };
 
@@ -107,11 +112,12 @@ public abstract class SqsReceiveMessageAsyncTests
             await Sqs.ReceiveMessageAsync(request, cts.Token)
         );
     }
-    
-    [Fact]
+
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ReceiveMessageAsync_RespectVisibilityTimeout()
     {
-        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken);
+        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 30 };
 
@@ -146,12 +152,13 @@ public abstract class SqsReceiveMessageAsyncTests
         var forthReceivedMessage = Assert.Single(result4.Messages);
         Assert.Equal("Hello, world!", forthReceivedMessage.Body);
     }
-    
-    [Fact]
+
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ReceiveMessageAsync_DelayedMessageBecomesVisible()
     {
         //SynchronizationContext.SetSynchronizationContext(null);
-        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken);
+        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 30 };
 
@@ -183,24 +190,28 @@ public abstract class SqsReceiveMessageAsyncTests
         Assert.Equal("Hello, world!", receivedMessage.Body);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ReceiveMessageAsync_MultipleMessagesWithDifferentDelays()
     {
         //SynchronizationContext.SetSynchronizationContext(null);
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
         var request = new ReceiveMessageRequest
             { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 30, MaxNumberOfMessages = 10 };
 
         // Send messages with different delays
         await Sqs.SendMessageAsync(new SendMessageRequest
-            { QueueUrl = queueUrl, MessageBody = "Message 1", DelaySeconds = 5 }, TestContext.Current.CancellationToken);
+                { QueueUrl = queueUrl, MessageBody = "Message 1", DelaySeconds = 5 },
+            TestContext.Current.CancellationToken);
         await Sqs.SendMessageAsync(new SendMessageRequest
-            { QueueUrl = queueUrl, MessageBody = "Message 2", DelaySeconds = 10 }, TestContext.Current.CancellationToken);
+                { QueueUrl = queueUrl, MessageBody = "Message 2", DelaySeconds = 10 },
+            TestContext.Current.CancellationToken);
         await Sqs.SendMessageAsync(new SendMessageRequest
-            { QueueUrl = queueUrl, MessageBody = "Message 3", DelaySeconds = 15 }, TestContext.Current.CancellationToken);
+                { QueueUrl = queueUrl, MessageBody = "Message 3", DelaySeconds = 15 },
+            TestContext.Current.CancellationToken);
 
         await AdvanceTime(TimeSpan.FromSeconds(1));
-        
+
         // Advance time and check messages
         await AdvanceTime(TimeSpan.FromSeconds(5));
         var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
@@ -237,11 +248,12 @@ public abstract class SqsReceiveMessageAsyncTests
         Assert.Single(result6.Messages);
         Assert.Equal("Message 3", result6.Messages[0].Body);
     }
-    
-    [Fact]
+
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ReceiveMessageAsync_ApproximateReceiveCount_IncreasesWithEachReceive()
     {
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
         var request = new ReceiveMessageRequest
         {
             QueueUrl = queueUrl,
@@ -251,7 +263,8 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         // Send a message
-        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Test message" }, TestContext.Current.CancellationToken);
+        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Test message" },
+            TestContext.Current.CancellationToken);
 
         // First receive
         var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
@@ -278,7 +291,8 @@ public abstract class SqsReceiveMessageAsyncTests
     [Fact]
     public async Task ReceiveMessageAsync_ApproximateReceiveCount_ResetAfterDelete()
     {
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
         var request = new ReceiveMessageRequest
         {
             QueueUrl = queueUrl,
@@ -288,7 +302,8 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         // Send a message
-        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Test message" }, TestContext.Current.CancellationToken);
+        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Test message" },
+            TestContext.Current.CancellationToken);
 
         // Receive and delete the message
         var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
@@ -297,7 +312,8 @@ public abstract class SqsReceiveMessageAsyncTests
         await Sqs.DeleteMessageAsync(queueUrl, message1.ReceiptHandle, TestContext.Current.CancellationToken);
 
         // Send another message
-        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "New test message" }, TestContext.Current.CancellationToken);
+        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "New test message" },
+            TestContext.Current.CancellationToken);
 
         // Receive the new message
         var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
@@ -305,10 +321,11 @@ public abstract class SqsReceiveMessageAsyncTests
         Assert.Equal("1", message2.Attributes["ApproximateReceiveCount"]);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ReceiveMessageAsync_ApproximateReceiveCount_MultipleMessages()
     {
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
         var request = new ReceiveMessageRequest
         {
             QueueUrl = queueUrl,
@@ -319,8 +336,10 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         // Send multiple messages
-        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Message 1" }, TestContext.Current.CancellationToken);
-        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Message 2" }, TestContext.Current.CancellationToken);
+        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Message 1" },
+            TestContext.Current.CancellationToken);
+        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Message 2" },
+            TestContext.Current.CancellationToken);
 
         // First receive
         var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
@@ -336,7 +355,8 @@ public abstract class SqsReceiveMessageAsyncTests
         Assert.All(result2.Messages, m => Assert.Equal("2", m.Attributes["ApproximateReceiveCount"]));
 
         // Delete one message
-        await Sqs.DeleteMessageAsync(queueUrl, result2.Messages[0].ReceiptHandle, TestContext.Current.CancellationToken);
+        await Sqs.DeleteMessageAsync(queueUrl, result2.Messages[0].ReceiptHandle,
+            TestContext.Current.CancellationToken);
 
         // Wait for visibility timeout to expire again
         await AdvanceTime(TimeSpan.FromSeconds(6));
@@ -346,15 +366,17 @@ public abstract class SqsReceiveMessageAsyncTests
         var message3 = Assert.Single(result3.Messages);
         Assert.Equal("3", message3.Attributes["ApproximateReceiveCount"]);
     }
-    
-     [Fact]
+
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ReceiveMessageAsync_MessageMovedToErrorQueue_AfterMaxReceives()
     {
         // Create main queue and error queue
-        var mainQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "main-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
-        var errorQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "error-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
+        var mainQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "main-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
+        var errorQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "error-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
         var errorQueueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{errorQueueUrl.Split('/').Last()}";
-        
+
         // Set up redrive policy for the main queue
         await Sqs.SetQueueAttributesAsync(new SetQueueAttributesRequest
         {
@@ -374,14 +396,16 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         // Send a message to the main queue
-        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = mainQueueUrl, MessageBody = "Test message" }, TestContext.Current.CancellationToken);
+        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = mainQueueUrl, MessageBody = "Test message" },
+            TestContext.Current.CancellationToken);
 
         // Receive the message three times
         for (int i = 0; i < 3; i++)
         {
             var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
             Assert.Single(result.Messages);
-            Assert.Equal((i + 1).ToString(NumberFormatInfo.InvariantInfo), result.Messages[0].Attributes["ApproximateReceiveCount"]);
+            Assert.Equal((i + 1).ToString(NumberFormatInfo.InvariantInfo),
+                result.Messages[0].Attributes["ApproximateReceiveCount"]);
             await AdvanceTime(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
         }
 
@@ -390,19 +414,22 @@ public abstract class SqsReceiveMessageAsyncTests
         Assert.Empty(emptyResult.Messages);
 
         // Check the error queue - the message should be there
-        var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl }, TestContext.Current.CancellationToken);
+        var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl },
+            TestContext.Current.CancellationToken);
         var errorMessage = Assert.Single(errorQueueResult.Messages);
         Assert.Equal("Test message", errorMessage.Body);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ReceiveMessageAsync_MessageNotMovedToErrorQueue_IfDeletedBeforeMaxReceives()
     {
         // Create main queue and error queue
-        var mainQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "main-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
-        var errorQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "error-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
+        var mainQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "main-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
+        var errorQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "error-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
         var errorQueueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{errorQueueUrl.Split('/').Last()}";
-        
+
         // Set up redrive policy for the main queue
         await Sqs.SetQueueAttributesAsync(new SetQueueAttributesRequest
         {
@@ -422,14 +449,16 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         // Send a message to the main queue
-        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = mainQueueUrl, MessageBody = "Test message" }, TestContext.Current.CancellationToken);
+        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = mainQueueUrl, MessageBody = "Test message" },
+            TestContext.Current.CancellationToken);
 
         // Receive the message twice
         for (int i = 0; i < 2; i++)
         {
             var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
             Assert.Single(result.Messages);
-            Assert.Equal((i + 1).ToString(NumberFormatInfo.InvariantInfo), result.Messages[0].Attributes["ApproximateReceiveCount"]);
+            Assert.Equal((i + 1).ToString(NumberFormatInfo.InvariantInfo),
+                result.Messages[0].Attributes["ApproximateReceiveCount"]);
             await AdvanceTime(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
         }
 
@@ -444,17 +473,29 @@ public abstract class SqsReceiveMessageAsyncTests
         Assert.Empty(emptyMainResult.Messages);
 
         // Check the error queue - should be empty
-        var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl }, TestContext.Current.CancellationToken);
+        var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl },
+            TestContext.Current.CancellationToken);
         Assert.Empty(errorQueueResult.Messages);
     }
 
-    [Fact(Skip = "Fifo queues not supported yet")]
     public async Task ReceiveMessageAsync_ErrorQueueRespectsFifoOrder()
     {
         // Create main FIFO queue and error FIFO queue
-        var mainQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "main-queue.fifo", Attributes = new Dictionary<string, string> { ["FifoQueue"] = "true" } }, TestContext.Current.CancellationToken)).QueueUrl;
-        var errorQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "error-queue.fifo", Attributes = new Dictionary<string, string> { ["FifoQueue"] = "true" } }, TestContext.Current.CancellationToken)).QueueUrl;
-        
+        var mainQueueUrl =
+            (await Sqs.CreateQueueAsync(
+                new CreateQueueRequest
+                {
+                    QueueName = "main-queue.fifo",
+                    Attributes = new Dictionary<string, string> { ["FifoQueue"] = "true" }
+                }, TestContext.Current.CancellationToken)).QueueUrl;
+        var errorQueueUrl =
+            (await Sqs.CreateQueueAsync(
+                new CreateQueueRequest
+                {
+                    QueueName = "error-queue.fifo",
+                    Attributes = new Dictionary<string, string> { ["FifoQueue"] = "true" }
+                }, TestContext.Current.CancellationToken)).QueueUrl;
+
         // Set up redrive policy for the main queue
         await Sqs.SetQueueAttributesAsync(new SetQueueAttributesRequest
         {
@@ -474,8 +515,18 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         // Send messages to the main queue
-        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = mainQueueUrl, MessageBody = "Message 1", MessageGroupId = "group1", MessageDeduplicationId = "dedup1" }, TestContext.Current.CancellationToken);
-        await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = mainQueueUrl, MessageBody = "Message 2", MessageGroupId = "group1", MessageDeduplicationId = "dedup2" }, TestContext.Current.CancellationToken);
+        await Sqs.SendMessageAsync(
+            new SendMessageRequest
+            {
+                QueueUrl = mainQueueUrl, MessageBody = "Message 1", MessageGroupId = "group1",
+                MessageDeduplicationId = "dedup1"
+            }, TestContext.Current.CancellationToken);
+        await Sqs.SendMessageAsync(
+            new SendMessageRequest
+            {
+                QueueUrl = mainQueueUrl, MessageBody = "Message 2", MessageGroupId = "group1",
+                MessageDeduplicationId = "dedup2"
+            }, TestContext.Current.CancellationToken);
 
         // Receive and fail to process each message 3 times
         for (int i = 0; i < 3; i++)
@@ -486,16 +537,19 @@ public abstract class SqsReceiveMessageAsyncTests
         }
 
         // Check the error queue - messages should be there in order
-        var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl, MaxNumberOfMessages = 10 }, TestContext.Current.CancellationToken);
+        var errorQueueResult = await Sqs.ReceiveMessageAsync(
+            new ReceiveMessageRequest { QueueUrl = errorQueueUrl, MaxNumberOfMessages = 10 },
+            TestContext.Current.CancellationToken);
         Assert.Equal(2, errorQueueResult.Messages.Count);
         Assert.Equal("Message 1", errorQueueResult.Messages[0].Body);
         Assert.Equal("Message 2", errorQueueResult.Messages[1].Body);
     }
-    
-     [Fact]
+
+    [Fact]
     public async Task ReceiveMessageAsync_SpecificMessageSystemAttributes_OnlyRequestedAttributesReturned()
     {
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
 
         // Send a message with system attributes
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -504,8 +558,10 @@ public abstract class SqsReceiveMessageAsyncTests
             MessageBody = "Test message",
             MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>
             {
-                [MessageSystemAttributeName.SenderId] = new MessageSystemAttributeValue { StringValue = "TestSender", DataType = "String"},
-                [MessageSystemAttributeName.SentTimestamp] = new MessageSystemAttributeValue { StringValue = "1621234567890", DataType = "String"}
+                [MessageSystemAttributeName.SenderId] = new MessageSystemAttributeValue
+                    { StringValue = "TestSender", DataType = "String" },
+                [MessageSystemAttributeName.SentTimestamp] = new MessageSystemAttributeValue
+                    { StringValue = "1621234567890", DataType = "String" }
             }
         }, TestContext.Current.CancellationToken);
 
@@ -529,7 +585,8 @@ public abstract class SqsReceiveMessageAsyncTests
     [Fact]
     public async Task ReceiveMessageAsync_AllMessageSystemAttributes_AllAttributesReturned()
     {
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
 
         // Send a message with system attributes
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -539,10 +596,13 @@ public abstract class SqsReceiveMessageAsyncTests
             MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>
             {
                 [MessageSystemAttributeName.SenderId] = new() { StringValue = "TestSender", DataType = "String" },
-                [MessageSystemAttributeName.SentTimestamp] = new() { StringValue = "1621234567890", DataType = "String"},
-                [MessageSystemAttributeName.ApproximateFirstReceiveTimestamp] = new() { StringValue = "1621234567891", DataType = "String"},
-                [MessageSystemAttributeName.ApproximateReceiveCount] = new() { StringValue = "0", DataType = "String"},
-                [MessageSystemAttributeName.AWSTraceHeader] = new() { StringValue = "Root=1-5e3d83c1-e6a0db584850d61342823d4c", DataType = "String"}
+                [MessageSystemAttributeName.SentTimestamp] =
+                    new() { StringValue = "1621234567890", DataType = "String" },
+                [MessageSystemAttributeName.ApproximateFirstReceiveTimestamp] =
+                    new() { StringValue = "1621234567891", DataType = "String" },
+                [MessageSystemAttributeName.ApproximateReceiveCount] = new() { StringValue = "0", DataType = "String" },
+                [MessageSystemAttributeName.AWSTraceHeader] = new()
+                    { StringValue = "Root=1-5e3d83c1-e6a0db584850d61342823d4c", DataType = "String" }
             }
         }, TestContext.Current.CancellationToken);
 
@@ -561,12 +621,14 @@ public abstract class SqsReceiveMessageAsyncTests
         Assert.Equal(5, message.Attributes.Count);
         Assert.Equal("TestSender", message.Attributes[MessageSystemAttributeName.SenderId]);
         Assert.Equal("1", message.Attributes[MessageSystemAttributeName.ApproximateReceiveCount]);
-        Assert.Equal("Root=1-5e3d83c1-e6a0db584850d61342823d4c", message.Attributes[MessageSystemAttributeName.AWSTraceHeader]);
+        Assert.Equal("Root=1-5e3d83c1-e6a0db584850d61342823d4c",
+            message.Attributes[MessageSystemAttributeName.AWSTraceHeader]);
         if (false)
 #pragma warning disable CS0162 // Unreachable code detected
         {
             Assert.Equal("1621234567890", message.Attributes[MessageSystemAttributeName.SentTimestamp]);
-            Assert.Equal("1621234567891", message.Attributes[MessageSystemAttributeName.ApproximateFirstReceiveTimestamp]);
+            Assert.Equal("1621234567891",
+                message.Attributes[MessageSystemAttributeName.ApproximateFirstReceiveTimestamp]);
         }
 #pragma warning restore CS0162 // Unreachable code detected
     }
@@ -574,7 +636,8 @@ public abstract class SqsReceiveMessageAsyncTests
     [Fact]
     public async Task ReceiveMessageAsync_NoMessageSystemAttributes_NoAttributesReturned()
     {
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
 
         // Send a message with system attributes
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -583,8 +646,10 @@ public abstract class SqsReceiveMessageAsyncTests
             MessageBody = "Test message",
             MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>
             {
-                [MessageSystemAttributeName.SenderId] = new MessageSystemAttributeValue { StringValue = "TestSender", DataType = "String"},
-                [MessageSystemAttributeName.SentTimestamp] = new MessageSystemAttributeValue { StringValue = "1621234567890", DataType = "String"}
+                [MessageSystemAttributeName.SenderId] = new MessageSystemAttributeValue
+                    { StringValue = "TestSender", DataType = "String" },
+                [MessageSystemAttributeName.SentTimestamp] = new MessageSystemAttributeValue
+                    { StringValue = "1621234567890", DataType = "String" }
             }
         }, TestContext.Current.CancellationToken);
 
@@ -606,7 +671,8 @@ public abstract class SqsReceiveMessageAsyncTests
     [Fact]
     public async Task ReceiveMessageAsync_MultipleMessages_CorrectAttributesReturnedForEach()
     {
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
 
         // Send two messages with different system attributes
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -615,8 +681,10 @@ public abstract class SqsReceiveMessageAsyncTests
             MessageBody = "Message 1",
             MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>
             {
-                [MessageSystemAttributeName.SenderId] = new MessageSystemAttributeValue { StringValue = "Sender1", DataType = "String"},
-                [MessageSystemAttributeName.SentTimestamp] = new MessageSystemAttributeValue { StringValue = "1621234567890", DataType = "String"}
+                [MessageSystemAttributeName.SenderId] = new MessageSystemAttributeValue
+                    { StringValue = "Sender1", DataType = "String" },
+                [MessageSystemAttributeName.SentTimestamp] = new MessageSystemAttributeValue
+                    { StringValue = "1621234567890", DataType = "String" }
             }
         }, TestContext.Current.CancellationToken);
 
@@ -626,8 +694,10 @@ public abstract class SqsReceiveMessageAsyncTests
             MessageBody = "Message 2",
             MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>
             {
-                [MessageSystemAttributeName.SenderId] = new MessageSystemAttributeValue { StringValue = "Sender2", DataType = "String"},
-                [MessageSystemAttributeName.AWSTraceHeader] = new MessageSystemAttributeValue { StringValue = "Root=1-5e3d83c1-e6a0db584850d61342823d4c", DataType = "String"}
+                [MessageSystemAttributeName.SenderId] = new MessageSystemAttributeValue
+                    { StringValue = "Sender2", DataType = "String" },
+                [MessageSystemAttributeName.AWSTraceHeader] = new MessageSystemAttributeValue
+                    { StringValue = "Root=1-5e3d83c1-e6a0db584850d61342823d4c", DataType = "String" }
             }
         }, TestContext.Current.CancellationToken);
 
@@ -654,186 +724,408 @@ public abstract class SqsReceiveMessageAsyncTests
         // Check attributes for Message 2
         Assert.Equal(2, message2.Attributes.Count);
         Assert.Equal("Sender2", message2.Attributes[MessageSystemAttributeName.SenderId]);
-        Assert.Equal("Root=1-5e3d83c1-e6a0db584850d61342823d4c", message2.Attributes[MessageSystemAttributeName.AWSTraceHeader]);
+        Assert.Equal("Root=1-5e3d83c1-e6a0db584850d61342823d4c",
+            message2.Attributes[MessageSystemAttributeName.AWSTraceHeader]);
     }
-    
+
     // Permission tests
     [Fact]
-public async Task AddPermissionAsync_ValidRequest_AddsPermissionToPolicy()
-{
-    var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
-    var request = new AddPermissionRequest
+    public async Task AddPermissionAsync_ValidRequest_AddsPermissionToPolicy()
     {
-        QueueUrl = queueUrl,
-        Label = "TestPermission",
-        AWSAccountIds = ["123456789012"],
-        Actions = ["SendMessage", "ReceiveMessage"]
-    };
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
+        var request = new AddPermissionRequest
+        {
+            QueueUrl = queueUrl,
+            Label = "TestPermission",
+            AWSAccountIds = ["123456789012"],
+            Actions = ["SendMessage", "ReceiveMessage"]
+        };
 
-    var response = await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken);
+        var response = await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken);
 
-    Assert.NotNull(response);
-    var attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
+        Assert.NotNull(response);
+        var attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
+        {
+            QueueUrl = queueUrl,
+            AttributeNames = ["Policy"]
+        }, TestContext.Current.CancellationToken);
+        Assert.True(attributes.Attributes.ContainsKey("Policy"));
+        var policy = Policy.FromJson(attributes.Attributes["Policy"]);
+        Assert.Contains(policy.Statements, s => s.Id == "TestPermission");
+    }
+
+    [Fact]
+    public async Task AddPermissionAsync_DuplicateLabel_ThrowsArgumentException()
     {
-        QueueUrl = queueUrl,
-        AttributeNames = ["Policy"]
-    }, TestContext.Current.CancellationToken);
-    Assert.True(attributes.Attributes.ContainsKey("Policy"));
-    var policy = Policy.FromJson(attributes.Attributes["Policy"]);
-    Assert.Contains(policy.Statements, s => s.Id == "TestPermission");
-}
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
+        var request = new AddPermissionRequest
+        {
+            QueueUrl = queueUrl,
+            Label = "TestPermission",
+            AWSAccountIds = ["123456789012"],
+            Actions = ["SendMessage"]
+        };
 
-[Fact]
-public async Task AddPermissionAsync_DuplicateLabel_ThrowsArgumentException()
-{
-    var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
-    var request = new AddPermissionRequest
+        await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken);
+
+        await Assert.ThrowsAnyAsync<Exception>(async () =>
+            await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task AddPermissionAsync_QueueDoesNotExist_ThrowsQueueDoesNotExistException()
     {
-        QueueUrl = queueUrl,
-        Label = "TestPermission",
-        AWSAccountIds = ["123456789012"],
-        Actions = ["SendMessage"]
-    };
+        var request = new AddPermissionRequest
+        {
+            QueueUrl = "http://sqs.us-east-1.amazonaws.com/123456789012/non-existent-queue",
+            Label = "TestPermission",
+            AWSAccountIds = ["123456789012"],
+            Actions = ["SendMessage"]
+        };
 
-    await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<QueueDoesNotExistException>(async () =>
+            await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken));
+    }
 
-    await Assert.ThrowsAnyAsync<Exception>(async () => await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken));
-}
-
-[Fact]
-public async Task AddPermissionAsync_QueueDoesNotExist_ThrowsQueueDoesNotExistException()
-{
-    var request = new AddPermissionRequest
+    [Fact]
+    public async Task RemovePermissionAsync_ValidRequest_RemovesPermissionFromPolicy()
     {
-        QueueUrl = "http://sqs.us-east-1.amazonaws.com/123456789012/non-existent-queue",
-        Label = "TestPermission",
-        AWSAccountIds = ["123456789012"],
-        Actions = ["SendMessage"]
-    };
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
+        await Sqs.AddPermissionAsync(new AddPermissionRequest
+        {
+            QueueUrl = queueUrl,
+            Label = "TestPermission",
+            AWSAccountIds = ["123456789012"],
+            Actions = ["SendMessage"]
+        }, TestContext.Current.CancellationToken);
 
-    await Assert.ThrowsAsync<QueueDoesNotExistException>(async () => await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken));
-}
+        var removeRequest = new RemovePermissionRequest
+        {
+            QueueUrl = queueUrl,
+            Label = "TestPermission"
+        };
 
-[Fact]
-public async Task RemovePermissionAsync_ValidRequest_RemovesPermissionFromPolicy()
-{
-    var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
-    await Sqs.AddPermissionAsync(new AddPermissionRequest
+        var response = await Sqs.RemovePermissionAsync(removeRequest, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(response);
+        var attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
+        {
+            QueueUrl = queueUrl,
+            AttributeNames = ["Policy"]
+        }, TestContext.Current.CancellationToken);
+        Assert.False(attributes.Attributes.ContainsKey("Policy"));
+    }
+
+    [Fact]
+    public async Task RemovePermissionAsync_LabelDoesNotExist_ThrowsArgumentException()
     {
-        QueueUrl = queueUrl,
-        Label = "TestPermission",
-        AWSAccountIds = ["123456789012"],
-        Actions = ["SendMessage"]
-    }, TestContext.Current.CancellationToken);
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
+        var request = new RemovePermissionRequest
+        {
+            QueueUrl = queueUrl,
+            Label = "NonExistentLabel"
+        };
 
-    var removeRequest = new RemovePermissionRequest
+        await Assert.ThrowsAnyAsync<Exception>(async () =>
+            await Sqs.RemovePermissionAsync(request, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task RemovePermissionAsync_QueueDoesNotExist_ThrowsQueueDoesNotExistException()
     {
-        QueueUrl = queueUrl,
-        Label = "TestPermission"
-    };
+        var request = new RemovePermissionRequest
+        {
+            QueueUrl = "http://sqs.us-east-1.amazonaws.com/123456789012/non-existent-queue",
+            Label = "TestPermission"
+        };
 
-    var response = await Sqs.RemovePermissionAsync(removeRequest, TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<QueueDoesNotExistException>(async () =>
+            await Sqs.RemovePermissionAsync(request, TestContext.Current.CancellationToken));
+    }
 
-    Assert.NotNull(response);
-    var attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
+    [Fact]
+    public async Task AddAndRemovePermission_MultiplePermissions_ManagesCorrectly()
     {
-        QueueUrl = queueUrl,
-        AttributeNames = ["Policy"]
-    }, TestContext.Current.CancellationToken);
-    Assert.False(attributes.Attributes.ContainsKey("Policy"));
-}
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
 
-[Fact]
-public async Task RemovePermissionAsync_LabelDoesNotExist_ThrowsArgumentException()
-{
-    var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
-    var request = new RemovePermissionRequest
+        // Add first permission
+        await Sqs.AddPermissionAsync(new AddPermissionRequest
+        {
+            QueueUrl = queueUrl,
+            Label = "Permission1",
+            AWSAccountIds = ["123456789012"],
+            Actions = ["SendMessage"]
+        }, TestContext.Current.CancellationToken);
+
+        // Add second permission
+        await Sqs.AddPermissionAsync(new AddPermissionRequest
+        {
+            QueueUrl = queueUrl,
+            Label = "Permission2",
+            AWSAccountIds = ["210987654321"],
+            Actions = ["ReceiveMessage"]
+        }, TestContext.Current.CancellationToken);
+
+        // Verify both permissions exist
+        var attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
+        {
+            QueueUrl = queueUrl,
+            AttributeNames = ["Policy"]
+        }, TestContext.Current.CancellationToken);
+        var policy = Policy.FromJson(attributes.Attributes["Policy"]);
+        Assert.Equal(2, policy.Statements.Count);
+        Assert.Contains(policy.Statements, s => s.Id == "Permission1");
+        Assert.Contains(policy.Statements, s => s.Id == "Permission2");
+
+        // Remove first permission
+        await Sqs.RemovePermissionAsync(new RemovePermissionRequest
+        {
+            QueueUrl = queueUrl,
+            Label = "Permission1"
+        }, TestContext.Current.CancellationToken);
+
+        // Verify only second permission remains
+        attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
+        {
+            QueueUrl = queueUrl,
+            AttributeNames = ["Policy"]
+        }, TestContext.Current.CancellationToken);
+        policy = Policy.FromJson(attributes.Attributes["Policy"]);
+        Assert.Single(policy.Statements);
+        Assert.Contains(policy.Statements, s => s.Id == "Permission2");
+
+        // Remove second permission
+        await Sqs.RemovePermissionAsync(new RemovePermissionRequest
+        {
+            QueueUrl = queueUrl,
+            Label = "Permission2"
+        }, TestContext.Current.CancellationToken);
+
+        // Verify policy is removed
+        attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
+        {
+            QueueUrl = queueUrl,
+            AttributeNames = ["Policy"]
+        }, TestContext.Current.CancellationToken);
+        Assert.False(attributes.Attributes.ContainsKey("Policy"));
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_MessageExceedsMaximumSize_ThrowsInvalidMessageContentsException()
     {
-        QueueUrl = queueUrl,
-        Label = "NonExistentLabel"
-    };
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
 
-    await Assert.ThrowsAnyAsync<Exception>(async () => await Sqs.RemovePermissionAsync(request, TestContext.Current.CancellationToken));
-}
+        // Create a message that exceeds 256KB (262,144 bytes)
+        var largeMessage = new string('x', 262145);
 
-[Fact]
-public async Task RemovePermissionAsync_QueueDoesNotExist_ThrowsQueueDoesNotExistException()
-{
-    var request = new RemovePermissionRequest
+        var request = new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = largeMessage
+        };
+
+        await Assert.ThrowsAsync<AmazonSQSException>(() =>
+            Sqs.SendMessageAsync(request, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_MessageAttributeFullSizeCalculation_ThrowsException()
     {
-        QueueUrl = "http://sqs.us-east-1.amazonaws.com/123456789012/non-existent-queue",
-        Label = "TestPermission"
-    };
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
 
-    await Assert.ThrowsAsync<QueueDoesNotExistException>(async () => await Sqs.RemovePermissionAsync(request, TestContext.Current.CancellationToken));
-}
+        // The total size includes:
+        // 1. Message body
+        // 2. Each message attribute name
+        // 3. Each message attribute type (including "String", "Number", etc.)
+        // 4. Each message attribute value
+        var messageBody = new string('x', 200_000);
 
-[Fact]
-public async Task AddAndRemovePermission_MultiplePermissions_ManagesCorrectly()
-{
-    var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" }, TestContext.Current.CancellationToken)).QueueUrl;
-    
-    // Add first permission
-    await Sqs.AddPermissionAsync(new AddPermissionRequest
+        var request = new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = messageBody,
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                // Long attribute name (contributes to size)
+                [new string('a', 1000)] = new MessageAttributeValue
+                {
+                    DataType = "String", // 6 bytes
+                    StringValue = new string('y', 62000)
+                },
+                // Another attribute to push us over the limit
+                [new string('b', 100)] = new MessageAttributeValue
+                {
+                    DataType = "Number", // 6 bytes
+                    StringValue = "123"
+                }
+            }
+        };
+
+        await Assert.ThrowsAsync<AmazonSQSException>(() =>
+            Sqs.SendMessageAsync(request, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_MultipleAttributesExactlyAtLimit_Succeeds()
     {
-        QueueUrl = queueUrl,
-        Label = "Permission1",
-        AWSAccountIds = ["123456789012"],
-        Actions = ["SendMessage"]
-    }, TestContext.Current.CancellationToken);
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
 
-    // Add second permission
-    await Sqs.AddPermissionAsync(new AddPermissionRequest
-    {
-        QueueUrl = queueUrl,
-        Label = "Permission2",
-        AWSAccountIds = ["210987654321"],
-        Actions = ["ReceiveMessage"]
-    }, TestContext.Current.CancellationToken);
+        // Calculate sizes to reach exactly 256KB:
+        // - Message body: 200,000 bytes
+        // - First attribute: 
+        //   * Name: 100 bytes
+        //   * Type: "String" (6 bytes)
+        //   * Value: 31,000 bytes
+        // - Second attribute:
+        //   * Name: 20 bytes
+        //   * Type: "Number" (6 bytes)
+        //   * Value: 31,012 bytes
+        // Total: 262,144 bytes (256KB)
 
-    // Verify both permissions exist
-    var attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
-    {
-        QueueUrl = queueUrl,
-        AttributeNames = ["Policy"]
-    }, TestContext.Current.CancellationToken);
-    var policy = Policy.FromJson(attributes.Attributes["Policy"]);
-    Assert.Equal(2, policy.Statements.Count);
-    Assert.Contains(policy.Statements, s => s.Id == "Permission1");
-    Assert.Contains(policy.Statements, s => s.Id == "Permission2");
+        var sendRequest = new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = new string('x', 200000),
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                [new string('a', 100)] = new MessageAttributeValue
+                {
+                    DataType = "String",
+                    StringValue = new string('y', 31000)
+                },
+                [new string('b', 20)] = new MessageAttributeValue
+                {
+                    DataType = "Number",
+                    StringValue = new string('z', 31012)
+                }
+            }
+        };
 
-    // Remove first permission
-    await Sqs.RemovePermissionAsync(new RemovePermissionRequest
-    {
-        QueueUrl = queueUrl,
-        Label = "Permission1"
-    }, TestContext.Current.CancellationToken);
+        var sendResponse = await Sqs.SendMessageAsync(sendRequest, TestContext.Current.CancellationToken);
+        Assert.NotNull(sendResponse.MessageId);
 
-    // Verify only second permission remains
-    attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
-    {
-        QueueUrl = queueUrl,
-        AttributeNames = ["Policy"]
-    }, TestContext.Current.CancellationToken);
-    policy = Policy.FromJson(attributes.Attributes["Policy"]);
-    Assert.Single(policy.Statements);
-    Assert.Contains(policy.Statements, s => s.Id == "Permission2");
+        // Verify we can receive the message with attributes
+        var receiveResponse = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 1,
+            MessageAttributeNames = ["All"]
+        }, TestContext.Current.CancellationToken);
 
-    // Remove second permission
-    await Sqs.RemovePermissionAsync(new RemovePermissionRequest
-    {
-        QueueUrl = queueUrl,
-        Label = "Permission2"
-    }, TestContext.Current.CancellationToken);
+        var message = Assert.Single(receiveResponse.Messages);
+        Assert.Equal(2, message.MessageAttributes.Count);
+    }
 
-    // Verify policy is removed
-    attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
+    [Fact]
+    public async Task SendMessageAsync_BinaryAttributeSize_Succeeds()
     {
-        QueueUrl = queueUrl,
-        AttributeNames = ["Policy"]
-    }, TestContext.Current.CancellationToken);
-    Assert.False(attributes.Attributes.ContainsKey("Policy"));
-}
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
+
+        // Create a binary attribute
+        byte[] binaryData = new byte[1000];
+#pragma warning disable CA5394
+        new Random(42).NextBytes(binaryData);
+#pragma warning restore CA5394
+
+        var request = new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = new string('x', 260000),
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                ["BinaryAttribute"] = new MessageAttributeValue
+                {
+                    DataType = "Binary",
+                    BinaryValue = new MemoryStream(binaryData)
+                }
+            }
+        };
+
+        // Total size: 260,000 (body) + 14 (attribute name) + 6 (type) + 1,000 (binary value) = 261,020 bytes
+        var response = await Sqs.SendMessageAsync(request, TestContext.Current.CancellationToken);
+        Assert.NotNull(response.MessageId);
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_CustomAttributeTypeNames_CountTowardsLimit()
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
+
+        // Using a custom attribute type name which counts towards the limit
+        var longCustomType = $"String.{new string('x', 1000)}";
+
+        var request = new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = new string('x', 262000),
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                ["CustomAttribute"] = new MessageAttributeValue
+                {
+                    DataType = longCustomType,
+                    StringValue = "test"
+                }
+            }
+        };
+
+        // The long custom type name should push us over the limit
+        await Assert.ThrowsAsync<AmazonSQSException>(() =>
+            Sqs.SendMessageAsync(request, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_BatchWithAttributeSizeLimits_PartialBatchFailure()
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
+            TestContext.Current.CancellationToken)).QueueUrl;
+
+        var validMessage = new SendMessageBatchRequestEntry
+        {
+            Id = "1",
+            MessageBody = "Valid message",
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                ["attr1"] = new MessageAttributeValue
+                {
+                    DataType = "String",
+                    StringValue = "test"
+                }
+            }
+        };
+
+        var oversizedMessage = new SendMessageBatchRequestEntry
+        {
+            Id = "2",
+            MessageBody = new string('x', 260000),
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                [new string('a', 1000)] = new MessageAttributeValue // Long attribute name
+                {
+                    DataType = "String",
+                    StringValue = new string('y', 2000)
+                }
+            }
+        };
+
+        var request = new SendMessageBatchRequest
+        {
+            QueueUrl = queueUrl,
+            Entries = [validMessage, oversizedMessage]
+        };
+
+        await Assert.ThrowsAsync<BatchRequestTooLongException>(async () =>
+            await Sqs.SendMessageBatchAsync(request, TestContext.Current.CancellationToken));
+    }
 
     protected abstract Task AdvanceTime(TimeSpan timeSpan);
 }

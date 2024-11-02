@@ -88,7 +88,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         return attrResponse.Attributes["QueueArn"];
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task StartMessageMoveTaskAsync_ValidRequest_MovesMessage()
     {
         await SetupQueuesAndMessage();
@@ -115,7 +115,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         mainReceiveResult.Messages.Should().HaveCount(4);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task StartMessageMoveTaskAsync_NonDLQSource_ThrowsException()
     {
         await SetupQueuesAndMessage();
@@ -137,7 +137,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
             }, TestContext.Current.CancellationToken));
     }
     
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task StartMessageMoveTaskAsync_InvalidDestinationQueue_ThrowsException()
     {
         await SetupQueuesAndMessage();
@@ -151,7 +151,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
             }, TestContext.Current.CancellationToken));
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task StartMessageMoveTaskAsync_EmptyDLQ_NoMessagesMoved()
     {
         await SetupQueuesAndMessage();
@@ -183,7 +183,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         Assert.Empty(mainReceiveResult.Messages);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task StartMessageMoveTaskAsync_MaxNumberOfMessagesPerSecond_RespectsLimit()
     {
         await SetupQueuesAndMessage();
@@ -228,7 +228,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         Assert.InRange(sourceReceiveResult.Messages.Count, 4, 6); // Allow for some flexibility due to timing
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task StartMessageMoveTaskAsync_NoDestinationArn_MovesToOriginalSource()
     {
         await SetupQueuesAndMessage();
@@ -254,7 +254,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         Assert.Empty(sourceReceiveResult.Messages);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task CancelMessageMoveTaskAsync_ValidTaskHandle_StopsTask()
     {
         await SetupQueuesAndMessage();
@@ -281,7 +281,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         Assert.NotEmpty(sourceReceiveResult.Messages);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task StartingTwoMessageMoveTasksForTheSameQueue_Throws()
     {
         await SetupQueuesAndMessage();
@@ -305,7 +305,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         });
     }
     
-    [Fact]
+    [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ListMessageMoveTasks_ReturnsAllActiveTasks()
     {
         await SetupQueuesAndMessage();
