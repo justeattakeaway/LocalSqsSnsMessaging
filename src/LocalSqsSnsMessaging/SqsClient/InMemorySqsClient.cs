@@ -27,6 +27,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     private readonly InMemoryAwsBus _bus;
     private readonly Lazy<ISQSPaginatorFactory> _paginators;
 
+    private const int MaxMessageSize = 262144;
     private static readonly string[] InternalAttributes = [
         QueueAttributeName.ApproximateNumberOfMessages,
         QueueAttributeName.ApproximateNumberOfMessagesDelayed,
@@ -470,6 +471,13 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }
 
         var message = CreateMessage(request.MessageBody, request.MessageAttributes, request.MessageSystemAttributes);
+        var totalSize = CalculateMessageSize(message.Body, message.MessageAttributes);
+
+        if (totalSize > MaxMessageSize)
+        {
+            throw new AmazonSQSException(
+                $"Message size ({totalSize} bytes) exceeds the maximum allowed size ({MaxMessageSize} bytes)");
+        }
 
         if (queue.IsFifo)
         {
@@ -523,6 +531,39 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }.SetCommonProperties());
     }
 
+    private static int CalculateMessageSize(string messageBody, Dictionary<string, MessageAttributeValue>? messageAttributes)
+    {
+        var totalSize = 0;
+
+        // Add message body size
+        totalSize += Encoding.UTF8.GetByteCount(messageBody);
+
+        // Add message attributes size
+        if (messageAttributes != null)
+        {
+            foreach (var (key, attributeValue) in messageAttributes)
+            {
+                // Add attribute name size
+                totalSize += Encoding.UTF8.GetByteCount(key);
+
+                // Add data type size (including any custom type prefix)
+                totalSize += Encoding.UTF8.GetByteCount(attributeValue.DataType);
+
+                // Add value size based on the type
+                if (attributeValue.BinaryValue != null)
+                {
+                    totalSize += (int)attributeValue.BinaryValue.Length;
+                }
+                else if (attributeValue.StringValue != null)
+                {
+                    totalSize += Encoding.UTF8.GetByteCount(attributeValue.StringValue);
+                }
+            }
+        }
+
+        return totalSize;
+    }
+    
     private static void EnqueueFifoMessage(SqsQueueResource queue, string messageGroupId, Message message)
     {
         queue.MessageGroups.AddOrUpdate(messageGroupId, 
@@ -1075,10 +1116,18 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             Failed = []
         };
 
+        var totalSize = request.Entries.Sum(e => CalculateMessageSize(e.MessageBody, e.MessageAttributes));
+        
+        if (totalSize > MaxMessageSize)
+        {
+            throw new BatchRequestTooLongException(
+                $"Batch size ({totalSize} bytes) exceeds the maximum allowed size ({MaxMessageSize} bytes)");
+        }
+        
         foreach (var entry in request.Entries)
         {
             var message = CreateMessage(entry.MessageBody, entry.MessageAttributes, entry.MessageSystemAttributes);
-            
+
             if (entry.DelaySeconds > 0)
             {
                 message.Attributes["DelaySeconds"] = entry.DelaySeconds.ToString(NumberFormatInfo.InvariantInfo);
@@ -1096,7 +1145,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
                 MD5OfMessageBody = message.MD5OfBody
             });
         }
-
+        
         return Task.FromResult(response.SetCommonProperties());
     }
 

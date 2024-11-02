@@ -20,6 +20,8 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 {
     private readonly InMemoryAwsBus _bus;
     private readonly Lazy<ISimpleNotificationServicePaginatorFactory> _paginators;
+    
+    private const int MaxMessageSize = 262144;
 
     internal InMemorySnsClient(InMemoryAwsBus bus)
     {
@@ -390,17 +392,63 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
     public Task<PublishResponse> PublishAsync(PublishRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        var messageSize = CalculateMessageSize(request.Message, request.MessageAttributes);
+        if (messageSize > MaxMessageSize)
+        {
+            throw new InvalidParameterException($"Message size has exceeded the limit of {MaxMessageSize} bytes.");
+        }
         
         var topic = GetTopicByArn(request.TopicArn);
         var result = topic.PublishAction.Execute(request);
 
         return Task.FromResult(result);
     }
+    
+    private static int CalculateMessageSize(string message, Dictionary<string, MessageAttributeValue>? messageAttributes)
+    {
+        var totalSize = 0;
+
+        // Add message body size
+        totalSize += Encoding.UTF8.GetByteCount(message);
+
+        // Add message attributes size
+        if (messageAttributes != null)
+        {
+            foreach (var (key, attributeValue) in messageAttributes)
+            {
+                // Add attribute name size
+                totalSize += Encoding.UTF8.GetByteCount(key);
+
+                // Add data type size (including any custom type prefix)
+                totalSize += Encoding.UTF8.GetByteCount(attributeValue.DataType);
+
+                // Add value size based on the type
+                if (attributeValue.BinaryValue != null)
+                {
+                    totalSize += (int)attributeValue.BinaryValue.Length;
+                }
+                else if (attributeValue.StringValue != null)
+                {
+                    totalSize += Encoding.UTF8.GetByteCount(attributeValue.StringValue);
+                }
+            }
+        }
+
+        return totalSize;
+    }
+
 
     public Task<PublishBatchResponse> PublishBatchAsync(PublishBatchRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var totalSize = request.PublishBatchRequestEntries
+            .Sum(requestEntry => CalculateMessageSize(requestEntry.Message, requestEntry.MessageAttributes));
+        if (totalSize > MaxMessageSize)
+        {
+            throw new InvalidParameterException($"Message size has exceeded the limit of {MaxMessageSize} bytes.");
+        }
         
         var topic = GetTopicByArn(request.TopicArn);
         var result = topic.PublishAction.ExecuteBatch(request);
