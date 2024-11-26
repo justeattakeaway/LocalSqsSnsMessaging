@@ -22,10 +22,3 @@ internal sealed class SqsQueueResource
     public ConcurrentDictionary<string, ConcurrentQueue<Message>> MessageGroups { get; } = new();
     public ConcurrentDictionary<string, string> DeduplicationIds { get; } = new();
 }
-
-// public class SqsMessage
-// {
-//     public string MessageId { get; set; }
-//     public string Body { get; set; }
-//     public int Priority { get; set; }
-// }

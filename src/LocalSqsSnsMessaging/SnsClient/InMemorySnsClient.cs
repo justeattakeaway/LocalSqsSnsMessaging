@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Text;
 using Amazon.Auth.AccessControlPolicy;
 using Amazon.Auth.AccessControlPolicy.ActionIdentifiers;
 using Amazon.Runtime;
@@ -109,11 +108,11 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
     {
         ArgumentNullException.ThrowIfNull(request);
         
-        var topicArn = $"arn:aws:sns:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:{request.Name}";
+        var topicArn = $"arn:aws:sns:{_bus.CurrentRegion.SystemName}:{_bus.CurrentAccountId}:{request.Name}";
         var topic = new SnsTopicResource
         {
             Name = request.Name,
-            Region = _bus.CurrentRegion,
+            Region = _bus.CurrentRegion.SystemName,
             Arn = topicArn
         };
 

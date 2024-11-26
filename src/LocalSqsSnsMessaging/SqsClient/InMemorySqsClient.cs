@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Runtime.CompilerServices;
@@ -146,29 +147,33 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         ArgumentNullException.ThrowIfNull(request);
         
-        var queueUrl = $"https://sqs.{_bus.CurrentRegion}.amazonaws.com/{_bus.CurrentAccountId}/{request.QueueName}";
-        var visibilityTimeoutParsed = request.Attributes.TryGetValue(QueueAttributeName.VisibilityTimeout, out var visibilityTimeout)
+        var queueUrl = $"https://sqs.{_bus.CurrentRegion.SystemName}.amazonaws.com/{_bus.CurrentAccountId}/{request.QueueName}";
+        var visibilityTimeoutParsed = request.Attributes?.TryGetValue(QueueAttributeName.VisibilityTimeout, out var visibilityTimeout) ?? false
             ? TimeSpan.FromSeconds(int.Parse(visibilityTimeout, NumberFormatInfo.InvariantInfo))
             : TimeSpan.FromSeconds(30);
 
         var queue = new SqsQueueResource
         {
             Name = request.QueueName,
-            Region = _bus.CurrentRegion,
+            Region = _bus.CurrentRegion.SystemName,
             AccountId = _bus.CurrentAccountId,
             Url = queueUrl,
             VisibilityTimeout = visibilityTimeoutParsed
         };
-        
-        foreach (var requestAttribute in request.Attributes)
-        {
-            if (InternalAttributes.Contains(requestAttribute.Key))
-            {
-                throw new InvalidOperationException($"Cannot set internal attribute {requestAttribute.Key}");
-            }
 
-            queue.Attributes[requestAttribute.Key] = requestAttribute.Value;
+        if (request.Attributes != null)
+        {
+            foreach (var requestAttribute in request.Attributes)
+            {
+                if (InternalAttributes.Contains(requestAttribute.Key))
+                {
+                    throw new InvalidOperationException($"Cannot set internal attribute {requestAttribute.Key}");
+                }
+
+                queue.Attributes[requestAttribute.Key] = requestAttribute.Value;
+            }
         }
+
         queue.Attributes.Add("QueueArn", queue.Arn);
         UpdateQueueProperties(queue);
         _bus.Queues.TryAdd(request.QueueName, queue);
@@ -391,7 +396,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     
     private static bool IsAtMaxReceiveCount(Message message, SqsQueueResource queue)
     {
-        var receiveCount = message.Attributes.GetValueOrDefault(MessageSystemAttributeName.ApproximateReceiveCount, "0");
+        var receiveCount = message.Attributes?.GetValueOrDefault(MessageSystemAttributeName.ApproximateReceiveCount, "0") ?? "0";
         return queue.MaxReceiveCount is not null && int.Parse(receiveCount, NumberFormatInfo.InvariantInfo) >= queue.MaxReceiveCount;
     }
 
@@ -411,15 +416,16 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     
     private string CreateReceiptHandle(Message message, SqsQueueResource queue)
     {
-#pragma warning disable CA1308
-        var guid = Guid.NewGuid().ToString().ToLowerInvariant();
-#pragma warning restore CA1308
+        var guid = Guid.NewGuid().ToString();
         var decodedReceiptHandle = $"{guid} {queue.Arn} {message.MessageId} {_bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds() / 1000.0}";
-        return Convert.ToBase64String(Encoding.UTF8.GetBytes(decodedReceiptHandle));
+        var utf8Bytes = decodedReceiptHandle.Length <= 1024 ? stackalloc byte[decodedReceiptHandle.Length] : new byte[decodedReceiptHandle.Length]; 
+        Encoding.UTF8.GetBytes(decodedReceiptHandle, utf8Bytes);
+        return Convert.ToBase64String(utf8Bytes);
     }
 
     private static void IncrementReceiveCount(Message message)
     {
+        message.Attributes ??= [];
         var receiveCount = message.Attributes.GetValueOrDefault(MessageSystemAttributeName.ApproximateReceiveCount, "0");
     
         var newCount = (int.Parse(receiveCount, NumberFormatInfo.InvariantInfo) + 1).ToString(NumberFormatInfo.InvariantInfo);
@@ -577,7 +583,8 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     
     private static string GenerateMessageBodyHash(string messageBody)
     {
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(messageBody));
+        Span<byte> hashBytes = stackalloc byte[32];
+        SHA256.HashData(Encoding.UTF8.GetBytes(messageBody), hashBytes);
         return Convert.ToBase64String(hashBytes);
     }
 
@@ -592,7 +599,8 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         };
 
 #pragma warning disable CA5351
-        var hash = MD5.HashData(Encoding.UTF8.GetBytes(messageBody));
+        var hash = 
+            MD5.HashData(Encoding.UTF8.GetBytes(messageBody));
 #pragma warning restore CA5351
 #pragma warning disable CA1308
         message.MD5OfBody = Convert.ToHexString(hash).ToLowerInvariant();

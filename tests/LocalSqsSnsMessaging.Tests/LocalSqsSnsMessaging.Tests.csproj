@@ -19,6 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\SampleApp\SampleApp.csproj" />
         <ProjectReference Include="..\..\src\LocalSqsSnsMessaging\LocalSqsSnsMessaging.csproj" />
         <ProjectReference Include="..\LocalSqsSnsMessaging.Tests.Shared\LocalSqsSnsMessaging.Tests.Shared.csproj" />
     </ItemGroup>

@@ -10,6 +10,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalSqsSnsMessaging.Tests.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalSqsSnsMessaging.Tests.AppHost", "tests\LocalSqsSnsMessaging.Tests.AppHost\LocalSqsSnsMessaging.Tests.AppHost.csproj", "{E201A52C-482F-4099-AECB-AB4D1F5D8350}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleApp", "SampleApp\SampleApp.csproj", "{35ECB942-1633-4459-91B4-1450138B1EC7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SnsSrcGen", "SnsSrcGen\SnsSrcGen.csproj", "{55628CBE-0308-4DE4-AF7C-F2B6AE903396}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +40,13 @@ Global
 		{E201A52C-482F-4099-AECB-AB4D1F5D8350}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E201A52C-482F-4099-AECB-AB4D1F5D8350}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E201A52C-482F-4099-AECB-AB4D1F5D8350}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35ECB942-1633-4459-91B4-1450138B1EC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35ECB942-1633-4459-91B4-1450138B1EC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35ECB942-1633-4459-91B4-1450138B1EC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35ECB942-1633-4459-91B4-1450138B1EC7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55628CBE-0308-4DE4-AF7C-F2B6AE903396}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55628CBE-0308-4DE4-AF7C-F2B6AE903396}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55628CBE-0308-4DE4-AF7C-F2B6AE903396}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55628CBE-0308-4DE4-AF7C-F2B6AE903396}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

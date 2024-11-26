@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Amazon;
 
 namespace LocalSqsSnsMessaging;
 
@@ -23,7 +24,7 @@ public sealed class InMemoryAwsBus
     /// Gets or initializes the current AWS region.
     /// </summary>
     /// <value>The AWS region as a string, defaulting to "us-east-1".</value>
-    public string CurrentRegion { get; init; } = "us-east-1";
+    public RegionEndpoint CurrentRegion { get; init; } = RegionEndpoint.USEast1;
 
     /// <summary>
     /// Gets the collection of SQS queue resources.

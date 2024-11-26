@@ -18,16 +18,18 @@ internal sealed class SnsPublishAction
     
     private readonly List<(SnsSubscription Subscription, SqsQueueResource Queue)> _subscriptionsAndQueues;
     private readonly TimeProvider _timeProvider;
-    private static Int128 _sequenceNumber = CreateSequenceNumber();
+    private static ulong _sequenceNumber = CreateSequenceNumber();
     private static SpinLock _sequenceSpinLock = new(false);
 
-    private static Int128 CreateSequenceNumber()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(16);
-        var randomBigInt = new BigInteger(bytes);
-        var twentyDigitBigInt = BigInteger.Abs(randomBigInt % BigInteger.Pow(10, 20));
-        return (Int128)twentyDigitBigInt;
-    }
+        private static ulong CreateSequenceNumber()
+        {
+            Span<byte> bytes = stackalloc byte[8];
+            RandomNumberGenerator.Fill(bytes);
+
+            var value = BitConverter.ToUInt64(bytes);
+        
+            return value;
+        }
     
     public SnsPublishAction(List<(SnsSubscription Subscription, SqsQueueResource Queue)> subscriptionsAndQueues, TimeProvider timeProvider)
     {
@@ -141,11 +143,18 @@ internal sealed class SnsPublishAction
             ? CreateRawSqsMessage(request.Message, request.MessageAttributes)
             : CreateFormattedSqsMessage(request, messageId);
 
+        int byteCount = Encoding.UTF8.GetByteCount(message.Body);
+        Span<byte> utf8Bytes =
+            byteCount <= 1024
+                ? stackalloc byte[byteCount]
+                : new byte[byteCount];
+        Encoding.UTF8.GetBytes(message.Body, utf8Bytes);
+        Span<byte> hashBytes = stackalloc byte[16];
 #pragma warning disable CA5351
-        var hash = MD5.HashData(Encoding.UTF8.GetBytes(message.Body));
+        MD5.HashData(utf8Bytes, hashBytes);
 #pragma warning restore CA5351
 #pragma warning disable CA1308
-        message.MD5OfBody = Convert.ToHexString(hash).ToLowerInvariant();
+        message.MD5OfBody = Convert.ToHexString(hashBytes).ToLowerInvariant();
 #pragma warning restore CA1308
         
         return message;
@@ -157,29 +166,30 @@ internal sealed class SnsPublishAction
             ? CreateRawSqsMessage(entry.Message, entry.MessageAttributes)
             : CreateFormattedSqsMessage(entry, topicArn, messageId);
 
+        Span<byte> hashBytes = stackalloc byte[16];
 #pragma warning disable CA5351
-        var hash = MD5.HashData(Encoding.UTF8.GetBytes(message.Body));
+        MD5.HashData(Encoding.UTF8.GetBytes(message.Body), hashBytes);
 #pragma warning restore CA5351
 #pragma warning disable CA1308
-        message.MD5OfBody = Convert.ToHexString(hash).ToLowerInvariant();
+        message.MD5OfBody = Convert.ToHexString(hashBytes).ToLowerInvariant();
 #pragma warning restore CA1308
         
         return message;
     }
 
-    private static Message CreateRawSqsMessage(string message, Dictionary<string, MessageAttributeValue> attributes)
+    private static Message CreateRawSqsMessage(string message, Dictionary<string, MessageAttributeValue>? attributes)
     {
         return new Message
         {
             Body = message,
-            MessageAttributes = attributes.ToDictionary(
+            MessageAttributes = attributes?.ToDictionary(
                 kvp => kvp.Key,
                 kvp => new SqsMessageAttributeValue
                 {
                     DataType = kvp.Value.DataType,
                     StringValue = kvp.Value.StringValue,
                     BinaryValue = kvp.Value.BinaryValue
-                })
+                }) ?? []
         };
     }
 
@@ -195,7 +205,7 @@ internal sealed class SnsPublishAction
         return CreateFormattedMessage(snsMessage, topicArn);
     }
 
-    private JsonObject CreateSnsMessage(string messageId, string topicArn, string? subject, string message, Dictionary<string, MessageAttributeValue> attributes)
+    private JsonObject CreateSnsMessage(string messageId, string topicArn, string? subject, string message, Dictionary<string, MessageAttributeValue>? attributes)
     {
         var snsMessage = new JsonObject
         {
@@ -215,7 +225,7 @@ internal sealed class SnsPublishAction
             snsMessage["Subject"] = subject;
         }
 
-        if (attributes.Count > 0)
+        if (attributes is not null && attributes.Count > 0)
         {
             var messageAttributes = new JsonObject();
             foreach (var (key, value) in attributes)
@@ -250,11 +260,12 @@ internal sealed class SnsPublishAction
     
     private static string GenerateMessageBodyHash(string messageBody)
     {
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(messageBody));
+        Span<byte> hashBytes = stackalloc byte[32];
+        SHA256.HashData(Encoding.UTF8.GetBytes(messageBody), hashBytes);
         return Convert.ToBase64String(hashBytes);
     }
     
-    private static Int128 GetNextSequenceNumber()
+    private static ulong GetNextSequenceNumber()
     {
         var lockTaken = false;
         try

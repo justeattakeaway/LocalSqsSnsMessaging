@@ -12,6 +12,7 @@ public static class InMemoryAwsBusExtensions
     /// <returns>An InMemorySqsClient instance connected to the provided InMemoryAwsBus.</returns>
     public static InMemorySqsClient CreateSqsClient(this InMemoryAwsBus bus)
     {
+        ArgumentNullException.ThrowIfNull(bus);
         return new InMemorySqsClient(bus);
     }
 
@@ -22,6 +23,7 @@ public static class InMemoryAwsBusExtensions
     /// <returns>An InMemorySnsClient instance connected to the provided InMemoryAwsBus.</returns>
     public static InMemorySnsClient CreateSnsClient(this InMemoryAwsBus bus)
     {
+        ArgumentNullException.ThrowIfNull(bus);
         return new InMemorySnsClient(bus);
     }
 }
