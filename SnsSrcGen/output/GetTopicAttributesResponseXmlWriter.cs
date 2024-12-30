@@ -13,40 +13,30 @@ public static MemoryStream Write(GetTopicAttributesResponse response)
     Debug.Assert(response is not null);
     var memoryStream = MemoryStreamFactory.GetStream(nameof(GetTopicAttributesResponse));
     using var utf8XmlWriter = new Utf8XmlWriter((IBufferWriter<byte>)memoryStream);
-
+    
     utf8XmlWriter.WriteStartElement("GetTopicAttributesResponse"u8, "https://sns.amazonaws.com/doc/2010-03-31/"u8);
-
     utf8XmlWriter.WriteStartElement("GetTopicAttributesResult"u8);
-
-                  if (IsSetAttributes(response))
-                  {
-                       utf8XmlWriter.WriteStartElement("Attributes"u8);
-                       foreach (var kvp in response.Attributes)
-                       {
-                           utf8XmlWriter.WriteStartElement("entry"u8);
-                           
-                           utf8XmlWriter.WriteElement("key"u8, Convert.ToString(kvp.Key, CultureInfo.InvariantCulture)!);
-                           utf8XmlWriter.WriteElement("value"u8, Convert.ToString(kvp.Value, CultureInfo.InvariantCulture)!);
-                           
-                           utf8XmlWriter.WriteEndElement(); // entry
-                       }
-                       utf8XmlWriter.WriteEndElement(); // Attributes
-                   }
+    if (response.Attributes != null)
+    {
+utf8XmlWriter.WriteStartElement("Attributes"u8);
+foreach (var kvp in response.Attributes)
+{
+    utf8XmlWriter.WriteStartElement("entry"u8);
+    utf8XmlWriter.WriteElement("key"u8, Convert.ToString(kvp.Key, CultureInfo.InvariantCulture)!);
+    utf8XmlWriter.WriteElement("value"u8, Convert.ToString(kvp.Value, CultureInfo.InvariantCulture)!);
+    utf8XmlWriter.WriteEndElement(); // entry
+}
+utf8XmlWriter.WriteEndElement(); // map
+    }
+    utf8XmlWriter.WriteEndElement(); // Result wrapper
     
-                          utf8XmlWriter.WriteEndElement(); // Result
+    SnsXmlWriterHelpers.WriteResponseMetadata(utf8XmlWriter, response);
     
-                          SnsXmlWriterHelpers.WriteResponseMetadata(utf8XmlWriter, response);
+    utf8XmlWriter.WriteEndElement(); // Response
+    utf8XmlWriter.Flush();
     
-                          utf8XmlWriter.WriteEndElement(); // Response
-                          utf8XmlWriter.WriteEndElement();
-                          utf8XmlWriter.Flush();
-                          
-                          memoryStream.Position = 0;
-    
-                          return memoryStream;
-                      }
-
-        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(IsSetAttributes))]
-        public static extern bool IsSetAttributes(GetTopicAttributesResponse response);
+    memoryStream.Position = 0;
+    return memoryStream;
+}
     }
 }

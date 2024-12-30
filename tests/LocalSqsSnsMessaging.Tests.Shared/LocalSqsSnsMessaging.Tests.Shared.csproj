@@ -5,7 +5,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <NoWarn>$(NoWarn);CA1051;CA2007;CA1707</NoWarn>
+        <NoWarn>$(NoWarn);CA1051;CA2007;CA1707;NU1900</NoWarn>
         <GenerateProgramFile>false</GenerateProgramFile>
         <GenerateSelfRegisteredExtensions>false</GenerateSelfRegisteredExtensions>
         <GenerateTestingPlatformEntryPoint>false</GenerateTestingPlatformEntryPoint>

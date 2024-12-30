@@ -13,30 +13,22 @@ public static MemoryStream Write(CreatePlatformEndpointResponse response)
     Debug.Assert(response is not null);
     var memoryStream = MemoryStreamFactory.GetStream(nameof(CreatePlatformEndpointResponse));
     using var utf8XmlWriter = new Utf8XmlWriter((IBufferWriter<byte>)memoryStream);
-
+    
     utf8XmlWriter.WriteStartElement("CreatePlatformEndpointResponse"u8, "https://sns.amazonaws.com/doc/2010-03-31/"u8);
-
     utf8XmlWriter.WriteStartElement("CreatePlatformEndpointResult"u8);
-
-                  if (IsSetEndpointArn(response))
-                  {
-                      utf8XmlWriter.WriteElement("EndpointArn", Convert.ToString(response.EndpointArn, CultureInfo.InvariantCulture)!);
-                   }
+    if (response.EndpointArn != null)
+    {
+        utf8XmlWriter.WriteElement("EndpointArn"u8, response.EndpointArn);
+    }
+    utf8XmlWriter.WriteEndElement(); // Result wrapper
     
-                          utf8XmlWriter.WriteEndElement(); // Result
+    SnsXmlWriterHelpers.WriteResponseMetadata(utf8XmlWriter, response);
     
-                          SnsXmlWriterHelpers.WriteResponseMetadata(utf8XmlWriter, response);
+    utf8XmlWriter.WriteEndElement(); // Response
+    utf8XmlWriter.Flush();
     
-                          utf8XmlWriter.WriteEndElement(); // Response
-                          utf8XmlWriter.WriteEndElement();
-                          utf8XmlWriter.Flush();
-                          
-                          memoryStream.Position = 0;
-    
-                          return memoryStream;
-                      }
-
-        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(IsSetEndpointArn))]
-        public static extern bool IsSetEndpointArn(CreatePlatformEndpointResponse response);
+    memoryStream.Position = 0;
+    return memoryStream;
+}
     }
 }

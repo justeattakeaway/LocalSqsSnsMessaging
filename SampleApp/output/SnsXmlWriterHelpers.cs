@@ -21,6 +21,7 @@ namespace Amazon.SimpleNotificationService.Model
         {
             writer.WriteStartElement("ResponseMetadata"u8);
             writer.WriteElement("RequestId"u8, response.ResponseMetadata.RequestId);
+            writer.WriteEndElement();
         }
     }
 }

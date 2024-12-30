@@ -13,30 +13,22 @@ public static MemoryStream Write(ConfirmSubscriptionResponse response)
     Debug.Assert(response is not null);
     var memoryStream = MemoryStreamFactory.GetStream(nameof(ConfirmSubscriptionResponse));
     using var utf8XmlWriter = new Utf8XmlWriter((IBufferWriter<byte>)memoryStream);
-
+    
     utf8XmlWriter.WriteStartElement("ConfirmSubscriptionResponse"u8, "https://sns.amazonaws.com/doc/2010-03-31/"u8);
-
     utf8XmlWriter.WriteStartElement("ConfirmSubscriptionResult"u8);
-
-                  if (IsSetSubscriptionArn(response))
-                  {
-                      utf8XmlWriter.WriteElement("SubscriptionArn", Convert.ToString(response.SubscriptionArn, CultureInfo.InvariantCulture)!);
-                   }
+    if (response.SubscriptionArn != null)
+    {
+        utf8XmlWriter.WriteElement("SubscriptionArn"u8, response.SubscriptionArn);
+    }
+    utf8XmlWriter.WriteEndElement(); // Result wrapper
     
-                          utf8XmlWriter.WriteEndElement(); // Result
+    SnsXmlWriterHelpers.WriteResponseMetadata(utf8XmlWriter, response);
     
-                          SnsXmlWriterHelpers.WriteResponseMetadata(utf8XmlWriter, response);
+    utf8XmlWriter.WriteEndElement(); // Response
+    utf8XmlWriter.Flush();
     
-                          utf8XmlWriter.WriteEndElement(); // Response
-                          utf8XmlWriter.WriteEndElement();
-                          utf8XmlWriter.Flush();
-                          
-                          memoryStream.Position = 0;
-    
-                          return memoryStream;
-                      }
-
-        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(IsSetSubscriptionArn))]
-        public static extern bool IsSetSubscriptionArn(ConfirmSubscriptionResponse response);
+    memoryStream.Position = 0;
+    return memoryStream;
+}
     }
 }

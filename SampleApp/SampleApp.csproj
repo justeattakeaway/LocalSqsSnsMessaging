@@ -5,6 +5,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <NoWarn>$(NoWarn);NU1900</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

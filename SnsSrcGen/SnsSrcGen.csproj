@@ -5,7 +5,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <NoWarn>$(NoWarn);CA1305;CA1303</NoWarn>
+        <NoWarn>$(NoWarn);CA1305;CA1303;NU1900</NoWarn>
     </PropertyGroup>
     
     <ItemGroup>
@@ -16,6 +16,15 @@
     
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <Folder Include="output\" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <Compile Remove="output\**" />
+        <None Include="output\**" Link="output\%(RecursiveDir)%(Filename)%(Extension)" />
     </ItemGroup>
     
 </Project>

@@ -9,12 +9,12 @@ namespace Amazon.SimpleNotificationService
     public sealed class SnsClientHandler : HttpClientHandler
     {
         private readonly IAmazonSimpleNotificationService _innerClient;
-
+    
         public SnsClientHandler(IAmazonSimpleNotificationService innerClient)
         {
             _innerClient = innerClient;
         }
-    
+        
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Debug.Assert(request != null);
@@ -26,841 +26,792 @@ namespace Amazon.SimpleNotificationService
                 {
                     switch (action)
                     {
+case "ConfirmSubscription":
+{
+    var requestModel = new ConfirmSubscriptionRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("TopicArn", out var topicArnValue))
+    {
+        requestModel.TopicArn = topicArnValue.ToString();
+    }
+    if (query.TryGetValue("Token", out var tokenValue))
+    {
+        requestModel.Token = tokenValue.ToString();
+    }
+    if (query.TryGetValue("AuthenticateOnUnsubscribe", out var authenticateOnUnsubscribeValue))
+    {
+        requestModel.AuthenticateOnUnsubscribe = authenticateOnUnsubscribeValue.ToString();
+    }
 
-                        case "AddPermission":
-                        {
-                            var addPermissionRequest = new AddPermissionRequest
-                            {
-                                ActionName = query.TryGetValue("ActionName.member", out var actionNameValues) ? 
-                                    actionNameValues.Select<string, System.String?>((string v) => v.ToString()).ToList() : null,
-                                AWSAccountId = query.TryGetValue("AWSAccountId.member", out var aWSAccountIdValues) ? 
-                                    aWSAccountIdValues.Select<string, System.String?>((string v) => v.ToString()).ToList() : null,
-                                Label = query.TryGetValue("Label", out var label) ? 
-                                    label.ToString() : default!,
-                                TopicArn = query.TryGetValue("TopicArn", out var topicArn) ? 
-                                    topicArn.ToString() : default!,
-                            };
-                            var addPermissionResult = await _innerClient.AddPermissionAsync(addPermissionRequest, cancellationToken).ConfigureAwait(false);
-                            var addPermissionResponseContent = AddPermissionResponseXmlWriter.Write(addPermissionResult); 
-                            var addPermissionResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(addPermissionResponseContent)
-                            };
-                            addPermissionResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return addPermissionResponse;
-                        }
+    var result = await _innerClient.ConfirmSubscriptionAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = ConfirmSubscriptionResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "CreatePlatformApplication":
+{
+    var requestModel = new CreatePlatformApplicationRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("Name", out var nameValue))
+    {
+        requestModel.Name = nameValue.ToString();
+    }
+    if (query.TryGetValue("Platform", out var platformValue))
+    {
+        requestModel.Platform = platformValue.ToString();
+    }
+    // Handle map type Attributes
+    {
+        var attributesMap = query.ToFlatDictionary(
+            "Attributes", 
+            v => v.ToString());
+        
+        if (attributesMap.Count > 0)
+        {
+            requestModel.Attributes = attributesMap;
+        }
+    }
 
-                        case "CheckIfPhoneNumberIsOptedOut":
-                        {
-                            var checkIfPhoneNumberIsOptedOutRequest = new CheckIfPhoneNumberIsOptedOutRequest
-                            {
-                                PhoneNumber = query.TryGetValue("PhoneNumber", out var phoneNumber) ? 
-                                    phoneNumber.ToString() : default!,
-                            };
-                            var checkIfPhoneNumberIsOptedOutResult = await _innerClient.CheckIfPhoneNumberIsOptedOutAsync(checkIfPhoneNumberIsOptedOutRequest, cancellationToken).ConfigureAwait(false);
-                            var checkIfPhoneNumberIsOptedOutResponseContent = CheckIfPhoneNumberIsOptedOutResponseXmlWriter.Write(checkIfPhoneNumberIsOptedOutResult); 
-                            var checkIfPhoneNumberIsOptedOutResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(checkIfPhoneNumberIsOptedOutResponseContent)
-                            };
-                            checkIfPhoneNumberIsOptedOutResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return checkIfPhoneNumberIsOptedOutResponse;
-                        }
+    var result = await _innerClient.CreatePlatformApplicationAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = CreatePlatformApplicationResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "CreatePlatformEndpoint":
+{
+    var requestModel = new CreatePlatformEndpointRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("PlatformApplicationArn", out var platformApplicationArnValue))
+    {
+        requestModel.PlatformApplicationArn = platformApplicationArnValue.ToString();
+    }
+    if (query.TryGetValue("Token", out var tokenValue))
+    {
+        requestModel.Token = tokenValue.ToString();
+    }
+    if (query.TryGetValue("CustomUserData", out var customUserDataValue))
+    {
+        requestModel.CustomUserData = customUserDataValue.ToString();
+    }
+    // Handle map type Attributes
+    {
+        var attributesMap = query.ToFlatDictionary(
+            "Attributes", 
+            v => v.ToString());
+        
+        if (attributesMap.Count > 0)
+        {
+            requestModel.Attributes = attributesMap;
+        }
+    }
 
-                        case "ConfirmSubscription":
-                        {
-                            var confirmSubscriptionRequest = new ConfirmSubscriptionRequest
-                            {
-                                AuthenticateOnUnsubscribe = query.TryGetValue("AuthenticateOnUnsubscribe", out var authenticateOnUnsubscribe) ? 
-                                    authenticateOnUnsubscribe.ToString() : default!,
-                                Token = query.TryGetValue("Token", out var token) ? 
-                                    token.ToString() : default!,
-                                TopicArn = query.TryGetValue("TopicArn", out var topicArn) ? 
-                                    topicArn.ToString() : default!,
-                            };
-                            var confirmSubscriptionResult = await _innerClient.ConfirmSubscriptionAsync(confirmSubscriptionRequest, cancellationToken).ConfigureAwait(false);
-                            var confirmSubscriptionResponseContent = ConfirmSubscriptionResponseXmlWriter.Write(confirmSubscriptionResult); 
-                            var confirmSubscriptionResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(confirmSubscriptionResponseContent)
-                            };
-                            confirmSubscriptionResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return confirmSubscriptionResponse;
-                        }
+    var result = await _innerClient.CreatePlatformEndpointAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = CreatePlatformEndpointResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "CreateSMSSandboxPhoneNumber":
+{
+    var requestModel = new CreateSMSSandboxPhoneNumberRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("PhoneNumber", out var phoneNumberValue))
+    {
+        requestModel.PhoneNumber = phoneNumberValue.ToString();
+    }
+    if (query.TryGetValue("LanguageCode", out var languageCodeValue))
+    {
+        requestModel.LanguageCode = languageCodeValue.ToString();
+    }
 
-                        case "CreatePlatformApplication":
-                        {
-                            var createPlatformApplicationRequest = new CreatePlatformApplicationRequest
-                            {
-                                Attributes = query.ToFlatDictionary<System.String>("Attributes", v => v.ToString()),
-                                Name = query.TryGetValue("Name", out var name) ? 
-                                    name.ToString() : default!,
-                                Platform = query.TryGetValue("Platform", out var platform) ? 
-                                    platform.ToString() : default!,
-                            };
-                            var createPlatformApplicationResult = await _innerClient.CreatePlatformApplicationAsync(createPlatformApplicationRequest, cancellationToken).ConfigureAwait(false);
-                            var createPlatformApplicationResponseContent = CreatePlatformApplicationResponseXmlWriter.Write(createPlatformApplicationResult); 
-                            var createPlatformApplicationResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(createPlatformApplicationResponseContent)
-                            };
-                            createPlatformApplicationResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return createPlatformApplicationResponse;
-                        }
+    var result = await _innerClient.CreateSMSSandboxPhoneNumberAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = CreateSMSSandboxPhoneNumberResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "CreateTopic":
+{
+    var requestModel = new CreateTopicRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("Name", out var nameValue))
+    {
+        requestModel.Name = nameValue.ToString();
+    }
+    // Handle map type Attributes
+    {
+        var attributesMap = query.ToFlatDictionary(
+            "Attributes", 
+            v => v.ToString());
+        
+        if (attributesMap.Count > 0)
+        {
+            requestModel.Attributes = attributesMap;
+        }
+    }
+    // Handle list of structures
+    {
+        var tagsList = new List<Tag>();
+        var prefix = "Tags.Entry.";
+        var entries = query.Keys
+            .Where(k => k.StartsWith(prefix, StringComparison.Ordinal))
+            .Select(k => k.Substring(prefix.Length))
+            .Select(k => k.Split('.')[0])
+            .Distinct()
+            .OrderBy(x => int.Parse(x, CultureInfo.InvariantCulture))
+            .ToList();
 
-                        case "CreatePlatformEndpoint":
-                        {
-                            var createPlatformEndpointRequest = new CreatePlatformEndpointRequest
-                            {
-                                Attributes = query.ToFlatDictionary<System.String>("Attributes", v => v.ToString()),
-                                CustomUserData = query.TryGetValue("CustomUserData", out var customUserData) ? 
-                                    customUserData.ToString() : default!,
-                                PlatformApplicationArn = query.TryGetValue("PlatformApplicationArn", out var platformApplicationArn) ? 
-                                    platformApplicationArn.ToString() : default!,
-                                Token = query.TryGetValue("Token", out var token) ? 
-                                    token.ToString() : default!,
-                            };
-                            var createPlatformEndpointResult = await _innerClient.CreatePlatformEndpointAsync(createPlatformEndpointRequest, cancellationToken).ConfigureAwait(false);
-                            var createPlatformEndpointResponseContent = CreatePlatformEndpointResponseXmlWriter.Write(createPlatformEndpointResult); 
-                            var createPlatformEndpointResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(createPlatformEndpointResponseContent)
-                            };
-                            createPlatformEndpointResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return createPlatformEndpointResponse;
-                        }
+        foreach (var index in entries)
+        {
+            var item = new Tag();
+                if (query.TryGetValue($"Tags.Entry.{index}.Key", out var keyValue))
+    {
+        item.Key = keyValue.ToString();
+    }
+    if (query.TryGetValue($"Tags.Entry.{index}.Value", out var valueValue))
+    {
+        item.Value = valueValue.ToString();
+    }
 
-                        case "CreateSMSSandboxPhoneNumber":
-                        {
-                            var createSMSSandboxPhoneNumberRequest = new CreateSMSSandboxPhoneNumberRequest
-                            {
-                                LanguageCode = query.TryGetValue("LanguageCode", out var languageCode) ? 
-                                    default! : default!,
-                                PhoneNumber = query.TryGetValue("PhoneNumber", out var phoneNumber) ? 
-                                    phoneNumber.ToString() : default!,
-                            };
-                            var createSMSSandboxPhoneNumberResult = await _innerClient.CreateSMSSandboxPhoneNumberAsync(createSMSSandboxPhoneNumberRequest, cancellationToken).ConfigureAwait(false);
-                            var createSMSSandboxPhoneNumberResponseContent = CreateSMSSandboxPhoneNumberResponseXmlWriter.Write(createSMSSandboxPhoneNumberResult); 
-                            var createSMSSandboxPhoneNumberResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(createSMSSandboxPhoneNumberResponseContent)
-                            };
-                            createSMSSandboxPhoneNumberResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return createSMSSandboxPhoneNumberResponse;
-                        }
+            tagsList.Add(item);
+        }
 
-                        case "CreateTopic":
-                        {
-                            var createTopicRequest = new CreateTopicRequest
-                            {
-                                Attributes = query.ToFlatDictionary<System.String>("Attributes", v => v.ToString()),
-                                DataProtectionPolicy =
-                                    query.TryGetValue("DataProtectionPolicy", out var dataProtectionPolicy)
-                                        ? dataProtectionPolicy.ToString()
-                                        : default!,
-                                Name = query.TryGetValue("Name", out var name) ? name.ToString() : default!,
-                                Tags = query.Keys
-                                    .Where(k => k.StartsWith("Tags.member.", StringComparison.Ordinal))
-                                    .Select(k => int.Parse(k.Split('.')[2], CultureInfo.InvariantCulture))
-                                    .Distinct()
-                                    .Select(index => new Tag
-                                    {
-                                        Key = query.TryGetValue($"Tags.member.{index}.Key", out var tagsKey)
-                                            ? tagsKey.ToString()
-                                            : default,
-                                        Value = query.TryGetValue($"Tags.member.{index}.Value", out var tagsValue)
-                                            ? tagsValue.ToString()
-                                            : default
-                                    })
-                                    .ToList(),
-                            };
-                            var createTopicResult = await _innerClient.CreateTopicAsync(createTopicRequest, cancellationToken).ConfigureAwait(false);
-                            var createTopicResponseContent = CreateTopicResponseXmlWriter.Write(createTopicResult); 
-                            var createTopicResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(createTopicResponseContent)
-                            };
-                            createTopicResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return createTopicResponse;
-                        }
+        if (tagsList.Count > 0)
+        {
+            requestModel.Tags = tagsList;
+        }
+    }
+    if (query.TryGetValue("DataProtectionPolicy", out var dataProtectionPolicyValue))
+    {
+        requestModel.DataProtectionPolicy = dataProtectionPolicyValue.ToString();
+    }
 
-                        case "DeleteEndpoint":
-                        {
-                            var deleteEndpointRequest = new DeleteEndpointRequest
-                            {
-                                EndpointArn = query.TryGetValue("EndpointArn", out var endpointArn) ? 
-                                    endpointArn.ToString() : default!,
-                            };
-                            var deleteEndpointResult = await _innerClient.DeleteEndpointAsync(deleteEndpointRequest, cancellationToken).ConfigureAwait(false);
-                            var deleteEndpointResponseContent = DeleteEndpointResponseXmlWriter.Write(deleteEndpointResult); 
-                            var deleteEndpointResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(deleteEndpointResponseContent)
-                            };
-                            deleteEndpointResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return deleteEndpointResponse;
-                        }
+    var result = await _innerClient.CreateTopicAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = CreateTopicResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "DeleteSMSSandboxPhoneNumber":
+{
+    var requestModel = new DeleteSMSSandboxPhoneNumberRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("PhoneNumber", out var phoneNumberValue))
+    {
+        requestModel.PhoneNumber = phoneNumberValue.ToString();
+    }
 
-                        case "DeletePlatformApplication":
-                        {
-                            var deletePlatformApplicationRequest = new DeletePlatformApplicationRequest
-                            {
-                                PlatformApplicationArn = query.TryGetValue("PlatformApplicationArn", out var platformApplicationArn) ? 
-                                    platformApplicationArn.ToString() : default!,
-                            };
-                            var deletePlatformApplicationResult = await _innerClient.DeletePlatformApplicationAsync(deletePlatformApplicationRequest, cancellationToken).ConfigureAwait(false);
-                            var deletePlatformApplicationResponseContent = DeletePlatformApplicationResponseXmlWriter.Write(deletePlatformApplicationResult); 
-                            var deletePlatformApplicationResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(deletePlatformApplicationResponseContent)
-                            };
-                            deletePlatformApplicationResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return deletePlatformApplicationResponse;
-                        }
+    var result = await _innerClient.DeleteSMSSandboxPhoneNumberAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = DeleteSMSSandboxPhoneNumberResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "GetDataProtectionPolicy":
+{
+    var requestModel = new GetDataProtectionPolicyRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("ResourceArn", out var resourceArnValue))
+    {
+        requestModel.ResourceArn = resourceArnValue.ToString();
+    }
 
-                        case "DeleteSMSSandboxPhoneNumber":
-                        {
-                            var deleteSMSSandboxPhoneNumberRequest = new DeleteSMSSandboxPhoneNumberRequest
-                            {
-                                PhoneNumber = query.TryGetValue("PhoneNumber", out var phoneNumber) ? 
-                                    phoneNumber.ToString() : default!,
-                            };
-                            var deleteSMSSandboxPhoneNumberResult = await _innerClient.DeleteSMSSandboxPhoneNumberAsync(deleteSMSSandboxPhoneNumberRequest, cancellationToken).ConfigureAwait(false);
-                            var deleteSMSSandboxPhoneNumberResponseContent = DeleteSMSSandboxPhoneNumberResponseXmlWriter.Write(deleteSMSSandboxPhoneNumberResult); 
-                            var deleteSMSSandboxPhoneNumberResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(deleteSMSSandboxPhoneNumberResponseContent)
-                            };
-                            deleteSMSSandboxPhoneNumberResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return deleteSMSSandboxPhoneNumberResponse;
-                        }
+    var result = await _innerClient.GetDataProtectionPolicyAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = GetDataProtectionPolicyResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "GetEndpointAttributes":
+{
+    var requestModel = new GetEndpointAttributesRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("EndpointArn", out var endpointArnValue))
+    {
+        requestModel.EndpointArn = endpointArnValue.ToString();
+    }
 
-                        case "DeleteTopic":
-                        {
-                            var deleteTopicRequest = new DeleteTopicRequest
-                            {
-                                TopicArn = query.TryGetValue("TopicArn", out var topicArn) ? 
-                                    topicArn.ToString() : default!,
-                            };
-                            var deleteTopicResult = await _innerClient.DeleteTopicAsync(deleteTopicRequest, cancellationToken).ConfigureAwait(false);
-                            var deleteTopicResponseContent = DeleteTopicResponseXmlWriter.Write(deleteTopicResult); 
-                            var deleteTopicResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(deleteTopicResponseContent)
-                            };
-                            deleteTopicResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return deleteTopicResponse;
-                        }
+    var result = await _innerClient.GetEndpointAttributesAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = GetEndpointAttributesResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "GetPlatformApplicationAttributes":
+{
+    var requestModel = new GetPlatformApplicationAttributesRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("PlatformApplicationArn", out var platformApplicationArnValue))
+    {
+        requestModel.PlatformApplicationArn = platformApplicationArnValue.ToString();
+    }
 
-                        case "GetDataProtectionPolicy":
-                        {
-                            var getDataProtectionPolicyRequest = new GetDataProtectionPolicyRequest
-                            {
-                                ResourceArn = query.TryGetValue("ResourceArn", out var resourceArn) ? 
-                                    resourceArn.ToString() : default!,
-                            };
-                            var getDataProtectionPolicyResult = await _innerClient.GetDataProtectionPolicyAsync(getDataProtectionPolicyRequest, cancellationToken).ConfigureAwait(false);
-                            var getDataProtectionPolicyResponseContent = GetDataProtectionPolicyResponseXmlWriter.Write(getDataProtectionPolicyResult); 
-                            var getDataProtectionPolicyResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(getDataProtectionPolicyResponseContent)
-                            };
-                            getDataProtectionPolicyResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return getDataProtectionPolicyResponse;
-                        }
+    var result = await _innerClient.GetPlatformApplicationAttributesAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = GetPlatformApplicationAttributesResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "GetSMSAttributes":
+{
+    var requestModel = new GetSMSAttributesRequest();
+    // Map query parameters to request properties based on schema
+        // Handle simple list
+    {
+        var attributesList = new List<string>();
+        var prefix = "Attributes.member.";
+        
+        foreach (var kvp in query.Where(x => x.Key.StartsWith(prefix, StringComparison.Ordinal)))
+        {
+            attributesList.Add(kvp.Value.ToString());
+        }
+        
+        if (attributesList.Count > 0)
+        {
+            requestModel.Attributes = attributesList;
+        }
+    }
 
-                        case "GetEndpointAttributes":
-                        {
-                            var getEndpointAttributesRequest = new GetEndpointAttributesRequest
-                            {
-                                EndpointArn = query.TryGetValue("EndpointArn", out var endpointArn) ? 
-                                    endpointArn.ToString() : default!,
-                            };
-                            var getEndpointAttributesResult = await _innerClient.GetEndpointAttributesAsync(getEndpointAttributesRequest, cancellationToken).ConfigureAwait(false);
-                            var getEndpointAttributesResponseContent = GetEndpointAttributesResponseXmlWriter.Write(getEndpointAttributesResult); 
-                            var getEndpointAttributesResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(getEndpointAttributesResponseContent)
-                            };
-                            getEndpointAttributesResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return getEndpointAttributesResponse;
-                        }
+    var result = await _innerClient.GetSMSAttributesAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = GetSMSAttributesResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "GetSubscriptionAttributes":
+{
+    var requestModel = new GetSubscriptionAttributesRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("SubscriptionArn", out var subscriptionArnValue))
+    {
+        requestModel.SubscriptionArn = subscriptionArnValue.ToString();
+    }
 
-                        case "GetPlatformApplicationAttributes":
-                        {
-                            var getPlatformApplicationAttributesRequest = new GetPlatformApplicationAttributesRequest
-                            {
-                                PlatformApplicationArn = query.TryGetValue("PlatformApplicationArn", out var platformApplicationArn) ? 
-                                    platformApplicationArn.ToString() : default!,
-                            };
-                            var getPlatformApplicationAttributesResult = await _innerClient.GetPlatformApplicationAttributesAsync(getPlatformApplicationAttributesRequest, cancellationToken).ConfigureAwait(false);
-                            var getPlatformApplicationAttributesResponseContent = GetPlatformApplicationAttributesResponseXmlWriter.Write(getPlatformApplicationAttributesResult); 
-                            var getPlatformApplicationAttributesResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(getPlatformApplicationAttributesResponseContent)
-                            };
-                            getPlatformApplicationAttributesResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return getPlatformApplicationAttributesResponse;
-                        }
+    var result = await _innerClient.GetSubscriptionAttributesAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = GetSubscriptionAttributesResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "GetTopicAttributes":
+{
+    var requestModel = new GetTopicAttributesRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("TopicArn", out var topicArnValue))
+    {
+        requestModel.TopicArn = topicArnValue.ToString();
+    }
 
-                        case "GetSMSAttributes":
-                        {
-                            var getSMSAttributesRequest = new GetSMSAttributesRequest
-                            {
-                                Attributes = query.TryGetValue("Attributes.member", out var attributesValues) ? 
-                                    attributesValues.Select<string, System.String?>((string v) => v.ToString()).ToList() : null,
-                            };
-                            var getSMSAttributesResult = await _innerClient.GetSMSAttributesAsync(getSMSAttributesRequest, cancellationToken).ConfigureAwait(false);
-                            var getSMSAttributesResponseContent = GetSMSAttributesResponseXmlWriter.Write(getSMSAttributesResult); 
-                            var getSMSAttributesResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(getSMSAttributesResponseContent)
-                            };
-                            getSMSAttributesResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return getSMSAttributesResponse;
-                        }
+    var result = await _innerClient.GetTopicAttributesAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = GetTopicAttributesResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "ListEndpointsByPlatformApplication":
+{
+    var requestModel = new ListEndpointsByPlatformApplicationRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("PlatformApplicationArn", out var platformApplicationArnValue))
+    {
+        requestModel.PlatformApplicationArn = platformApplicationArnValue.ToString();
+    }
+    if (query.TryGetValue("NextToken", out var nextTokenValue))
+    {
+        requestModel.NextToken = nextTokenValue.ToString();
+    }
 
-                        case "GetSMSSandboxAccountStatus":
-                        {
-                            var getSMSSandboxAccountStatusRequest = new GetSMSSandboxAccountStatusRequest
-                            {
-                            };
-                            var getSMSSandboxAccountStatusResult = await _innerClient.GetSMSSandboxAccountStatusAsync(getSMSSandboxAccountStatusRequest, cancellationToken).ConfigureAwait(false);
-                            var getSMSSandboxAccountStatusResponseContent = GetSMSSandboxAccountStatusResponseXmlWriter.Write(getSMSSandboxAccountStatusResult); 
-                            var getSMSSandboxAccountStatusResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(getSMSSandboxAccountStatusResponseContent)
-                            };
-                            getSMSSandboxAccountStatusResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return getSMSSandboxAccountStatusResponse;
-                        }
+    var result = await _innerClient.ListEndpointsByPlatformApplicationAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = ListEndpointsByPlatformApplicationResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "ListPlatformApplications":
+{
+    var requestModel = new ListPlatformApplicationsRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("NextToken", out var nextTokenValue))
+    {
+        requestModel.NextToken = nextTokenValue.ToString();
+    }
 
-                        case "GetSubscriptionAttributes":
-                        {
-                            var getSubscriptionAttributesRequest = new GetSubscriptionAttributesRequest
-                            {
-                                SubscriptionArn = query.TryGetValue("SubscriptionArn", out var subscriptionArn) ? 
-                                    subscriptionArn.ToString() : default!,
-                            };
-                            var getSubscriptionAttributesResult = await _innerClient.GetSubscriptionAttributesAsync(getSubscriptionAttributesRequest, cancellationToken).ConfigureAwait(false);
-                            var getSubscriptionAttributesResponseContent = GetSubscriptionAttributesResponseXmlWriter.Write(getSubscriptionAttributesResult); 
-                            var getSubscriptionAttributesResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(getSubscriptionAttributesResponseContent)
-                            };
-                            getSubscriptionAttributesResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return getSubscriptionAttributesResponse;
-                        }
+    var result = await _innerClient.ListPlatformApplicationsAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = ListPlatformApplicationsResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "ListSubscriptions":
+{
+    var requestModel = new ListSubscriptionsRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("NextToken", out var nextTokenValue))
+    {
+        requestModel.NextToken = nextTokenValue.ToString();
+    }
 
-                        case "GetTopicAttributes":
-                        {
-                            var getTopicAttributesRequest = new GetTopicAttributesRequest
-                            {
-                                TopicArn = query.TryGetValue("TopicArn", out var topicArn) ? 
-                                    topicArn.ToString() : default!,
-                            };
-                            var getTopicAttributesResult = await _innerClient.GetTopicAttributesAsync(getTopicAttributesRequest, cancellationToken).ConfigureAwait(false);
-                            var getTopicAttributesResponseContent = GetTopicAttributesResponseXmlWriter.Write(getTopicAttributesResult); 
-                            var getTopicAttributesResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(getTopicAttributesResponseContent)
-                            };
-                            getTopicAttributesResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return getTopicAttributesResponse;
-                        }
+    var result = await _innerClient.ListSubscriptionsAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = ListSubscriptionsResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "ListSubscriptionsByTopic":
+{
+    var requestModel = new ListSubscriptionsByTopicRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("TopicArn", out var topicArnValue))
+    {
+        requestModel.TopicArn = topicArnValue.ToString();
+    }
+    if (query.TryGetValue("NextToken", out var nextTokenValue))
+    {
+        requestModel.NextToken = nextTokenValue.ToString();
+    }
 
-                        case "ListEndpointsByPlatformApplication":
-                        {
-                            var listEndpointsByPlatformApplicationRequest = new ListEndpointsByPlatformApplicationRequest
-                            {
-                                NextToken = query.TryGetValue("NextToken", out var nextToken) ? 
-                                    nextToken.ToString() : default!,
-                                PlatformApplicationArn = query.TryGetValue("PlatformApplicationArn", out var platformApplicationArn) ? 
-                                    platformApplicationArn.ToString() : default!,
-                            };
-                            var listEndpointsByPlatformApplicationResult = await _innerClient.ListEndpointsByPlatformApplicationAsync(listEndpointsByPlatformApplicationRequest, cancellationToken).ConfigureAwait(false);
-                            var listEndpointsByPlatformApplicationResponseContent = ListEndpointsByPlatformApplicationResponseXmlWriter.Write(listEndpointsByPlatformApplicationResult); 
-                            var listEndpointsByPlatformApplicationResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(listEndpointsByPlatformApplicationResponseContent)
-                            };
-                            listEndpointsByPlatformApplicationResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return listEndpointsByPlatformApplicationResponse;
-                        }
+    var result = await _innerClient.ListSubscriptionsByTopicAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = ListSubscriptionsByTopicResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "ListTagsForResource":
+{
+    var requestModel = new ListTagsForResourceRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("ResourceArn", out var resourceArnValue))
+    {
+        requestModel.ResourceArn = resourceArnValue.ToString();
+    }
 
-                        case "ListOriginationNumbers":
-                        {
-                            var listOriginationNumbersRequest = new ListOriginationNumbersRequest
-                            {
-                                MaxResults = query.TryGetValue("MaxResults", out var maxResults) ? 
-                                    int.Parse(maxResults.ToString(), CultureInfo.InvariantCulture) : default!,
-                                NextToken = query.TryGetValue("NextToken", out var nextToken) ? 
-                                    nextToken.ToString() : default!,
-                            };
-                            var listOriginationNumbersResult = await _innerClient.ListOriginationNumbersAsync(listOriginationNumbersRequest, cancellationToken).ConfigureAwait(false);
-                            var listOriginationNumbersResponseContent = ListOriginationNumbersResponseXmlWriter.Write(listOriginationNumbersResult); 
-                            var listOriginationNumbersResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(listOriginationNumbersResponseContent)
-                            };
-                            listOriginationNumbersResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return listOriginationNumbersResponse;
-                        }
+    var result = await _innerClient.ListTagsForResourceAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = ListTagsForResourceResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "ListTopics":
+{
+    var requestModel = new ListTopicsRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("NextToken", out var nextTokenValue))
+    {
+        requestModel.NextToken = nextTokenValue.ToString();
+    }
 
-                        case "ListPhoneNumbersOptedOut":
-                        {
-                            var listPhoneNumbersOptedOutRequest = new ListPhoneNumbersOptedOutRequest
-                            {
-                                NextToken = query.TryGetValue("NextToken", out var nextToken) ? 
-                                    nextToken.ToString() : default!,
-                            };
-                            var listPhoneNumbersOptedOutResult = await _innerClient.ListPhoneNumbersOptedOutAsync(listPhoneNumbersOptedOutRequest, cancellationToken).ConfigureAwait(false);
-                            var listPhoneNumbersOptedOutResponseContent = ListPhoneNumbersOptedOutResponseXmlWriter.Write(listPhoneNumbersOptedOutResult); 
-                            var listPhoneNumbersOptedOutResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(listPhoneNumbersOptedOutResponseContent)
-                            };
-                            listPhoneNumbersOptedOutResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return listPhoneNumbersOptedOutResponse;
-                        }
+    var result = await _innerClient.ListTopicsAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = ListTopicsResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "OptInPhoneNumber":
+{
+    var requestModel = new OptInPhoneNumberRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("PhoneNumber", out var phoneNumberValue))
+    {
+        requestModel.PhoneNumber = phoneNumberValue.ToString();
+    }
 
-                        case "ListPlatformApplications":
-                        {
-                            var listPlatformApplicationsRequest = new ListPlatformApplicationsRequest
-                            {
-                                NextToken = query.TryGetValue("NextToken", out var nextToken) ? 
-                                    nextToken.ToString() : default!,
-                            };
-                            var listPlatformApplicationsResult = await _innerClient.ListPlatformApplicationsAsync(listPlatformApplicationsRequest, cancellationToken).ConfigureAwait(false);
-                            var listPlatformApplicationsResponseContent = ListPlatformApplicationsResponseXmlWriter.Write(listPlatformApplicationsResult); 
-                            var listPlatformApplicationsResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(listPlatformApplicationsResponseContent)
-                            };
-                            listPlatformApplicationsResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return listPlatformApplicationsResponse;
-                        }
+    var result = await _innerClient.OptInPhoneNumberAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = OptInPhoneNumberResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "Publish":
+{
+    var requestModel = new PublishRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("TopicArn", out var topicArnValue))
+    {
+        requestModel.TopicArn = topicArnValue.ToString();
+    }
+    if (query.TryGetValue("TargetArn", out var targetArnValue))
+    {
+        requestModel.TargetArn = targetArnValue.ToString();
+    }
+    if (query.TryGetValue("PhoneNumber", out var phoneNumberValue))
+    {
+        requestModel.PhoneNumber = phoneNumberValue.ToString();
+    }
+    if (query.TryGetValue("Message", out var messageValue))
+    {
+        requestModel.Message = messageValue.ToString();
+    }
+    if (query.TryGetValue("Subject", out var subjectValue))
+    {
+        requestModel.Subject = subjectValue.ToString();
+    }
+    if (query.TryGetValue("MessageStructure", out var messageStructureValue))
+    {
+        requestModel.MessageStructure = messageStructureValue.ToString();
+    }
+    // Handle map type MessageAttributes
+    {
+        var messageAttributesMap = query.ToFlatDictionary(
+            "MessageAttributes", 
+            v => new MessageAttributeValue()
+            {
+                DataType = "String",
+                StringValue = v.ToString()
+            });
+        
+        if (messageAttributesMap.Count > 0)
+        {
+            requestModel.MessageAttributes = messageAttributesMap;
+        }
+    }
+    if (query.TryGetValue("MessageDeduplicationId", out var messageDeduplicationIdValue))
+    {
+        requestModel.MessageDeduplicationId = messageDeduplicationIdValue.ToString();
+    }
+    if (query.TryGetValue("MessageGroupId", out var messageGroupIdValue))
+    {
+        requestModel.MessageGroupId = messageGroupIdValue.ToString();
+    }
 
-                        case "ListSMSSandboxPhoneNumbers":
-                        {
-                            var listSMSSandboxPhoneNumbersRequest = new ListSMSSandboxPhoneNumbersRequest
-                            {
-                                MaxResults = query.TryGetValue("MaxResults", out var maxResults) ? 
-                                    int.Parse(maxResults.ToString(), CultureInfo.InvariantCulture) : default!,
-                                NextToken = query.TryGetValue("NextToken", out var nextToken) ? 
-                                    nextToken.ToString() : default!,
-                            };
-                            var listSMSSandboxPhoneNumbersResult = await _innerClient.ListSMSSandboxPhoneNumbersAsync(listSMSSandboxPhoneNumbersRequest, cancellationToken).ConfigureAwait(false);
-                            var listSMSSandboxPhoneNumbersResponseContent = ListSMSSandboxPhoneNumbersResponseXmlWriter.Write(listSMSSandboxPhoneNumbersResult); 
-                            var listSMSSandboxPhoneNumbersResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(listSMSSandboxPhoneNumbersResponseContent)
-                            };
-                            listSMSSandboxPhoneNumbersResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return listSMSSandboxPhoneNumbersResponse;
-                        }
+    var result = await _innerClient.PublishAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = PublishResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "PublishBatch":
+{
+    var requestModel = new PublishBatchRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("TopicArn", out var topicArnValue))
+    {
+        requestModel.TopicArn = topicArnValue.ToString();
+    }
+    // Handle list of structures
+    {
+        var publishBatchRequestEntriesList = new List<PublishBatchRequestEntry>();
+        var prefix = "PublishBatchRequestEntries.Entry.";
+        var entries = query.Keys
+            .Where(k => k.StartsWith(prefix, StringComparison.Ordinal))
+            .Select(k => k.Substring(prefix.Length))
+            .Select(k => k.Split('.')[0])
+            .Distinct()
+            .OrderBy(x => int.Parse(x, CultureInfo.InvariantCulture))
+            .ToList();
 
-                        case "ListSubscriptionsByTopic":
-                        {
-                            var listSubscriptionsByTopicRequest = new ListSubscriptionsByTopicRequest
-                            {
-                                NextToken = query.TryGetValue("NextToken", out var nextToken) ? 
-                                    nextToken.ToString() : default!,
-                                TopicArn = query.TryGetValue("TopicArn", out var topicArn) ? 
-                                    topicArn.ToString() : default!,
-                            };
-                            var listSubscriptionsByTopicResult = await _innerClient.ListSubscriptionsByTopicAsync(listSubscriptionsByTopicRequest, cancellationToken).ConfigureAwait(false);
-                            var listSubscriptionsByTopicResponseContent = ListSubscriptionsByTopicResponseXmlWriter.Write(listSubscriptionsByTopicResult); 
-                            var listSubscriptionsByTopicResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(listSubscriptionsByTopicResponseContent)
-                            };
-                            listSubscriptionsByTopicResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return listSubscriptionsByTopicResponse;
-                        }
+        foreach (var index in entries)
+        {
+            var item = new PublishBatchRequestEntry();
+                if (query.TryGetValue($"PublishBatchRequestEntries.Entry.{index}.Id", out var idValue))
+    {
+        item.Id = idValue.ToString();
+    }
+    if (query.TryGetValue($"PublishBatchRequestEntries.Entry.{index}.Message", out var messageValue))
+    {
+        item.Message = messageValue.ToString();
+    }
+    if (query.TryGetValue($"PublishBatchRequestEntries.Entry.{index}.Subject", out var subjectValue))
+    {
+        item.Subject = subjectValue.ToString();
+    }
+    if (query.TryGetValue($"PublishBatchRequestEntries.Entry.{index}.MessageStructure", out var messageStructureValue))
+    {
+        item.MessageStructure = messageStructureValue.ToString();
+    }
+    if (query.TryGetValue($"PublishBatchRequestEntries.Entry.{index}.MessageAttributes", out var messageAttributesValue))
+    {
+        item.MessageAttributes = new Dictionary<string, MessageAttributeValue>(); // TODO figure out what this should be
+    }
+    if (query.TryGetValue($"PublishBatchRequestEntries.Entry.{index}.MessageDeduplicationId", out var messageDeduplicationIdValue))
+    {
+        item.MessageDeduplicationId = messageDeduplicationIdValue.ToString();
+    }
+    if (query.TryGetValue($"PublishBatchRequestEntries.Entry.{index}.MessageGroupId", out var messageGroupIdValue))
+    {
+        item.MessageGroupId = messageGroupIdValue.ToString();
+    }
 
-                        case "ListSubscriptions":
-                        {
-                            var listSubscriptionsRequest = new ListSubscriptionsRequest
-                            {
-                                NextToken = query.TryGetValue("NextToken", out var nextToken) ? 
-                                    nextToken.ToString() : default!,
-                            };
-                            var listSubscriptionsResult = await _innerClient.ListSubscriptionsAsync(listSubscriptionsRequest, cancellationToken).ConfigureAwait(false);
-                            var listSubscriptionsResponseContent = ListSubscriptionsResponseXmlWriter.Write(listSubscriptionsResult); 
-                            var listSubscriptionsResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(listSubscriptionsResponseContent)
-                            };
-                            listSubscriptionsResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return listSubscriptionsResponse;
-                        }
+            publishBatchRequestEntriesList.Add(item);
+        }
 
-                        case "ListTagsForResource":
-                        {
-                            var listTagsForResourceRequest = new ListTagsForResourceRequest
-                            {
-                                ResourceArn = query.TryGetValue("ResourceArn", out var resourceArn) ? 
-                                    resourceArn.ToString() : default!,
-                            };
-                            var listTagsForResourceResult = await _innerClient.ListTagsForResourceAsync(listTagsForResourceRequest, cancellationToken).ConfigureAwait(false);
-                            var listTagsForResourceResponseContent = ListTagsForResourceResponseXmlWriter.Write(listTagsForResourceResult); 
-                            var listTagsForResourceResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(listTagsForResourceResponseContent)
-                            };
-                            listTagsForResourceResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return listTagsForResourceResponse;
-                        }
+        if (publishBatchRequestEntriesList.Count > 0)
+        {
+            requestModel.PublishBatchRequestEntries = publishBatchRequestEntriesList;
+        }
+    }
 
-                        case "ListTopics":
-                        {
-                            var listTopicsRequest = new ListTopicsRequest
-                            {
-                                NextToken = query.TryGetValue("NextToken", out var nextToken) ? 
-                                    nextToken.ToString() : default!,
-                            };
-                            var listTopicsResult = await _innerClient.ListTopicsAsync(listTopicsRequest, cancellationToken).ConfigureAwait(false);
-                            var listTopicsResponseContent = ListTopicsResponseXmlWriter.Write(listTopicsResult); 
-                            var listTopicsResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(listTopicsResponseContent)
-                            };
-                            listTopicsResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return listTopicsResponse;
-                        }
+    var result = await _innerClient.PublishBatchAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = PublishBatchResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "SetSMSAttributes":
+{
+    var requestModel = new SetSMSAttributesRequest();
+    // Map query parameters to request properties based on schema
+        // Handle map type Attributes
+    {
+        var attributesMap = query.ToFlatDictionary(
+            "Attributes", 
+            v => v.ToString());
+        
+        if (attributesMap.Count > 0)
+        {
+            requestModel.Attributes = attributesMap;
+        }
+    }
 
-                        case "OptInPhoneNumber":
-                        {
-                            var optInPhoneNumberRequest = new OptInPhoneNumberRequest
-                            {
-                                PhoneNumber = query.TryGetValue("PhoneNumber", out var phoneNumber) ? 
-                                    phoneNumber.ToString() : default!,
-                            };
-                            var optInPhoneNumberResult = await _innerClient.OptInPhoneNumberAsync(optInPhoneNumberRequest, cancellationToken).ConfigureAwait(false);
-                            var optInPhoneNumberResponseContent = OptInPhoneNumberResponseXmlWriter.Write(optInPhoneNumberResult); 
-                            var optInPhoneNumberResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(optInPhoneNumberResponseContent)
-                            };
-                            optInPhoneNumberResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return optInPhoneNumberResponse;
-                        }
+    var result = await _innerClient.SetSMSAttributesAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = SetSMSAttributesResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "Subscribe":
+{
+    var requestModel = new SubscribeRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("TopicArn", out var topicArnValue))
+    {
+        requestModel.TopicArn = topicArnValue.ToString();
+    }
+    if (query.TryGetValue("Protocol", out var protocolValue))
+    {
+        requestModel.Protocol = protocolValue.ToString();
+    }
+    if (query.TryGetValue("Endpoint", out var endpointValue))
+    {
+        requestModel.Endpoint = endpointValue.ToString();
+    }
+    // Handle map type Attributes
+    {
+        var attributesMap = query.ToFlatDictionary(
+            "Attributes", 
+            v => v.ToString());
+        
+        if (attributesMap.Count > 0)
+        {
+            requestModel.Attributes = attributesMap;
+        }
+    }
+    if (query.TryGetValue("ReturnSubscriptionArn", out var returnSubscriptionArnValue))
+    {
+        requestModel.ReturnSubscriptionArn = bool.Parse(returnSubscriptionArnValue.ToString());
+    }
 
-                        case "PublishBatch":
-                        {
-                            var publishBatchRequest = new PublishBatchRequest
-                            {
-                            PublishBatchRequestEntries = query.Keys
-                                .Where(k => k.StartsWith("PublishBatchRequestEntries.member.", StringComparison.Ordinal))
-                                .Select(k => int.Parse(k.Split('.')[2], CultureInfo.InvariantCulture))
-                                .Distinct()
-                                .Select(index => new PublishBatchRequestEntry
-                                {
-                                    Id = query.TryGetValue($"PublishBatchRequestEntries.member.{index}.Id", out var publishBatchRequestEntriesId) ? 
-publishBatchRequestEntriesId.ToString() : default,
-Message = query.TryGetValue($"PublishBatchRequestEntries.member.{index}.Message", out var publishBatchRequestEntriesMessage) ? 
-publishBatchRequestEntriesMessage.ToString() : default,
-                        MessageAttributes = query.ToFlatDictionary<Amazon.SimpleNotificationService.Model.MessageAttributeValue>($"PublishBatchRequestEntries.member.{index}.MessageAttributes", v => default!),
-MessageDeduplicationId = query.TryGetValue($"PublishBatchRequestEntries.member.{index}.MessageDeduplicationId", out var publishBatchRequestEntriesMessageDeduplicationId) ? 
-publishBatchRequestEntriesMessageDeduplicationId.ToString() : default,
-MessageGroupId = query.TryGetValue($"PublishBatchRequestEntries.member.{index}.MessageGroupId", out var publishBatchRequestEntriesMessageGroupId) ? 
-publishBatchRequestEntriesMessageGroupId.ToString() : default,
-MessageStructure = query.TryGetValue($"PublishBatchRequestEntries.member.{index}.MessageStructure", out var publishBatchRequestEntriesMessageStructure) ? 
-publishBatchRequestEntriesMessageStructure.ToString() : default,
-Subject = query.TryGetValue($"PublishBatchRequestEntries.member.{index}.Subject", out var publishBatchRequestEntriesSubject) ? 
-publishBatchRequestEntriesSubject.ToString() : default
-                                })
-                                .ToList(),
-                                TopicArn = query.TryGetValue("TopicArn", out var topicArn) ? 
-                                    topicArn.ToString() : default!,
-                            };
-                            var publishBatchResult = await _innerClient.PublishBatchAsync(publishBatchRequest, cancellationToken).ConfigureAwait(false);
-                            var publishBatchResponseContent = PublishBatchResponseXmlWriter.Write(publishBatchResult); 
-                            var publishBatchResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(publishBatchResponseContent)
-                            };
-                            publishBatchResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return publishBatchResponse;
-                        }
+    var result = await _innerClient.SubscribeAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = SubscribeResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "TagResource":
+{
+    var requestModel = new TagResourceRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("ResourceArn", out var resourceArnValue))
+    {
+        requestModel.ResourceArn = resourceArnValue.ToString();
+    }
+    // Handle list of structures
+    {
+        var tagsList = new List<Tag>();
+        var prefix = "Tags.Entry.";
+        var entries = query.Keys
+            .Where(k => k.StartsWith(prefix, StringComparison.Ordinal))
+            .Select(k => k.Substring(prefix.Length))
+            .Select(k => k.Split('.')[0])
+            .Distinct()
+            .OrderBy(x => int.Parse(x, CultureInfo.InvariantCulture))
+            .ToList();
 
-                        case "Publish":
-                        {
-                            var publishRequest = new PublishRequest
-                            {
-                                Message = query.TryGetValue("Message", out var message) ? 
-                                    message.ToString() : default!,
-                                MessageAttributes = query.ToFlatDictionary<Amazon.SimpleNotificationService.Model.MessageAttributeValue>("MessageAttributes", v => default!),
-                                MessageDeduplicationId = query.TryGetValue("MessageDeduplicationId", out var messageDeduplicationId) ? 
-                                    messageDeduplicationId.ToString() : default!,
-                                MessageGroupId = query.TryGetValue("MessageGroupId", out var messageGroupId) ? 
-                                    messageGroupId.ToString() : default!,
-                                MessageStructure = query.TryGetValue("MessageStructure", out var messageStructure) ? 
-                                    messageStructure.ToString() : default!,
-                                PhoneNumber = query.TryGetValue("PhoneNumber", out var phoneNumber) ? 
-                                    phoneNumber.ToString() : default!,
-                                Subject = query.TryGetValue("Subject", out var subject) ? 
-                                    subject.ToString() : default!,
-                                TargetArn = query.TryGetValue("TargetArn", out var targetArn) ? 
-                                    targetArn.ToString() : default!,
-                                TopicArn = query.TryGetValue("TopicArn", out var topicArn) ? 
-                                    topicArn.ToString() : default!,
-                            };
-                            var publishResult = await _innerClient.PublishAsync(publishRequest, cancellationToken).ConfigureAwait(false);
-                            var publishResponseContent = PublishResponseXmlWriter.Write(publishResult); 
-                            var publishResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(publishResponseContent)
-                            };
-                            publishResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return publishResponse;
-                        }
+        foreach (var index in entries)
+        {
+            var item = new Tag();
+                if (query.TryGetValue($"Tags.Entry.{index}.Key", out var keyValue))
+    {
+        item.Key = keyValue.ToString();
+    }
+    if (query.TryGetValue($"Tags.Entry.{index}.Value", out var valueValue))
+    {
+        item.Value = valueValue.ToString();
+    }
 
-                        case "PutDataProtectionPolicy":
-                        {
-                            var putDataProtectionPolicyRequest = new PutDataProtectionPolicyRequest
-                            {
-                                DataProtectionPolicy = query.TryGetValue("DataProtectionPolicy", out var dataProtectionPolicy) ? 
-                                    dataProtectionPolicy.ToString() : default!,
-                                ResourceArn = query.TryGetValue("ResourceArn", out var resourceArn) ? 
-                                    resourceArn.ToString() : default!,
-                            };
-                            var putDataProtectionPolicyResult = await _innerClient.PutDataProtectionPolicyAsync(putDataProtectionPolicyRequest, cancellationToken).ConfigureAwait(false);
-                            var putDataProtectionPolicyResponseContent = PutDataProtectionPolicyResponseXmlWriter.Write(putDataProtectionPolicyResult); 
-                            var putDataProtectionPolicyResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(putDataProtectionPolicyResponseContent)
-                            };
-                            putDataProtectionPolicyResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return putDataProtectionPolicyResponse;
-                        }
+            tagsList.Add(item);
+        }
 
-                        case "RemovePermission":
-                        {
-                            var removePermissionRequest = new RemovePermissionRequest
-                            {
-                                Label = query.TryGetValue("Label", out var label) ? 
-                                    label.ToString() : default!,
-                                TopicArn = query.TryGetValue("TopicArn", out var topicArn) ? 
-                                    topicArn.ToString() : default!,
-                            };
-                            var removePermissionResult = await _innerClient.RemovePermissionAsync(removePermissionRequest, cancellationToken).ConfigureAwait(false);
-                            var removePermissionResponseContent = RemovePermissionResponseXmlWriter.Write(removePermissionResult); 
-                            var removePermissionResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(removePermissionResponseContent)
-                            };
-                            removePermissionResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return removePermissionResponse;
-                        }
+        if (tagsList.Count > 0)
+        {
+            requestModel.Tags = tagsList;
+        }
+    }
 
-                        case "SetEndpointAttributes":
-                        {
-                            var setEndpointAttributesRequest = new SetEndpointAttributesRequest
-                            {
-                                Attributes = query.ToFlatDictionary<System.String>("Attributes", v => v.ToString()),
-                                EndpointArn = query.TryGetValue("EndpointArn", out var endpointArn) ? 
-                                    endpointArn.ToString() : default!,
-                            };
-                            var setEndpointAttributesResult = await _innerClient.SetEndpointAttributesAsync(setEndpointAttributesRequest, cancellationToken).ConfigureAwait(false);
-                            var setEndpointAttributesResponseContent = SetEndpointAttributesResponseXmlWriter.Write(setEndpointAttributesResult); 
-                            var setEndpointAttributesResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(setEndpointAttributesResponseContent)
-                            };
-                            setEndpointAttributesResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return setEndpointAttributesResponse;
-                        }
+    var result = await _innerClient.TagResourceAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = TagResourceResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "UntagResource":
+{
+    var requestModel = new UntagResourceRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("ResourceArn", out var resourceArnValue))
+    {
+        requestModel.ResourceArn = resourceArnValue.ToString();
+    }
+    // Handle simple list
+    {
+        var tagKeysList = new List<string>();
+        var prefix = "TagKeys.member.";
+        
+        foreach (var kvp in query.Where(x => x.Key.StartsWith(prefix, StringComparison.Ordinal)))
+        {
+            tagKeysList.Add(kvp.Value.ToString());
+        }
+        
+        if (tagKeysList.Count > 0)
+        {
+            requestModel.TagKeys = tagKeysList;
+        }
+    }
 
-                        case "SetPlatformApplicationAttributes":
-                        {
-                            var setPlatformApplicationAttributesRequest = new SetPlatformApplicationAttributesRequest
-                            {
-                                Attributes = query.ToFlatDictionary<System.String>("Attributes", v => v.ToString()),
-                                PlatformApplicationArn = query.TryGetValue("PlatformApplicationArn", out var platformApplicationArn) ? 
-                                    platformApplicationArn.ToString() : default!,
-                            };
-                            var setPlatformApplicationAttributesResult = await _innerClient.SetPlatformApplicationAttributesAsync(setPlatformApplicationAttributesRequest, cancellationToken).ConfigureAwait(false);
-                            var setPlatformApplicationAttributesResponseContent = SetPlatformApplicationAttributesResponseXmlWriter.Write(setPlatformApplicationAttributesResult); 
-                            var setPlatformApplicationAttributesResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(setPlatformApplicationAttributesResponseContent)
-                            };
-                            setPlatformApplicationAttributesResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return setPlatformApplicationAttributesResponse;
-                        }
+    var result = await _innerClient.UntagResourceAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = UntagResourceResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
+case "VerifySMSSandboxPhoneNumber":
+{
+    var requestModel = new VerifySMSSandboxPhoneNumberRequest();
+    // Map query parameters to request properties based on schema
+        if (query.TryGetValue("PhoneNumber", out var phoneNumberValue))
+    {
+        requestModel.PhoneNumber = phoneNumberValue.ToString();
+    }
+    if (query.TryGetValue("OneTimePassword", out var oneTimePasswordValue))
+    {
+        requestModel.OneTimePassword = oneTimePasswordValue.ToString();
+    }
 
-                        case "SetSMSAttributes":
-                        {
-                            var setSMSAttributesRequest = new SetSMSAttributesRequest
-                            {
-                                Attributes = query.ToFlatDictionary<System.String>("Attributes", v => v.ToString()),
-                            };
-                            var setSMSAttributesResult = await _innerClient.SetSMSAttributesAsync(setSMSAttributesRequest, cancellationToken).ConfigureAwait(false);
-                            var setSMSAttributesResponseContent = SetSMSAttributesResponseXmlWriter.Write(setSMSAttributesResult); 
-                            var setSMSAttributesResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(setSMSAttributesResponseContent)
-                            };
-                            setSMSAttributesResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return setSMSAttributesResponse;
-                        }
-
-                        case "SetSubscriptionAttributes":
-                        {
-                            var setSubscriptionAttributesRequest = new SetSubscriptionAttributesRequest
-                            {
-                                AttributeName = query.TryGetValue("AttributeName", out var attributeName) ? 
-                                    attributeName.ToString() : default!,
-                                AttributeValue = query.TryGetValue("AttributeValue", out var attributeValue) ? 
-                                    attributeValue.ToString() : default!,
-                                SubscriptionArn = query.TryGetValue("SubscriptionArn", out var subscriptionArn) ? 
-                                    subscriptionArn.ToString() : default!,
-                            };
-                            var setSubscriptionAttributesResult = await _innerClient.SetSubscriptionAttributesAsync(setSubscriptionAttributesRequest, cancellationToken).ConfigureAwait(false);
-                            var setSubscriptionAttributesResponseContent = SetSubscriptionAttributesResponseXmlWriter.Write(setSubscriptionAttributesResult); 
-                            var setSubscriptionAttributesResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(setSubscriptionAttributesResponseContent)
-                            };
-                            setSubscriptionAttributesResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return setSubscriptionAttributesResponse;
-                        }
-
-                        case "SetTopicAttributes":
-                        {
-                            var setTopicAttributesRequest = new SetTopicAttributesRequest
-                            {
-                                AttributeName = query.TryGetValue("AttributeName", out var attributeName) ? 
-                                    attributeName.ToString() : default!,
-                                AttributeValue = query.TryGetValue("AttributeValue", out var attributeValue) ? 
-                                    attributeValue.ToString() : default!,
-                                TopicArn = query.TryGetValue("TopicArn", out var topicArn) ? 
-                                    topicArn.ToString() : default!,
-                            };
-                            var setTopicAttributesResult = await _innerClient.SetTopicAttributesAsync(setTopicAttributesRequest, cancellationToken).ConfigureAwait(false);
-                            var setTopicAttributesResponseContent = SetTopicAttributesResponseXmlWriter.Write(setTopicAttributesResult); 
-                            var setTopicAttributesResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(setTopicAttributesResponseContent)
-                            };
-                            setTopicAttributesResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return setTopicAttributesResponse;
-                        }
-
-                        case "Subscribe":
-                        {
-                            var subscribeRequest = new SubscribeRequest
-                            {
-                                Attributes = query.ToFlatDictionary<System.String>("Attributes", v => v.ToString()),
-                                Endpoint = query.TryGetValue("Endpoint", out var endpoint) ? 
-                                    endpoint.ToString() : default!,
-                                Protocol = query.TryGetValue("Protocol", out var protocol) ? 
-                                    protocol.ToString() : default!,
-                                ReturnSubscriptionArn = query.TryGetValue("ReturnSubscriptionArn", out var returnSubscriptionArn) ? 
-                                    bool.Parse(returnSubscriptionArn.ToString()) : default!,
-                                TopicArn = query.TryGetValue("TopicArn", out var topicArn) ? 
-                                    topicArn.ToString() : default!,
-                            };
-                            var subscribeResult = await _innerClient.SubscribeAsync(subscribeRequest, cancellationToken).ConfigureAwait(false);
-                            var subscribeResponseContent = SubscribeResponseXmlWriter.Write(subscribeResult); 
-                            var subscribeResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(subscribeResponseContent)
-                            };
-                            subscribeResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return subscribeResponse;
-                        }
-
-                        case "TagResource":
-                        {
-                            var tagResourceRequest = new TagResourceRequest
-                            {
-                                ResourceArn = query.TryGetValue("ResourceArn", out var resourceArn) ? 
-                                    resourceArn.ToString() : default!,
-                            Tags = query.Keys
-                                .Where(k => k.StartsWith("Tags.member.", StringComparison.Ordinal))
-                                .Select(k => int.Parse(k.Split('.')[2], CultureInfo.InvariantCulture))
-                                .Distinct()
-                                .Select(index => new Tag
-                                {
-                                    Key = query.TryGetValue($"Tags.member.{index}.Key", out var tagsKey) ? 
-tagsKey.ToString() : default,
-Value = query.TryGetValue($"Tags.member.{index}.Value", out var tagsValue) ? 
-tagsValue.ToString() : default
-                                })
-                                .ToList(),
-                            };
-                            var tagResourceResult = await _innerClient.TagResourceAsync(tagResourceRequest, cancellationToken).ConfigureAwait(false);
-                            var tagResourceResponseContent = TagResourceResponseXmlWriter.Write(tagResourceResult); 
-                            var tagResourceResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(tagResourceResponseContent)
-                            };
-                            tagResourceResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return tagResourceResponse;
-                        }
-
-                        case "Unsubscribe":
-                        {
-                            var unsubscribeRequest = new UnsubscribeRequest
-                            {
-                                SubscriptionArn = query.TryGetValue("SubscriptionArn", out var subscriptionArn) ? 
-                                    subscriptionArn.ToString() : default!,
-                            };
-                            var unsubscribeResult = await _innerClient.UnsubscribeAsync(unsubscribeRequest, cancellationToken).ConfigureAwait(false);
-                            var unsubscribeResponseContent = UnsubscribeResponseXmlWriter.Write(unsubscribeResult); 
-                            var unsubscribeResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(unsubscribeResponseContent)
-                            };
-                            unsubscribeResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return unsubscribeResponse;
-                        }
-
-                        case "UntagResource":
-                        {
-                            var untagResourceRequest = new UntagResourceRequest
-                            {
-                                ResourceArn = query.TryGetValue("ResourceArn", out var resourceArn) ? 
-                                    resourceArn.ToString() : default!,
-                                TagKeys = query.TryGetValue("TagKeys.member", out var tagKeysValues) ? 
-                                    tagKeysValues.Select<string, System.String?>((string v) => v.ToString()).ToList() : null,
-                            };
-                            var untagResourceResult = await _innerClient.UntagResourceAsync(untagResourceRequest, cancellationToken).ConfigureAwait(false);
-                            var untagResourceResponseContent = UntagResourceResponseXmlWriter.Write(untagResourceResult); 
-                            var untagResourceResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(untagResourceResponseContent)
-                            };
-                            untagResourceResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return untagResourceResponse;
-                        }
-
-                        case "VerifySMSSandboxPhoneNumber":
-                        {
-                            var verifySMSSandboxPhoneNumberRequest = new VerifySMSSandboxPhoneNumberRequest
-                            {
-                                OneTimePassword = query.TryGetValue("OneTimePassword", out var oneTimePassword) ? 
-                                    oneTimePassword.ToString() : default!,
-                                PhoneNumber = query.TryGetValue("PhoneNumber", out var phoneNumber) ? 
-                                    phoneNumber.ToString() : default!,
-                            };
-                            var verifySMSSandboxPhoneNumberResult = await _innerClient.VerifySMSSandboxPhoneNumberAsync(verifySMSSandboxPhoneNumberRequest, cancellationToken).ConfigureAwait(false);
-                            var verifySMSSandboxPhoneNumberResponseContent = VerifySMSSandboxPhoneNumberResponseXmlWriter.Write(verifySMSSandboxPhoneNumberResult); 
-                            var verifySMSSandboxPhoneNumberResponse = new HttpResponseMessage(HttpStatusCode.OK)
-                            {
-                                Content = new StreamContent(verifySMSSandboxPhoneNumberResponseContent)
-                            };
-                            verifySMSSandboxPhoneNumberResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
-                            return verifySMSSandboxPhoneNumberResponse;
-                        }
-
+    var result = await _innerClient.VerifySMSSandboxPhoneNumberAsync(requestModel, cancellationToken).ConfigureAwait(false);
+    var content = VerifySMSSandboxPhoneNumberResponseXmlWriter.Write(result);
+    
+    var response = new HttpResponseMessage(HttpStatusCode.OK)
+    {
+        Content = new StreamContent(content)
+    };
+    response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+    return response;
+}
                     }
                 }
             }
-            return new HttpResponseMessage();
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
     }
 }
