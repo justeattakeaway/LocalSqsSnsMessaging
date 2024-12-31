@@ -11,5 +11,7 @@ public class SnsPublishAsyncTestsLocalAwsMessaging : SnsPublishAsyncTests
         Sqs = bus.CreateSqsClient();
     }
 
+    protected override bool SupportsAttributeSizeValidation() => false;
+    
     protected override Task WaitAsync(TimeSpan delay) => Task.CompletedTask;
 }

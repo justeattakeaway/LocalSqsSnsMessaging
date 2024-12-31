@@ -21,5 +21,7 @@ public class SnsPublishAsyncTestsLocalStack : SnsPublishAsyncTests
         Sqs = ClientFactory.CreateSqsClient(AccountId, aspireFixture.LocalStackPort!.Value);    
     }
 
+    protected override bool SupportsAttributeSizeValidation() => true;
+
     protected override Task WaitAsync(TimeSpan delay) => Task.Delay(delay);
 }
