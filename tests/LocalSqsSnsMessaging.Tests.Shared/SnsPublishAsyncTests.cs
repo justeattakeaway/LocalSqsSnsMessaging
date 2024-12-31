@@ -22,6 +22,10 @@ public abstract class SnsPublishAsyncTests
         _testOutputHelper = testOutputHelper;
     }
 
+    // LocalStack throws a different exception when validating on publish.
+    // This method allows us to deviate from this behaviour until support is added to our implementation.
+    protected abstract bool SupportsAttributeSizeValidation();
+
     [Fact, Trait("Category", "TimeBasedTests")]
     public async Task PublishAsync_WithRawDelivery_ShouldDeliverMessageDirectly()
     {
@@ -832,8 +836,17 @@ public abstract class SnsPublishAsyncTests
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidParameterException>(() =>
-            Sns.PublishAsync(request, TestContext.Current.CancellationToken));
+        var testAction = () =>
+            Sns.PublishAsync(request, TestContext.Current.CancellationToken);
+
+        if (SupportsAttributeSizeValidation())
+        {
+            await Assert.ThrowsAsync<InvalidParameterValueException>(testAction);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<InvalidParameterException>(testAction);
+        }
     }
 
     [Fact]
@@ -893,7 +906,16 @@ public abstract class SnsPublishAsyncTests
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidParameterException>(() =>
-            Sns.PublishAsync(request, TestContext.Current.CancellationToken));
+        var testAction = () =>
+            Sns.PublishAsync(request, TestContext.Current.CancellationToken);
+        
+        if (SupportsAttributeSizeValidation())
+        {
+            await Assert.ThrowsAsync<InvalidParameterValueException>(testAction);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<InvalidParameterException>(testAction);
+        }
     }
 }
