@@ -1,8 +1,8 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Nodes;
 using Amazon.SQS;
 using Amazon.SQS.Model;
-using FluentAssertions;
+using Shouldly;
 using ResourceNotFoundException = Amazon.SQS.Model.ResourceNotFoundException;
 
 namespace LocalSqsSnsMessaging.Tests;
@@ -112,7 +112,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         // Check that the message is now in the main queue
         var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl, MaxNumberOfMessages = 10}, TestContext.Current.CancellationToken);
-        mainReceiveResult.Messages.Should().HaveCount(4);
+        mainReceiveResult.Messages.Count.ShouldBe(4);
     }
 
     [Fact, Trait("Category", "TimeBasedTests")]

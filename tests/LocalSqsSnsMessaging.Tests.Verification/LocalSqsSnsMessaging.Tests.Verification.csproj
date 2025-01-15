@@ -1,25 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <IsPackable>false</IsPackable>
-        <IsTestProject>true</IsTestProject>
-        <NoWarn>$(NoWarn);CA2007</NoWarn>
+      <TargetFramework>net8.0</TargetFramework>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <Nullable>enable</Nullable>
+      <IsPackable>false</IsPackable>
+      <IsTestProject>true</IsTestProject>
+      <NoWarn>$(NoWarn);CA2007</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="xunit.v3" />
-        <PackageReference Include="xunit.runner.visualstudio" />
-        <PackageReference Include="Aspire.Hosting.Testing" />
+      <PackageReference Include="Aspire.Hosting.Testing" />
+      <PackageReference Include="Microsoft.NET.Test.Sdk" />
+      <PackageReference Include="xunit.runner.visualstudio" />
+      <PackageReference Include="xunit.v3" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\LocalSqsSnsMessaging\LocalSqsSnsMessaging.csproj" />
-        <ProjectReference Include="..\LocalSqsSnsMessaging.Tests.AppHost\LocalSqsSnsMessaging.Tests.AppHost.csproj" />
-        <ProjectReference Include="..\LocalSqsSnsMessaging.Tests.Shared\LocalSqsSnsMessaging.Tests.Shared.csproj" />
+      <ProjectReference Include="..\..\src\LocalSqsSnsMessaging\LocalSqsSnsMessaging.csproj" />
+      <ProjectReference Include="..\LocalSqsSnsMessaging.Tests.AppHost\LocalSqsSnsMessaging.Tests.AppHost.csproj" />
+      <ProjectReference Include="..\LocalSqsSnsMessaging.Tests.Shared\LocalSqsSnsMessaging.Tests.Shared.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,7 +1,6 @@
-using Amazon.SQS;
+﻿using Amazon.SQS;
 using Amazon.SQS.Model;
-using FluentAssertions;
-using ResourceNotFoundException = Amazon.SQS.Model.ResourceNotFoundException;
+using Shouldly;
 
 namespace LocalSqsSnsMessaging.Tests;
 
@@ -10,7 +9,6 @@ public abstract class SqsQueueTagsTests
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
     private string _queueUrl = null!;
-    private string _queueArn = null!;
 
     protected abstract Task AdvanceTime(TimeSpan timeSpan);
 
@@ -26,7 +24,6 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl,
             AttributeNames = ["QueueArn"]
         });
-        _queueArn = attrResponse.Attributes["QueueArn"];
     }
 
     [Fact]
@@ -54,7 +51,7 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.Should().BeEquivalentTo(tags);
+        listTagsResponse.Tags.ShouldBeEquivalentTo(tags);
     }
 
     [Fact]
@@ -107,9 +104,9 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.Should().HaveCount(1);
-        listTagsResponse.Tags.Should().ContainKey("Cost-Center");
-        listTagsResponse.Tags["Cost-Center"].Should().Be("12345");
+        listTagsResponse.Tags.Count.ShouldBe(1);
+        listTagsResponse.Tags.ShouldContainKey("Cost-Center");
+        listTagsResponse.Tags["Cost-Center"].ShouldBe("12345");
     }
 
     [Fact]
@@ -130,7 +127,7 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.Should().BeEmpty();
+        listTagsResponse.Tags.ShouldBeEmpty();
     }
 
     [Fact]
@@ -143,7 +140,7 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.Should().BeEmpty();
+        listTagsResponse.Tags.ShouldBeEmpty();
     }
 
     [Fact]
@@ -177,8 +174,8 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.Should().HaveCount(1);
-        listTagsResponse.Tags["Environment"].Should().Be("Production");
+        listTagsResponse.Tags.Count.ShouldBe(1);
+        listTagsResponse.Tags["Environment"].ShouldBe("Production");
     }
 
     [Fact]
@@ -204,8 +201,8 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.Should().HaveCount(50);
-        listTagsResponse.Tags.Should().BeEquivalentTo(tags);
+        listTagsResponse.Tags.Count.ShouldBe(50);
+        listTagsResponse.Tags.ShouldBeEquivalentTo(tags);
     }
 
     [Fact]
@@ -229,8 +226,8 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.Should().ContainKey("EmptyTag");
-        listTagsResponse.Tags["EmptyTag"].Should().BeEmpty();
+        listTagsResponse.Tags.ShouldContainKey("EmptyTag");
+        listTagsResponse.Tags["EmptyTag"].ShouldBeEmpty();
     }
     
     [Fact]
@@ -254,7 +251,7 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.Should().BeEmpty();
+        listTagsResponse.Tags.ShouldBeEmpty();
     }
 
     [Fact]
@@ -287,7 +284,7 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.Should().ContainKey("TestTag");
-        listTagsResponse.Tags["TestTag"].Should().BeEmpty();
+        listTagsResponse.Tags.ShouldContainKey("TestTag");
+        listTagsResponse.Tags["TestTag"].ShouldBeEmpty();
     }
 }
