@@ -51,7 +51,7 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.ShouldBeEquivalentTo(tags);
+        listTagsResponse.Tags.ToDictionary().ShouldBeEquivalentTo(tags);
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public abstract class SqsQueueTagsTests
         }, TestContext.Current.CancellationToken);
 
         listTagsResponse.Tags.Count.ShouldBe(50);
-        listTagsResponse.Tags.ShouldBeEquivalentTo(tags);
+        listTagsResponse.Tags.ToDictionary().ShouldBeEquivalentTo(tags);
     }
 
     [Fact]

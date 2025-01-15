@@ -325,7 +325,7 @@ public abstract class SnsPublishAsyncTests
         getAttributesResponse.Attributes.ShouldContainKeyAndValue("TopicArn", topicArn);
         getAttributesResponse.Attributes.ShouldContainKeyAndValue("Protocol", "sqs");
         getAttributesResponse.Attributes.ShouldContainKeyAndValue("Endpoint", queueArn);
-        getAttributesResponse.Attributes.ShouldContainKeyAndValue("RawMessageDelivery", "True");
+        getAttributesResponse.Attributes.ShouldContainKeyAndValue("RawMessageDelivery", "true");
         getAttributesResponse.Attributes.ShouldContainKey("FilterPolicy");
         getAttributesResponse.Attributes["FilterPolicy"].ShouldNotBeNullOrEmpty();
 
@@ -390,7 +390,7 @@ public abstract class SnsPublishAsyncTests
             SubscriptionArn = subscribeResponse.SubscriptionArn
         }, TestContext.Current.CancellationToken);
 
-        getAttributesResponse.Attributes.ShouldContainKeyAndValue("RawMessageDelivery", "True");
+        getAttributesResponse.Attributes.ShouldContainKeyAndValue("RawMessageDelivery", "true");
         getAttributesResponse.Attributes.ShouldContainKey("FilterPolicy");
         getAttributesResponse.Attributes["FilterPolicy"].ShouldBeEquivalentTo(newFilterPolicy);
     }
