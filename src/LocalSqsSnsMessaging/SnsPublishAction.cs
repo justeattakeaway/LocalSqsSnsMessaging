@@ -15,7 +15,7 @@ namespace LocalSqsSnsMessaging;
 internal sealed class SnsPublishAction
 {
     internal static SnsPublishAction NullInstance { get; } = new([], null!);
-    
+
     private readonly List<(SnsSubscription Subscription, SqsQueueResource Queue)> _subscriptionsAndQueues;
     private readonly TimeProvider _timeProvider;
     private static Int128 _sequenceNumber = CreateSequenceNumber();
@@ -28,7 +28,7 @@ internal sealed class SnsPublishAction
         var twentyDigitBigInt = BigInteger.Abs(randomBigInt % BigInteger.Pow(10, 20));
         return (Int128)twentyDigitBigInt;
     }
-    
+
     public SnsPublishAction(List<(SnsSubscription Subscription, SqsQueueResource Queue)> subscriptionsAndQueues, TimeProvider timeProvider)
     {
         _subscriptionsAndQueues = subscriptionsAndQueues;
@@ -38,16 +38,17 @@ internal sealed class SnsPublishAction
     public PublishResponse Execute(PublishRequest request)
     {
         var messageId = Guid.NewGuid().ToString();
-        
+
         foreach (var (subscription, queue) in _subscriptionsAndQueues)
         {
             var sqsMessage = CreateSqsMessage(request, messageId, subscription);
             if (queue.IsFifo)
             {
+                sqsMessage.Attributes ??= [];
                 sqsMessage.Attributes["MessageGroupId"] = request.MessageGroupId;
                 sqsMessage.Attributes["SequenceNumber"] = GetNextSequenceNumber().ToString(NumberFormatInfo.InvariantInfo);
                 sqsMessage.Attributes["SentTimestamp"] = _timeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
-                
+
                 string deduplicationId = request.MessageDeduplicationId;
                 if (string.IsNullOrEmpty(deduplicationId))
                 {
@@ -76,8 +77,8 @@ internal sealed class SnsPublishAction
 
     private static void EnqueueFifoMessage(SqsQueueResource queue, string messageGroupId, Message sqsMessage)
     {
-        queue.MessageGroups.AddOrUpdate(messageGroupId, 
-            _ => new ConcurrentQueue<Message>([sqsMessage]), 
+        queue.MessageGroups.AddOrUpdate(messageGroupId,
+            _ => new ConcurrentQueue<Message>([sqsMessage]),
             (_, existingQueue) =>
             {
                 existingQueue.Enqueue(sqsMessage);
@@ -92,7 +93,7 @@ internal sealed class SnsPublishAction
             Successful = [],
             Failed = []
         };
-        
+
         foreach (var entry in request.PublishBatchRequestEntries)
         {
             try
@@ -118,16 +119,16 @@ internal sealed class SnsPublishAction
                 });
             }
         }
-        
+
         return response.SetCommonProperties();
     }
-    
+
     private void PublishSingleMessage(PublishBatchRequestEntry entry, string topicArn, string messageId)
     {
         foreach (var (subscription, queue) in _subscriptionsAndQueues)
         {
             var sqsMessage = CreateSqsMessage(entry, topicArn, messageId, subscription);
-            
+
             if (!queue.Messages.Writer.TryWrite(sqsMessage))
             {
                 throw new InvalidOperationException("Failed to write message to queue.");
@@ -147,10 +148,10 @@ internal sealed class SnsPublishAction
 #pragma warning disable CA1308
         message.MD5OfBody = Convert.ToHexString(hash).ToLowerInvariant();
 #pragma warning restore CA1308
-        
+
         return message;
     }
-    
+
     private Message CreateSqsMessage(PublishBatchRequestEntry entry, string topicArn, string messageId, SnsSubscription subscription)
     {
         var message = subscription.Raw
@@ -163,16 +164,16 @@ internal sealed class SnsPublishAction
 #pragma warning disable CA1308
         message.MD5OfBody = Convert.ToHexString(hash).ToLowerInvariant();
 #pragma warning restore CA1308
-        
+
         return message;
     }
 
-    private static Message CreateRawSqsMessage(string message, Dictionary<string, MessageAttributeValue> attributes)
+    private static Message CreateRawSqsMessage(string message, Dictionary<string, MessageAttributeValue>? attributes)
     {
         return new Message
         {
             Body = message,
-            MessageAttributes = attributes.ToDictionary(
+            MessageAttributes = attributes?.ToDictionary(
                 kvp => kvp.Key,
                 kvp => new SqsMessageAttributeValue
                 {
@@ -247,13 +248,13 @@ internal sealed class SnsPublishAction
             }
         };
     }
-    
+
     private static string GenerateMessageBodyHash(string messageBody)
     {
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(messageBody));
         return Convert.ToBase64String(hashBytes);
     }
-    
+
     private static Int128 GetNextSequenceNumber()
     {
         var lockTaken = false;

@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Shouldly;
+using Xunit;
 using ResourceNotFoundException = Amazon.SQS.Model.ResourceNotFoundException;
 
 namespace LocalSqsSnsMessaging.Tests;
@@ -75,9 +76,9 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         var secondMessages = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl });
         await AdvanceTime(TimeSpan.FromSeconds(1));
-        Assert.Empty(secondMessages.Messages);
+        Assert.Null(secondMessages.Messages);
     }
-    
+
     private async Task<string> GetQueueArnFromUrl(string queueUrl)
     {
         var attrResponse = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -108,7 +109,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         // Check that the message is no longer in the source queue (DLQ)
         var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _errorQueueUrl }, TestContext.Current.CancellationToken);
-        Assert.Empty(sourceReceiveResult.Messages);
+        Assert.Null(sourceReceiveResult.Messages);
 
         // Check that the message is now in the main queue
         var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl, MaxNumberOfMessages = 10}, TestContext.Current.CancellationToken);
@@ -123,7 +124,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         // Create a new queue that is not configured as a DLQ
         var createNonDlqResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "non-dlq" }, TestContext.Current.CancellationToken);
         var nonDlqArn = await GetQueueArnFromUrl(createNonDlqResponse.QueueUrl);
-        
+
         // Create destination queue
         var createDestQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "destination-queue" }, TestContext.Current.CancellationToken);
         var destinationQueueArn = await GetQueueArnFromUrl(createDestQueueResponse.QueueUrl);
@@ -136,7 +137,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
                 MaxNumberOfMessagesPerSecond = 10
             }, TestContext.Current.CancellationToken));
     }
-    
+
     [Fact, Trait("Category", "TimeBasedTests")]
     public async Task StartMessageMoveTaskAsync_InvalidDestinationQueue_ThrowsException()
     {
@@ -155,7 +156,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
     public async Task StartMessageMoveTaskAsync_EmptyDLQ_NoMessagesMoved()
     {
         await SetupQueuesAndMessage();
-        
+
         await AdvanceTime(TimeSpan.FromSeconds(1));
 
         // Empty the source queue (DLQ)
@@ -180,7 +181,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         // Check that the main queue is still empty
         var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl }, TestContext.Current.CancellationToken);
-        Assert.Empty(mainReceiveResult.Messages);
+        Assert.Null(mainReceiveResult.Messages);
     }
 
     [Fact, Trait("Category", "TimeBasedTests")]
@@ -212,16 +213,16 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         await AdvanceTime(TimeSpan.FromSeconds(1));
 
         // Check that only about 3 messages were moved to the main queue
-        var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest 
-        { 
+        var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
             QueueUrl = _mainQueueUrl,
             MaxNumberOfMessages = 10
         }, TestContext.Current.CancellationToken);
         Assert.InRange(mainReceiveResult.Messages.Count, 2, 4); // Allow for some flexibility due to timing
 
         // Check that about 3 messages remain in the source queue (DLQ)
-        var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest 
-        { 
+        var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
             QueueUrl = _errorQueueUrl,
             MaxNumberOfMessages = 10
         }, TestContext.Current.CancellationToken);
@@ -251,7 +252,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         // Check that the source queue (DLQ) is empty
         var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _errorQueueUrl }, TestContext.Current.CancellationToken);
-        Assert.Empty(sourceReceiveResult.Messages);
+        Assert.Null(sourceReceiveResult.Messages);
     }
 
     [Fact, Trait("Category", "TimeBasedTests")]
@@ -304,7 +305,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
             }, TestContext.Current.CancellationToken);
         });
     }
-    
+
     [Fact, Trait("Category", "TimeBasedTests")]
     public async Task ListMessageMoveTasks_ReturnsAllActiveTasks()
     {

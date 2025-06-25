@@ -1,6 +1,7 @@
 using Amazon.Auth.AccessControlPolicy;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Xunit;
 
 namespace LocalSqsSnsMessaging.Tests;
 
@@ -28,7 +29,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
 
-        Assert.Empty(result.Messages);
+        Assert.Null(result.Messages);
     }
 
     [Fact]
@@ -94,7 +95,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         var result = await task;
 
-        Assert.Empty(result.Messages);
+        Assert.Null(result.Messages);
     }
 
     [Fact]
@@ -135,14 +136,14 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Second receive immediately after - should not get any message
         var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(result2.Messages);
+        Assert.Null(result2.Messages);
 
         // Advance time by 15 seconds (half the visibility timeout)
         await AdvanceTime(TimeSpan.FromSeconds(15));
 
         // Third receive - should still not get any message
         var result3 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(result3.Messages);
+        Assert.Null(result3.Messages);
 
         // Advance time by another 20 seconds (visibility timeout has now passed)
         await AdvanceTime(TimeSpan.FromSeconds(20));
@@ -172,14 +173,14 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // First receive - should not get any message
         var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(result1.Messages);
+        Assert.Null(result1.Messages);
 
         // Advance time by 5 seconds
         await AdvanceTime(TimeSpan.FromSeconds(5));
 
         // Second receive - should still not get any message
         var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(result2.Messages);
+        Assert.Null(result2.Messages);
 
         // Advance time by another 10 seconds (message is now visible)
         await AdvanceTime(TimeSpan.FromSeconds(10));
@@ -411,7 +412,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Try to receive from the main queue - should be empty
         var emptyResult = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(emptyResult.Messages);
+        Assert.Null(emptyResult.Messages);
 
         // Check the error queue - the message should be there
         var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl },
@@ -470,12 +471,12 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Try to receive from the main queue - should be empty
         var emptyMainResult = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(emptyMainResult.Messages);
+        Assert.Null(emptyMainResult.Messages);
 
         // Check the error queue - should be empty
         var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl },
             TestContext.Current.CancellationToken);
-        Assert.Empty(errorQueueResult.Messages);
+        Assert.Null(errorQueueResult.Messages);
     }
 
     public async Task ReceiveMessageAsync_ErrorQueueRespectsFifoOrder()
@@ -665,7 +666,7 @@ public abstract class SqsReceiveMessageAsyncTests
         var message = Assert.Single(result.Messages);
 
         // Check that no system attributes are present
-        Assert.Empty(message.Attributes);
+        Assert.Null(message.Attributes);
     }
 
     [Fact]
@@ -816,7 +817,7 @@ public abstract class SqsReceiveMessageAsyncTests
             QueueUrl = queueUrl,
             AttributeNames = ["Policy"]
         }, TestContext.Current.CancellationToken);
-        Assert.False(attributes.Attributes.ContainsKey("Policy"));
+        Assert.False(attributes.Attributes?.ContainsKey("Policy") ?? false);
     }
 
     [Fact]
@@ -912,7 +913,7 @@ public abstract class SqsReceiveMessageAsyncTests
             QueueUrl = queueUrl,
             AttributeNames = ["Policy"]
         }, TestContext.Current.CancellationToken);
-        Assert.False(attributes.Attributes.ContainsKey("Policy"));
+        Assert.False(attributes.Attributes?.ContainsKey("Policy") ?? false);
     }
 
     [Fact]
@@ -980,7 +981,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Calculate sizes to reach exactly 256KB:
         // - Message body: 200,000 bytes
-        // - First attribute: 
+        // - First attribute:
         //   * Name: 100 bytes
         //   * Type: "String" (6 bytes)
         //   * Value: 31,000 bytes

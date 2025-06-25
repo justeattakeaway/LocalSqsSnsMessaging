@@ -1,6 +1,7 @@
 ﻿using Amazon.SQS;
 using Amazon.SQS.Model;
 using Shouldly;
+using Xunit;
 
 namespace LocalSqsSnsMessaging.Tests;
 
@@ -17,7 +18,7 @@ public abstract class SqsQueueTagsTests
         // Create test queue
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" });
         _queueUrl = createQueueResponse.QueueUrl;
-        
+
         // Get queue ARN
         var attrResponse = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
         {
@@ -229,7 +230,7 @@ public abstract class SqsQueueTagsTests
         listTagsResponse.Tags.ShouldContainKey("EmptyTag");
         listTagsResponse.Tags["EmptyTag"].ShouldBeEmpty();
     }
-    
+
     [Fact]
     public async Task TagQueueAsync_NullTagValue_Success()
     {

@@ -2,17 +2,17 @@
 
     <PropertyGroup>
       <TargetFramework>net8.0</TargetFramework>
+      <OutputType>Exe</OutputType>
       <ImplicitUsings>enable</ImplicitUsings>
       <Nullable>enable</Nullable>
       <IsPackable>false</IsPackable>
       <IsTestProject>true</IsTestProject>
       <NoWarn>$(NoWarn);CA2007</NoWarn>
+      <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="Aspire.Hosting.Testing" />
-      <PackageReference Include="Microsoft.NET.Test.Sdk" />
-      <PackageReference Include="xunit.runner.visualstudio" />
       <PackageReference Include="xunit.v3" />
     </ItemGroup>
 

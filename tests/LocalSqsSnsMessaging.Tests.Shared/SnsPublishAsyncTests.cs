@@ -5,7 +5,7 @@ using Amazon.SimpleNotificationService.Model;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Shouldly;
-
+using Xunit;
 using MessageAttributeValue = Amazon.SimpleNotificationService.Model.MessageAttributeValue;
 
 namespace LocalSqsSnsMessaging.Tests;
@@ -596,26 +596,26 @@ public abstract class SnsPublishAsyncTests
         {
             _testOutputHelper.WriteLine($"Body: {msg.Body}");
             _testOutputHelper.WriteLine($"MessageId: {msg.MessageId}");
-            _testOutputHelper.WriteLine($"SequenceNumber: {msg.Attributes["SequenceNumber"]}");
-            _testOutputHelper.WriteLine($"MessageDeduplicationId: {msg.Attributes["MessageDeduplicationId"]}");
-            _testOutputHelper.WriteLine($"MessageGroupId: {msg.Attributes["MessageGroupId"]}");
-            _testOutputHelper.WriteLine($"SentTimestamp: {msg.Attributes["SentTimestamp"]}");
+            _testOutputHelper.WriteLine($"SequenceNumber: {msg.Attributes?["SequenceNumber"]}");
+            _testOutputHelper.WriteLine($"MessageDeduplicationId: {msg.Attributes?["MessageDeduplicationId"]}");
+            _testOutputHelper.WriteLine($"MessageGroupId: {msg.Attributes?["MessageGroupId"]}");
+            _testOutputHelper.WriteLine($"SentTimestamp: {msg.Attributes?["SentTimestamp"]}");
             _testOutputHelper.WriteLine("---");
         }
 
         // Check the order based on SequenceNumber
         var orderedMessages = receivedMessages
-            .OrderBy(m => Int128.Parse(m.Attributes["SequenceNumber"], NumberFormatInfo.InvariantInfo)).ToList();
+            .OrderBy(m => Int128.Parse(m.Attributes!["SequenceNumber"], NumberFormatInfo.InvariantInfo)).ToList();
 
         orderedMessages[0].Body.ShouldBe("First message", "it was published first");
         orderedMessages[1].Body.ShouldBe("Second message", "it was published second");
         orderedMessages[2].Body.ShouldBe("Third message", "it was published third");
 
         // Verify that MessageGroupId is consistent
-        receivedMessages.ShouldAllBe(m => m.Attributes["MessageGroupId"] == messageGroupId);
+        receivedMessages.ShouldAllBe(m => m.Attributes!["MessageGroupId"] == messageGroupId);
 
         // Verify that MessageDeduplicationId is unique for each message
-        receivedMessages.Select(m => m.Attributes["MessageDeduplicationId"]).Distinct().Count().ShouldBe(3);
+        receivedMessages.Select(m => m.Attributes!["MessageDeduplicationId"]).Distinct().Count().ShouldBe(3);
 
         // Check if the order matches the publish order
         if (receivedMessages[1].Body != "Second message" ||
@@ -869,7 +869,7 @@ public abstract class SnsPublishAsyncTests
         var topicName = "TestTopic";
         var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
         await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName });
-        
+
         var messageBody = new string('x', 200_000);
 
         var request = new PublishRequest
@@ -897,7 +897,7 @@ public abstract class SnsPublishAsyncTests
         // Act & Assert
         var testAction = () =>
             Sns.PublishAsync(request, TestContext.Current.CancellationToken);
-        
+
         if (SupportsAttributeSizeValidation())
         {
             await Assert.ThrowsAsync<InvalidParameterValueException>(testAction);

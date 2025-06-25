@@ -7,14 +7,14 @@ internal sealed class SqsMoveTaskJob : IDisposable
 {
     private readonly ITimer _timer;
 
-    public SqsMoveTaskJob(TimeProvider timeProvider, SqsQueueResource sourceQueue, SqsQueueResource? destinationQueue, InMemoryAwsBus bus, int rateLimitPerSecond)
+    public SqsMoveTaskJob(TimeProvider timeProvider, SqsQueueResource sourceQueue, SqsQueueResource? destinationQueue, InMemoryAwsBus bus, int? rateLimitPerSecond)
     {
         _timer = timeProvider.CreateTimer(MoveMessages, (sourceQueue, destinationQueue, bus, rateLimitPerSecond), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
     private static void MoveMessages(object? state)
     {
-        var (sourceQueue, destinationQueue, bus, rateLimitPerSecond) = ((SqsQueueResource, SqsQueueResource?, InMemoryAwsBus, int))state!;
+        var (sourceQueue, destinationQueue, bus, rateLimitPerSecond) = ((SqsQueueResource, SqsQueueResource?, InMemoryAwsBus, int?))state!;
         var messagesMoveThisIteration = 0;
         while (sourceQueue.Messages.Reader.TryRead(out var message) && messagesMoveThisIteration < rateLimitPerSecond)
         {
@@ -25,7 +25,7 @@ internal sealed class SqsMoveTaskJob : IDisposable
             }
             else
             {
-                if (message.Attributes.TryGetValue(MessageSystemAttributeName.DeadLetterQueueSourceArn, out var deadLetterSourceArn))
+                if (message.Attributes?.TryGetValue(MessageSystemAttributeName.DeadLetterQueueSourceArn, out var deadLetterSourceArn) == true)
                 {
                     var deadLetterSourceQueueName = GetQueueNameFromArn(deadLetterSourceArn);
                     if (!bus.Queues.TryGetValue(deadLetterSourceQueueName, out var deadLetterSourceQueue))
@@ -42,7 +42,7 @@ internal sealed class SqsMoveTaskJob : IDisposable
         {
             moveTask.ApproximateNumberOfMessagesMoved += messagesMoveThisIteration;
             moveTask.ApproximateNumberOfMessagesToMove -= messagesMoveThisIteration;
-            
+
             if (moveTask.ApproximateNumberOfMessagesToMove >= 0)
             {
                 moveTask.Status = MoveTaskStatus.Completed;
@@ -50,7 +50,7 @@ internal sealed class SqsMoveTaskJob : IDisposable
             }
         }
     }
-    
+
     private static Message CloneNewMessage(Message source)
     {
         var newMessage = new Message
@@ -58,8 +58,8 @@ internal sealed class SqsMoveTaskJob : IDisposable
             MessageId = source.MessageId,
             Body = source.Body,
             MD5OfBody = source.MD5OfBody,
-            Attributes = new Dictionary<string, string>(source.Attributes),
-            MessageAttributes = new Dictionary<string, MessageAttributeValue>(source.MessageAttributes),
+            Attributes = new Dictionary<string, string>(source.Attributes ?? []),
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>(source.MessageAttributes ?? []),
             MD5OfMessageAttributes = source.MD5OfMessageAttributes
         };
 

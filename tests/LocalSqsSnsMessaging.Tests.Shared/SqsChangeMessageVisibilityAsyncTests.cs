@@ -1,5 +1,6 @@
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Xunit;
 
 namespace LocalSqsSnsMessaging.Tests;
 
@@ -39,7 +40,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
 
         // Try to receive the message again immediately (should fail)
         var immediateReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, TestContext.Current.CancellationToken);
-        Assert.Empty(immediateReceiveResult.Messages);
+        Assert.Null(immediateReceiveResult.Messages);
 
         // Advance time by 11 seconds
         await AdvanceTime(TimeSpan.FromSeconds(11));
