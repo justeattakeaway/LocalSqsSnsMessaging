@@ -1,3 +1,4 @@
+using Amazon;
 using Amazon.Auth.AccessControlPolicy;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -29,7 +30,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
 
-        Assert.Null(result.Messages);
+        result.Messages.ShouldBeUninitialized();
     }
 
     [Fact]
@@ -95,7 +96,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         var result = await task;
 
-        Assert.Null(result.Messages);
+        result.Messages.ShouldBeUninitialized();
     }
 
     [Fact]
@@ -136,14 +137,14 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Second receive immediately after - should not get any message
         var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Null(result2.Messages);
+        result2.Messages.ShouldBeUninitialized();
 
         // Advance time by 15 seconds (half the visibility timeout)
         await AdvanceTime(TimeSpan.FromSeconds(15));
 
         // Third receive - should still not get any message
         var result3 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Null(result3.Messages);
+        result3.Messages.ShouldBeUninitialized();
 
         // Advance time by another 20 seconds (visibility timeout has now passed)
         await AdvanceTime(TimeSpan.FromSeconds(20));
@@ -173,14 +174,14 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // First receive - should not get any message
         var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Null(result1.Messages);
+        result1.Messages.ShouldBeUninitialized();
 
         // Advance time by 5 seconds
         await AdvanceTime(TimeSpan.FromSeconds(5));
 
         // Second receive - should still not get any message
         var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Null(result2.Messages);
+        result2.Messages.ShouldBeUninitialized();
 
         // Advance time by another 10 seconds (message is now visible)
         await AdvanceTime(TimeSpan.FromSeconds(10));
@@ -412,7 +413,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Try to receive from the main queue - should be empty
         var emptyResult = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Null(emptyResult.Messages);
+        emptyResult.Messages.ShouldBeUninitialized();
 
         // Check the error queue - the message should be there
         var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl },
@@ -471,12 +472,12 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Try to receive from the main queue - should be empty
         var emptyMainResult = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Null(emptyMainResult.Messages);
+        emptyMainResult.Messages.ShouldBeUninitialized();
 
         // Check the error queue - should be empty
         var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl },
             TestContext.Current.CancellationToken);
-        Assert.Null(errorQueueResult.Messages);
+        errorQueueResult.Messages.ShouldBeUninitialized();
     }
 
     public async Task ReceiveMessageAsync_ErrorQueueRespectsFifoOrder()
@@ -666,7 +667,7 @@ public abstract class SqsReceiveMessageAsyncTests
         var message = Assert.Single(result.Messages);
 
         // Check that no system attributes are present
-        Assert.Null(message.Attributes);
+        message.Attributes.ShouldBeUninitialized();
     }
 
     [Fact]

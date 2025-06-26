@@ -1,4 +1,5 @@
-﻿using Amazon.SQS;
+﻿using Amazon;
+using Amazon.SQS;
 using Amazon.SQS.Model;
 using Shouldly;
 using Xunit;
@@ -128,7 +129,7 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.ShouldBeEmpty();
+        listTagsResponse.Tags.ShouldBeUninitialized();
     }
 
     [Fact]
@@ -141,7 +142,7 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, TestContext.Current.CancellationToken);
 
-        listTagsResponse.Tags.ShouldBeEmpty();
+        listTagsResponse.Tags.ShouldBeUninitialized();
     }
 
     [Fact]

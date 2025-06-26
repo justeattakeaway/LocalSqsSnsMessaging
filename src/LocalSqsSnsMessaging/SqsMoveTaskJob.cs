@@ -58,14 +58,14 @@ internal sealed class SqsMoveTaskJob : IDisposable
             MessageId = source.MessageId,
             Body = source.Body,
             MD5OfBody = source.MD5OfBody,
-            Attributes = new Dictionary<string, string>(source.Attributes ?? []),
-            MessageAttributes = new Dictionary<string, MessageAttributeValue>(source.MessageAttributes ?? []),
+            Attributes = source.Attributes.ToInitializedDictionary(),
+            MessageAttributes = source.MessageAttributes.ToInitializedDictionary(),
             MD5OfMessageAttributes = source.MD5OfMessageAttributes
         };
 
-        newMessage.Attributes.Remove(MessageSystemAttributeName.ApproximateFirstReceiveTimestamp);
-        newMessage.Attributes.Remove(MessageSystemAttributeName.ApproximateReceiveCount);
-        newMessage.Attributes.Remove(MessageSystemAttributeName.SentTimestamp);
+        newMessage.Attributes?.Remove(MessageSystemAttributeName.ApproximateFirstReceiveTimestamp);
+        newMessage.Attributes?.Remove(MessageSystemAttributeName.ApproximateReceiveCount);
+        newMessage.Attributes?.Remove(MessageSystemAttributeName.SentTimestamp);
         return newMessage;
     }
 

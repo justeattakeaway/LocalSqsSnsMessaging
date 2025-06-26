@@ -1,6 +1,8 @@
+using Amazon;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
+using Amazon.Util;
 
 namespace LocalSqsSnsMessaging.Tests.Verification;
 #pragma warning disable CA1724
@@ -18,7 +20,7 @@ public static class ClientFactory
                 ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, localstackPort)
             });
     }
-    
+
     public static IAmazonSimpleNotificationService CreateSnsClient(string accountId, int localstackPort)
     {
         return new AmazonSimpleNotificationServiceClient(

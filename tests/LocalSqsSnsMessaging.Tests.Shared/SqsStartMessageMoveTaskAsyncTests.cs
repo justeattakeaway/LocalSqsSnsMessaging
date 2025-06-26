@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
+using Amazon;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Shouldly;
@@ -76,7 +77,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         var secondMessages = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl });
         await AdvanceTime(TimeSpan.FromSeconds(1));
-        Assert.Null(secondMessages.Messages);
+        secondMessages.Messages.ShouldBeUninitialized();
     }
 
     private async Task<string> GetQueueArnFromUrl(string queueUrl)
@@ -109,7 +110,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         // Check that the message is no longer in the source queue (DLQ)
         var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _errorQueueUrl }, TestContext.Current.CancellationToken);
-        Assert.Null(sourceReceiveResult.Messages);
+        sourceReceiveResult.Messages.ShouldBeUninitialized();
 
         // Check that the message is now in the main queue
         var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl, MaxNumberOfMessages = 10}, TestContext.Current.CancellationToken);
@@ -181,7 +182,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         // Check that the main queue is still empty
         var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl }, TestContext.Current.CancellationToken);
-        Assert.Null(mainReceiveResult.Messages);
+        mainReceiveResult.Messages.ShouldBeUninitialized();
     }
 
     [Fact, Trait("Category", "TimeBasedTests")]
@@ -252,7 +253,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         // Check that the source queue (DLQ) is empty
         var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _errorQueueUrl }, TestContext.Current.CancellationToken);
-        Assert.Null(sourceReceiveResult.Messages);
+        sourceReceiveResult.Messages.ShouldBeUninitialized();
     }
 
     [Fact, Trait("Category", "TimeBasedTests")]

@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Amazon;
 using Amazon.Auth.AccessControlPolicy;
 using Amazon.Runtime;
 using Amazon.SQS;
@@ -274,7 +275,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (request.MaxNumberOfMessages < 1)
+        if (request.MaxNumberOfMessages.GetValueOrDefault(1) < 1)
         {
             request.MaxNumberOfMessages = 1;
         }
@@ -300,7 +301,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             {
                 return new ReceiveMessageResponse
                 {
-                    Messages = messages
+                    Messages = messages.ToInitializedList()
                 }.SetCommonProperties();
             }
 
@@ -326,7 +327,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         return new ReceiveMessageResponse
         {
-            Messages = messages,
+            Messages = messages.ToInitializedList(),
         }.SetCommonProperties();
 
         void ReadAvailableMessages()
@@ -334,7 +335,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             while (reader.TryRead(out var message))
             {
                 ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, request.MessageSystemAttributeNames);
-                if (messages is not null && messages.Count >= request.MaxNumberOfMessages)
+                if (messages is not null && messages.Count >= request.MaxNumberOfMessages.GetValueOrDefault(1))
                 {
                     break;
                 }
@@ -367,7 +368,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
     private List<Message> ReceiveFifoMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
     {
-        var messages = new List<Message>();
+        List<Message> messages = [];
 
         foreach (var group in queue.MessageGroups)
         {
@@ -407,8 +408,8 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             Body = source.Body,
             MD5OfBody = source.MD5OfBody,
             ReceiptHandle = source.ReceiptHandle,
-            Attributes = source.Attributes?.ToDictionary(),
-            MessageAttributes = source.MessageAttributes?.ToDictionary(),
+            Attributes = source.Attributes.ToInitializedDictionary(),
+            MessageAttributes = source.MessageAttributes.ToInitializedDictionary(),
             MD5OfMessageAttributes = source.MD5OfMessageAttributes
         };
     }
@@ -435,7 +436,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         if (requestedSystemAttributes is null || requestedSystemAttributes.Count == 0)
         {
-            message.Attributes = null;
+            message.Attributes = ((Dictionary<string, string>?)null).ToInitializedDictionary();
             return;
         }
 
@@ -1015,7 +1016,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         return Task.FromResult(new ListQueueTagsResponse
         {
-            Tags = queue.Tags is null ? null : new Dictionary<string, string>(queue.Tags)
+            Tags = queue.Tags.ToInitializedDictionary()
         }.SetCommonProperties());
     }
 
