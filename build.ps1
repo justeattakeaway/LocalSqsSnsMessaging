@@ -74,17 +74,9 @@ function DotNetTest {
 
     $additionalArgs = @()
 
-    $isGitHubActions = ![string]::IsNullOrEmpty($env:GITHUB_SHA);
-
-    if ($isGitHubActions -eq $true) {
-        $additionalArgs += "--logger"
-        $additionalArgs += "GitHubActions;report-warnings=false"
-    }
-
     & $dotnet test $Project `
         --configuration "Release" `
         $additionalArgs `
-        -- RunConfiguration.TestSessionTimeout=120000
 
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet test failed with exit code $LASTEXITCODE"
