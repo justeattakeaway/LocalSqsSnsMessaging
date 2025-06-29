@@ -9,6 +9,7 @@ internal static class AwsConfigInitializer
     [ModuleInitializer]
     public static void Initialize()
     {
-        AWSConfigs.InitializeCollections = true;
+        // This lets us easily test between initialized and uninitialized collections.
+        AWSConfigs.InitializeCollections = false;
     }
 }

@@ -1,8 +1,6 @@
-﻿using Amazon;
-using Amazon.SQS;
+﻿using Amazon.SQS;
 using Amazon.SQS.Model;
 using Shouldly;
-using Xunit;
 
 namespace LocalSqsSnsMessaging.Tests;
 
@@ -28,8 +26,8 @@ public abstract class SqsQueueTagsTests
         });
     }
 
-    [Fact]
-    public async Task TagQueueAsync_ValidTags_TagsAreApplied()
+    [Test]
+    public async Task TagQueueAsync_ValidTags_TagsAreApplied(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
@@ -45,19 +43,19 @@ public abstract class SqsQueueTagsTests
         {
             QueueUrl = _queueUrl,
             Tags = tags
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Verify tags were applied
         var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
         {
             QueueUrl = _queueUrl
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         listTagsResponse.Tags.ToDictionary().ShouldBeEquivalentTo(tags);
     }
 
-    [Fact]
-    public async Task TagQueueAsync_InvalidQueueUrl_ThrowsException()
+    [Test]
+    public async Task TagQueueAsync_InvalidQueueUrl_ThrowsException(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
@@ -71,11 +69,11 @@ public abstract class SqsQueueTagsTests
             {
                 QueueUrl = "https://sqs.us-east-1.amazonaws.com/invalid-queue",
                 Tags = tags
-            }, TestContext.Current.CancellationToken));
+            }, cancellationToken));
     }
 
-    [Fact]
-    public async Task UntagQueueAsync_ExistingTags_TagsAreRemoved()
+    [Test]
+    public async Task UntagQueueAsync_ExistingTags_TagsAreRemoved(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
@@ -91,28 +89,28 @@ public abstract class SqsQueueTagsTests
         {
             QueueUrl = _queueUrl,
             Tags = initialTags
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Remove specific tags
         await Sqs.UntagQueueAsync(new UntagQueueRequest
         {
             QueueUrl = _queueUrl,
             TagKeys = ["Environment", "Team"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Verify only non-removed tags remain
         var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
         {
             QueueUrl = _queueUrl
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         listTagsResponse.Tags.Count.ShouldBe(1);
         listTagsResponse.Tags.ShouldContainKey("Cost-Center");
         listTagsResponse.Tags["Cost-Center"].ShouldBe("12345");
     }
 
-    [Fact]
-    public async Task UntagQueueAsync_NonexistentTags_NoError()
+    [Test]
+    public async Task UntagQueueAsync_NonexistentTags_NoError(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
@@ -121,32 +119,32 @@ public abstract class SqsQueueTagsTests
         {
             QueueUrl = _queueUrl,
             TagKeys = ["NonexistentTag1", "NonexistentTag2"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Verify no tags exist
         var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
         {
             QueueUrl = _queueUrl
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         listTagsResponse.Tags.ShouldBeUninitialized();
     }
 
-    [Fact]
-    public async Task ListQueueTagsAsync_NoTags_ReturnsEmptyDictionary()
+    [Test]
+    public async Task ListQueueTagsAsync_NoTags_ReturnsEmptyDictionary(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
         var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
         {
             QueueUrl = _queueUrl
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         listTagsResponse.Tags.ShouldBeUninitialized();
     }
 
-    [Fact]
-    public async Task TagQueueAsync_UpdateExistingTag_TagValueIsUpdated()
+    [Test]
+    public async Task TagQueueAsync_UpdateExistingTag_TagValueIsUpdated(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
@@ -158,7 +156,7 @@ public abstract class SqsQueueTagsTests
             {
                 ["Environment"] = "Development"
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Update tag value
         await Sqs.TagQueueAsync(new TagQueueRequest
@@ -168,20 +166,20 @@ public abstract class SqsQueueTagsTests
             {
                 ["Environment"] = "Production"
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Verify tag was updated
         var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
         {
             QueueUrl = _queueUrl
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         listTagsResponse.Tags.Count.ShouldBe(1);
         listTagsResponse.Tags["Environment"].ShouldBe("Production");
     }
 
-    [Fact]
-    public async Task TagQueueAsync_MaximumTags_Success()
+    [Test]
+    public async Task TagQueueAsync_MaximumTags_Success(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
@@ -196,19 +194,19 @@ public abstract class SqsQueueTagsTests
         {
             QueueUrl = _queueUrl,
             Tags = tags
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
         {
             QueueUrl = _queueUrl
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         listTagsResponse.Tags.Count.ShouldBe(50);
         listTagsResponse.Tags.ToDictionary().ShouldBeEquivalentTo(tags);
     }
 
-    [Fact]
-    public async Task TagQueueAsync_EmptyTagValue_Success()
+    [Test]
+    public async Task TagQueueAsync_EmptyTagValue_Success(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
@@ -221,19 +219,19 @@ public abstract class SqsQueueTagsTests
         {
             QueueUrl = _queueUrl,
             Tags = tags
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
         {
             QueueUrl = _queueUrl
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         listTagsResponse.Tags.ShouldContainKey("EmptyTag");
         listTagsResponse.Tags["EmptyTag"].ShouldBeEmpty();
     }
 
-    [Fact]
-    public async Task TagQueueAsync_NullTagValue_Success()
+    [Test]
+    public async Task TagQueueAsync_NullTagValue_Success(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
@@ -246,18 +244,18 @@ public abstract class SqsQueueTagsTests
         {
             QueueUrl = _queueUrl,
             Tags = tags
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
         {
             QueueUrl = _queueUrl
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         listTagsResponse.Tags.ShouldBeEmpty();
     }
 
-    [Fact]
-    public async Task TagQueueAsync_UpdateTagToEmptyValue_Success()
+    [Test]
+    public async Task TagQueueAsync_UpdateTagToEmptyValue_Success(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
@@ -269,7 +267,7 @@ public abstract class SqsQueueTagsTests
             {
                 ["TestTag"] = "InitialValue"
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Update tag to empty value
         await Sqs.TagQueueAsync(new TagQueueRequest
@@ -279,12 +277,12 @@ public abstract class SqsQueueTagsTests
             {
                 ["TestTag"] = string.Empty
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
         {
             QueueUrl = _queueUrl
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         listTagsResponse.Tags.ShouldContainKey("TestTag");
         listTagsResponse.Tags["TestTag"].ShouldBeEmpty();

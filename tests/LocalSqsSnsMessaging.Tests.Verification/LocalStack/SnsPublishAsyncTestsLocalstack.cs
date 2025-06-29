@@ -1,24 +1,21 @@
-using System.Diagnostics;
-
+#pragma warning disable CA1711
 namespace LocalSqsSnsMessaging.Tests.Verification.LocalStack;
 
-// ReSharper disable once UnusedType.Global
-#pragma warning disable CA1711
-[Collection(AspireTestCollection.Name)]
+[InheritsTests]
 public class SnsPublishAsyncTestsLocalStack : SnsPublishAsyncTests
-#pragma warning restore CA1711
 {
-    public SnsPublishAsyncTestsLocalStack(AspireFixture aspireFixture, ITestOutputHelper testOutputHelper) : base(testOutputHelper)
+    [ClassDataSource<AspireFixture>(Shared = SharedType.PerTestSession)]
+    public required AspireFixture AspireFixture { get; set; }
+
+    [Before(Test)]
+    public void BeforeEachTest()
     {
-        ArgumentNullException.ThrowIfNull(aspireFixture);
-        
 #pragma warning disable CA5394
         AccountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
 #pragma warning restore CA5394
-        Debug.Assert(testOutputHelper != null);
-        testOutputHelper.WriteLine($"AccountId: {AccountId}");
-        Sns = ClientFactory.CreateSnsClient(AccountId, aspireFixture.LocalStackPort!.Value);
-        Sqs = ClientFactory.CreateSqsClient(AccountId, aspireFixture.LocalStackPort!.Value);    
+        Console.WriteLine($"AccountId: {AccountId}");
+        Sns = ClientFactory.CreateSnsClient(AccountId, AspireFixture.LocalStackPort!.Value);
+        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.LocalStackPort!.Value);
     }
 
     protected override bool SupportsAttributeSizeValidation() => true;

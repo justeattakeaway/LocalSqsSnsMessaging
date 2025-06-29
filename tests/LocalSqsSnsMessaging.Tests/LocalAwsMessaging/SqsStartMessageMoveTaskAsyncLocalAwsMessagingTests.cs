@@ -2,11 +2,11 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace LocalSqsSnsMessaging.Tests.LocalAwsMessaging;
 
-// ReSharper disable once UnusedType.Global
+[InheritsTests]
 public class SqsStartMessageMoveTaskAsyncLocalAwsMessagingTests : SqsStartMessageMoveTaskAsyncTests
 {
     private readonly FakeTimeProvider _timeProvider;
-    
+
     public SqsStartMessageMoveTaskAsyncLocalAwsMessagingTests()
     {
         _timeProvider = new FakeTimeProvider();

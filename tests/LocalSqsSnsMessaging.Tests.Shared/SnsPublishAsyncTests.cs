@@ -1,34 +1,26 @@
 ﻿using System.Security.Cryptography;
 using System.Text.Json;
-using Amazon;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Shouldly;
-using Xunit;
 using MessageAttributeValue = Amazon.SimpleNotificationService.Model.MessageAttributeValue;
 
 namespace LocalSqsSnsMessaging.Tests;
 
 public abstract class SnsPublishAsyncTests
 {
-    private readonly ITestOutputHelper _testOutputHelper;
     protected IAmazonSimpleNotificationService Sns = null!;
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
-
-    protected SnsPublishAsyncTests(ITestOutputHelper testOutputHelper)
-    {
-        _testOutputHelper = testOutputHelper;
-    }
 
     // LocalStack throws a different exception when validating on publish.
     // This method allows us to deviate from this behaviour until support is added to our implementation.
     protected abstract bool SupportsAttributeSizeValidation();
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task PublishAsync_WithRawDelivery_ShouldDeliverMessageDirectly()
+    [Test, Category("TimeBasedTests")]
+    public async Task PublishAsync_WithRawDelivery_ShouldDeliverMessageDirectly(CancellationToken cancellationToken)
     {
         // Arrange
         var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:MyTopic";
@@ -47,13 +39,13 @@ public abstract class SnsPublishAsyncTests
         };
 
         // Act
-        var response = await Sns.PublishAsync(request, TestContext.Current.CancellationToken);
+        var response = await Sns.PublishAsync(request, cancellationToken);
 
         // Assert
         response.MessageId.ShouldNotBeNullOrEmpty();
 
         var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = "MyQueue" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
         await WaitAsync(TimeSpan.FromMilliseconds(100));
@@ -62,16 +54,16 @@ public abstract class SnsPublishAsyncTests
         {
             QueueUrl = queueUrl,
             MessageAttributeNames = ["All"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
-        var sqsMessage = Assert.Single(sqsMessages.Messages);
-        sqsMessage.Body.ShouldBe("Test message");
+        var sqsMessage = await Assert.That(sqsMessages.Messages).HasSingleItem();
+        sqsMessage!.Body.ShouldBe("Test message");
         sqsMessage.MessageAttributes.ShouldContainKey("TestAttribute");
         sqsMessage.MessageAttributes["TestAttribute"].StringValue.ShouldBe("TestValue");
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task PublishAsync_WithRawDelivery_ShouldCalculateMD5OfBody()
+    [Test, Category("TimeBasedTests")]
+    public async Task PublishAsync_WithRawDelivery_ShouldCalculateMD5OfBody(CancellationToken cancellationToken)
     {
         // Arrange
         var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:MyTopic";
@@ -92,13 +84,13 @@ public abstract class SnsPublishAsyncTests
 #pragma warning restore CA1308
 
         // Act
-        var response = await Sns.PublishAsync(request, TestContext.Current.CancellationToken);
+        var response = await Sns.PublishAsync(request, cancellationToken);
 
         // Assert
         response.MessageId.ShouldNotBeNullOrEmpty();
 
         var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = "MyQueue" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
         await WaitAsync(TimeSpan.FromMilliseconds(100));
@@ -107,14 +99,14 @@ public abstract class SnsPublishAsyncTests
         {
             QueueUrl = queueUrl,
             MessageAttributeNames = ["All"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
-        var sqsMessage = Assert.Single(sqsMessages.Messages);
-        sqsMessage.MD5OfBody.ShouldBe(expectedHash);
+        var sqsMessage = await Assert.That(sqsMessages.Messages).HasSingleItem();
+        sqsMessage!.MD5OfBody.ShouldBe(expectedHash);
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task PublishAsync_WithNonRawDelivery_ShouldWrapMessageInSNSFormat()
+    [Test, Category("TimeBasedTests")]
+    public async Task PublishAsync_WithNonRawDelivery_ShouldWrapMessageInSNSFormat(CancellationToken cancellationToken)
     {
         // Arrange
         var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:MyTopic";
@@ -134,13 +126,13 @@ public abstract class SnsPublishAsyncTests
         };
 
         // Act
-        var response = await Sns.PublishAsync(request, TestContext.Current.CancellationToken);
+        var response = await Sns.PublishAsync(request, cancellationToken);
 
         // Assert
         response.MessageId.ShouldNotBeNullOrEmpty();
 
         var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = "MyQueue" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
         await WaitAsync(TimeSpan.FromMilliseconds(100));
@@ -149,12 +141,12 @@ public abstract class SnsPublishAsyncTests
         {
             QueueUrl = queueUrl,
             MessageAttributeNames = ["All"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
-        var sqsMessage = Assert.Single(sqsMessages.Messages);
+        var sqsMessage = await Assert.That(sqsMessages.Messages).HasSingleItem();
 
         // Parse the JSON body using JsonDocument
-        using var jsonDocument = JsonDocument.Parse(sqsMessage.Body);
+        using var jsonDocument = JsonDocument.Parse(sqsMessage!.Body);
         var root = jsonDocument.RootElement;
 
         root.GetProperty("Type").GetString().ShouldBe("Notification");
@@ -170,8 +162,8 @@ public abstract class SnsPublishAsyncTests
         messageAttributes.GetProperty("TestAttribute").GetProperty("Value").GetString().ShouldBe("TestValue");
     }
 
-    [Fact]
-    public async Task PublishAsync_WithNonExistentTopic_ShouldThrowException()
+    [Test]
+    public async Task PublishAsync_WithNonExistentTopic_ShouldThrowException(CancellationToken cancellationToken)
     {
         // Arrange
         var nonExistentTopicArn = $"arn:aws:sns:us-east-1:{AccountId}:NonExistentTopic";
@@ -183,7 +175,7 @@ public abstract class SnsPublishAsyncTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            Sns.PublishAsync(request, TestContext.Current.CancellationToken));
+            Sns.PublishAsync(request, cancellationToken));
     }
 
     private async Task SetupTopicAndQueue(string topicArn, string queueArn, bool isRawDelivery)
@@ -208,8 +200,8 @@ public abstract class SnsPublishAsyncTests
     }
 
     // Topic Attributes
-    [Fact]
-    public async Task SetTopicAttributes_ShouldSetAndRetrieveAttributes()
+    [Test]
+    public async Task SetTopicAttributes_ShouldSetAndRetrieveAttributes(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "TestTopic";
@@ -217,7 +209,7 @@ public abstract class SnsPublishAsyncTests
 
         // Create the topic
         var createTopicResponse = await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         createTopicResponse.TopicArn.ShouldBe(topicArn);
 
         // Act - Set topic attributes
@@ -226,7 +218,7 @@ public abstract class SnsPublishAsyncTests
             TopicArn = topicArn,
             AttributeName = "DisplayName",
             AttributeValue = "Test Display Name"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         await Sns.SetTopicAttributesAsync(new SetTopicAttributesRequest
         {
@@ -249,13 +241,13 @@ public abstract class SnsPublishAsyncTests
                     disableSubscriptionOverrides = false
                 }
             })
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Assert - Retrieve and check topic attributes
         var getTopicAttributesResponse = await Sns.GetTopicAttributesAsync(new GetTopicAttributesRequest
         {
             TopicArn = topicArn
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         getTopicAttributesResponse.Attributes.ShouldContainKey("DisplayName");
         getTopicAttributesResponse.Attributes["DisplayName"].ShouldBe("Test Display Name");
@@ -271,8 +263,8 @@ public abstract class SnsPublishAsyncTests
             .ShouldBe(3);
     }
 
-    [Fact]
-    public async Task SetTopicAttributes_ForNonExistentTopic_ShouldThrowException()
+    [Test]
+    public async Task SetTopicAttributes_ForNonExistentTopic_ShouldThrowException(CancellationToken cancellationToken)
     {
         // Arrange
         var nonExistentTopicArn = $"arn:aws:sns:us-east-1:{AccountId}:NonExistentTopic";
@@ -284,12 +276,12 @@ public abstract class SnsPublishAsyncTests
                 TopicArn = nonExistentTopicArn,
                 AttributeName = "DisplayName",
                 AttributeValue = "Some Name"
-            }, TestContext.Current.CancellationToken));
+            }, cancellationToken));
     }
 
     // Subscriptions
-    [Fact]
-    public async Task GetSubscriptionAttributes_ShouldRetrieveCorrectAttributes()
+    [Test]
+    public async Task GetSubscriptionAttributes_ShouldRetrieveCorrectAttributes(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "TestTopic";
@@ -298,9 +290,8 @@ public abstract class SnsPublishAsyncTests
         var queueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{queueName}";
 
         // Create topic and queue
-        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, TestContext.Current.CancellationToken);
-        await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName },
-            TestContext.Current.CancellationToken);
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, cancellationToken);
+        await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName }, cancellationToken);
 
         // Subscribe queue to topic
         var subscribeResponse = await Sns.SubscribeAsync(new SubscribeRequest
@@ -313,13 +304,13 @@ public abstract class SnsPublishAsyncTests
                 ["RawMessageDelivery"] = "true",
                 ["FilterPolicy"] = JsonSerializer.Serialize(new { attribute = (string[]) ["value1", "value2"] })
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Act
         var getAttributesResponse = await Sns.GetSubscriptionAttributesAsync(new GetSubscriptionAttributesRequest
         {
             SubscriptionArn = subscribeResponse.SubscriptionArn
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Assert
         getAttributesResponse.Attributes.ShouldContainKeyAndValue("SubscriptionArn", subscribeResponse.SubscriptionArn);
@@ -335,8 +326,8 @@ public abstract class SnsPublishAsyncTests
         filterPolicy.GetProperty("attribute").EnumerateArray().Select(x => x.GetString()).ShouldBe(["value1", "value2"]);
     }
 
-    [Fact]
-    public async Task GetSubscriptionAttributes_ForNonExistentSubscription_ShouldThrowException()
+    [Test]
+    public async Task GetSubscriptionAttributes_ForNonExistentSubscription_ShouldThrowException(CancellationToken cancellationToken)
     {
         // Arrange
         var nonExistentSubscriptionArn =
@@ -347,11 +338,11 @@ public abstract class SnsPublishAsyncTests
             Sns.GetSubscriptionAttributesAsync(new GetSubscriptionAttributesRequest
             {
                 SubscriptionArn = nonExistentSubscriptionArn
-            }, TestContext.Current.CancellationToken));
+            }, cancellationToken));
     }
 
-    [Fact]
-    public async Task SetSubscriptionAttributes_ShouldUpdateAttributes()
+    [Test]
+    public async Task SetSubscriptionAttributes_ShouldUpdateAttributes(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "TestTopic";
@@ -359,16 +350,15 @@ public abstract class SnsPublishAsyncTests
         var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
         var queueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{queueName}";
 
-        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, TestContext.Current.CancellationToken);
-        await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName },
-            TestContext.Current.CancellationToken);
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, cancellationToken);
+        await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName }, cancellationToken);
 
         var subscribeResponse = await Sns.SubscribeAsync(new SubscribeRequest
         {
             TopicArn = topicArn,
             Protocol = "sqs",
             Endpoint = queueArn
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Act
         await Sns.SetSubscriptionAttributesAsync(new SetSubscriptionAttributesRequest
@@ -376,7 +366,7 @@ public abstract class SnsPublishAsyncTests
             SubscriptionArn = subscribeResponse.SubscriptionArn,
             AttributeName = "RawMessageDelivery",
             AttributeValue = "true"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var newFilterPolicy = JsonSerializer.Serialize(new { attribute = (string[]) ["newValue"] });
         await Sns.SetSubscriptionAttributesAsync(new SetSubscriptionAttributesRequest
@@ -384,13 +374,13 @@ public abstract class SnsPublishAsyncTests
             SubscriptionArn = subscribeResponse.SubscriptionArn,
             AttributeName = "FilterPolicy",
             AttributeValue = newFilterPolicy
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Assert
         var getAttributesResponse = await Sns.GetSubscriptionAttributesAsync(new GetSubscriptionAttributesRequest
         {
             SubscriptionArn = subscribeResponse.SubscriptionArn
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         getAttributesResponse.Attributes.ShouldContainKey("RawMessageDelivery");
         getAttributesResponse.Attributes["RawMessageDelivery"].ShouldBe("true", StringCompareShould.IgnoreCase);
@@ -399,8 +389,8 @@ public abstract class SnsPublishAsyncTests
     }
 
     // List Subscriptions
-    [Fact]
-    public async Task ListSubscriptionsAsync_ShouldReturnAllSubscriptions()
+    [Test]
+    public async Task ListSubscriptionsAsync_ShouldReturnAllSubscriptions(CancellationToken cancellationToken)
     {
         // Arrange
         var topic1Name = "TestTopic1";
@@ -410,27 +400,26 @@ public abstract class SnsPublishAsyncTests
         var topic2Arn = $"arn:aws:sns:us-east-1:{AccountId}:{topic2Name}";
         var queueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{queueName}";
 
-        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topic1Name }, TestContext.Current.CancellationToken);
-        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topic2Name }, TestContext.Current.CancellationToken);
-        await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName },
-            TestContext.Current.CancellationToken);
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topic1Name }, cancellationToken);
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topic2Name }, cancellationToken);
+        await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName }, cancellationToken);
 
         var sub1 = await Sns.SubscribeAsync(new SubscribeRequest
         {
             TopicArn = topic1Arn,
             Protocol = "sqs",
             Endpoint = queueArn
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var sub2 = await Sns.SubscribeAsync(new SubscribeRequest
         {
             TopicArn = topic2Arn,
             Protocol = "sqs",
             Endpoint = queueArn
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Act
-        var listResponse = await Sns.ListSubscriptionsAsync(TestContext.Current.CancellationToken);
+        var listResponse = await Sns.ListSubscriptionsAsync(cancellationToken);
 
         // Assert
         listResponse.Subscriptions.Count.ShouldBeGreaterThanOrEqualTo(2);
@@ -442,8 +431,8 @@ public abstract class SnsPublishAsyncTests
         listResponse.Subscriptions.ShouldAllBe(s => s.Endpoint == queueArn);
     }
 
-    [Fact]
-    public async Task ListSubscriptionsByTopicAsync_ShouldReturnSubscriptionsForSpecificTopic()
+    [Test]
+    public async Task ListSubscriptionsByTopicAsync_ShouldReturnSubscriptionsForSpecificTopic(CancellationToken cancellationToken)
     {
         // Arrange
         var topic1Name = "TestTopic1";
@@ -453,30 +442,29 @@ public abstract class SnsPublishAsyncTests
         var topic2Arn = $"arn:aws:sns:us-east-1:{AccountId}:{topic2Name}";
         var queueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{queueName}";
 
-        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topic1Name }, TestContext.Current.CancellationToken);
-        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topic2Name }, TestContext.Current.CancellationToken);
-        await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName },
-            TestContext.Current.CancellationToken);
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topic1Name }, cancellationToken);
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topic2Name }, cancellationToken);
+        await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName }, cancellationToken);
 
         var sub1 = await Sns.SubscribeAsync(new SubscribeRequest
         {
             TopicArn = topic1Arn,
             Protocol = "sqs",
             Endpoint = queueArn
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         await Sns.SubscribeAsync(new SubscribeRequest
         {
             TopicArn = topic2Arn,
             Protocol = "sqs",
             Endpoint = queueArn
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Act
         var listResponse = await Sns.ListSubscriptionsByTopicAsync(new ListSubscriptionsByTopicRequest
         {
             TopicArn = topic1Arn
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Assert
         listResponse.Subscriptions.Count.ShouldBe(1);
@@ -486,29 +474,28 @@ public abstract class SnsPublishAsyncTests
         listResponse.Subscriptions.ShouldAllBe(s => s.Endpoint == queueArn);
     }
 
-    [Fact]
-    public async Task ListSubscriptionsAsync_WithMoreThan100Subscriptions_ShouldReturnPaginatedResults()
+    [Test]
+    public async Task ListSubscriptionsAsync_WithMoreThan100Subscriptions_ShouldReturnPaginatedResults(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "TestTopic";
         var queueNamePrefix = "TestQueue";
         var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
 
-        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, TestContext.Current.CancellationToken);
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, cancellationToken);
 
         // Create 150 subscriptions to ensure pagination
         for (int i = 0; i < 150; i++)
         {
             var queueName = $"{queueNamePrefix}{i}";
             var queueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{queueName}";
-            await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName },
-                TestContext.Current.CancellationToken);
+            await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName }, cancellationToken);
             await Sns.SubscribeAsync(new SubscribeRequest
             {
                 TopicArn = topicArn,
                 Protocol = "sqs",
                 Endpoint = queueArn
-            }, TestContext.Current.CancellationToken);
+            }, cancellationToken);
         }
 
         // Act
@@ -516,11 +503,11 @@ public abstract class SnsPublishAsyncTests
             await Sns.Paginators
                 .ListSubscriptions(new ListSubscriptionsRequest())
                 .Subscriptions
-                .ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
+                .ToListAsync(cancellationToken: cancellationToken);
 
         // Assert
         allSubscriptions.Count.ShouldBe(150, "because we created 150 subscriptions");
-        Assert.Distinct(allSubscriptions.Select(s => s.SubscriptionArn));
+        await Assert.That(allSubscriptions.Select(s => s.SubscriptionArn)).HasDistinctItems();
         allSubscriptions.Count(s => s.TopicArn == topicArn).ShouldBe(150);
         allSubscriptions.ShouldAllBe(s => s.Protocol == "sqs");
         allSubscriptions.ShouldAllBe(s => s.Endpoint.StartsWith($"arn:aws:sqs:us-east-1:{AccountId}:{queueNamePrefix}"));
@@ -529,8 +516,8 @@ public abstract class SnsPublishAsyncTests
     protected abstract Task WaitAsync(TimeSpan delay);
 
     // FIFO scenarios
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task PublishAsync_ToFifoTopic_ShouldDeliverMessageToFifoQueue_InOrder()
+    [Test, Category("TimeBasedTests")]
+    public async Task PublishAsync_ToFifoTopic_ShouldDeliverMessageToFifoQueue_InOrder(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "MyFifoTopic.fifo";
@@ -569,15 +556,14 @@ public abstract class SnsPublishAsyncTests
         // Act
         foreach (var message in messages)
         {
-            await Sns.PublishAsync(message, TestContext.Current.CancellationToken);
+            await Sns.PublishAsync(message, cancellationToken);
 
             // Add a small delay between publishes to ensure distinct SendTimestamp
             await WaitAsync(TimeSpan.FromMilliseconds(100));
         }
 
         // Assert
-        var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = queueName },
-            TestContext.Current.CancellationToken);
+        var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = queueName }, cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
         await WaitAsync(TimeSpan.FromMilliseconds(100));
@@ -587,21 +573,21 @@ public abstract class SnsPublishAsyncTests
             QueueUrl = queueUrl,
             MaxNumberOfMessages = 10,
             MessageSystemAttributeNames = ["All"]
-        }, TestContext.Current.CancellationToken)).Messages;
+        }, cancellationToken)).Messages;
 
         receivedMessages.Count.ShouldBe(3, "we published 3 messages");
 
         // Detailed logging of received messages
-        _testOutputHelper.WriteLine("Received messages in order:");
+        Console.WriteLine("Received messages in order:");
         foreach (var msg in receivedMessages)
         {
-            _testOutputHelper.WriteLine($"Body: {msg.Body}");
-            _testOutputHelper.WriteLine($"MessageId: {msg.MessageId}");
-            _testOutputHelper.WriteLine($"SequenceNumber: {msg.Attributes?["SequenceNumber"]}");
-            _testOutputHelper.WriteLine($"MessageDeduplicationId: {msg.Attributes?["MessageDeduplicationId"]}");
-            _testOutputHelper.WriteLine($"MessageGroupId: {msg.Attributes?["MessageGroupId"]}");
-            _testOutputHelper.WriteLine($"SentTimestamp: {msg.Attributes?["SentTimestamp"]}");
-            _testOutputHelper.WriteLine("---");
+            Console.WriteLine($"Body: {msg.Body}");
+            Console.WriteLine($"MessageId: {msg.MessageId}");
+            Console.WriteLine($"SequenceNumber: {msg.Attributes?["SequenceNumber"]}");
+            Console.WriteLine($"MessageDeduplicationId: {msg.Attributes?["MessageDeduplicationId"]}");
+            Console.WriteLine($"MessageGroupId: {msg.Attributes?["MessageGroupId"]}");
+            Console.WriteLine($"SentTimestamp: {msg.Attributes?["SentTimestamp"]}");
+            Console.WriteLine("---");
         }
 
         // Check the order based on SequenceNumber
@@ -622,14 +608,14 @@ public abstract class SnsPublishAsyncTests
         if (receivedMessages[1].Body != "Second message" ||
             !string.Equals(receivedMessages[2].Body, "Third message", StringComparison.Ordinal))
         {
-            _testOutputHelper.WriteLine("Warning: Messages were not received in the exact order they were published.");
-            _testOutputHelper.WriteLine("This might be due to how FIFO queues handle nearly simultaneous publishes.");
-            _testOutputHelper.WriteLine("Consider the SequenceNumber and SentTimestamp for the correct ordering.");
+            Console.WriteLine("Warning: Messages were not received in the exact order they were published.");
+            Console.WriteLine("This might be due to how FIFO queues handle nearly simultaneous publishes.");
+            Console.WriteLine("Consider the SequenceNumber and SentTimestamp for the correct ordering.");
         }
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task PublishAsync_ToFifoTopic_ShouldPreventDuplicates()
+    [Test, Category("TimeBasedTests")]
+    public async Task PublishAsync_ToFifoTopic_ShouldPreventDuplicates(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "DedupFifoTopic.fifo";
@@ -650,12 +636,11 @@ public abstract class SnsPublishAsyncTests
         };
 
         // Act
-        await Sns.PublishAsync(message, TestContext.Current.CancellationToken);
-        await Sns.PublishAsync(message, TestContext.Current.CancellationToken); // Attempt to send duplicate
+        await Sns.PublishAsync(message, cancellationToken);
+        await Sns.PublishAsync(message, cancellationToken); // Attempt to send duplicate
 
         // Assert
-        var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = queueName },
-            TestContext.Current.CancellationToken);
+        var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = queueName }, cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
         await WaitAsync(TimeSpan.FromMilliseconds(100));
@@ -665,15 +650,15 @@ public abstract class SnsPublishAsyncTests
             QueueUrl = queueUrl,
             MaxNumberOfMessages = 10,
             MessageSystemAttributeNames = ["All"]
-        }, TestContext.Current.CancellationToken)).Messages;
+        }, cancellationToken)).Messages;
 
         receivedMessages.Count.ShouldBe(1, "because the second message should be deduplicated");
         receivedMessages[0].Body.ShouldBe("Duplicate message");
         receivedMessages[0].Attributes["MessageDeduplicationId"].ShouldBe(deduplicationId);
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task PublishAsync_ToFifoTopic_WithMultipleMessageGroups_ShouldMaintainOrderWithinGroups()
+    [Test, Category("TimeBasedTests")]
+    public async Task PublishAsync_ToFifoTopic_WithMultipleMessageGroups_ShouldMaintainOrderWithinGroups(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "MultiGroupFifoTopic.fifo";
@@ -718,13 +703,13 @@ public abstract class SnsPublishAsyncTests
         // Act
         foreach (var message in messages)
         {
-            await Sns.PublishAsync(message, TestContext.Current.CancellationToken);
+            await Sns.PublishAsync(message, cancellationToken);
             await WaitAsync(TimeSpan.FromMilliseconds(100));
         }
 
         // Assert
-        var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = queueName },
-            TestContext.Current.CancellationToken);
+        var queueUrlResponse =
+            await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = queueName }, cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
         await WaitAsync(TimeSpan.FromMilliseconds(100));
@@ -734,7 +719,7 @@ public abstract class SnsPublishAsyncTests
             QueueUrl = queueUrl,
             MaxNumberOfMessages = 10,
             MessageSystemAttributeNames = ["All"]
-        }, TestContext.Current.CancellationToken)).Messages;
+        }, cancellationToken)).Messages;
 
         receivedMessages.Count.ShouldBe(4);
 
@@ -784,13 +769,13 @@ public abstract class SnsPublishAsyncTests
         });
     }
 
-    [Fact]
-    public async Task PublishAsync_MessageExceedsMaximumSize_ThrowsInvalidParameterException()
+    [Test]
+    public async Task PublishAsync_MessageExceedsMaximumSize_ThrowsInvalidParameterException(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "TestTopic";
         var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
-        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName });
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, cancellationToken);
 
         var request = new PublishRequest
         {
@@ -800,16 +785,16 @@ public abstract class SnsPublishAsyncTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidParameterException>(() =>
-            Sns.PublishAsync(request, TestContext.Current.CancellationToken));
+            Sns.PublishAsync(request, cancellationToken));
     }
 
-    [Fact]
-    public async Task PublishAsync_MessageAttributesExceedMaximumSize_ThrowsInvalidParameterException()
+    [Test]
+    public async Task PublishAsync_MessageAttributesExceedMaximumSize_ThrowsInvalidParameterException(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "TestTopic";
         var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
-        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName });
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, cancellationToken);
 
         var request = new PublishRequest
         {
@@ -827,7 +812,7 @@ public abstract class SnsPublishAsyncTests
 
         // Act & Assert
         var testAction = () =>
-            Sns.PublishAsync(request, TestContext.Current.CancellationToken);
+            Sns.PublishAsync(request, cancellationToken);
 
         if (SupportsAttributeSizeValidation())
         {
@@ -839,8 +824,8 @@ public abstract class SnsPublishAsyncTests
         }
     }
 
-    [Fact]
-    public async Task PublishAsync_ExactlyMaximumSize_Succeeds()
+    [Test]
+    public async Task PublishAsync_ExactlyMaximumSize_Succeeds(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "TestTopic";
@@ -857,19 +842,19 @@ public abstract class SnsPublishAsyncTests
         };
 
         // Act
-        var response = await Sns.PublishAsync(request, TestContext.Current.CancellationToken);
+        var response = await Sns.PublishAsync(request, cancellationToken);
 
         // Assert
         response.MessageId.ShouldNotBeNullOrEmpty();
     }
 
-    [Fact]
-    public async Task PublishAsync_WithSubjectAndMessageAttributes_ExceedsLimit_ThrowsInvalidParameterException()
+    [Test]
+    public async Task PublishAsync_WithSubjectAndMessageAttributes_ExceedsLimit_ThrowsInvalidParameterException(CancellationToken cancellationToken)
     {
         // Arrange
         var topicName = "TestTopic";
         var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
-        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName });
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, cancellationToken);
 
         var messageBody = new string('x', 200_000);
 
@@ -897,7 +882,7 @@ public abstract class SnsPublishAsyncTests
 
         // Act & Assert
         var testAction = () =>
-            Sns.PublishAsync(request, TestContext.Current.CancellationToken);
+            Sns.PublishAsync(request, cancellationToken);
 
         if (SupportsAttributeSizeValidation())
         {

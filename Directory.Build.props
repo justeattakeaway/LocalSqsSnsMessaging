@@ -26,7 +26,7 @@
     <LangVersion>latest</LangVersion>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <NeutralLanguage>en-US</NeutralLanguage>
-    <NoWarn Condition=" '$(GenerateDocumentationFile)' == 'false' ">$(NoWarn);SA0001</NoWarn>
+    <NoWarn Condition=" '$(GenerateDocumentationFile)' == 'false' ">$(NoWarn);SA0001;CA1303</NoWarn>
     <Nullable>enable</Nullable>
     <PackageIcon>package-icon.png</PackageIcon>
     <PackageProjectUrl Condition=" '$(PackageProjectUrl)' == '' AND '$(GITHUB_ACTIONS)' != '' ">$(GITHUB_SERVER_URL)/$(GITHUB_REPOSITORY)</PackageProjectUrl>
@@ -52,21 +52,12 @@
     <VersionSuffix Condition=" $(GITHUB_REF.StartsWith(`refs/tags/v`)) "></VersionSuffix>
     <FileVersion Condition=" '$(GITHUB_RUN_NUMBER)' != '' ">$(VersionPrefix).$(GITHUB_RUN_NUMBER)</FileVersion>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(BuildingInsideVisualStudio)' != 'true' ">
-    <CollectCoverage>true</CollectCoverage>
-    <CoverletOutputFormat>cobertura,json</CoverletOutputFormat>
-    <CoverletOutputFormat Condition=" '$(GITHUB_ACTIONS)' != '' ">$(CoverletOutputFormat),opencover</CoverletOutputFormat>
-    <Exclude>[System.*]*,[*.Test*]*,[xunit.*]*</Exclude>
-  </PropertyGroup>
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)$(PackageIcon)" Pack="True" PackagePath="" />
-    <None Include="$(MSBuildThisFileDirectory)$(PackageReadmeFile)" Pack="True" PackagePath="" />
+    <None Include="$(MSBuildThisFileDirectory)$(PackageIcon)" Pack="True" PackagePath="" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)$(PackageReadmeFile)" Pack="True" PackagePath="" Visible="false" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="System.Globalization" />
     <Using Include="System.Text" />
-  </ItemGroup>
-  <ItemGroup Condition=" '$(IsTestProject)' == 'true' ">
-    <Using Include="Xunit" />
   </ItemGroup>
 </Project>
