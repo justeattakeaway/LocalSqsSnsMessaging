@@ -43,8 +43,8 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
 #pragma warning disable CA5394
         var accountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
 #pragma warning restore CA5394
-        var sns = ClientFactory.CreateSnsClient(accountId, this.LocalStackPort!.Value);
-        var sqs = ClientFactory.CreateSqsClient(accountId, this.LocalStackPort!.Value);
+        using var sns = ClientFactory.CreateSnsClient(accountId, this.LocalStackPort!.Value);
+        using var sqs = ClientFactory.CreateSqsClient(accountId, this.LocalStackPort!.Value);
         await sns.ListTopicsAsync();
         await sqs.ListQueuesAsync(new ListQueuesRequest());
     }
