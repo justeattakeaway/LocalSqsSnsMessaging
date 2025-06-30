@@ -75,7 +75,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         var secondMessages = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl });
         await AdvanceTime(TimeSpan.FromSeconds(1));
-        secondMessages.Messages.ShouldBeUninitialized();
+        secondMessages.Messages.ShouldBeEmptyAwsCollection();
     }
 
     private async Task<string> GetQueueArnFromUrl(string queueUrl)
@@ -108,7 +108,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         // Check that the message is no longer in the source queue (DLQ)
         var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _errorQueueUrl }, cancellationToken);
-        sourceReceiveResult.Messages.ShouldBeUninitialized();
+        sourceReceiveResult.Messages.ShouldBeEmptyAwsCollection();
 
         // Check that the message is now in the main queue
         var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl, MaxNumberOfMessages = 10}, cancellationToken);
@@ -180,7 +180,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         // Check that the main queue is still empty
         var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl }, cancellationToken);
-        mainReceiveResult.Messages.ShouldBeUninitialized();
+        mainReceiveResult.Messages.ShouldBeEmptyAwsCollection();
     }
 
     [Test, Category("TimeBasedTests")]
@@ -251,7 +251,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
 
         // Check that the source queue (DLQ) is empty
         var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _errorQueueUrl }, cancellationToken);
-        sourceReceiveResult.Messages.ShouldBeUninitialized();
+        sourceReceiveResult.Messages.ShouldBeEmptyAwsCollection();
     }
 
     [Test, Category("TimeBasedTests")]

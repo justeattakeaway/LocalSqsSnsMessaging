@@ -8,7 +8,6 @@
       <IsPackable>false</IsPackable>
       <IsTestProject>true</IsTestProject>
       <NoWarn>$(NoWarn);CA1051;CA2007;CA1707</NoWarn>
-      <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     </PropertyGroup>
 
     <ItemGroup>

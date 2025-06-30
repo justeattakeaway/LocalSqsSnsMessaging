@@ -29,7 +29,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
 
-        result.Messages.ShouldBeUninitialized();
+        result.Messages.ShouldBeEmptyAwsCollection();
     }
 
     [Test]
@@ -95,7 +95,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         var result = await task;
 
-        result.Messages.ShouldBeUninitialized();
+        result.Messages.ShouldBeEmptyAwsCollection();
     }
 
     [Test]
@@ -136,14 +136,14 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Second receive immediately after - should not get any message
         var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
-        result2.Messages.ShouldBeUninitialized();
+        result2.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by 3 seconds (half the visibility timeout)
         await AdvanceTime(TimeSpan.FromSeconds(3));
 
         // Third receive - should still not get any message
         var result3 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
-        result3.Messages.ShouldBeUninitialized();
+        result3.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by another 4 seconds (visibility timeout has now passed)
         await AdvanceTime(TimeSpan.FromSeconds(4));
@@ -172,14 +172,14 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // First receive - should not get any message
         var result1 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
-        result1.Messages.ShouldBeUninitialized();
+        result1.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by 5 seconds
         await AdvanceTime(TimeSpan.FromSeconds(2.5));
 
         // Second receive - should still not get any message
         var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
-        result2.Messages.ShouldBeUninitialized();
+        result2.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by another 5 seconds (message is now visible)
         await AdvanceTime(TimeSpan.FromSeconds(5));
@@ -193,70 +193,62 @@ public abstract class SqsReceiveMessageAsyncTests
     [Test, Category("TimeBasedTests"), Retry(3)]
     public async Task ReceiveMessageAsync_MultipleMessagesWithDifferentDelays(CancellationToken cancellationToken)
     {
+        const int visibilityTimeout = 6; // seconds
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
             cancellationToken)).QueueUrl;
-        var request = new ReceiveMessageRequest
-            { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 6, MaxNumberOfMessages = 10 };
+        var receiveAllImmediately = new ReceiveMessageRequest
+            { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = visibilityTimeout, MaxNumberOfMessages = 10 };
+        var receiveOneImmediately = new ReceiveMessageRequest
+            { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = visibilityTimeout, MaxNumberOfMessages = 1 };
+        var receiveOneWhenAvailable = new ReceiveMessageRequest
+            { QueueUrl = queueUrl, WaitTimeSeconds = 20, VisibilityTimeout = visibilityTimeout, MaxNumberOfMessages = 1 };
 
         // Send messages with different delays
         await Sqs.SendMessageAsync(new SendMessageRequest
-                { QueueUrl = queueUrl, MessageBody = "Message 1", DelaySeconds = 1 },
+                { QueueUrl = queueUrl, MessageBody = "Message 1", DelaySeconds = 2 },
             cancellationToken);
         await Sqs.SendMessageAsync(new SendMessageRequest
-                { QueueUrl = queueUrl, MessageBody = "Message 2", DelaySeconds = 2 },
+                { QueueUrl = queueUrl, MessageBody = "Message 2", DelaySeconds = 4 },
             cancellationToken);
         await Sqs.SendMessageAsync(new SendMessageRequest
-                { QueueUrl = queueUrl, MessageBody = "Message 3", DelaySeconds = 3 },
+                { QueueUrl = queueUrl, MessageBody = "Message 3", DelaySeconds = 6 },
             cancellationToken);
 
-        var result1Task = Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
-            { QueueUrl = queueUrl, WaitTimeSeconds = 20, VisibilityTimeout = 6, MaxNumberOfMessages = 1 }, cancellationToken);
-        await AdvanceTime(TimeSpan.FromSeconds(1));
+        var result1Task = Sqs.ReceiveMessageAsync(receiveOneWhenAvailable, cancellationToken);
+        await AdvanceTime(TimeSpan.FromSeconds(2));
         var result1 = await result1Task;
         result1.Messages.ShouldHaveSingleItem();
         result1.Messages[0].Body.ShouldBe("Message 1");
 
         // Advance time to make the second message visible
-        await AdvanceTime(TimeSpan.FromSeconds(1));
-        var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        await AdvanceTime(TimeSpan.FromSeconds(2));
+        var result2 = await Sqs.ReceiveMessageAsync(receiveAllImmediately, cancellationToken);
         result2.Messages.ShouldHaveSingleItem();
         result2.Messages[0].Body.ShouldBe("Message 2");
 
         // Advance time to make the third message visible
-        await AdvanceTime(TimeSpan.FromSeconds(1));
-        var result3 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        await AdvanceTime(TimeSpan.FromSeconds(2));
+        var result3 = await Sqs.ReceiveMessageAsync(receiveAllImmediately, cancellationToken);
         result3.Messages.ShouldHaveSingleItem();
         result3.Messages[0].Body.ShouldBe("Message 3");
 
         // All message should now not be visible anymore
-        var result4 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
-        result4.Messages.ShouldBeUninitialized();
+        var result4 = await Sqs.ReceiveMessageAsync(receiveAllImmediately, cancellationToken);
+        result4.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time past the visibility timeout of the first message
         await AdvanceTime(TimeSpan.FromSeconds(5));
-        var result5 = await Sqs.ReceiveMessageAsync(
-            new ReceiveMessageRequest
-            {
-                QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 6, MaxNumberOfMessages = 1
-            }, cancellationToken);
+        var result5 = await Sqs.ReceiveMessageAsync(receiveOneImmediately, cancellationToken);
         result5.Messages.ShouldHaveSingleItem().Body.ShouldBe("Message 1");
 
         // Advance time past the visibility timeout of the second message
-        await AdvanceTime(TimeSpan.FromSeconds(1));
-        var result6 = await Sqs.ReceiveMessageAsync(
-            new ReceiveMessageRequest
-            {
-                QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 6, MaxNumberOfMessages = 1
-            }, cancellationToken);
+        await AdvanceTime(TimeSpan.FromSeconds(2));
+        var result6 = await Sqs.ReceiveMessageAsync(receiveOneImmediately, cancellationToken);
         result6.Messages.ShouldHaveSingleItem().Body.ShouldBe("Message 2");
 
         // Advance time past the visibility timeout of the third message
-        await AdvanceTime(TimeSpan.FromSeconds(1));
-        var result7 = await Sqs.ReceiveMessageAsync(
-            new ReceiveMessageRequest
-            {
-                QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 6, MaxNumberOfMessages = 1
-            }, cancellationToken);
+        await AdvanceTime(TimeSpan.FromSeconds(2));
+        var result7 = await Sqs.ReceiveMessageAsync(receiveOneImmediately, cancellationToken);
         result7.Messages.ShouldHaveSingleItem().Body.ShouldBe("Message 3");
     }
 
@@ -421,7 +413,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Try to receive from the main queue - should be empty
         var emptyResult = await Sqs.ReceiveMessageAsync(request, cancellationToken);
-        emptyResult.Messages.ShouldBeUninitialized();
+        emptyResult.Messages.ShouldBeEmptyAwsCollection();
 
         // Check the error queue - the message should be there
         var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl },
@@ -479,12 +471,12 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Try to receive from the main queue - should be empty
         var emptyMainResult = await Sqs.ReceiveMessageAsync(request, cancellationToken);
-        emptyMainResult.Messages.ShouldBeUninitialized();
+        emptyMainResult.Messages.ShouldBeEmptyAwsCollection();
 
         // Check the error queue - should be empty
         var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl },
             cancellationToken);
-        errorQueueResult.Messages.ShouldBeUninitialized();
+        errorQueueResult.Messages.ShouldBeEmptyAwsCollection();
     }
 
     //[Test, Skip("This has never been working, we should fix it in the future")]
@@ -673,7 +665,7 @@ public abstract class SqsReceiveMessageAsyncTests
         var message = result.Messages.ShouldHaveSingleItem();
 
         // Check that no system attributes are present
-        message.Attributes.ShouldBeUninitialized();
+        message.Attributes.ShouldBeEmptyAwsCollection();
     }
 
     [Test]

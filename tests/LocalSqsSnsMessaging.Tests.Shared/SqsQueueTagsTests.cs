@@ -127,7 +127,7 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, cancellationToken);
 
-        listTagsResponse.Tags.ShouldBeUninitialized();
+        listTagsResponse.Tags.ShouldBeEmptyAwsCollection();
     }
 
     [Test]
@@ -140,7 +140,7 @@ public abstract class SqsQueueTagsTests
             QueueUrl = _queueUrl
         }, cancellationToken);
 
-        listTagsResponse.Tags.ShouldBeUninitialized();
+        listTagsResponse.Tags.ShouldBeEmptyAwsCollection();
     }
 
     [Test]

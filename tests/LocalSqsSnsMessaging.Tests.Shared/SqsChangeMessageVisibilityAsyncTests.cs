@@ -39,7 +39,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
 
         // Try to receive the message again immediately (should fail)
         var immediateReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
-        immediateReceiveResult.Messages.ShouldBeUninitialized();
+        immediateReceiveResult.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by 11 seconds
         await AdvanceTime(TimeSpan.FromSeconds(11));
