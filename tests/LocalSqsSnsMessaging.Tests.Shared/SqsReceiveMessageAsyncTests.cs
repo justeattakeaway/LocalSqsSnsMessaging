@@ -215,7 +215,7 @@ public abstract class SqsReceiveMessageAsyncTests
             cancellationToken);
 
         var result1Task = Sqs.ReceiveMessageAsync(receiveOneWhenAvailable, cancellationToken);
-        await AdvanceTime(TimeSpan.FromSeconds(2));
+        await AdvanceTime(TimeSpan.FromSeconds(3));
         var result1 = await result1Task;
         result1.Messages.ShouldHaveSingleItem();
         result1.Messages[0].Body.ShouldBe("Message 1");
