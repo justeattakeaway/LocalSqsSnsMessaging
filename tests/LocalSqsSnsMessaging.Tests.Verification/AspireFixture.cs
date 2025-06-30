@@ -1,6 +1,5 @@
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using TUnit.Core.Interfaces;
@@ -33,8 +32,8 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
                 .WithLifetime(ContainerLifetime.Persistent);
         }
 
-        _builder.Services.Add(ServiceDescriptor.Singleton<ILoggerFactory>(NullLoggerFactory.Instance));
-        _builder.Services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
+        // _builder.Services.Add(ServiceDescriptor.Singleton<ILoggerFactory>(NullLoggerFactory.Instance));
+        // _builder.Services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
         _app = await _builder.BuildAsync();
         await _app.StartAsync();
     }
