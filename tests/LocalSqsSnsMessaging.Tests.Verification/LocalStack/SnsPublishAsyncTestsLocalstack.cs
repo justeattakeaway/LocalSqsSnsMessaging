@@ -5,7 +5,7 @@ namespace LocalSqsSnsMessaging.Tests.Verification.LocalStack;
 public class SnsPublishAsyncTestsLocalStack : SnsPublishAsyncTests
 {
     [ClassDataSource<AspireFixture>(Shared = SharedType.PerTestSession)]
-    public required AspireFixture AspireFixture { get; set; }
+    public required AspireFixture AspireFixture { get; init; }
 
     [Before(Test)]
     public void BeforeEachTest()

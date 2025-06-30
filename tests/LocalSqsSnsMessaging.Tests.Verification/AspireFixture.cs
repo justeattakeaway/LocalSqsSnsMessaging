@@ -32,10 +32,11 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
                 .WithLifetime(ContainerLifetime.Persistent);
         }
 
-        // _builder.Services.Add(ServiceDescriptor.Singleton<ILoggerFactory>(NullLoggerFactory.Instance));
-        // _builder.Services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
+        _builder.Services.Add(ServiceDescriptor.Singleton<ILoggerFactory>(NullLoggerFactory.Instance));
+        _builder.Services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
         _app = await _builder.BuildAsync();
         await _app.StartAsync();
+        await _app.ResourceNotifications.WaitForResourceHealthyAsync("localstack");
     }
 
     public async ValueTask DisposeAsync()
