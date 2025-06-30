@@ -40,7 +40,9 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
         await _app.ResourceNotifications.WaitForResourceHealthyAsync("localstack");
 
         // Warm up
+#pragma warning disable CA5394
         var accountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
+#pragma warning restore CA5394
         var sns = ClientFactory.CreateSnsClient(accountId, this.LocalStackPort!.Value);
         var sqs = ClientFactory.CreateSqsClient(accountId, this.LocalStackPort!.Value);
         await sns.ListTopicsAsync();
