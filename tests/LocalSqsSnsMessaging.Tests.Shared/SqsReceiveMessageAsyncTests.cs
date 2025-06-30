@@ -190,7 +190,7 @@ public abstract class SqsReceiveMessageAsyncTests
         receivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Test, Category("TimeBasedTests"), Retry(2)]
+    [Test, Category("TimeBasedTests"), Retry(3)]
     public async Task ReceiveMessageAsync_MultipleMessagesWithDifferentDelays(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },

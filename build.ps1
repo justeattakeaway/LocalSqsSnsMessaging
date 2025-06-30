@@ -76,7 +76,8 @@ function DotNetTest {
 
     & $dotnet run --project $Project `
         --configuration "Release" `
-        -- $additionalArgs `
+        -- --timeout 2m `
+        $additionalArgs `
 
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet test failed with exit code $LASTEXITCODE"
