@@ -1,3 +1,4 @@
+using Amazon.SQS.Model;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -37,6 +38,13 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
         _app = await _builder.BuildAsync();
         await _app.StartAsync();
         await _app.ResourceNotifications.WaitForResourceHealthyAsync("localstack");
+
+        // Warm up
+        var accountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
+        var sns = ClientFactory.CreateSnsClient(accountId, this.LocalStackPort!.Value);
+        var sqs = ClientFactory.CreateSqsClient(accountId, this.LocalStackPort!.Value);
+        await sns.ListTopicsAsync();
+        await sqs.ListQueuesAsync(new ListQueuesRequest());
     }
 
     public async ValueTask DisposeAsync()
