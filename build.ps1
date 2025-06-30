@@ -72,12 +72,15 @@ function DotNetTest {
         [string] $Project
     )
 
-    $additionalArgs = @()
+    $additionalArgs = @(
+        "--coverage"
+        "--coverage-output-format"; "xml"
+        "--timeout"; "2m"
+    )
 
     & $dotnet run --project $Project `
         --configuration "Release" `
-        -- --timeout 2m `
-        $additionalArgs `
+        -- $additionalArgs `
 
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet test failed with exit code $LASTEXITCODE"
