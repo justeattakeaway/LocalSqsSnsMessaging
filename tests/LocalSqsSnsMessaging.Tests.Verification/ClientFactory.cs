@@ -1,8 +1,6 @@
-using Amazon;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
-using Amazon.Util;
 
 namespace LocalSqsSnsMessaging.Tests.Verification;
 #pragma warning disable CA1724
