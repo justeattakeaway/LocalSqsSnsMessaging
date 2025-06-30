@@ -22,7 +22,8 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
 #pragma warning restore CA1849
         var localstack = _builder.AddContainer("localstack", "localstack/localstack", "stable")
             .WithHttpEndpoint(targetPort: 4566)
-            .WithEnvironment("SERVICES", "sqs,sns");
+            .WithEnvironment("SERVICES", "sqs,sns")
+            .WithHttpHealthCheck("_localstack/health");
 
         var isRunningInCi = Environment.GetEnvironmentVariable("CI") == "true";
 
@@ -36,17 +37,19 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
         _builder.Services.Add(ServiceDescriptor.Singleton<ILoggerFactory>(NullLoggerFactory.Instance));
         _builder.Services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
         _app = await _builder.BuildAsync();
+
         await _app.StartAsync();
+
         await _app.ResourceNotifications.WaitForResourceHealthyAsync("localstack");
 
-        // Warm up
-#pragma warning disable CA5394
-        var accountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
-#pragma warning restore CA5394
-        using var sns = ClientFactory.CreateSnsClient(accountId, this.LocalStackPort!.Value);
-        using var sqs = ClientFactory.CreateSqsClient(accountId, this.LocalStackPort!.Value);
-        await sns.ListTopicsAsync();
-        await sqs.ListQueuesAsync(new ListQueuesRequest());
+//         // Warm up
+// #pragma warning disable CA5394
+//         var accountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
+// #pragma warning restore CA5394
+//         using var sns = ClientFactory.CreateSnsClient(accountId, this.LocalStackPort!.Value);
+//         using var sqs = ClientFactory.CreateSqsClient(accountId, this.LocalStackPort!.Value);
+//         await sns.ListTopicsAsync();
+//         await sqs.ListQueuesAsync(new ListQueuesRequest());
     }
 
     public async ValueTask DisposeAsync()
