@@ -53,9 +53,9 @@ public abstract class SqsReceiveMessageAsyncTests
 
         var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
 
-        await Assert.That(result.Messages.Count).IsEqualTo(2);
-        await Assert.That(result.Messages[0].Body).IsEqualTo("Hello, world!");
-        await Assert.That(result.Messages[1].Body).IsEqualTo("Goodbye, world!");
+        result.Messages.Count.ShouldBe(2);
+        result.Messages[0].Body.ShouldBe("Hello, world!");
+        result.Messages[1].Body.ShouldBe("Goodbye, world!");
     }
 
     [Test, Category("TimeBasedTests")]

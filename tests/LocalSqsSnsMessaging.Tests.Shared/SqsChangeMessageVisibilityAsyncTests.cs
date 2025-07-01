@@ -1,5 +1,6 @@
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Shouldly;
 
 namespace LocalSqsSnsMessaging.Tests;
 
@@ -27,7 +28,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
 
         // Receive the message
         var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
-        var message = await Assert.That(receiveResult.Messages).HasSingleItem();
+        var message = receiveResult.Messages.ShouldHaveSingleItem();
 
         // Change visibility timeout to 10 seconds
         await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
@@ -46,7 +47,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
 
         // Now we should be able to receive the message
         var finalReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
-        await Assert.That(finalReceiveResult.Messages).HasSingleItem();
+        finalReceiveResult.Messages.ShouldHaveSingleItem();
     }
 
     [Test]
@@ -56,7 +57,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
 
         // Receive the message
         var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
-        var message = await Assert.That(receiveResult.Messages).HasSingleItem();
+        var message = receiveResult.Messages.ShouldHaveSingleItem();
 
         // Change visibility timeout to 0 seconds
         await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
@@ -68,7 +69,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
 
         // Try to receive the message again immediately (should succeed)
         var immediateReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
-        await Assert.That(immediateReceiveResult.Messages).HasSingleItem();
+        immediateReceiveResult.Messages.ShouldHaveSingleItem();
     }
 
     [Test]
@@ -93,7 +94,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
 
         // Receive the message
         var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl, VisibilityTimeout = 5}, cancellationToken);
-        var message = await Assert.That(receiveResult.Messages).HasSingleItem();
+        var message = receiveResult.Messages.ShouldHaveSingleItem();
 
         // Wait for the visibility timeout to expire
         await AdvanceTime(TimeSpan.FromSeconds(10)); // Assuming default is 30 seconds
@@ -108,7 +109,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
         }, cancellationToken);
 
         var secondReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
-        await Assert.That(secondReceiveResult.Messages).HasSingleItem();
+        secondReceiveResult.Messages.ShouldHaveSingleItem();
     }
 
     [Test, Category("TimeBasedTests")]
@@ -118,7 +119,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
 
         // Receive the message
         var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
-        var message = await Assert.That(receiveResult.Messages).HasSingleItem();
+        var message = receiveResult.Messages.ShouldHaveSingleItem();
 
         // Change visibility timeout to 30 seconds
         await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
@@ -141,7 +142,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
 
         // Now we should be able to receive the message (10 second timeout applies, not 30)
         var finalReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
-        await Assert.That(finalReceiveResult.Messages).HasSingleItem();
+        finalReceiveResult.Messages.ShouldHaveSingleItem();
     }
 
     protected abstract Task AdvanceTime(TimeSpan timeSpan);

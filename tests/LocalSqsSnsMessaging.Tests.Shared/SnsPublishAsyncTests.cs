@@ -55,8 +55,8 @@ public abstract class SnsPublishAsyncTests
             QueueUrl = queueUrl,
             MessageAttributeNames = ["All"]
         }, cancellationToken);
-
-        var sqsMessage = await Assert.That(sqsMessages.Messages).HasSingleItem();
+        
+        var sqsMessage = sqsMessages.Messages.ShouldHaveSingleItem();
         sqsMessage!.Body.ShouldBe("Test message");
         sqsMessage.MessageAttributes.ShouldContainKey("TestAttribute");
         sqsMessage.MessageAttributes["TestAttribute"].StringValue.ShouldBe("TestValue");
@@ -101,7 +101,7 @@ public abstract class SnsPublishAsyncTests
             MessageAttributeNames = ["All"]
         }, cancellationToken);
 
-        var sqsMessage = await Assert.That(sqsMessages.Messages).HasSingleItem();
+        var sqsMessage = sqsMessages.Messages.ShouldHaveSingleItem();
         sqsMessage!.MD5OfBody.ShouldBe(expectedHash);
     }
 
@@ -143,7 +143,7 @@ public abstract class SnsPublishAsyncTests
             MessageAttributeNames = ["All"]
         }, cancellationToken);
 
-        var sqsMessage = await Assert.That(sqsMessages.Messages).HasSingleItem();
+        var sqsMessage = sqsMessages.Messages.ShouldHaveSingleItem();
 
         // Parse the JSON body using JsonDocument
         using var jsonDocument = JsonDocument.Parse(sqsMessage!.Body);
@@ -507,7 +507,7 @@ public abstract class SnsPublishAsyncTests
 
         // Assert
         allSubscriptions.Count.ShouldBe(150, "because we created 150 subscriptions");
-        await Assert.That(allSubscriptions.Select(s => s.SubscriptionArn)).HasDistinctItems();
+        allSubscriptions.Select(s => s.SubscriptionArn).ShouldBeUnique();
         allSubscriptions.Count(s => s.TopicArn == topicArn).ShouldBe(150);
         allSubscriptions.ShouldAllBe(s => s.Protocol == "sqs");
         allSubscriptions.ShouldAllBe(s => s.Endpoint.StartsWith($"arn:aws:sqs:us-east-1:{AccountId}:{queueNamePrefix}"));
