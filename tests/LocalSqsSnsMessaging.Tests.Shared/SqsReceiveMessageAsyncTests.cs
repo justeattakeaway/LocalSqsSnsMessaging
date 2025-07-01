@@ -193,15 +193,16 @@ public abstract class SqsReceiveMessageAsyncTests
     [Test, Category("TimeBasedTests"), Retry(3)]
     public async Task ReceiveMessageAsync_MultipleMessagesWithDifferentDelays(CancellationToken cancellationToken)
     {
-        const int visibilityTimeout = 6; // seconds
+        const int initialVisibilityTimeout = 6; // seconds
+        //const int visibilityTimeout = 6; // seconds
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
             cancellationToken)).QueueUrl;
         var receiveAllImmediately = new ReceiveMessageRequest
-            { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = visibilityTimeout, MaxNumberOfMessages = 10 };
+            { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = initialVisibilityTimeout, MaxNumberOfMessages = 10 };
         var receiveOneImmediately = new ReceiveMessageRequest
-            { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = visibilityTimeout, MaxNumberOfMessages = 1 };
+            { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = initialVisibilityTimeout, MaxNumberOfMessages = 1 };
         var receiveOneWhenAvailable = new ReceiveMessageRequest
-            { QueueUrl = queueUrl, WaitTimeSeconds = 20, VisibilityTimeout = visibilityTimeout, MaxNumberOfMessages = 1 };
+            { QueueUrl = queueUrl, WaitTimeSeconds = 20, VisibilityTimeout = initialVisibilityTimeout, MaxNumberOfMessages = 1 };
 
         // Send messages with different delays
         await Sqs.SendMessageAsync(new SendMessageRequest
