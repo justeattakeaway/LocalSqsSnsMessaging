@@ -9,11 +9,11 @@ public static class LocalStackAspireExtensions
     {
         var localstackResource =
             builder
-            .AddContainer("localstack", "localstack/localstack", "stable")
-            .WithHttpEndpoint(targetPort: 4566)
-            .WithEnvironment("SERVICES", string.Join(',', services))
-            .WithEnvironment("EAGER_SERVICE_LOADING", "1")
-            .WithLocalStackHealthCheck(services);
+                .AddContainer("localstack", "localstack/localstack", "stable")
+                .WithHttpEndpoint(targetPort: 4566)
+                .WithEnvironment("SERVICES", string.Join(',', services))
+                .WithEnvironment("EAGER_SERVICE_LOADING", "1")
+                .WithLocalStackHealthCheck(services);
 
         var isRunningInCi = Environment.GetEnvironmentVariable("CI") == "true";
 
@@ -37,17 +37,7 @@ public static class LocalStackAspireExtensions
             throw new DistributedApplicationException($"Could not create HTTP health check for resource '{builder.Resource.Name}' as the endpoint with name '{endpoint.EndpointName}' and scheme '{endpoint.Scheme}' is not an HTTP endpoint.");
         }
 
-        var endpointName = endpoint.EndpointName;
-
-        builder.ApplicationBuilder.Eventing.Subscribe<AfterEndpointsAllocatedEvent>((@event, ct) =>
-        {
-            if (!endpoint.Exists)
-            {
-                throw new DistributedApplicationException($"The endpoint '{endpointName}' does not exist on the resource '{builder.Resource.Name}'.");
-            }
-
-            return Task.CompletedTask;
-        });
+        builder.EnsureEndpointIsAllocated(endpoint);
 
         Uri? baseUri = null;
         builder.ApplicationBuilder.Eventing.Subscribe<BeforeResourceStartedEvent>(builder.Resource, (@event, ct) =>
@@ -72,5 +62,18 @@ public static class LocalStackAspireExtensions
         builder.WithHealthCheck(healthCheckKey);
 
         return builder;
+    }
+
+    private static void EnsureEndpointIsAllocated<T>(this IResourceBuilder<T> builder, EndpointReference endpoint)  where T : IResourceWithEndpoints
+    {
+        var endpointName = endpoint.EndpointName;
+
+        builder.ApplicationBuilder.Eventing.Subscribe<AfterEndpointsAllocatedEvent>((@event, ct) =>
+            endpoint.Exists switch
+            {
+                true => Task.CompletedTask,
+                false => throw new DistributedApplicationException(
+                    $"The endpoint '{endpointName}' does not exist on the resource '{builder.Resource.Name}'.")
+            });
     }
 }
