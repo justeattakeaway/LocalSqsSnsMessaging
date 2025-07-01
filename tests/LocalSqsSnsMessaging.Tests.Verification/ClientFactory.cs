@@ -18,7 +18,7 @@ public static class ClientFactory
                 ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, localstackPort)
             });
     }
-    
+
     public static IAmazonSimpleNotificationService CreateSnsClient(string accountId, int localstackPort)
     {
         return new AmazonSimpleNotificationServiceClient(

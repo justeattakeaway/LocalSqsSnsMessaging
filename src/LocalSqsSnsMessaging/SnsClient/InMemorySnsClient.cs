@@ -1,7 +1,5 @@
 using System.Runtime.CompilerServices;
-using System.Text;
 using Amazon.Auth.AccessControlPolicy;
-using Amazon.Auth.AccessControlPolicy.ActionIdentifiers;
 using Amazon.Runtime;
 using Amazon.Runtime.SharedInterfaces;
 using Amazon.SimpleNotificationService;
@@ -20,7 +18,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 {
     private readonly InMemoryAwsBus _bus;
     private readonly Lazy<ISimpleNotificationServicePaginatorFactory> _paginators;
-    
+
     private const int MaxMessageSize = 262144;
 
     internal InMemorySnsClient(InMemoryAwsBus bus)
@@ -40,10 +38,10 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
     public async Task<string> SubscribeQueueAsync(string topicArn, ICoreAmazonSQS sqsClient, string sqsQueueUrl)
     {
         ArgumentNullException.ThrowIfNull(sqsClient);
-        
+
         // Get the queue's existing policy
         var queueAttributes = await sqsClient.GetAttributesAsync(sqsQueueUrl).ConfigureAwait(true);
-        
+
         var sqsQueueArn = queueAttributes["QueueArn"];
 
         string? policyStr = null;
@@ -75,7 +73,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         ICoreAmazonSQS sqsClient, string sqsQueueUrl)
     {
         ArgumentNullException.ThrowIfNull(topicArns);
-        
+
         Dictionary<string, string> topicSubscriptionMapping = new();
         foreach (var topicArn in topicArns)
         {
@@ -108,7 +106,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var topicArn = $"arn:aws:sns:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:{request.Name}";
         var topic = new SnsTopicResource
         {
@@ -134,7 +132,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var topicName = GetTopicNameByArn(request.TopicArn);
         _bus.Topics.TryRemove(topicName, out _);
 
@@ -153,7 +151,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         if (!_bus.Subscriptions.TryGetValue(request.SubscriptionArn, out var subscription))
         {
             throw new NotFoundException("Subscription not found.");
@@ -187,7 +185,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var topicName = GetTopicNameByArn(request.TopicArn);
         if (!_bus.Topics.TryGetValue(topicName, out var topic))
         {
@@ -226,7 +224,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var allSubscriptions = _bus.Subscriptions.Values
             .Select(s => new Subscription
             {
@@ -241,7 +239,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
         var (items, nextToken) = pagedSubscriptions.GetPage(
             TokenGenerator, 100, request.NextToken);
-        
+
         return Task.FromResult(new ListSubscriptionsResponse
         {
             Subscriptions = items,
@@ -275,7 +273,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var topicName = GetTopicNameByArn(request.TopicArn);
         if (!_bus.Topics.TryGetValue(topicName, out _))
         {
@@ -315,15 +313,15 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var topicName = GetTopicNameByArn(request.ResourceArn);
         if (!_bus.Topics.TryGetValue(topicName, out var topic))
         {
             throw new ResourceNotFoundException("Topic not found.");
         }
-        
+
         var tags = topic.Tags.Select(t => new Tag { Key = t.Key, Value = t.Value }).ToList();
-        
+
         return Task.FromResult(new ListTagsForResourceResponse
         {
             Tags = tags
@@ -350,7 +348,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var allTopics = _bus.Topics.Values
             .Select(t => new Topic { TopicArn = t.Arn })
             .ToList();
@@ -371,7 +369,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(x.TopicArn));
         }
     }
-    
+
     public Task<PublishResponse> PublishAsync(string topicArn, string message,
         CancellationToken cancellationToken = default)
     {
@@ -398,13 +396,13 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         {
             throw new InvalidParameterException($"Message size has exceeded the limit of {MaxMessageSize} bytes.");
         }
-        
+
         var topic = GetTopicByArn(request.TopicArn);
         var result = topic.PublishAction.Execute(request);
 
         return Task.FromResult(result);
     }
-    
+
     private static int CalculateMessageSize(string message, Dictionary<string, MessageAttributeValue>? messageAttributes)
     {
         var totalSize = 0;
@@ -449,7 +447,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         {
             throw new InvalidParameterException($"Message size has exceeded the limit of {MaxMessageSize} bytes.");
         }
-        
+
         var topic = GetTopicByArn(request.TopicArn);
         var result = topic.PublishAction.ExecuteBatch(request);
 
@@ -466,9 +464,9 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var topic = GetTopicByArn(request.TopicArn);
-        
+
         var policy = topic.Attributes.TryGetValue("Policy", out var policyJson)
             ? Policy.FromJson(policyJson)
             : new Policy($"{topic.Arn}/SNSDefaultPolicy");
@@ -492,7 +490,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
         return Task.FromResult(new RemovePermissionResponse().SetCommonProperties());
     }
-    
+
     public Task<SetSubscriptionAttributesResponse> SetSubscriptionAttributesAsync(string subscriptionArn,
         string attributeName, string attributeValue,
         CancellationToken cancellationToken = default)
@@ -512,7 +510,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         if (!_bus.Subscriptions.TryGetValue(request.SubscriptionArn, out var subscription))
         {
             throw new NotFoundException($"Subscription not found: {request.SubscriptionArn}");
@@ -559,7 +557,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var topicName = GetTopicNameByArn(request.TopicArn);
         if (!_bus.Topics.TryGetValue(topicName, out var topic))
         {
@@ -585,12 +583,12 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         if (!request.Protocol.Equals("sqs", StringComparison.OrdinalIgnoreCase))
         {
             throw new NotSupportedException("Only SQS protocol is supported.");
         }
-        
+
         var queueName = request.Endpoint.Split(':').Last();
         if (!_bus.Queues.TryGetValue(queueName, out _))
         {
@@ -598,13 +596,13 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         }
 
         var parsedRawMessageDelivery =
-            request.Attributes.TryGetValue("RawMessageDelivery", out var rawMessageDelivery) &&
+            request.Attributes?.TryGetValue("RawMessageDelivery", out var rawMessageDelivery) == true &&
             bool.TryParse(rawMessageDelivery, out var isRawMessageDelivery) &&
             isRawMessageDelivery;
-        
+
         var parsedFilterPolicy =
-            request.Attributes.TryGetValue("FilterPolicy", out var filterPolicy) ? filterPolicy : string.Empty;
-        
+            request.Attributes?.TryGetValue("FilterPolicy", out var filterPolicy) == true ? filterPolicy : string.Empty;
+
         var snsSubscription = new SnsSubscription
         {
             SubscriptionArn = Guid.NewGuid().ToString(),
@@ -615,7 +613,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             FilterPolicy = parsedFilterPolicy
         };
         _bus.Subscriptions.TryAdd(snsSubscription.SubscriptionArn, snsSubscription);
-        
+
         SnsPublishActionFactory.UpdateTopicPublishAction(snsSubscription.TopicArn, _bus);
 
         return Task.FromResult(new SubscribeResponse
@@ -628,18 +626,18 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var topicName = GetTopicNameByArn(request.ResourceArn);
         if (!_bus.Topics.TryGetValue(topicName, out var topic))
         {
             throw new ResourceNotFoundException("Topic not found.");
         }
-        
+
         foreach (var tag in request.Tags)
         {
             topic.Tags[tag.Key] = tag.Value;
         }
-        
+
         return Task.FromResult(new TagResourceResponse().SetCommonProperties());
     }
 
@@ -653,14 +651,14 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         if (!_bus.Subscriptions.TryRemove(request.SubscriptionArn, out var subscription))
         {
             throw new NotFoundException("Subscription not found.");
         }
-        
+
         SnsPublishActionFactory.UpdateTopicPublishAction(subscription.TopicArn, _bus);
-        
+
         return Task.FromResult(new UnsubscribeResponse().SetCommonProperties());
     }
 
@@ -668,18 +666,18 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var topicName = GetTopicNameByArn(request.ResourceArn);
         if (!_bus.Topics.TryGetValue(topicName, out var topic))
         {
             throw new ResourceNotFoundException("Topic not found.");
         }
-        
+
         foreach (var tagKey in request.TagKeys)
         {
             topic.Tags.Remove(tagKey);
         }
-        
+
         return Task.FromResult(new UntagResourceResponse().SetCommonProperties());
     }
 
@@ -687,14 +685,14 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
     {
         var statement = new Statement(Statement.StatementEffect.Allow);
 #pragma warning disable CS0612,CS0618
-        statement.Actions.Add(SQSActionIdentifiers.SendMessage);
+        statement.Actions.Add("sqs:SendMessage");
 #pragma warning restore CS0612,CS0618
         statement.Resources.Add(new Resource(sqsQueueArn));
         statement.Conditions.Add(ConditionFactory.NewSourceArnCondition(topicArn));
         statement.Principals.Add(new Principal("*"));
         policy.Statements.Add(statement);
     }
-    
+
     private static bool HasSqsPermission(Policy policy, string topicArn, string sqsQueueArn)
     {
         foreach (var statement in policy.Statements)
@@ -707,10 +705,10 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             {
                 foreach (var condition in statement.Conditions)
                 {
-                    if ((string.Equals(condition.Type, ConditionFactory.StringComparisonType.StringLike.ToString(), StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(condition.Type, ConditionFactory.StringComparisonType.StringEquals.ToString(), StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(condition.Type, ConditionFactory.ArnComparisonType.ArnEquals.ToString(), StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(condition.Type, ConditionFactory.ArnComparisonType.ArnLike.ToString(), StringComparison.OrdinalIgnoreCase)) &&
+                    if ((string.Equals(condition.Type, nameof(ConditionFactory.StringComparisonType.StringLike), StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(condition.Type, nameof(ConditionFactory.StringComparisonType.StringEquals), StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(condition.Type, nameof(ConditionFactory.ArnComparisonType.ArnEquals), StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(condition.Type, nameof(ConditionFactory.ArnComparisonType.ArnLike), StringComparison.OrdinalIgnoreCase)) &&
                         string.Equals(condition.ConditionKey, ConditionFactory.SOURCE_ARN_CONDITION_KEY, StringComparison.OrdinalIgnoreCase) &&
                         condition.Values.Contains<string>(topicArn))
                         return true;
@@ -720,7 +718,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
         return false;
     }
-    
+
     private SnsTopicResource GetTopicByArn(string topicArn)
     {
         var topicName = GetTopicNameByArn(topicArn);
@@ -728,7 +726,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             ? topic
             : throw new NotFoundException($"Topic not found: {topicArn}");
     }
-    
+
     private static string GetTopicNameByArn(string topicArn)
     {
         var indexOfLastColon = topicArn.LastIndexOf(':');
@@ -750,13 +748,13 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             ActionName = actionName
         }, cancellationToken);
     }
-    
+
     public Task<AddPermissionResponse> AddPermissionAsync(AddPermissionRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         var topic = GetTopicByArn(request.TopicArn);
-        
+
         var policy = topic.Attributes.TryGetValue("Policy", out var policyJson)
             ? Policy.FromJson(policyJson)
             : new Policy($"{topic.Arn}/SNSDefaultPolicy");
@@ -768,7 +766,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         };
 
         statement.Resources.Add(new Resource(topic.Arn));
-        
+
         foreach (var accountId in request.AWSAccountId)
         {
             statement.Principals.Add(new Principal($"arn:aws:iam::{accountId}:root"));
@@ -786,7 +784,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
     }
 
     [UnsafeAccessor(UnsafeAccessorKind.Constructor)]
-    private static extern SimpleNotificationServicePaginatorFactory GetPaginatorFactory(IAmazonSimpleNotificationService client); 
-    
+    private static extern SimpleNotificationServicePaginatorFactory GetPaginatorFactory(IAmazonSimpleNotificationService client);
+
     public ISimpleNotificationServicePaginatorFactory Paginators => _paginators.Value;
 }

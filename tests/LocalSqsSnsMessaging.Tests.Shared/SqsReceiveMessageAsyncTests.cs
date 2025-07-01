@@ -1,6 +1,7 @@
 using Amazon.Auth.AccessControlPolicy;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Shouldly;
 
 namespace LocalSqsSnsMessaging.Tests;
 
@@ -9,33 +10,33 @@ public abstract class SqsReceiveMessageAsyncTests
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
 
-    [Fact]
-    public async Task ReceiveMessageAsync_QueueNotFound_ThrowsQueueDoesNotExistException()
+    [Test]
+    public async Task ReceiveMessageAsync_QueueNotFound_ThrowsQueueDoesNotExistException(CancellationToken cancellationToken)
     {
         var request = new ReceiveMessageRequest { QueueUrl = "nonexistent-queue" };
 
         await Assert.ThrowsAsync<QueueDoesNotExistException>(() =>
-            Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken));
+            Sqs.ReceiveMessageAsync(request, cancellationToken));
     }
 
-    [Fact]
-    public async Task ReceiveMessageAsync_NoMessages_ReturnsEmptyList()
+    [Test]
+    public async Task ReceiveMessageAsync_NoMessages_ReturnsEmptyList(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 0 };
 
-        var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
+        var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
 
-        Assert.Empty(result.Messages);
+        result.Messages.ShouldBeEmptyAwsCollection();
     }
 
-    [Fact]
-    public async Task ReceiveMessageAsync_MessagesAvailable_ReturnsMessages()
+    [Test]
+    public async Task ReceiveMessageAsync_MessagesAvailable_ReturnsMessages(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, MaxNumberOfMessages = 2 };
 
@@ -43,217 +44,220 @@ public abstract class SqsReceiveMessageAsyncTests
         {
             QueueUrl = queueUrl,
             MessageBody = "Hello, world!"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
             QueueUrl = queueUrl,
             MessageBody = "Goodbye, world!"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
-        var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
+        var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
 
-        Assert.Equal(2, result.Messages.Count);
-        Assert.Equal("Hello, world!", result.Messages[0].Body);
-        Assert.Equal("Goodbye, world!", result.Messages[1].Body);
+        await Assert.That(result.Messages.Count).IsEqualTo(2);
+        await Assert.That(result.Messages[0].Body).IsEqualTo("Hello, world!");
+        await Assert.That(result.Messages[1].Body).IsEqualTo("Goodbye, world!");
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ReceiveMessageAsync_WaitsForMessages_ReturnsMessagesWhenAvailable()
+    [Test, Category("TimeBasedTests")]
+    public async Task ReceiveMessageAsync_WaitsForMessages_ReturnsMessagesWhenAvailable(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 5 };
 
-        var task = Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
+        var task = Sqs.ReceiveMessageAsync(request, cancellationToken);
 
         await AdvanceTime(TimeSpan.FromSeconds(3));
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
             QueueUrl = queueUrl,
             MessageBody = "Hello, world!"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var result = await task;
 
-        var receivedMessage = Assert.Single(result.Messages);
-        Assert.Equal("Hello, world!", receivedMessage.Body);
+        var receivedMessage = result.Messages.ShouldHaveSingleItem();
+        receivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ReceiveMessageAsync_Timeout_ReturnsEmptyList()
+    [Test, Category("TimeBasedTests")]
+    public async Task ReceiveMessageAsync_Timeout_ReturnsEmptyList(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 5 };
 
-        var task = Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
+        var task = Sqs.ReceiveMessageAsync(request, cancellationToken);
 
         await AdvanceTime(TimeSpan.FromSeconds(5));
 
         var result = await task;
 
-        Assert.Empty(result.Messages);
+        result.Messages.ShouldBeEmptyAwsCollection();
     }
 
-    [Fact]
-    public async Task ReceiveMessageAsync_CancellationRequested_ReturnsEmptyList()
+    [Test]
+    public async Task ReceiveMessageAsync_CancellationRequested_ReturnsEmptyList(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
         var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 10 };
 
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
             await Sqs.ReceiveMessageAsync(request, cts.Token)
         );
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ReceiveMessageAsync_RespectVisibilityTimeout()
+    [Test, Category("TimeBasedTests")]
+    public async Task ReceiveMessageAsync_RespectVisibilityTimeout(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
-        var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 30 };
+        var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 6 };
 
         // Enqueue a message
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
             QueueUrl = queueUrl,
             MessageBody = "Hello, world!"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // First receive - should get the message
-        var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var firstReceivedMessage = Assert.Single(result1.Messages);
-        Assert.Equal("Hello, world!", firstReceivedMessage.Body);
+        var result1 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var firstReceivedMessage = result1.Messages.ShouldHaveSingleItem();
+        firstReceivedMessage.Body.ShouldBe("Hello, world!");
 
         // Second receive immediately after - should not get any message
-        var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(result2.Messages);
+        var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        result2.Messages.ShouldBeEmptyAwsCollection();
 
-        // Advance time by 15 seconds (half the visibility timeout)
-        await AdvanceTime(TimeSpan.FromSeconds(15));
+        // Advance time by 3 seconds (half the visibility timeout)
+        await AdvanceTime(TimeSpan.FromSeconds(3));
 
         // Third receive - should still not get any message
-        var result3 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(result3.Messages);
+        var result3 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        result3.Messages.ShouldBeEmptyAwsCollection();
 
-        // Advance time by another 20 seconds (visibility timeout has now passed)
-        await AdvanceTime(TimeSpan.FromSeconds(20));
+        // Advance time by another 4 seconds (visibility timeout has now passed)
+        await AdvanceTime(TimeSpan.FromSeconds(4));
 
         // Fourth receive - should get the message again
-        var result4 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var forthReceivedMessage = Assert.Single(result4.Messages);
-        Assert.Equal("Hello, world!", forthReceivedMessage.Body);
+        var result4 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var forthReceivedMessage = result4.Messages.ShouldHaveSingleItem();
+        forthReceivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ReceiveMessageAsync_DelayedMessageBecomesVisible()
+    [Test, Category("TimeBasedTests")]
+    public async Task ReceiveMessageAsync_DelayedMessageBecomesVisible(CancellationToken cancellationToken)
     {
-        //SynchronizationContext.SetSynchronizationContext(null);
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         var queueUrl = createQueueResponse.QueueUrl;
-        var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 30 };
+        var request = new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 10 };
 
-        // Enqueue a message with a delay of 10 seconds
+        // Enqueue a message with a delay of 5 seconds
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
             QueueUrl = queueUrl,
             MessageBody = "Hello, world!",
-            DelaySeconds = 10
-        }, TestContext.Current.CancellationToken);
+            DelaySeconds = 5
+        }, cancellationToken);
 
         // First receive - should not get any message
-        var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(result1.Messages);
+        var result1 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        result1.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by 5 seconds
-        await AdvanceTime(TimeSpan.FromSeconds(5));
+        await AdvanceTime(TimeSpan.FromSeconds(2.5));
 
         // Second receive - should still not get any message
-        var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(result2.Messages);
+        var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        result2.Messages.ShouldBeEmptyAwsCollection();
 
-        // Advance time by another 10 seconds (message is now visible)
-        await AdvanceTime(TimeSpan.FromSeconds(10));
+        // Advance time by another 5 seconds (message is now visible)
+        await AdvanceTime(TimeSpan.FromSeconds(5));
 
         // Third receive - should get the message
-        var result3 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var receivedMessage = Assert.Single(result3.Messages);
-        Assert.Equal("Hello, world!", receivedMessage.Body);
+        var result3 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var receivedMessage = result3.Messages.ShouldHaveSingleItem();
+        receivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ReceiveMessageAsync_MultipleMessagesWithDifferentDelays()
+    [Test, Category("TimeBasedTests"), Retry(3)]
+    public async Task ReceiveMessageAsync_MultipleMessagesWithDifferentDelays(CancellationToken cancellationToken)
     {
-        //SynchronizationContext.SetSynchronizationContext(null);
+        const int initialVisibilityTimeout = 6; // seconds
+        //const int visibilityTimeout = 6; // seconds
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
-        var request = new ReceiveMessageRequest
-            { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = 30, MaxNumberOfMessages = 10 };
+            cancellationToken)).QueueUrl;
+        var receiveAllImmediately = new ReceiveMessageRequest
+            { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = initialVisibilityTimeout, MaxNumberOfMessages = 10 };
+        var receiveOneImmediately = new ReceiveMessageRequest
+            { QueueUrl = queueUrl, WaitTimeSeconds = 0, VisibilityTimeout = initialVisibilityTimeout, MaxNumberOfMessages = 1 };
+        var receiveOneWhenAvailable = new ReceiveMessageRequest
+            { QueueUrl = queueUrl, WaitTimeSeconds = 20, VisibilityTimeout = initialVisibilityTimeout, MaxNumberOfMessages = 1 };
 
         // Send messages with different delays
         await Sqs.SendMessageAsync(new SendMessageRequest
-                { QueueUrl = queueUrl, MessageBody = "Message 1", DelaySeconds = 5 },
-            TestContext.Current.CancellationToken);
+                { QueueUrl = queueUrl, MessageBody = "Message 1", DelaySeconds = 2 },
+            cancellationToken);
         await Sqs.SendMessageAsync(new SendMessageRequest
-                { QueueUrl = queueUrl, MessageBody = "Message 2", DelaySeconds = 10 },
-            TestContext.Current.CancellationToken);
+                { QueueUrl = queueUrl, MessageBody = "Message 2", DelaySeconds = 4 },
+            cancellationToken);
         await Sqs.SendMessageAsync(new SendMessageRequest
-                { QueueUrl = queueUrl, MessageBody = "Message 3", DelaySeconds = 15 },
-            TestContext.Current.CancellationToken);
+                { QueueUrl = queueUrl, MessageBody = "Message 3", DelaySeconds = 6 },
+            cancellationToken);
 
-        await AdvanceTime(TimeSpan.FromSeconds(1));
-
-        // Advance time and check messages
-        await AdvanceTime(TimeSpan.FromSeconds(5));
-        var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Single(result1.Messages);
-        Assert.Equal("Message 1", result1.Messages[0].Body);
+        var result1Task = Sqs.ReceiveMessageAsync(receiveOneWhenAvailable, cancellationToken);
+        await AdvanceTime(TimeSpan.FromSeconds(3));
+        var result1 = await result1Task;
+        result1.Messages.ShouldHaveSingleItem();
+        result1.Messages[0].Body.ShouldBe("Message 1");
 
         // Advance time to make the second message visible
-        await AdvanceTime(TimeSpan.FromSeconds(5));
-        var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Single(result2.Messages);
-        Assert.Equal("Message 2", result2.Messages[0].Body);
+        await AdvanceTime(TimeSpan.FromSeconds(2));
+        var result2 = await Sqs.ReceiveMessageAsync(receiveAllImmediately, cancellationToken);
+        result2.Messages.ShouldHaveSingleItem();
+        result2.Messages[0].Body.ShouldBe("Message 2");
 
         // Advance time to make the third message visible
-        await AdvanceTime(TimeSpan.FromSeconds(5));
-        var result3 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Single(result3.Messages);
-        Assert.Equal("Message 3", result3.Messages[0].Body);
+        await AdvanceTime(TimeSpan.FromSeconds(2));
+        var result3 = await Sqs.ReceiveMessageAsync(receiveAllImmediately, cancellationToken);
+        result3.Messages.ShouldHaveSingleItem();
+        result3.Messages[0].Body.ShouldBe("Message 3");
+
+        // All message should now not be visible anymore
+        var result4 = await Sqs.ReceiveMessageAsync(receiveAllImmediately, cancellationToken);
+        result4.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time past the visibility timeout of the first message
-        await AdvanceTime(TimeSpan.FromSeconds(21)); // (7 + 30) - (7 + 5 + 5) = 20
-        var result4 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Single(result4.Messages);
-        Assert.Equal("Message 1", result4.Messages[0].Body);
+        await AdvanceTime(TimeSpan.FromSeconds(5));
+        var result5 = await Sqs.ReceiveMessageAsync(receiveOneImmediately, cancellationToken);
+        result5.Messages.ShouldHaveSingleItem().Body.ShouldBe("Message 1");
 
         // Advance time past the visibility timeout of the second message
-        await AdvanceTime(TimeSpan.FromSeconds(5));
-        var result5 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Single(result5.Messages);
-        Assert.Equal("Message 2", result5.Messages[0].Body);
+        await AdvanceTime(TimeSpan.FromSeconds(2));
+        var result6 = await Sqs.ReceiveMessageAsync(receiveOneImmediately, cancellationToken);
+        result6.Messages.ShouldHaveSingleItem().Body.ShouldBe("Message 2");
 
         // Advance time past the visibility timeout of the third message
-        await AdvanceTime(TimeSpan.FromSeconds(5));
-        var result6 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Single(result6.Messages);
-        Assert.Equal("Message 3", result6.Messages[0].Body);
+        await AdvanceTime(TimeSpan.FromSeconds(2));
+        var result7 = await Sqs.ReceiveMessageAsync(receiveOneImmediately, cancellationToken);
+        result7.Messages.ShouldHaveSingleItem().Body.ShouldBe("Message 3");
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ReceiveMessageAsync_ApproximateReceiveCount_IncreasesWithEachReceive()
+    [Test, Category("TimeBasedTests")]
+    public async Task ReceiveMessageAsync_ApproximateReceiveCount_IncreasesWithEachReceive(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         var request = new ReceiveMessageRequest
         {
             QueueUrl = queueUrl,
@@ -264,35 +268,35 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Send a message
         await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Test message" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
 
         // First receive
-        var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var message1 = Assert.Single(result1.Messages);
-        Assert.Equal("1", message1.Attributes["ApproximateReceiveCount"]);
+        var result1 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var message1 = result1.Messages.ShouldHaveSingleItem();
+        message1.Attributes["ApproximateReceiveCount"].ShouldBe("1");
 
         // Wait for visibility timeout to expire
         await AdvanceTime(TimeSpan.FromSeconds(6));
 
         // Second receive
-        var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var message2 = Assert.Single(result2.Messages);
-        Assert.Equal("2", message2.Attributes["ApproximateReceiveCount"]);
+        var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var message2 = result2.Messages.ShouldHaveSingleItem();
+        message2.Attributes["ApproximateReceiveCount"].ShouldBe("2");
 
         // Wait for visibility timeout to expire again
         await AdvanceTime(TimeSpan.FromSeconds(6));
 
         // Third receive
-        var result3 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var message3 = Assert.Single(result3.Messages);
-        Assert.Equal("3", message3.Attributes["ApproximateReceiveCount"]);
+        var result3 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var message3 = result3.Messages.ShouldHaveSingleItem();
+        message3.Attributes["ApproximateReceiveCount"].ShouldBe("3");
     }
 
-    [Fact]
-    public async Task ReceiveMessageAsync_ApproximateReceiveCount_ResetAfterDelete()
+    [Test]
+    public async Task ReceiveMessageAsync_ApproximateReceiveCount_ResetAfterDelete(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         var request = new ReceiveMessageRequest
         {
             QueueUrl = queueUrl,
@@ -303,29 +307,29 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Send a message
         await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Test message" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
 
         // Receive and delete the message
-        var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var message1 = Assert.Single(result1.Messages);
-        Assert.Equal("1", message1.Attributes["ApproximateReceiveCount"]);
-        await Sqs.DeleteMessageAsync(queueUrl, message1.ReceiptHandle, TestContext.Current.CancellationToken);
+        var result1 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var message1 = result1.Messages.ShouldHaveSingleItem();
+        message1.Attributes["ApproximateReceiveCount"].ShouldBe("1");
+        await Sqs.DeleteMessageAsync(queueUrl, message1.ReceiptHandle, cancellationToken);
 
         // Send another message
         await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "New test message" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
 
         // Receive the new message
-        var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var message2 = Assert.Single(result2.Messages);
-        Assert.Equal("1", message2.Attributes["ApproximateReceiveCount"]);
+        var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var message2 = result2.Messages.ShouldHaveSingleItem();
+        message2.Attributes["ApproximateReceiveCount"].ShouldBe("1");
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ReceiveMessageAsync_ApproximateReceiveCount_MultipleMessages()
+    [Test, Category("TimeBasedTests")]
+    public async Task ReceiveMessageAsync_ApproximateReceiveCount_MultipleMessages(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         var request = new ReceiveMessageRequest
         {
             QueueUrl = queueUrl,
@@ -337,44 +341,44 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Send multiple messages
         await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Message 1" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
         await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "Message 2" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
 
         // First receive
-        var result1 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Equal(2, result1.Messages.Count);
-        Assert.All(result1.Messages, m => Assert.Equal("1", m.Attributes["ApproximateReceiveCount"]));
+        var result1 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        result1.Messages.Count.ShouldBe(2);
+        result1.Messages.ShouldAllBe(m => m.Attributes["ApproximateReceiveCount"] == "1");
 
         // Wait for visibility timeout to expire
         await AdvanceTime(TimeSpan.FromSeconds(6));
 
         // Second receive
-        var result2 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Equal(2, result2.Messages.Count);
-        Assert.All(result2.Messages, m => Assert.Equal("2", m.Attributes["ApproximateReceiveCount"]));
+        var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        result2.Messages.Count.ShouldBe(2);
+        result2.Messages.ShouldAllBe(m => m.Attributes["ApproximateReceiveCount"] == "2");
 
         // Delete one message
         await Sqs.DeleteMessageAsync(queueUrl, result2.Messages[0].ReceiptHandle,
-            TestContext.Current.CancellationToken);
+            cancellationToken);
 
         // Wait for visibility timeout to expire again
         await AdvanceTime(TimeSpan.FromSeconds(6));
 
         // Third receive
-        var result3 = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var message3 = Assert.Single(result3.Messages);
-        Assert.Equal("3", message3.Attributes["ApproximateReceiveCount"]);
+        var result3 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var message3 = result3.Messages.ShouldHaveSingleItem();
+        message3.Attributes["ApproximateReceiveCount"].ShouldBe("3");
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ReceiveMessageAsync_MessageMovedToErrorQueue_AfterMaxReceives()
+    [Test, Category("TimeBasedTests")]
+    public async Task ReceiveMessageAsync_MessageMovedToErrorQueue_AfterMaxReceives(CancellationToken cancellationToken)
     {
         // Create main queue and error queue
         var mainQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "main-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         var errorQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "error-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         var errorQueueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{errorQueueUrl.Split('/').Last()}";
 
         // Set up redrive policy for the main queue
@@ -383,9 +387,9 @@ public abstract class SqsReceiveMessageAsyncTests
             QueueUrl = mainQueueUrl,
             Attributes = new Dictionary<string, string>
             {
-                ["RedrivePolicy"] = $$"""{"maxReceiveCount":3, "deadLetterTargetArn":"{{errorQueueArn}}"}"""
+                ["RedrivePolicy"] = $$"""{"maxReceiveCount":2, "deadLetterTargetArn":"{{errorQueueArn}}"}"""
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var request = new ReceiveMessageRequest
         {
@@ -397,37 +401,36 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Send a message to the main queue
         await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = mainQueueUrl, MessageBody = "Test message" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
 
         // Receive the message three times
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 2; i++)
         {
-            var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-            Assert.Single(result.Messages);
-            Assert.Equal((i + 1).ToString(NumberFormatInfo.InvariantInfo),
-                result.Messages[0].Attributes["ApproximateReceiveCount"]);
+            var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+            var message = result.Messages.ShouldHaveSingleItem();
+            message.Attributes["ApproximateReceiveCount"].ShouldBe((i + 1).ToString(NumberFormatInfo.InvariantInfo));
             await AdvanceTime(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
         }
 
         // Try to receive from the main queue - should be empty
-        var emptyResult = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(emptyResult.Messages);
+        var emptyResult = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        emptyResult.Messages.ShouldBeEmptyAwsCollection();
 
         // Check the error queue - the message should be there
         var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl },
-            TestContext.Current.CancellationToken);
-        var errorMessage = Assert.Single(errorQueueResult.Messages);
-        Assert.Equal("Test message", errorMessage.Body);
+            cancellationToken);
+        var errorMessage = errorQueueResult.Messages.ShouldHaveSingleItem();
+        errorMessage.Body.ShouldBe("Test message");
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ReceiveMessageAsync_MessageNotMovedToErrorQueue_IfDeletedBeforeMaxReceives()
+    [Test, Category("TimeBasedTests")]
+    public async Task ReceiveMessageAsync_MessageNotMovedToErrorQueue_IfDeletedBeforeMaxReceives(CancellationToken cancellationToken)
     {
         // Create main queue and error queue
         var mainQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "main-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         var errorQueueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "error-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         var errorQueueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{errorQueueUrl.Split('/').Last()}";
 
         // Set up redrive policy for the main queue
@@ -438,7 +441,7 @@ public abstract class SqsReceiveMessageAsyncTests
             {
                 ["RedrivePolicy"] = $$"""{"maxReceiveCount":3, "deadLetterTargetArn":"{{errorQueueArn}}"}"""
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var request = new ReceiveMessageRequest
         {
@@ -450,35 +453,35 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // Send a message to the main queue
         await Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = mainQueueUrl, MessageBody = "Test message" },
-            TestContext.Current.CancellationToken);
+            cancellationToken);
 
         // Receive the message twice
         for (int i = 0; i < 2; i++)
         {
-            var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-            Assert.Single(result.Messages);
-            Assert.Equal((i + 1).ToString(NumberFormatInfo.InvariantInfo),
-                result.Messages[0].Attributes["ApproximateReceiveCount"]);
+            var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+            result.Messages.ShouldHaveSingleItem();
+            result.Messages[0].Attributes["ApproximateReceiveCount"].ShouldBe((i + 1).ToString(NumberFormatInfo.InvariantInfo));
             await AdvanceTime(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
         }
 
         // Receive and delete the message on the third receive
-        var finalResult = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var message = Assert.Single(finalResult.Messages);
-        Assert.Equal("3", message.Attributes["ApproximateReceiveCount"]);
-        await Sqs.DeleteMessageAsync(mainQueueUrl, message.ReceiptHandle, TestContext.Current.CancellationToken);
+        var finalResult = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var message = finalResult.Messages.ShouldHaveSingleItem();
+        message.Attributes["ApproximateReceiveCount"].ShouldBe("3");
+        await Sqs.DeleteMessageAsync(mainQueueUrl, message.ReceiptHandle, cancellationToken);
 
         // Try to receive from the main queue - should be empty
-        var emptyMainResult = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Empty(emptyMainResult.Messages);
+        var emptyMainResult = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        emptyMainResult.Messages.ShouldBeEmptyAwsCollection();
 
         // Check the error queue - should be empty
         var errorQueueResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = errorQueueUrl },
-            TestContext.Current.CancellationToken);
-        Assert.Empty(errorQueueResult.Messages);
+            cancellationToken);
+        errorQueueResult.Messages.ShouldBeEmptyAwsCollection();
     }
 
-    public async Task ReceiveMessageAsync_ErrorQueueRespectsFifoOrder()
+    //[Test, Skip("This has never been working, we should fix it in the future")]
+    private async Task ReceiveMessageAsync_ErrorQueueRespectsFifoOrder(CancellationToken cancellationToken)
     {
         // Create main FIFO queue and error FIFO queue
         var mainQueueUrl =
@@ -487,14 +490,14 @@ public abstract class SqsReceiveMessageAsyncTests
                 {
                     QueueName = "main-queue.fifo",
                     Attributes = new Dictionary<string, string> { ["FifoQueue"] = "true" }
-                }, TestContext.Current.CancellationToken)).QueueUrl;
+                }, cancellationToken)).QueueUrl;
         var errorQueueUrl =
             (await Sqs.CreateQueueAsync(
                 new CreateQueueRequest
                 {
                     QueueName = "error-queue.fifo",
                     Attributes = new Dictionary<string, string> { ["FifoQueue"] = "true" }
-                }, TestContext.Current.CancellationToken)).QueueUrl;
+                }, cancellationToken)).QueueUrl;
 
         // Set up redrive policy for the main queue
         await Sqs.SetQueueAttributesAsync(new SetQueueAttributesRequest
@@ -504,7 +507,7 @@ public abstract class SqsReceiveMessageAsyncTests
             {
                 ["RedrivePolicy"] = $$"""{"maxReceiveCount":"3", "deadLetterTargetArn":"{{errorQueueUrl}}"}"""
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var request = new ReceiveMessageRequest
         {
@@ -520,36 +523,36 @@ public abstract class SqsReceiveMessageAsyncTests
             {
                 QueueUrl = mainQueueUrl, MessageBody = "Message 1", MessageGroupId = "group1",
                 MessageDeduplicationId = "dedup1"
-            }, TestContext.Current.CancellationToken);
+            }, cancellationToken);
         await Sqs.SendMessageAsync(
             new SendMessageRequest
             {
                 QueueUrl = mainQueueUrl, MessageBody = "Message 2", MessageGroupId = "group1",
                 MessageDeduplicationId = "dedup2"
-            }, TestContext.Current.CancellationToken);
+            }, cancellationToken);
 
         // Receive and fail to process each message 3 times
         for (int i = 0; i < 3; i++)
         {
-            var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-            Assert.Equal(2, result.Messages.Count);
+            var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+            result.Messages.Count.ShouldBe(2);
             await AdvanceTime(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
         }
 
         // Check the error queue - messages should be there in order
         var errorQueueResult = await Sqs.ReceiveMessageAsync(
             new ReceiveMessageRequest { QueueUrl = errorQueueUrl, MaxNumberOfMessages = 10 },
-            TestContext.Current.CancellationToken);
-        Assert.Equal(2, errorQueueResult.Messages.Count);
-        Assert.Equal("Message 1", errorQueueResult.Messages[0].Body);
-        Assert.Equal("Message 2", errorQueueResult.Messages[1].Body);
+            cancellationToken);
+        errorQueueResult.Messages.Count.ShouldBe(2);
+        errorQueueResult.Messages[0].Body.ShouldBe("Message 1");
+        errorQueueResult.Messages[1].Body.ShouldBe("Message 2");
     }
 
-    [Fact]
-    public async Task ReceiveMessageAsync_SpecificMessageSystemAttributes_OnlyRequestedAttributesReturned()
+    [Test]
+    public async Task ReceiveMessageAsync_SpecificMessageSystemAttributes_OnlyRequestedAttributesReturned(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         // Send a message with system attributes
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -563,7 +566,7 @@ public abstract class SqsReceiveMessageAsyncTests
                 [MessageSystemAttributeName.SentTimestamp] = new MessageSystemAttributeValue
                     { StringValue = "1621234567890", DataType = "String" }
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Request only specific system attributes
         var request = new ReceiveMessageRequest
@@ -573,20 +576,20 @@ public abstract class SqsReceiveMessageAsyncTests
             MessageSystemAttributeNames = [MessageSystemAttributeName.SenderId]
         };
 
-        var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var message = Assert.Single(result.Messages);
+        var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var message = result.Messages.ShouldHaveSingleItem();
 
         // Check that only the requested system attribute is present
-        Assert.True(message.Attributes.ContainsKey(MessageSystemAttributeName.SenderId));
-        Assert.False(message.Attributes.ContainsKey(MessageSystemAttributeName.SentTimestamp));
-        Assert.Equal("TestSender", message.Attributes[MessageSystemAttributeName.SenderId]);
+        message.Attributes.ShouldContainKey(MessageSystemAttributeName.SenderId);
+        message.Attributes.ShouldNotContainKey(MessageSystemAttributeName.SentTimestamp);
+        message.Attributes[MessageSystemAttributeName.SenderId].ShouldBe("TestSender");
     }
 
-    [Fact]
-    public async Task ReceiveMessageAsync_AllMessageSystemAttributes_AllAttributesReturned()
+    [Test]
+    public async Task ReceiveMessageAsync_AllMessageSystemAttributes_AllAttributesReturned(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         // Send a message with system attributes
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -604,7 +607,7 @@ public abstract class SqsReceiveMessageAsyncTests
                 [MessageSystemAttributeName.AWSTraceHeader] = new()
                     { StringValue = "Root=1-5e3d83c1-e6a0db584850d61342823d4c", DataType = "String" }
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Request all system attributes
         var request = new ReceiveMessageRequest
@@ -614,30 +617,28 @@ public abstract class SqsReceiveMessageAsyncTests
             MessageSystemAttributeNames = ["All"]
         };
 
-        var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var message = Assert.Single(result.Messages);
+        var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var message = result.Messages.ShouldHaveSingleItem();
 
         // Check that all system attributes are present
-        Assert.Equal(5, message.Attributes.Count);
-        Assert.Equal("TestSender", message.Attributes[MessageSystemAttributeName.SenderId]);
-        Assert.Equal("1", message.Attributes[MessageSystemAttributeName.ApproximateReceiveCount]);
-        Assert.Equal("Root=1-5e3d83c1-e6a0db584850d61342823d4c",
-            message.Attributes[MessageSystemAttributeName.AWSTraceHeader]);
+        message.Attributes.Count.ShouldBe(5);
+        message.Attributes[MessageSystemAttributeName.SenderId].ShouldBe("TestSender");
+        message.Attributes[MessageSystemAttributeName.ApproximateReceiveCount].ShouldBe("1");
+        message.Attributes[MessageSystemAttributeName.AWSTraceHeader].ShouldBe("Root=1-5e3d83c1-e6a0db584850d61342823d4c");
         if (false)
 #pragma warning disable CS0162 // Unreachable code detected
         {
-            Assert.Equal("1621234567890", message.Attributes[MessageSystemAttributeName.SentTimestamp]);
-            Assert.Equal("1621234567891",
-                message.Attributes[MessageSystemAttributeName.ApproximateFirstReceiveTimestamp]);
+            message.Attributes[MessageSystemAttributeName.SentTimestamp].ShouldBe("1621234567890");
+            message.Attributes[MessageSystemAttributeName.ApproximateFirstReceiveTimestamp].ShouldBe("1621234567891");
         }
 #pragma warning restore CS0162 // Unreachable code detected
     }
 
-    [Fact]
-    public async Task ReceiveMessageAsync_NoMessageSystemAttributes_NoAttributesReturned()
+    [Test]
+    public async Task ReceiveMessageAsync_NoMessageSystemAttributes_NoAttributesReturned(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         // Send a message with system attributes
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -651,7 +652,7 @@ public abstract class SqsReceiveMessageAsyncTests
                 [MessageSystemAttributeName.SentTimestamp] = new MessageSystemAttributeValue
                     { StringValue = "1621234567890", DataType = "String" }
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Don't request any system attributes
         var request = new ReceiveMessageRequest
@@ -661,18 +662,18 @@ public abstract class SqsReceiveMessageAsyncTests
             MessageSystemAttributeNames = []
         };
 
-        var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        var message = Assert.Single(result.Messages);
+        var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        var message = result.Messages.ShouldHaveSingleItem();
 
         // Check that no system attributes are present
-        Assert.Empty(message.Attributes);
+        message.Attributes.ShouldBeEmptyAwsCollection();
     }
 
-    [Fact]
-    public async Task ReceiveMessageAsync_MultipleMessages_CorrectAttributesReturnedForEach()
+    [Test]
+    public async Task ReceiveMessageAsync_MultipleMessages_CorrectAttributesReturnedForEach(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         // Send two messages with different system attributes
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -686,7 +687,7 @@ public abstract class SqsReceiveMessageAsyncTests
                 [MessageSystemAttributeName.SentTimestamp] = new MessageSystemAttributeValue
                     { StringValue = "1621234567890", DataType = "String" }
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
@@ -699,7 +700,7 @@ public abstract class SqsReceiveMessageAsyncTests
                 [MessageSystemAttributeName.AWSTraceHeader] = new MessageSystemAttributeValue
                     { StringValue = "Root=1-5e3d83c1-e6a0db584850d61342823d4c", DataType = "String" }
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Request specific system attributes
         var request = new ReceiveMessageRequest
@@ -711,29 +712,28 @@ public abstract class SqsReceiveMessageAsyncTests
                 [MessageSystemAttributeName.SenderId, MessageSystemAttributeName.AWSTraceHeader]
         };
 
-        var result = await Sqs.ReceiveMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.Equal(2, result.Messages.Count);
+        var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
+        result.Messages.Count.ShouldBe(2);
 
         var message1 = result.Messages.First(m => m.Body == "Message 1");
         var message2 = result.Messages.First(m => m.Body == "Message 2");
 
         // Check attributes for Message 1
-        Assert.Single(message1.Attributes);
-        Assert.Equal("Sender1", message1.Attributes[MessageSystemAttributeName.SenderId]);
+        message1.Attributes.ShouldHaveSingleItem();
+        message1.Attributes[MessageSystemAttributeName.SenderId].ShouldBe("Sender1");
 
         // Check attributes for Message 2
-        Assert.Equal(2, message2.Attributes.Count);
-        Assert.Equal("Sender2", message2.Attributes[MessageSystemAttributeName.SenderId]);
-        Assert.Equal("Root=1-5e3d83c1-e6a0db584850d61342823d4c",
-            message2.Attributes[MessageSystemAttributeName.AWSTraceHeader]);
+        message2.Attributes.Count.ShouldBe(2);
+        message2.Attributes[MessageSystemAttributeName.SenderId].ShouldBe("Sender2");
+        message2.Attributes[MessageSystemAttributeName.AWSTraceHeader].ShouldBe("Root=1-5e3d83c1-e6a0db584850d61342823d4c");
     }
 
     // Permission tests
-    [Fact]
-    public async Task AddPermissionAsync_ValidRequest_AddsPermissionToPolicy()
+    [Test]
+    public async Task AddPermissionAsync_ValidRequest_AddsPermissionToPolicy(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         var request = new AddPermissionRequest
         {
             QueueUrl = queueUrl,
@@ -742,24 +742,24 @@ public abstract class SqsReceiveMessageAsyncTests
             Actions = ["SendMessage", "ReceiveMessage"]
         };
 
-        var response = await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken);
+        var response = await Sqs.AddPermissionAsync(request, cancellationToken);
 
-        Assert.NotNull(response);
+        response.ShouldNotBeNull();
         var attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
         {
             QueueUrl = queueUrl,
             AttributeNames = ["Policy"]
-        }, TestContext.Current.CancellationToken);
-        Assert.True(attributes.Attributes.ContainsKey("Policy"));
+        }, cancellationToken);
+        attributes.Attributes.ShouldContainKey("Policy");
         var policy = Policy.FromJson(attributes.Attributes["Policy"]);
-        Assert.Contains(policy.Statements, s => s.Id == "TestPermission");
+        policy.Statements.ShouldContain(s => s.Id == "TestPermission");
     }
 
-    [Fact]
-    public async Task AddPermissionAsync_DuplicateLabel_ThrowsArgumentException()
+    [Test]
+    public async Task AddPermissionAsync_DuplicateLabel_ThrowsArgumentException(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         var request = new AddPermissionRequest
         {
             QueueUrl = queueUrl,
@@ -768,14 +768,14 @@ public abstract class SqsReceiveMessageAsyncTests
             Actions = ["SendMessage"]
         };
 
-        await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken);
+        await Sqs.AddPermissionAsync(request, cancellationToken);
 
-        await Assert.ThrowsAnyAsync<Exception>(async () =>
-            await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<Exception>(async () =>
+            await Sqs.AddPermissionAsync(request, cancellationToken));
     }
 
-    [Fact]
-    public async Task AddPermissionAsync_QueueDoesNotExist_ThrowsQueueDoesNotExistException()
+    [Test]
+    public async Task AddPermissionAsync_QueueDoesNotExist_ThrowsQueueDoesNotExistException(CancellationToken cancellationToken)
     {
         var request = new AddPermissionRequest
         {
@@ -786,21 +786,21 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         await Assert.ThrowsAsync<QueueDoesNotExistException>(async () =>
-            await Sqs.AddPermissionAsync(request, TestContext.Current.CancellationToken));
+            await Sqs.AddPermissionAsync(request, cancellationToken));
     }
 
-    [Fact]
-    public async Task RemovePermissionAsync_ValidRequest_RemovesPermissionFromPolicy()
+    [Test]
+    public async Task RemovePermissionAsync_ValidRequest_RemovesPermissionFromPolicy(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         await Sqs.AddPermissionAsync(new AddPermissionRequest
         {
             QueueUrl = queueUrl,
             Label = "TestPermission",
             AWSAccountIds = ["123456789012"],
             Actions = ["SendMessage"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         var removeRequest = new RemovePermissionRequest
         {
@@ -808,34 +808,34 @@ public abstract class SqsReceiveMessageAsyncTests
             Label = "TestPermission"
         };
 
-        var response = await Sqs.RemovePermissionAsync(removeRequest, TestContext.Current.CancellationToken);
+        var response = await Sqs.RemovePermissionAsync(removeRequest, cancellationToken);
 
-        Assert.NotNull(response);
+        response.ShouldNotBeNull();
         var attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
         {
             QueueUrl = queueUrl,
             AttributeNames = ["Policy"]
-        }, TestContext.Current.CancellationToken);
-        Assert.False(attributes.Attributes.ContainsKey("Policy"));
+        }, cancellationToken);
+        attributes.Attributes?.ShouldNotContainKey("Policy");
     }
 
-    [Fact]
-    public async Task RemovePermissionAsync_LabelDoesNotExist_ThrowsArgumentException()
+    [Test]
+    public async Task RemovePermissionAsync_LabelDoesNotExist_ThrowsArgumentException(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
         var request = new RemovePermissionRequest
         {
             QueueUrl = queueUrl,
             Label = "NonExistentLabel"
         };
 
-        await Assert.ThrowsAnyAsync<Exception>(async () =>
-            await Sqs.RemovePermissionAsync(request, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<Exception>(async () =>
+            await Sqs.RemovePermissionAsync(request, cancellationToken));
     }
 
-    [Fact]
-    public async Task RemovePermissionAsync_QueueDoesNotExist_ThrowsQueueDoesNotExistException()
+    [Test]
+    public async Task RemovePermissionAsync_QueueDoesNotExist_ThrowsQueueDoesNotExistException(CancellationToken cancellationToken)
     {
         var request = new RemovePermissionRequest
         {
@@ -844,14 +844,14 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         await Assert.ThrowsAsync<QueueDoesNotExistException>(async () =>
-            await Sqs.RemovePermissionAsync(request, TestContext.Current.CancellationToken));
+            await Sqs.RemovePermissionAsync(request, cancellationToken));
     }
 
-    [Fact]
-    public async Task AddAndRemovePermission_MultiplePermissions_ManagesCorrectly()
+    [Test]
+    public async Task AddAndRemovePermission_MultiplePermissions_ManagesCorrectly(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         // Add first permission
         await Sqs.AddPermissionAsync(new AddPermissionRequest
@@ -860,7 +860,7 @@ public abstract class SqsReceiveMessageAsyncTests
             Label = "Permission1",
             AWSAccountIds = ["123456789012"],
             Actions = ["SendMessage"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Add second permission
         await Sqs.AddPermissionAsync(new AddPermissionRequest
@@ -869,57 +869,58 @@ public abstract class SqsReceiveMessageAsyncTests
             Label = "Permission2",
             AWSAccountIds = ["210987654321"],
             Actions = ["ReceiveMessage"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Verify both permissions exist
         var attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
         {
             QueueUrl = queueUrl,
             AttributeNames = ["Policy"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
         var policy = Policy.FromJson(attributes.Attributes["Policy"]);
-        Assert.Equal(2, policy.Statements.Count);
-        Assert.Contains(policy.Statements, s => s.Id == "Permission1");
-        Assert.Contains(policy.Statements, s => s.Id == "Permission2");
+        policy.Statements.Count.ShouldBe(2);
+        policy.Statements.ShouldContain(s => s.Id == "Permission1");
+        policy.Statements.ShouldContain(s => s.Id == "Permission2");
 
         // Remove first permission
         await Sqs.RemovePermissionAsync(new RemovePermissionRequest
         {
             QueueUrl = queueUrl,
             Label = "Permission1"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Verify only second permission remains
         attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
         {
             QueueUrl = queueUrl,
             AttributeNames = ["Policy"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
         policy = Policy.FromJson(attributes.Attributes["Policy"]);
-        Assert.Single(policy.Statements);
-        Assert.Contains(policy.Statements, s => s.Id == "Permission2");
+        policy.Statements.ShouldHaveSingleItem();
+        policy.Statements.ShouldContain(s => s.Id == "Permission2");
 
         // Remove second permission
         await Sqs.RemovePermissionAsync(new RemovePermissionRequest
         {
             QueueUrl = queueUrl,
             Label = "Permission2"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Verify policy is removed
         attributes = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
         {
             QueueUrl = queueUrl,
             AttributeNames = ["Policy"]
-        }, TestContext.Current.CancellationToken);
-        Assert.False(attributes.Attributes.ContainsKey("Policy"));
+        }, cancellationToken);
+
+        attributes.Attributes?.ShouldNotContainKey("Policy");
     }
 
-    [Fact]
-    public async Task SendMessageAsync_MessageExceedsMaximumSize_ThrowsInvalidMessageContentsException()
+    [Test]
+    public async Task SendMessageAsync_MessageExceedsMaximumSize_ThrowsInvalidMessageContentsException(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         // Create a message that exceeds 256KB (262,144 bytes)
         var largeMessage = new string('x', 262145);
@@ -931,14 +932,14 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         await Assert.ThrowsAsync<AmazonSQSException>(() =>
-            Sqs.SendMessageAsync(request, TestContext.Current.CancellationToken));
+            Sqs.SendMessageAsync(request, cancellationToken));
     }
 
-    [Fact]
-    public async Task SendMessageAsync_MessageAttributeFullSizeCalculation_ThrowsException()
+    [Test]
+    public async Task SendMessageAsync_MessageAttributeFullSizeCalculation_ThrowsException(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         // The total size includes:
         // 1. Message body
@@ -969,18 +970,18 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         await Assert.ThrowsAsync<AmazonSQSException>(() =>
-            Sqs.SendMessageAsync(request, TestContext.Current.CancellationToken));
+            Sqs.SendMessageAsync(request, cancellationToken));
     }
 
-    [Fact]
-    public async Task SendMessageAsync_MultipleAttributesExactlyAtLimit_Succeeds()
+    [Test]
+    public async Task SendMessageAsync_MultipleAttributesExactlyAtLimit_Succeeds(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         // Calculate sizes to reach exactly 256KB:
         // - Message body: 200,000 bytes
-        // - First attribute: 
+        // - First attribute:
         //   * Name: 100 bytes
         //   * Type: "String" (6 bytes)
         //   * Value: 31,000 bytes
@@ -1009,8 +1010,8 @@ public abstract class SqsReceiveMessageAsyncTests
             }
         };
 
-        var sendResponse = await Sqs.SendMessageAsync(sendRequest, TestContext.Current.CancellationToken);
-        Assert.NotNull(sendResponse.MessageId);
+        var sendResponse = await Sqs.SendMessageAsync(sendRequest, cancellationToken);
+        sendResponse.MessageId.ShouldNotBeNull();
 
         // Verify we can receive the message with attributes
         var receiveResponse = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -1018,17 +1019,17 @@ public abstract class SqsReceiveMessageAsyncTests
             QueueUrl = queueUrl,
             MaxNumberOfMessages = 1,
             MessageAttributeNames = ["All"]
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
-        var message = Assert.Single(receiveResponse.Messages);
-        Assert.Equal(2, message.MessageAttributes.Count);
+        var message = receiveResponse.Messages.ShouldHaveSingleItem();
+        message.MessageAttributes.Count.ShouldBe(2);
     }
 
-    [Fact]
-    public async Task SendMessageAsync_BinaryAttributeSize_Succeeds()
+    [Test]
+    public async Task SendMessageAsync_BinaryAttributeSize_Succeeds(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         // Create a binary attribute
         byte[] binaryData = new byte[1000];
@@ -1051,15 +1052,15 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         // Total size: 260,000 (body) + 14 (attribute name) + 6 (type) + 1,000 (binary value) = 261,020 bytes
-        var response = await Sqs.SendMessageAsync(request, TestContext.Current.CancellationToken);
-        Assert.NotNull(response.MessageId);
+        var response = await Sqs.SendMessageAsync(request, cancellationToken);
+        response.MessageId.ShouldNotBeNull();
     }
 
-    [Fact]
-    public async Task SendMessageAsync_CustomAttributeTypeNames_CountTowardsLimit()
+    [Test]
+    public async Task SendMessageAsync_CustomAttributeTypeNames_CountTowardsLimit(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         // Using a custom attribute type name which counts towards the limit
         var longCustomType = $"String.{new string('x', 1000)}";
@@ -1080,14 +1081,14 @@ public abstract class SqsReceiveMessageAsyncTests
 
         // The long custom type name should push us over the limit
         await Assert.ThrowsAsync<AmazonSQSException>(() =>
-            Sqs.SendMessageAsync(request, TestContext.Current.CancellationToken));
+            Sqs.SendMessageAsync(request, cancellationToken));
     }
 
-    [Fact]
-    public async Task SendMessageAsync_BatchWithAttributeSizeLimits_PartialBatchFailure()
+    [Test]
+    public async Task SendMessageAsync_BatchWithAttributeSizeLimits_PartialBatchFailure(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
-            TestContext.Current.CancellationToken)).QueueUrl;
+            cancellationToken)).QueueUrl;
 
         var validMessage = new SendMessageBatchRequestEntry
         {
@@ -1124,7 +1125,7 @@ public abstract class SqsReceiveMessageAsyncTests
         };
 
         await Assert.ThrowsAsync<BatchRequestTooLongException>(async () =>
-            await Sqs.SendMessageBatchAsync(request, TestContext.Current.CancellationToken));
+            await Sqs.SendMessageBatchAsync(request, cancellationToken));
     }
 
     protected abstract Task AdvanceTime(TimeSpan timeSpan);

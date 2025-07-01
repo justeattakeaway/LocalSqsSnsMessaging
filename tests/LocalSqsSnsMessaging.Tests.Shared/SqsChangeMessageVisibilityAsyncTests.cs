@@ -20,59 +20,59 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
         });
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ChangeMessageVisibilityAsync_ValidRequest_ChangesVisibilityTimeout()
+    [Test, Category("TimeBasedTests")]
+    public async Task ChangeMessageVisibilityAsync_ValidRequest_ChangesVisibilityTimeout(CancellationToken cancellationToken)
     {
         await SetupQueueAndMessage();
 
         // Receive the message
-        var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, TestContext.Current.CancellationToken);
-        var message = Assert.Single(receiveResult.Messages);
+        var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
+        var message = await Assert.That(receiveResult.Messages).HasSingleItem();
 
         // Change visibility timeout to 10 seconds
         await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
         {
             QueueUrl = _queueUrl,
-            ReceiptHandle = message.ReceiptHandle,
+            ReceiptHandle = message!.ReceiptHandle,
             VisibilityTimeout = 10
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Try to receive the message again immediately (should fail)
-        var immediateReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, TestContext.Current.CancellationToken);
-        Assert.Empty(immediateReceiveResult.Messages);
+        var immediateReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
+        immediateReceiveResult.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by 11 seconds
         await AdvanceTime(TimeSpan.FromSeconds(11));
 
         // Now we should be able to receive the message
-        var finalReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, TestContext.Current.CancellationToken);
-        Assert.Single(finalReceiveResult.Messages);
+        var finalReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
+        await Assert.That(finalReceiveResult.Messages).HasSingleItem();
     }
 
-    [Fact]
-    public async Task ChangeMessageVisibilityAsync_SetToZero_MakesMessageImmediatelyAvailable()
+    [Test]
+    public async Task ChangeMessageVisibilityAsync_SetToZero_MakesMessageImmediatelyAvailable(CancellationToken cancellationToken)
     {
         await SetupQueueAndMessage();
 
         // Receive the message
-        var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, TestContext.Current.CancellationToken);
-        var message = Assert.Single(receiveResult.Messages);
+        var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
+        var message = await Assert.That(receiveResult.Messages).HasSingleItem();
 
         // Change visibility timeout to 0 seconds
         await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
         {
             QueueUrl = _queueUrl,
-            ReceiptHandle = message.ReceiptHandle,
+            ReceiptHandle = message!.ReceiptHandle,
             VisibilityTimeout = 0
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Try to receive the message again immediately (should succeed)
-        var immediateReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, TestContext.Current.CancellationToken);
-        Assert.Single(immediateReceiveResult.Messages);
+        var immediateReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
+        await Assert.That(immediateReceiveResult.Messages).HasSingleItem();
     }
 
-    [Fact]
-    public async Task ChangeMessageVisibilityAsync_InvalidReceiptHandle_ThrowsException()
+    [Test]
+    public async Task ChangeMessageVisibilityAsync_InvalidReceiptHandle_ThrowsException(CancellationToken cancellationToken)
     {
         await SetupQueueAndMessage();
 
@@ -83,17 +83,17 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
                 QueueUrl = _queueUrl,
                 ReceiptHandle = "invalid-receipt-handle",
                 VisibilityTimeout = 10
-            }, TestContext.Current.CancellationToken));
+            }, cancellationToken));
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ChangeMessageVisibilityAsync_MessageNotInFlight_ThrowsException()
+    [Test, Category("TimeBasedTests")]
+    public async Task ChangeMessageVisibilityAsync_MessageNotInFlight_ThrowsException(CancellationToken cancellationToken)
     {
         await SetupQueueAndMessage();
 
         // Receive the message
-        var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl, VisibilityTimeout = 5}, TestContext.Current.CancellationToken);
-        var message = Assert.Single(receiveResult.Messages);
+        var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl, VisibilityTimeout = 5}, cancellationToken);
+        var message = await Assert.That(receiveResult.Messages).HasSingleItem();
 
         // Wait for the visibility timeout to expire
         await AdvanceTime(TimeSpan.FromSeconds(10)); // Assuming default is 30 seconds
@@ -103,30 +103,30 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
         await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
         {
             QueueUrl = _queueUrl,
-            ReceiptHandle = message.ReceiptHandle,
+            ReceiptHandle = message!.ReceiptHandle,
             VisibilityTimeout = 10
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
-        var secondReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, TestContext.Current.CancellationToken);
-        Assert.Single(secondReceiveResult.Messages);
+        var secondReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
+        await Assert.That(secondReceiveResult.Messages).HasSingleItem();
     }
 
-    [Fact, Trait("Category", "TimeBasedTests")]
-    public async Task ChangeMessageVisibilityAsync_ChangeMultipleTimes_LastChangeApplies()
+    [Test, Category("TimeBasedTests")]
+    public async Task ChangeMessageVisibilityAsync_ChangeMultipleTimes_LastChangeApplies(CancellationToken cancellationToken)
     {
         await SetupQueueAndMessage();
 
         // Receive the message
-        var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, TestContext.Current.CancellationToken);
-        var message = Assert.Single(receiveResult.Messages);
+        var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
+        var message = await Assert.That(receiveResult.Messages).HasSingleItem();
 
         // Change visibility timeout to 30 seconds
         await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
         {
             QueueUrl = _queueUrl,
-            ReceiptHandle = message.ReceiptHandle,
+            ReceiptHandle = message!.ReceiptHandle,
             VisibilityTimeout = 30
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Change visibility timeout to 10 seconds
         await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
@@ -134,14 +134,14 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
             QueueUrl = _queueUrl,
             ReceiptHandle = message.ReceiptHandle,
             VisibilityTimeout = 10
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Advance time by 11 seconds
         await AdvanceTime(TimeSpan.FromSeconds(11));
 
         // Now we should be able to receive the message (10 second timeout applies, not 30)
-        var finalReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, TestContext.Current.CancellationToken);
-        Assert.Single(finalReceiveResult.Messages);
+        var finalReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
+        await Assert.That(finalReceiveResult.Messages).HasSingleItem();
     }
 
     protected abstract Task AdvanceTime(TimeSpan timeSpan);

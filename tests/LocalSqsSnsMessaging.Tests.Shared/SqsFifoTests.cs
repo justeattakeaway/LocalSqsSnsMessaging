@@ -8,8 +8,8 @@ public abstract class SqsFifoTests
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
 
-    [Fact]
-    public async Task CreateFifoQueue_SetsCorrectAttributes()
+    [Test]
+    public async Task CreateFifoQueue_SetsCorrectAttributes(CancellationToken cancellationToken)
     {
         var queueName = "test-fifo-queue.fifo";
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest
@@ -19,39 +19,39 @@ public abstract class SqsFifoTests
             {
                 [QueueAttributeName.FifoQueue] = "true"
             }
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
-        var attributes = await Sqs.GetQueueAttributesAsync(createQueueResponse.QueueUrl, [QueueAttributeName.FifoQueue], TestContext.Current.CancellationToken);
+        var attributes = await Sqs.GetQueueAttributesAsync(createQueueResponse.QueueUrl, [QueueAttributeName.FifoQueue], cancellationToken);
 
-        Assert.True(bool.Parse(attributes.Attributes[QueueAttributeName.FifoQueue]));
+        await Assert.That(bool.Parse(attributes.Attributes[QueueAttributeName.FifoQueue])).IsTrue();
     }
 
-    [Fact]
-    public async Task SendMessageToFifoQueue_RequiresMessageGroupId()
+    [Test]
+    public async Task SendMessageToFifoQueue_RequiresMessageGroupId(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
             QueueName = "test-fifo-queue.fifo",
             Attributes = new Dictionary<string, string> { [QueueAttributeName.FifoQueue] = "true" }
-        }, TestContext.Current.CancellationToken)).QueueUrl;
+        }, cancellationToken)).QueueUrl;
 
-        await Assert.ThrowsAnyAsync<Exception>(async () =>
+        await Assert.ThrowsAsync<Exception>(async () =>
             await Sqs.SendMessageAsync(new SendMessageRequest
             {
                 QueueUrl = queueUrl,
                 MessageBody = "Test Message"
                 // MessageGroupId is missing
-            }, TestContext.Current.CancellationToken));
+            }, cancellationToken));
     }
 
-    [Fact]
-    public async Task FifoQueue_EnforcesMessageGroupOrdering()
+    [Test]
+    public async Task FifoQueue_EnforcesMessageGroupOrdering(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
             QueueName = "test-fifo-queue.fifo",
             Attributes = new Dictionary<string, string> { [QueueAttributeName.FifoQueue] = "true" }
-        }, TestContext.Current.CancellationToken)).QueueUrl;
+        }, cancellationToken)).QueueUrl;
 
         // Send messages to two different message groups
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -60,7 +60,7 @@ public abstract class SqsFifoTests
             MessageBody = "Message 1 Group A",
             MessageGroupId = "GroupA",
             MessageDeduplicationId = "Dedup1A"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
@@ -68,7 +68,7 @@ public abstract class SqsFifoTests
             MessageBody = "Message 2 Group A",
             MessageGroupId = "GroupA",
             MessageDeduplicationId = "Dedup2A"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
@@ -76,7 +76,7 @@ public abstract class SqsFifoTests
             MessageBody = "Message 1 Group B",
             MessageGroupId = "GroupB",
             MessageDeduplicationId = "Dedup1B"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Receive messages
         var receiveRequest = new ReceiveMessageRequest
@@ -85,16 +85,16 @@ public abstract class SqsFifoTests
             MaxNumberOfMessages = 10
         };
 
-        var result = await Sqs.ReceiveMessageAsync(receiveRequest, TestContext.Current.CancellationToken);
+        var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
 
-        Assert.Equal(3, result.Messages.Count);
-        Assert.Equal("Message 1 Group A", result.Messages[0].Body);
-        Assert.Equal("Message 2 Group A", result.Messages[1].Body);
-        Assert.Equal("Message 1 Group B", result.Messages[2].Body);
+        await Assert.That(result.Messages.Count).IsEqualTo(3);
+        await Assert.That(result.Messages[0].Body).IsEqualTo("Message 1 Group A");
+        await Assert.That(result.Messages[1].Body).IsEqualTo("Message 2 Group A");
+        await Assert.That(result.Messages[2].Body).IsEqualTo("Message 1 Group B");
     }
 
-    [Fact]
-    public async Task FifoQueue_MessageDeduplication()
+    [Test]
+    public async Task FifoQueue_MessageDeduplication(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
@@ -104,7 +104,7 @@ public abstract class SqsFifoTests
                 [QueueAttributeName.FifoQueue] = "true",
                 [QueueAttributeName.ContentBasedDeduplication] = "false"
             }
-        }, TestContext.Current.CancellationToken)).QueueUrl;
+        }, cancellationToken)).QueueUrl;
 
         // Send two messages with the same deduplication ID
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -113,7 +113,7 @@ public abstract class SqsFifoTests
             MessageBody = "Duplicate Message",
             MessageGroupId = "GroupA",
             MessageDeduplicationId = "DuplicateDedup"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
@@ -121,7 +121,7 @@ public abstract class SqsFifoTests
             MessageBody = "Duplicate Message",
             MessageGroupId = "GroupA",
             MessageDeduplicationId = "DuplicateDedup"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Send a message with a different deduplication ID
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -130,7 +130,7 @@ public abstract class SqsFifoTests
             MessageBody = "Unique Message",
             MessageGroupId = "GroupA",
             MessageDeduplicationId = "UniqueDedup"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Receive messages
         var receiveRequest = new ReceiveMessageRequest
@@ -139,15 +139,15 @@ public abstract class SqsFifoTests
             MaxNumberOfMessages = 10
         };
 
-        var result = await Sqs.ReceiveMessageAsync(receiveRequest, TestContext.Current.CancellationToken);
+        var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
 
-        Assert.Equal(2, result.Messages.Count);
-        Assert.Equal("Duplicate Message", result.Messages[0].Body);
-        Assert.Equal("Unique Message", result.Messages[1].Body);
+        await Assert.That(result.Messages.Count).IsEqualTo(2);
+        await Assert.That(result.Messages[0].Body).IsEqualTo("Duplicate Message");
+        await Assert.That(result.Messages[1].Body).IsEqualTo("Unique Message");
     }
 
-    [Fact]
-    public async Task FifoQueue_ContentBasedDeduplication()
+    [Test]
+    public async Task FifoQueue_ContentBasedDeduplication(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
@@ -157,7 +157,7 @@ public abstract class SqsFifoTests
                 [QueueAttributeName.FifoQueue] = "true",
                 [QueueAttributeName.ContentBasedDeduplication] = "true"
             }
-        }, TestContext.Current.CancellationToken)).QueueUrl;
+        }, cancellationToken)).QueueUrl;
 
         // Send two identical messages without specifying MessageDeduplicationId
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -165,14 +165,14 @@ public abstract class SqsFifoTests
             QueueUrl = queueUrl,
             MessageBody = "Duplicate Content",
             MessageGroupId = "GroupA"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
             QueueUrl = queueUrl,
             MessageBody = "Duplicate Content",
             MessageGroupId = "GroupA"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Send a different message
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -180,7 +180,7 @@ public abstract class SqsFifoTests
             QueueUrl = queueUrl,
             MessageBody = "Unique Content",
             MessageGroupId = "GroupA"
-        }, TestContext.Current.CancellationToken);
+        }, cancellationToken);
 
         // Receive messages
         var receiveRequest = new ReceiveMessageRequest
@@ -189,15 +189,15 @@ public abstract class SqsFifoTests
             MaxNumberOfMessages = 10
         };
 
-        var result = await Sqs.ReceiveMessageAsync(receiveRequest, TestContext.Current.CancellationToken);
+        var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
 
-        Assert.Equal(2, result.Messages.Count);
-        Assert.Equal("Duplicate Content", result.Messages[0].Body);
-        Assert.Equal("Unique Content", result.Messages[1].Body);
+        await Assert.That(result.Messages.Count).IsEqualTo(2);
+        await Assert.That(result.Messages[0].Body).IsEqualTo("Duplicate Content");
+        await Assert.That(result.Messages[1].Body).IsEqualTo("Unique Content");
     }
 
-    [Fact]
-    public async Task FifoQueue_HighThroughputMode()
+    [Test]
+    public async Task FifoQueue_HighThroughputMode(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
@@ -208,7 +208,7 @@ public abstract class SqsFifoTests
                 [QueueAttributeName.DeduplicationScope] = "messageGroup",
                 [QueueAttributeName.FifoThroughputLimit] = "perMessageGroupId"
             }
-        }, TestContext.Current.CancellationToken)).QueueUrl;
+        }, cancellationToken)).QueueUrl;
 
         // Send messages to different message groups
         for (int i = 0; i < 5; i++)
@@ -219,7 +219,7 @@ public abstract class SqsFifoTests
                 MessageBody = $"Message {i} Group A",
                 MessageGroupId = "GroupA",
                 MessageDeduplicationId = $"DedupA{i}"
-            }, TestContext.Current.CancellationToken);
+            }, cancellationToken);
 
             await Sqs.SendMessageAsync(new SendMessageRequest
             {
@@ -227,7 +227,7 @@ public abstract class SqsFifoTests
                 MessageBody = $"Message {i} Group B",
                 MessageGroupId = "GroupB",
                 MessageDeduplicationId = $"DedupB{i}"
-            }, TestContext.Current.CancellationToken);
+            }, cancellationToken);
         }
 
         // Receive messages
@@ -237,12 +237,12 @@ public abstract class SqsFifoTests
             MaxNumberOfMessages = 10
         };
 
-        var result = await Sqs.ReceiveMessageAsync(receiveRequest, TestContext.Current.CancellationToken);
+        var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
 
-        Assert.Equal(10, result.Messages.Count);
+        await Assert.That(result.Messages.Count).IsEqualTo(10);
         // Verify that messages from both groups are interleaved
-        Assert.Contains(result.Messages, m => m.Body.Contains("Group A", StringComparison.Ordinal));
-        Assert.Contains(result.Messages, m => m.Body.Contains("Group B", StringComparison.Ordinal));
+        await Assert.That(result.Messages).Contains(m => m.Body.Contains("Group A", StringComparison.Ordinal));
+        await Assert.That(result.Messages).Contains(m => m.Body.Contains("Group B", StringComparison.Ordinal));
     }
 
     protected abstract Task AdvanceTime(TimeSpan timeSpan);

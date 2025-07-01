@@ -72,19 +72,15 @@ function DotNetTest {
         [string] $Project
     )
 
-    $additionalArgs = @()
+    $additionalArgs = @(
+        "--coverage"
+        "--coverage-output-format"; "xml"
+        "--timeout"; "2m"
+    )
 
-    $isGitHubActions = ![string]::IsNullOrEmpty($env:GITHUB_SHA);
-
-    if ($isGitHubActions -eq $true) {
-        $additionalArgs += "--logger"
-        $additionalArgs += "GitHubActions;report-warnings=false"
-    }
-
-    & $dotnet test $Project `
+    & $dotnet run --project $Project `
         --configuration "Release" `
-        $additionalArgs `
-        -- RunConfiguration.TestSessionTimeout=120000
+        -- $additionalArgs `
 
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet test failed with exit code $LASTEXITCODE"

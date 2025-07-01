@@ -1,21 +1,19 @@
-using System.Diagnostics;
-
 namespace LocalSqsSnsMessaging.Tests.Verification.LocalStack;
 
-// ReSharper disable once UnusedType.Global
-[Collection(AspireTestCollection.Name)]
+[InheritsTests]
 public class SqsStartMessageMoveTaskAsyncAsyncLocalStackTests : SqsStartMessageMoveTaskAsyncTests
 {
-    public SqsStartMessageMoveTaskAsyncAsyncLocalStackTests(AspireFixture aspireFixture, ITestOutputHelper testOutputHelper)
-    {
-        ArgumentNullException.ThrowIfNull(aspireFixture);
+    [ClassDataSource<AspireFixture>(Shared = SharedType.PerTestSession)]
+    public required AspireFixture AspireFixture { get; set; }
 
+    [Before(Test)]
+    public void BeforeEachTest()
+    {
 #pragma warning disable CA5394
         AccountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
 #pragma warning restore CA5394
-        Debug.Assert(testOutputHelper != null);
-        testOutputHelper.WriteLine($"AccountId: {AccountId}");
-        Sqs = ClientFactory.CreateSqsClient(AccountId, aspireFixture.LocalStackPort!.Value);
+        Console.WriteLine($"AccountId: {AccountId}");
+        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.LocalStackPort!.Value);
     }
 
     protected override Task AdvanceTime(TimeSpan timeSpan)
