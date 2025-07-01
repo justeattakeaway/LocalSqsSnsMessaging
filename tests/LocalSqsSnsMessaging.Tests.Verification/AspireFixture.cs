@@ -19,24 +19,14 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
         // ReSharper disable once MethodHasAsyncOverload
         _builder = DistributedApplicationTestingBuilder.Create();
 #pragma warning restore CA1849
+
         string[] services = ["sqs", "sns"];
-        var localstack = _builder.AddContainer("localstack", "localstack/localstack", "stable")
-            .WithHttpEndpoint(targetPort: 4566)
-            .WithEnvironment("SERVICES", string.Join(',', services))
-            .WithEnvironment("EAGER_SERVICE_LOADING", "1")
-            .WithLocalStackHealthCheck(services);
+        _builder.AddLocalStack(services);
 
-        var isRunningInCi = Environment.GetEnvironmentVariable("CI") == "true";
-
-        if (!isRunningInCi)
-        {
-            localstack
-                .WithContainerName("localsqssnsmessaging-localstack")
-                .WithLifetime(ContainerLifetime.Persistent);
-        }
-
+        // Disable aspire host logs as they will populate a random test output
         _builder.Services.Add(ServiceDescriptor.Singleton<ILoggerFactory>(NullLoggerFactory.Instance));
         _builder.Services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
+
         _app = await _builder.BuildAsync();
 
         await _app.StartAsync();

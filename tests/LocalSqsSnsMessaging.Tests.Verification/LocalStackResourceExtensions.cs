@@ -1,11 +1,34 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Runtime.CompilerServices;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace LocalSqsSnsMessaging.Tests.Verification;
 
-public static class LocalStackResourceExtensions
+public static class LocalStackAspireExtensions
 {
-    public static IResourceBuilder<T> WithLocalStackHealthCheck<T>(this IResourceBuilder<T> builder, string[] services) where T : IResourceWithEndpoints
+    public static IDistributedApplicationBuilder AddLocalStack(this IDistributedApplicationBuilder builder, string[] services)
+    {
+        var localstackResource =
+            builder
+            .AddContainer("localstack", "localstack/localstack", "stable")
+            .WithHttpEndpoint(targetPort: 4566)
+            .WithEnvironment("SERVICES", string.Join(',', services))
+            .WithEnvironment("EAGER_SERVICE_LOADING", "1")
+            .WithLocalStackHealthCheck(services);
+
+        var isRunningInCi = Environment.GetEnvironmentVariable("CI") == "true";
+
+        if (!isRunningInCi)
+        {
+            localstackResource
+                .WithContainerName("localsqssnsmessaging-localstack")
+                .WithLifetime(ContainerLifetime.Persistent);
+        }
+
+        return builder;
+    }
+
+    private static IResourceBuilder<T> WithLocalStackHealthCheck<T>(this IResourceBuilder<T> builder, string[] services) where T : IResourceWithEndpoints
     {
         ArgumentNullException.ThrowIfNull(builder);
 
