@@ -101,7 +101,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
             MaxNumberOfMessagesPerSecond = 10
         }, cancellationToken);
 
-        await Assert.That(startMoveResponse.TaskHandle).IsNotNull();
+        startMoveResponse.TaskHandle.ShouldNotBeNull();
 
         // Wait for the move to complete
         await AdvanceTime(TimeSpan.FromSeconds(2));
@@ -173,7 +173,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
             MaxNumberOfMessagesPerSecond = 10
         }, cancellationToken);
 
-        await Assert.That(startMoveResponse.TaskHandle).IsNotNull();
+        startMoveResponse.TaskHandle.ShouldNotBeNull();
 
         // Wait for the move to complete
         await AdvanceTime(TimeSpan.FromSeconds(1));
@@ -206,7 +206,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
             MaxNumberOfMessagesPerSecond = 3
         }, cancellationToken);
 
-        await Assert.That(startMoveResponse.TaskHandle).IsNotNull();
+        startMoveResponse.TaskHandle.ShouldNotBeNull();
 
         // Wait for 1 second (should move approximately 3 messages)
         await AdvanceTime(TimeSpan.FromSeconds(1));

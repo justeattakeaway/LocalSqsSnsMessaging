@@ -1,5 +1,6 @@
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Shouldly;
 
 namespace LocalSqsSnsMessaging.Tests;
 
@@ -23,7 +24,7 @@ public abstract class SqsFifoTests
 
         var attributes = await Sqs.GetQueueAttributesAsync(createQueueResponse.QueueUrl, [QueueAttributeName.FifoQueue], cancellationToken);
 
-        await Assert.That(bool.Parse(attributes.Attributes[QueueAttributeName.FifoQueue])).IsTrue();
+        bool.Parse(attributes.Attributes[QueueAttributeName.FifoQueue]).ShouldBeTrue();
     }
 
     [Test]
@@ -87,10 +88,10 @@ public abstract class SqsFifoTests
 
         var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
 
-        await Assert.That(result.Messages.Count).IsEqualTo(3);
-        await Assert.That(result.Messages[0].Body).IsEqualTo("Message 1 Group A");
-        await Assert.That(result.Messages[1].Body).IsEqualTo("Message 2 Group A");
-        await Assert.That(result.Messages[2].Body).IsEqualTo("Message 1 Group B");
+        result.Messages.Count.ShouldBe(3);
+        result.Messages[0].Body.ShouldBe("Message 1 Group A");
+        result.Messages[1].Body.ShouldBe("Message 2 Group A");
+        result.Messages[2].Body.ShouldBe("Message 1 Group B");
     }
 
     [Test]
@@ -141,9 +142,9 @@ public abstract class SqsFifoTests
 
         var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
 
-        await Assert.That(result.Messages.Count).IsEqualTo(2);
-        await Assert.That(result.Messages[0].Body).IsEqualTo("Duplicate Message");
-        await Assert.That(result.Messages[1].Body).IsEqualTo("Unique Message");
+        result.Messages.Count.ShouldBe(2);
+        result.Messages[0].Body.ShouldBe("Duplicate Message");
+        result.Messages[1].Body.ShouldBe("Unique Message");
     }
 
     [Test]
@@ -191,9 +192,9 @@ public abstract class SqsFifoTests
 
         var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
 
-        await Assert.That(result.Messages.Count).IsEqualTo(2);
-        await Assert.That(result.Messages[0].Body).IsEqualTo("Duplicate Content");
-        await Assert.That(result.Messages[1].Body).IsEqualTo("Unique Content");
+        result.Messages.Count.ShouldBe(2);
+        result.Messages[0].Body.ShouldBe("Duplicate Content");
+        result.Messages[1].Body.ShouldBe("Unique Content");
     }
 
     [Test]
@@ -239,10 +240,10 @@ public abstract class SqsFifoTests
 
         var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
 
-        await Assert.That(result.Messages.Count).IsEqualTo(10);
+        result.Messages.Count.ShouldBe(10);
         // Verify that messages from both groups are interleaved
-        await Assert.That(result.Messages).Contains(m => m.Body.Contains("Group A", StringComparison.Ordinal));
-        await Assert.That(result.Messages).Contains(m => m.Body.Contains("Group B", StringComparison.Ordinal));
+        result.Messages.ShouldContain(m => m.Body.Contains("Group A", StringComparison.Ordinal));
+        result.Messages.ShouldContain(m => m.Body.Contains("Group B", StringComparison.Ordinal));
     }
 
     protected abstract Task AdvanceTime(TimeSpan timeSpan);
