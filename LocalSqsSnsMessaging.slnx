@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="build.ps1" />
+    <File Path="Directory.Packages.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="Directory.Build.props" />
+    <File Path="NuGet.config" />
+    <File Path="global.json" />
+    <File Path="BannedSymbols.txt" />
+    <File Path="LocalSqsSnsMessaging.ruleset" />
+    <File Path="exclusion.dic" />
+    <File Path="package-icon.png" />
+    <File Path="justeat-oss.snk" />
+    <File Path="test-run-example.png" />
+    <File Path="README.md" />
+    <File Path="CODE_OF_CONDUCT.md" />
+    <File Path="LICENSE" />
+  </Folder>
+  <Project Path="src/LocalSqsSnsMessaging/LocalSqsSnsMessaging.csproj" />
+  <Project Path="tests/LocalSqsSnsMessaging.Tests.Shared/LocalSqsSnsMessaging.Tests.Shared.csproj" />
+  <Project Path="tests/LocalSqsSnsMessaging.Tests.Verification/LocalSqsSnsMessaging.Tests.Verification.csproj" />
+  <Project Path="tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj" />
+</Solution>
