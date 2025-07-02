@@ -196,7 +196,7 @@ internal sealed class SnsPublishAction
         return CreateFormattedMessage(snsMessage, topicArn);
     }
 
-    private JsonObject CreateSnsMessage(string messageId, string topicArn, string? subject, string message, Dictionary<string, MessageAttributeValue> attributes)
+    private JsonObject CreateSnsMessage(string messageId, string topicArn, string? subject, string message, Dictionary<string, MessageAttributeValue>? attributes)
     {
         var snsMessage = new JsonObject
         {
@@ -216,7 +216,7 @@ internal sealed class SnsPublishAction
             snsMessage["Subject"] = subject;
         }
 
-        if (attributes.Count > 0)
+        if (attributes is not null && attributes.Count > 0)
         {
             var messageAttributes = new JsonObject();
             foreach (var (key, value) in attributes)
