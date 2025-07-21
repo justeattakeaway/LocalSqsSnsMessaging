@@ -22,10 +22,10 @@ internal sealed class SqsInflightMessageExpirationJob : IDisposable
             queue ?? throw new ArgumentNullException(nameof(queue)),
             receiptHandle ?? throw new ArgumentNullException(nameof(receiptHandle))
         );
-        
+
         _timer = timeProvider.CreateTimer(VisibilityTimeoutCallback, state, timeout, Timeout.InfiniteTimeSpan);
     }
-    
+
     public void UpdateTimeout(TimeSpan timeout)
     {
         _timer.Change(timeout, Timeout.InfiniteTimeSpan);
@@ -41,7 +41,7 @@ internal sealed class SqsInflightMessageExpirationJob : IDisposable
             inFlightExpireCallback.Dispose();
         }
     }
-    
+
     public void Dispose()
     {
         _timer.Dispose();
