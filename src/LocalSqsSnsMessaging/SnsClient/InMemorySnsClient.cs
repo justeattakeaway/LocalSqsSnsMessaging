@@ -192,9 +192,15 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             throw new NotFoundException("Topic not found.");
         }
 
+        // Create a copy of the attributes dictionary to prevent mutation.
+        // TODO other default attributes to be added later.
+        var attributes = new Dictionary<string, string>(topic.Attributes) {
+            ["TopicArn"] = topic.Arn
+        };
+
         return Task.FromResult(new GetTopicAttributesResponse
         {
-            Attributes = topic.Attributes
+            Attributes = attributes
         }.SetCommonProperties());
     }
 

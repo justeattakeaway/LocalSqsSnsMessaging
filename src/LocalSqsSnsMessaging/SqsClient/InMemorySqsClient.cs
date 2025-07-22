@@ -2,9 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
-using Amazon;
 using Amazon.Auth.AccessControlPolicy;
 using Amazon.Runtime;
 using Amazon.SQS;
@@ -106,14 +104,33 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             throw new ReceiptHandleIsInvalidException($"Receipt handle {request.ReceiptHandle} is invalid.");
         }
 
-        if (queue.InFlightMessages.TryGetValue(request.ReceiptHandle, out var message))
+        if (queue.InFlightMessages.TryGetValue(request.ReceiptHandle, out var inFlightInfo))
         {
-            var (_, inFlightExpireCallback) = message;
-            inFlightExpireCallback.UpdateTimeout(TimeSpan.FromSeconds(request.VisibilityTimeout.GetValueOrDefault()));
+            var (message, expirationHandler) = inFlightInfo;
+            var visibilityTimeout = TimeSpan.FromSeconds(request.VisibilityTimeout.GetValueOrDefault());
+
+            if (visibilityTimeout == TimeSpan.Zero)
+            {
+                // Atomically remove from in-flight and re-queue if successful.
+                if (queue.InFlightMessages.Remove(request.ReceiptHandle, out var removedInfo))
+                {
+                    removedInfo.Item2.Dispose(); // Dispose the expiration job
+
+                    // Re-queue the message to the correct location using the new abstracted method.
+                    EnqueueMessage(queue, message);
+                }
+            }
+            else
+            {
+                // For non-zero timeouts, just update the expiration.
+                expirationHandler.UpdateTimeout(visibilityTimeout);
+            }
+
             return Task.FromResult(new ChangeMessageVisibilityResponse().SetCommonProperties());
         }
 
-        // If message is in-flight, it should be updated by the expiration handler
+        // If the message is not in-flight, it might have already been processed or expired.
+        // SQS does not throw an error in this case, so we return a success response.
         return Task.FromResult(new ChangeMessageVisibilityResponse().SetCommonProperties());
     }
 
@@ -322,7 +339,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }
         else
         {
-            messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages.GetValueOrDefault(1), visibilityTimeout, cancellationToken);
+            messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages.GetValueOrDefault(1), visibilityTimeout, request.MessageSystemAttributeNames, cancellationToken);
         }
 
         return new ReceiveMessageResponse
@@ -345,11 +362,12 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
     private void ReceiveMessageImpl(Message message, ref List<Message>? messages, SqsQueueResource queue, TimeSpan visibilityTimeout, List<string> requestedSystemAttributes)
     {
-        if (IsAtMaxReceiveCount(message, queue))
+        if (IsAtMaxReceiveCount(message, queue) && queue.ErrorQueue is not null)
         {
+            // Message has been received too many times, move it to the dead-letter queue.
             message.Attributes ??= [];
             message.Attributes[MessageSystemAttributeName.DeadLetterQueueSourceArn] = queue.Arn;
-            queue.ErrorQueue?.Messages.Writer.TryWrite(message);
+            EnqueueMessage(queue.ErrorQueue, message);
             return;
         }
         IncrementReceiveCount(message);
@@ -366,27 +384,31 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             new SqsInflightMessageExpirationJob(receiptHandle, queue, visibilityTimeout, _bus.TimeProvider));
     }
 
-    private List<Message> ReceiveFifoMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
+    private List<Message>? ReceiveFifoMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, List<string> requestedSystemAttributes, CancellationToken cancellationToken)
     {
-        List<Message> messages = [];
+        List<Message>? messages = null;
 
         foreach (var group in queue.MessageGroups)
         {
-            if (messages.Count >= maxMessages)
+            if (messages is not null && messages.Count >= maxMessages)
             {
                 break;
             }
 
-            while (group.Value.TryDequeue(out var message))
+            var groupId = group.Key;
+            var groupQueue = group.Value;
+            var groupLock = queue.MessageGroupLocks.GetOrAdd(groupId, _ => new object());
+
+            lock (groupLock)
             {
-                messages.Add(message);
-
-                var receiptHandle = CreateReceiptHandle(message, queue);
-                queue.InFlightMessages[receiptHandle] = (message, new SqsInflightMessageExpirationJob(receiptHandle, queue, visibilityTimeout, _bus.TimeProvider));
-
-                if (messages.Count >= maxMessages)
+                while (groupQueue.TryDequeue(out var message))
                 {
-                    break;
+                    ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
+
+                    if (messages is not null && messages.Count >= maxMessages)
+                    {
+                        break;
+                    }
                 }
             }
         }
@@ -576,15 +598,36 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return totalSize;
     }
 
+    private static void EnqueueMessage(SqsQueueResource targetQueue, Message message)
+    {
+        if (targetQueue.IsFifo)
+        {
+            if (!message.Attributes.TryGetValue("MessageGroupId", out var groupId) || string.IsNullOrEmpty(groupId))
+            {
+                // A message being moved to a FIFO DLQ must retain its Group ID.
+                throw new InvalidOperationException("Message destined for a FIFO queue must have a MessageGroupId.");
+            }
+            EnqueueFifoMessage(targetQueue, groupId, message);
+        }
+        else
+        {
+            targetQueue.Messages.Writer.TryWrite(message);
+        }
+    }
+
     private static void EnqueueFifoMessage(SqsQueueResource queue, string messageGroupId, Message message)
     {
-        queue.MessageGroups.AddOrUpdate(messageGroupId,
-            _ => new ConcurrentQueue<Message>([message]),
-            (_, existingQueue) =>
-            {
-                existingQueue.Enqueue(message);
-                return existingQueue;
-            });
+        var groupLock = queue.MessageGroupLocks.GetOrAdd(messageGroupId, _ => new object());
+        lock (groupLock)
+        {
+            queue.MessageGroups.AddOrUpdate(messageGroupId,
+                _ => new ConcurrentQueue<Message>([message]),
+                (_, existingQueue) =>
+                {
+                    existingQueue.Enqueue(message);
+                    return existingQueue;
+                });
+        }
     }
 
     private static string GenerateMessageBodyHash(string messageBody)
