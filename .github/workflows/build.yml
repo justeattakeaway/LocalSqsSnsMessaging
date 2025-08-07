@@ -68,7 +68,7 @@ jobs:
       shell: pwsh
       run: |
           cd ./tests/LocalSqsSnsMessaging.Tests.Verification
-          dotnet run -c Release -- --timeout 2m --no-progress --hide-test-output
+          dotnet run -c Release -- --timeout 2m --no-progress --verbosity minimal
 
     - uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
       name: Upload coverage to Codecov
