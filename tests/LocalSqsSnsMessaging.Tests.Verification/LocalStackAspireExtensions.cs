@@ -40,7 +40,7 @@ public static class LocalStackAspireExtensions
         builder.EnsureEndpointIsAllocated(endpoint);
 
         Uri? baseUri = null;
-        builder.OnBeforeResourceStarted((_, _, _) =>
+        builder.ApplicationBuilder.Eventing.Subscribe<BeforeResourceStartedEvent>(builder.Resource, (@event, ct) =>
         {
             baseUri = new Uri(endpoint.Url, UriKind.Absolute);
             return Task.CompletedTask;
@@ -68,7 +68,7 @@ public static class LocalStackAspireExtensions
     {
         var endpointName = endpoint.EndpointName;
 
-        builder.OnResourceEndpointsAllocated((_, _, _) =>
+        builder.ApplicationBuilder.Eventing.Subscribe<AfterEndpointsAllocatedEvent>((@event, ct) =>
             endpoint.Exists switch
             {
                 true => Task.CompletedTask,
