@@ -55,7 +55,7 @@ public abstract class SnsPublishAsyncTests
             QueueUrl = queueUrl,
             MessageAttributeNames = ["All"]
         }, cancellationToken);
-        
+
         var sqsMessage = sqsMessages.Messages.ShouldHaveSingleItem();
         sqsMessage!.Body.ShouldBe("Test message");
         sqsMessage.MessageAttributes.ShouldContainKey("TestAttribute");
