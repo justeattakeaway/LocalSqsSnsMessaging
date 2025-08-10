@@ -1,3 +1,5 @@
+using Amazon.SimpleNotificationService.Model;
+using Amazon.SQS.Model;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -32,6 +34,12 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
         await _app.StartAsync();
 
         await _app.ResourceNotifications.WaitForResourceHealthyAsync("localstack");
+
+        // warm up sqs and sns
+        using var sqsClient = ClientFactory.CreateSqsClient("000000000000", _app.GetEndpoint("localstack").Port);
+        using var snsClient = ClientFactory.CreateSnsClient("000000000000", _app.GetEndpoint("localstack").Port);
+        await sqsClient.ListQueuesAsync(new ListQueuesRequest());
+        await snsClient.ListTopicsAsync(new ListTopicsRequest());
     }
 
     public async ValueTask DisposeAsync()
