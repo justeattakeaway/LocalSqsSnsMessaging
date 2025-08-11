@@ -68,7 +68,7 @@ public static class LocalStackAspireExtensions
     {
         var endpointName = endpoint.EndpointName;
 
-        builder.ApplicationBuilder.Eventing.Subscribe<AfterEndpointsAllocatedEvent>((@event, ct) =>
+        builder.OnResourceEndpointsAllocated((_, _, _) =>
             endpoint.Exists switch
             {
                 true => Task.CompletedTask,

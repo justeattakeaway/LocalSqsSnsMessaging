@@ -11,6 +11,11 @@ namespace LocalSqsSnsMessaging.Tests;
 
 public abstract class SnsPublishAsyncTests
 {
+    private static TimeSpan DefaultShortWaitTime =>
+        TimeSpan.FromMilliseconds(
+            Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true" ? 2_500 : 100
+        );
+
     protected IAmazonSimpleNotificationService Sns = null!;
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
@@ -48,7 +53,7 @@ public abstract class SnsPublishAsyncTests
             cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
-        await WaitAsync(TimeSpan.FromMilliseconds(100));
+        await WaitAsync(DefaultShortWaitTime);
 
         var sqsMessages = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
         {
@@ -93,7 +98,7 @@ public abstract class SnsPublishAsyncTests
             cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
-        await WaitAsync(TimeSpan.FromMilliseconds(100));
+        await WaitAsync(DefaultShortWaitTime);
 
         var sqsMessages = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
         {
@@ -135,7 +140,7 @@ public abstract class SnsPublishAsyncTests
             cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
-        await WaitAsync(TimeSpan.FromMilliseconds(100));
+        await WaitAsync(DefaultShortWaitTime);
 
         var sqsMessages = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
         {
@@ -559,14 +564,14 @@ public abstract class SnsPublishAsyncTests
             await Sns.PublishAsync(message, cancellationToken);
 
             // Add a small delay between publishes to ensure distinct SendTimestamp
-            await WaitAsync(TimeSpan.FromMilliseconds(100));
+            await WaitAsync(DefaultShortWaitTime);
         }
 
         // Assert
         var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = queueName }, cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
-        await WaitAsync(TimeSpan.FromMilliseconds(100));
+        await WaitAsync(DefaultShortWaitTime);
 
         var receivedMessages = (await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
         {
@@ -643,7 +648,7 @@ public abstract class SnsPublishAsyncTests
         var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = queueName }, cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
-        await WaitAsync(TimeSpan.FromMilliseconds(100));
+        await WaitAsync(DefaultShortWaitTime);
 
         var receivedMessages = (await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
         {
@@ -704,7 +709,7 @@ public abstract class SnsPublishAsyncTests
         foreach (var message in messages)
         {
             await Sns.PublishAsync(message, cancellationToken);
-            await WaitAsync(TimeSpan.FromMilliseconds(100));
+            await WaitAsync(DefaultShortWaitTime);
         }
 
         // Assert
@@ -712,7 +717,7 @@ public abstract class SnsPublishAsyncTests
             await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = queueName }, cancellationToken);
         var queueUrl = queueUrlResponse.QueueUrl;
 
-        await WaitAsync(TimeSpan.FromMilliseconds(100));
+        await WaitAsync(DefaultShortWaitTime);
 
         var receivedMessages = (await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
         {
