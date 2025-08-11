@@ -13,7 +13,7 @@ public abstract class SnsPublishAsyncTests
 {
     private static TimeSpan DefaultShortWaitTime =>
         TimeSpan.FromMilliseconds(
-            Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true" ? 250 : 100
+            Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true" ? 2_500 : 100
         );
 
     protected IAmazonSimpleNotificationService Sns = null!;
