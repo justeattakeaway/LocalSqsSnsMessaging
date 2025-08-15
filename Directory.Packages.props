@@ -1,7 +1,7 @@
 <Project>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.4.0" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="9.4.0" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.4.1" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="9.4.1" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.0.12" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.0.11" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.7.0" />
@@ -9,9 +9,10 @@
     <PackageVersion Include="ReportGenerator" Version="5.4.11" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="System.Linq.Async" Version="6.0.3" />
-    <PackageVersion Include="TUnit" Version="0.52.64" />
-    <PackageVersion Include="TUnit.Assertions" Version="0.52.64" />
-    <PackageVersion Include="TUnit.Core" Version="0.52.64" />
+    <PackageVersion Include="TUnit" Version="0.56.5" />
+    <PackageVersion Include="TUnit.Assertions" Version="0.56.5" />
+    <PackageVersion Include="TUnit.Core" Version="0.56.5" />
+    <PackageVersion Include="Microsoft.Testing.Platform.MSBuild" Version="1.4.3" />
   </ItemGroup>
   <ItemGroup Condition=" '$(IsTestProject)' == 'true' ">
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" PrivateAssets="All" />
