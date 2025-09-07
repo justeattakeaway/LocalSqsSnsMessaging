@@ -5,22 +5,10 @@ namespace LocalSqsSnsMessaging.Tests.LocalAwsMessaging;
 [InheritsTests]
 public class SqsFifoTestsLocalAwsMessaging : SqsFifoTests
 {
-    private readonly FakeTimeProvider _timeProvider;
-
     public SqsFifoTestsLocalAwsMessaging()
     {
-        _timeProvider = new FakeTimeProvider();
-        var bus = new InMemoryAwsBus
-        {
-            TimeProvider = _timeProvider
-        };
+        var bus = new InMemoryAwsBus();
         AccountId = bus.CurrentAccountId;
         Sqs = bus.CreateSqsClient();
-    }
-
-    protected override Task AdvanceTime(TimeSpan timeSpan)
-    {
-        _timeProvider.Advance(timeSpan);
-        return Task.CompletedTask;
     }
 }

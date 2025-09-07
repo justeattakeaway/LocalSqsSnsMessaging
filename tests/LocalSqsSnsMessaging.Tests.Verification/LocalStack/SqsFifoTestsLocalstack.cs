@@ -15,6 +15,4 @@ public class SqsFifoTestsLocalstack : SqsFifoTests
         Console.WriteLine($"AccountId: {AccountId}");
         Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.LocalStackPort!.Value);
     }
-
-    protected override Task AdvanceTime(TimeSpan timeSpan) => Task.Delay(timeSpan);
 }

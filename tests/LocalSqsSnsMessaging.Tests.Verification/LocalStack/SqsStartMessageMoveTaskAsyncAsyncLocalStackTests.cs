@@ -15,9 +15,4 @@ public class SqsStartMessageMoveTaskAsyncAsyncLocalStackTests : SqsStartMessageM
         Console.WriteLine($"AccountId: {AccountId}");
         Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.LocalStackPort!.Value);
     }
-
-    protected override Task AdvanceTime(TimeSpan timeSpan)
-    {
-        return Task.Delay(timeSpan);
-    }
 }

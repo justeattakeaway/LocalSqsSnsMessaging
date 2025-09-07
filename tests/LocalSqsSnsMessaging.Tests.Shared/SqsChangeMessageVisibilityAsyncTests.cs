@@ -4,7 +4,7 @@ using Shouldly;
 
 namespace LocalSqsSnsMessaging.Tests;
 
-public abstract class SqsChangeMessageVisibilityAsyncTests
+public abstract class SqsChangeMessageVisibilityAsyncTests : WaitingTestBase
 {
     protected IAmazonSQS Sqs = null!;
     private string _queueUrl = null!;
@@ -43,7 +43,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
         immediateReceiveResult.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by 11 seconds
-        await AdvanceTime(TimeSpan.FromSeconds(11));
+        await WaitAsync(TimeSpan.FromSeconds(11));
 
         // Now we should be able to receive the message
         var finalReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
@@ -97,7 +97,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
         var message = receiveResult.Messages.ShouldHaveSingleItem();
 
         // Wait for the visibility timeout to expire
-        await AdvanceTime(TimeSpan.FromSeconds(10)); // Assuming default is 30 seconds
+        await WaitAsync(TimeSpan.FromSeconds(10)); // Assuming default is 30 seconds
 
         // Attempt to change visibility of the message that's no longer in flight
         // Should complete without throwing
@@ -138,12 +138,10 @@ public abstract class SqsChangeMessageVisibilityAsyncTests
         }, cancellationToken);
 
         // Advance time by 11 seconds
-        await AdvanceTime(TimeSpan.FromSeconds(11));
+        await WaitAsync(TimeSpan.FromSeconds(11));
 
         // Now we should be able to receive the message (10 second timeout applies, not 30)
         var finalReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
         finalReceiveResult.Messages.ShouldHaveSingleItem();
     }
-
-    protected abstract Task AdvanceTime(TimeSpan timeSpan);
 }

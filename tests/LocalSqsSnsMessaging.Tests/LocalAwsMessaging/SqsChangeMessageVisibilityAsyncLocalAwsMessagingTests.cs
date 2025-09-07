@@ -5,21 +5,13 @@ namespace LocalSqsSnsMessaging.Tests.LocalAwsMessaging;
 [InheritsTests]
 public class SqsChangeMessageVisibilityAsyncLocalAwsMessagingTests : SqsChangeMessageVisibilityAsyncTests
 {
-    private readonly FakeTimeProvider _timeProvider;
-
     public SqsChangeMessageVisibilityAsyncLocalAwsMessagingTests()
     {
-        _timeProvider = new FakeTimeProvider();
+        TimeProvider = new FakeTimeProvider();
         var bus = new InMemoryAwsBus
         {
-            TimeProvider = _timeProvider
+            TimeProvider = TimeProvider
         };
         Sqs = bus.CreateSqsClient();
-    }
-
-    protected override Task AdvanceTime(TimeSpan timeSpan)
-    {
-        _timeProvider.Advance(timeSpan);
-        return Task.CompletedTask;
     }
 }
