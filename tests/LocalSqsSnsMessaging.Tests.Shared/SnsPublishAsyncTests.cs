@@ -11,11 +11,6 @@ namespace LocalSqsSnsMessaging.Tests;
 
 public abstract class SnsPublishAsyncTests : WaitingTestBase
 {
-    private static TimeSpan DefaultShortWaitTime =>
-        TimeSpan.FromMilliseconds(
-            Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true" ? 2_500 : 100
-        );
-
     protected IAmazonSimpleNotificationService Sns = null!;
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;

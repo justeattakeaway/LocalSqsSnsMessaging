@@ -7,6 +7,11 @@ public abstract class WaitingTestBase
     protected const string TimeBasedTests = "TimeBasedTests";
     protected TimeProvider TimeProvider = TimeProvider.System;
 
+    protected static TimeSpan DefaultShortWaitTime =>
+        TimeSpan.FromMilliseconds(
+            Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true" ? 2_500 : 100
+        );
+
     protected Task WaitAsync(TimeSpan timeSpan)
     {
         var categories = TestContext.Current?.TestDetails.Categories;
