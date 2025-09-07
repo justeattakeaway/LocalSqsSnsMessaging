@@ -24,7 +24,7 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
     // This method allows us to deviate from this behavior until support is added to our implementation.
     protected abstract bool SupportsAttributeSizeValidation();
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_WithRawDelivery_ShouldDeliverMessageDirectly(CancellationToken cancellationToken)
     {
         // Arrange
@@ -67,7 +67,7 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
         sqsMessage.MessageAttributes["TestAttribute"].StringValue.ShouldBe("TestValue");
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_WithRawDelivery_ShouldCalculateMD5OfBody(CancellationToken cancellationToken)
     {
         // Arrange
@@ -110,7 +110,7 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
         sqsMessage!.MD5OfBody.ShouldBe(expectedHash);
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_WithNonRawDelivery_ShouldWrapMessageInSNSFormat(CancellationToken cancellationToken)
     {
         // Arrange
@@ -519,7 +519,7 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
     }
 
     // FIFO scenarios
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_ToFifoTopic_ShouldDeliverMessageToFifoQueue_InOrder(CancellationToken cancellationToken)
     {
         // Arrange
@@ -617,7 +617,7 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
         }
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_ToFifoTopic_ShouldPreventDuplicates(CancellationToken cancellationToken)
     {
         // Arrange
@@ -660,7 +660,7 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
         receivedMessages[0].Attributes["MessageDeduplicationId"].ShouldBe(deduplicationId);
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_ToFifoTopic_WithMultipleMessageGroups_ShouldMaintainOrderWithinGroups(CancellationToken cancellationToken)
     {
         // Arrange

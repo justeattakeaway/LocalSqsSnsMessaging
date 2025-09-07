@@ -86,7 +86,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         return attrResponse.Attributes["QueueArn"];
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_ValidRequest_MovesMessage(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -113,7 +113,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         mainReceiveResult.Messages.Count.ShouldBe(4);
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_NonDLQSource_ThrowsException(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -135,7 +135,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
             }, cancellationToken));
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_InvalidDestinationQueue_ThrowsException(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -149,7 +149,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
             }, cancellationToken));
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_EmptyDLQ_NoMessagesMoved(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -181,7 +181,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         mainReceiveResult.Messages.ShouldBeEmptyAwsCollection();
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_MaxNumberOfMessagesPerSecond_RespectsLimit(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -226,7 +226,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         sourceReceiveResult.Messages.Count.ShouldBeInRange(4, 6); // Allow for some flexibility due to timing
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_NoDestinationArn_MovesToOriginalSource(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -252,7 +252,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         sourceReceiveResult.Messages.ShouldBeEmptyAwsCollection();
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task CancelMessageMoveTaskAsync_ValidTaskHandle_StopsTask(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -279,7 +279,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         sourceReceiveResult.Messages.ShouldNotBeEmpty();
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartingTwoMessageMoveTasksForTheSameQueue_Throws(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -303,7 +303,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         });
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task ListMessageMoveTasks_ReturnsAllActiveTasks(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
