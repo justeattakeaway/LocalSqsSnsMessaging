@@ -9,22 +9,17 @@ using MessageAttributeValue = Amazon.SimpleNotificationService.Model.MessageAttr
 
 namespace LocalSqsSnsMessaging.Tests;
 
-public abstract class SnsPublishAsyncTests
+public abstract class SnsPublishAsyncTests : WaitingTestBase
 {
-    private static TimeSpan DefaultShortWaitTime =>
-        TimeSpan.FromMilliseconds(
-            Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true" ? 2_500 : 100
-        );
-
     protected IAmazonSimpleNotificationService Sns = null!;
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
 
-    // LocalStack throws a different exception when validating on publish.
-    // This method allows us to deviate from this behaviour until support is added to our implementation.
+    // LocalStack throws a different exception when validating on publishing.
+    // This method allows us to deviate from this behavior until support is added to our implementation.
     protected abstract bool SupportsAttributeSizeValidation();
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_WithRawDelivery_ShouldDeliverMessageDirectly(CancellationToken cancellationToken)
     {
         // Arrange
@@ -67,7 +62,7 @@ public abstract class SnsPublishAsyncTests
         sqsMessage.MessageAttributes["TestAttribute"].StringValue.ShouldBe("TestValue");
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_WithRawDelivery_ShouldCalculateMD5OfBody(CancellationToken cancellationToken)
     {
         // Arrange
@@ -110,7 +105,7 @@ public abstract class SnsPublishAsyncTests
         sqsMessage!.MD5OfBody.ShouldBe(expectedHash);
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_WithNonRawDelivery_ShouldWrapMessageInSNSFormat(CancellationToken cancellationToken)
     {
         // Arrange
@@ -294,7 +289,7 @@ public abstract class SnsPublishAsyncTests
         var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
         var queueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{queueName}";
 
-        // Create topic and queue
+        // Create a topic and queue
         await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, cancellationToken);
         await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName }, cancellationToken);
 
@@ -518,10 +513,8 @@ public abstract class SnsPublishAsyncTests
         allSubscriptions.ShouldAllBe(s => s.Endpoint.StartsWith($"arn:aws:sqs:us-east-1:{AccountId}:{queueNamePrefix}"));
     }
 
-    protected abstract Task WaitAsync(TimeSpan delay);
-
     // FIFO scenarios
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_ToFifoTopic_ShouldDeliverMessageToFifoQueue_InOrder(CancellationToken cancellationToken)
     {
         // Arrange
@@ -563,7 +556,7 @@ public abstract class SnsPublishAsyncTests
         {
             await Sns.PublishAsync(message, cancellationToken);
 
-            // Add a small delay between publishes to ensure distinct SendTimestamp
+            // Add a small delay between publishing to ensure a distinct SendTimestamp
             await WaitAsync(DefaultShortWaitTime);
         }
 
@@ -609,7 +602,7 @@ public abstract class SnsPublishAsyncTests
         // Verify that MessageDeduplicationId is unique for each message
         receivedMessages.Select(m => m.Attributes!["MessageDeduplicationId"]).Distinct().Count().ShouldBe(3);
 
-        // Check if the order matches the publish order
+        // Check if the order matches the publishing order
         if (receivedMessages[1].Body != "Second message" ||
             !string.Equals(receivedMessages[2].Body, "Third message", StringComparison.Ordinal))
         {
@@ -619,7 +612,7 @@ public abstract class SnsPublishAsyncTests
         }
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_ToFifoTopic_ShouldPreventDuplicates(CancellationToken cancellationToken)
     {
         // Arrange
@@ -642,7 +635,7 @@ public abstract class SnsPublishAsyncTests
 
         // Act
         await Sns.PublishAsync(message, cancellationToken);
-        await Sns.PublishAsync(message, cancellationToken); // Attempt to send duplicate
+        await Sns.PublishAsync(message, cancellationToken); // Attempt to send a duplicate
 
         // Assert
         var queueUrlResponse = await Sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = queueName }, cancellationToken);
@@ -662,7 +655,7 @@ public abstract class SnsPublishAsyncTests
         receivedMessages[0].Attributes["MessageDeduplicationId"].ShouldBe(deduplicationId);
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task PublishAsync_ToFifoTopic_WithMultipleMessageGroups_ShouldMaintainOrderWithinGroups(CancellationToken cancellationToken)
     {
         // Arrange
@@ -737,7 +730,7 @@ public abstract class SnsPublishAsyncTests
 
     private async Task SetupFifoTopicAndQueue(string topicArn, string queueArn, bool isRawDelivery)
     {
-        // Setup FIFO topic
+        // Set up a FIFO topic
         await Sns.CreateTopicAsync(new CreateTopicRequest
         {
             Name = topicArn.Split(':').Last(),

@@ -15,9 +15,4 @@ public class SqsChangeMessageVisibilityAsyncLocalStackTests : SqsChangeMessageVi
         Console.WriteLine($"AccountId: {accountId}");
         Sqs = ClientFactory.CreateSqsClient(accountId, AspireFixture.LocalStackPort!.Value);
     }
-
-    protected override Task AdvanceTime(TimeSpan timeSpan)
-    {
-        return Task.Delay(timeSpan);
-    }
 }

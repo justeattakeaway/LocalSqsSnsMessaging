@@ -7,7 +7,7 @@ using ResourceNotFoundException = Amazon.SQS.Model.ResourceNotFoundException;
 
 namespace LocalSqsSnsMessaging.Tests;
 
-public abstract class SqsStartMessageMoveTaskAsyncTests
+public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
 {
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
@@ -15,8 +15,6 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
     private string _errorQueueUrl = null!;
     private string _mainQueueArn = null!;
     private string _mainQueueUrl = null!;
-
-    protected abstract Task AdvanceTime(TimeSpan timeSpan);
 
     private async Task SetupQueuesAndMessage()
     {
@@ -74,7 +72,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         });
 
         var secondMessages = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl });
-        await AdvanceTime(TimeSpan.FromSeconds(1));
+        //await AdvanceTime(TimeSpan.FromSeconds(1));
         secondMessages.Messages.ShouldBeEmptyAwsCollection();
     }
 
@@ -88,7 +86,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         return attrResponse.Attributes["QueueArn"];
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_ValidRequest_MovesMessage(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -104,7 +102,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         startMoveResponse.TaskHandle.ShouldNotBeNull();
 
         // Wait for the move to complete
-        await AdvanceTime(TimeSpan.FromSeconds(2));
+        await WaitAsync(TimeSpan.FromSeconds(2));
 
         // Check that the message is no longer in the source queue (DLQ)
         var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _errorQueueUrl }, cancellationToken);
@@ -115,7 +113,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         mainReceiveResult.Messages.Count.ShouldBe(4);
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_NonDLQSource_ThrowsException(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -137,7 +135,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
             }, cancellationToken));
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_InvalidDestinationQueue_ThrowsException(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -151,12 +149,12 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
             }, cancellationToken));
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_EmptyDLQ_NoMessagesMoved(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
 
-        await AdvanceTime(TimeSpan.FromSeconds(1));
+        await WaitAsync(TimeSpan.FromSeconds(1));
 
         // Empty the source queue (DLQ)
         var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _errorQueueUrl, MaxNumberOfMessages = 10}, cancellationToken);
@@ -176,14 +174,14 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         startMoveResponse.TaskHandle.ShouldNotBeNull();
 
         // Wait for the move to complete
-        await AdvanceTime(TimeSpan.FromSeconds(1));
+        await WaitAsync(TimeSpan.FromSeconds(1));
 
         // Check that the main queue is still empty
         var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl }, cancellationToken);
         mainReceiveResult.Messages.ShouldBeEmptyAwsCollection();
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_MaxNumberOfMessagesPerSecond_RespectsLimit(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -209,7 +207,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         startMoveResponse.TaskHandle.ShouldNotBeNull();
 
         // Wait for 1 second (should move approximately 3 messages)
-        await AdvanceTime(TimeSpan.FromSeconds(1));
+        await WaitAsync(TimeSpan.FromSeconds(1));
 
         // Check that only about 3 messages were moved to the main queue
         var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -228,7 +226,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         sourceReceiveResult.Messages.Count.ShouldBeInRange(4, 6); // Allow for some flexibility due to timing
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartMessageMoveTaskAsync_NoDestinationArn_MovesToOriginalSource(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -243,7 +241,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         startMoveResponse.TaskHandle.ShouldNotBeNull();
 
         // Wait for the move to complete
-        await AdvanceTime(TimeSpan.FromSeconds(5));
+        await WaitAsync(TimeSpan.FromSeconds(5));
 
         // Check that the message is now in the main queue (original source)
         var mainReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _mainQueueUrl }, cancellationToken);
@@ -254,7 +252,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         sourceReceiveResult.Messages.ShouldBeEmptyAwsCollection();
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task CancelMessageMoveTaskAsync_ValidTaskHandle_StopsTask(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -274,14 +272,14 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         }, cancellationToken);
 
         // Wait a moment to ensure the task has time to stop
-        await AdvanceTime(TimeSpan.FromSeconds(5));
+        await WaitAsync(TimeSpan.FromSeconds(5));
 
         // Check that the message is still in the source queue (DLQ)
         var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _errorQueueUrl }, cancellationToken);
         sourceReceiveResult.Messages.ShouldNotBeEmpty();
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task StartingTwoMessageMoveTasksForTheSameQueue_Throws(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -305,7 +303,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests
         });
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task ListMessageMoveTasks_ReturnsAllActiveTasks(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();

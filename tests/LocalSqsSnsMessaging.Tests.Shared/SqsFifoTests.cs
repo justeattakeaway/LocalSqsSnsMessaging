@@ -245,6 +245,4 @@ public abstract class SqsFifoTests
         result.Messages.ShouldContain(m => m.Body.Contains("Group A", StringComparison.Ordinal));
         result.Messages.ShouldContain(m => m.Body.Contains("Group B", StringComparison.Ordinal));
     }
-
-    protected abstract Task AdvanceTime(TimeSpan timeSpan);
 }

@@ -10,20 +10,11 @@ public abstract class SqsQueueTagsTests
     protected string AccountId = null!;
     private string _queueUrl = null!;
 
-    protected abstract Task AdvanceTime(TimeSpan timeSpan);
-
     private async Task SetupQueue()
     {
-        // Create test queue
+        // Create a test queue
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" });
         _queueUrl = createQueueResponse.QueueUrl;
-
-        // Get queue ARN
-        var attrResponse = await Sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
-        {
-            QueueUrl = _queueUrl,
-            AttributeNames = ["QueueArn"]
-        });
     }
 
     [Test]

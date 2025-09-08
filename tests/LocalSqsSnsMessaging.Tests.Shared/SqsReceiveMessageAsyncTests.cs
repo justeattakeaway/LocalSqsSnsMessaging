@@ -5,7 +5,7 @@ using Shouldly;
 
 namespace LocalSqsSnsMessaging.Tests;
 
-public abstract class SqsReceiveMessageAsyncTests
+public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
 {
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
@@ -58,7 +58,7 @@ public abstract class SqsReceiveMessageAsyncTests
         result.Messages[1].Body.ShouldBe("Goodbye, world!");
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task ReceiveMessageAsync_WaitsForMessages_ReturnsMessagesWhenAvailable(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -68,7 +68,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         var task = Sqs.ReceiveMessageAsync(request, cancellationToken);
 
-        await AdvanceTime(TimeSpan.FromSeconds(3));
+        await WaitAsync(TimeSpan.FromSeconds(3));
         await Sqs.SendMessageAsync(new SendMessageRequest
         {
             QueueUrl = queueUrl,
@@ -81,7 +81,7 @@ public abstract class SqsReceiveMessageAsyncTests
         receivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task ReceiveMessageAsync_Timeout_ReturnsEmptyList(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -91,7 +91,7 @@ public abstract class SqsReceiveMessageAsyncTests
 
         var task = Sqs.ReceiveMessageAsync(request, cancellationToken);
 
-        await AdvanceTime(TimeSpan.FromSeconds(5));
+        await WaitAsync(TimeSpan.FromSeconds(5));
 
         var result = await task;
 
@@ -114,7 +114,7 @@ public abstract class SqsReceiveMessageAsyncTests
         );
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task ReceiveMessageAsync_RespectVisibilityTimeout(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -139,14 +139,14 @@ public abstract class SqsReceiveMessageAsyncTests
         result2.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by 3 seconds (half the visibility timeout)
-        await AdvanceTime(TimeSpan.FromSeconds(3));
+        await WaitAsync(TimeSpan.FromSeconds(3));
 
         // Third receive - should still not get any message
         var result3 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
         result3.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by another 4 seconds (visibility timeout has now passed)
-        await AdvanceTime(TimeSpan.FromSeconds(4));
+        await WaitAsync(TimeSpan.FromSeconds(4));
 
         // Fourth receive - should get the message again
         var result4 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
@@ -154,7 +154,7 @@ public abstract class SqsReceiveMessageAsyncTests
         forthReceivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task ReceiveMessageAsync_DelayedMessageBecomesVisible(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -175,14 +175,14 @@ public abstract class SqsReceiveMessageAsyncTests
         result1.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by 5 seconds
-        await AdvanceTime(TimeSpan.FromSeconds(2.5));
+        await WaitAsync(TimeSpan.FromSeconds(2.5));
 
         // Second receive - should still not get any message
         var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
         result2.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time by another 5 seconds (message is now visible)
-        await AdvanceTime(TimeSpan.FromSeconds(5));
+        await WaitAsync(TimeSpan.FromSeconds(5));
 
         // Third receive - should get the message
         var result3 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
@@ -190,7 +190,7 @@ public abstract class SqsReceiveMessageAsyncTests
         receivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Test, Category("TimeBasedTests"), Retry(3)]
+    [Test, Category(TimeBasedTests), Retry(3)]
     public async Task ReceiveMessageAsync_MultipleMessagesWithDifferentDelays(CancellationToken cancellationToken)
     {
         const int initialVisibilityTimeout = 6; // seconds
@@ -216,19 +216,19 @@ public abstract class SqsReceiveMessageAsyncTests
             cancellationToken);
 
         var result1Task = Sqs.ReceiveMessageAsync(receiveOneWhenAvailable, cancellationToken);
-        await AdvanceTime(TimeSpan.FromSeconds(3));
+        await WaitAsync(TimeSpan.FromSeconds(3));
         var result1 = await result1Task;
         result1.Messages.ShouldHaveSingleItem();
         result1.Messages[0].Body.ShouldBe("Message 1");
 
         // Advance time to make the second message visible
-        await AdvanceTime(TimeSpan.FromSeconds(2));
+        await WaitAsync(TimeSpan.FromSeconds(2));
         var result2 = await Sqs.ReceiveMessageAsync(receiveAllImmediately, cancellationToken);
         result2.Messages.ShouldHaveSingleItem();
         result2.Messages[0].Body.ShouldBe("Message 2");
 
         // Advance time to make the third message visible
-        await AdvanceTime(TimeSpan.FromSeconds(2));
+        await WaitAsync(TimeSpan.FromSeconds(2));
         var result3 = await Sqs.ReceiveMessageAsync(receiveAllImmediately, cancellationToken);
         result3.Messages.ShouldHaveSingleItem();
         result3.Messages[0].Body.ShouldBe("Message 3");
@@ -238,22 +238,22 @@ public abstract class SqsReceiveMessageAsyncTests
         result4.Messages.ShouldBeEmptyAwsCollection();
 
         // Advance time past the visibility timeout of the first message
-        await AdvanceTime(TimeSpan.FromSeconds(5));
+        await WaitAsync(TimeSpan.FromSeconds(5));
         var result5 = await Sqs.ReceiveMessageAsync(receiveOneImmediately, cancellationToken);
         result5.Messages.ShouldHaveSingleItem().Body.ShouldBe("Message 1");
 
         // Advance time past the visibility timeout of the second message
-        await AdvanceTime(TimeSpan.FromSeconds(2));
+        await WaitAsync(TimeSpan.FromSeconds(2));
         var result6 = await Sqs.ReceiveMessageAsync(receiveOneImmediately, cancellationToken);
         result6.Messages.ShouldHaveSingleItem().Body.ShouldBe("Message 2");
 
         // Advance time past the visibility timeout of the third message
-        await AdvanceTime(TimeSpan.FromSeconds(2));
+        await WaitAsync(TimeSpan.FromSeconds(2));
         var result7 = await Sqs.ReceiveMessageAsync(receiveOneImmediately, cancellationToken);
         result7.Messages.ShouldHaveSingleItem().Body.ShouldBe("Message 3");
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task ReceiveMessageAsync_ApproximateReceiveCount_IncreasesWithEachReceive(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -276,7 +276,7 @@ public abstract class SqsReceiveMessageAsyncTests
         message1.Attributes["ApproximateReceiveCount"].ShouldBe("1");
 
         // Wait for visibility timeout to expire
-        await AdvanceTime(TimeSpan.FromSeconds(6));
+        await WaitAsync(TimeSpan.FromSeconds(6));
 
         // Second receive
         var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
@@ -284,7 +284,7 @@ public abstract class SqsReceiveMessageAsyncTests
         message2.Attributes["ApproximateReceiveCount"].ShouldBe("2");
 
         // Wait for visibility timeout to expire again
-        await AdvanceTime(TimeSpan.FromSeconds(6));
+        await WaitAsync(TimeSpan.FromSeconds(6));
 
         // Third receive
         var result3 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
@@ -325,7 +325,7 @@ public abstract class SqsReceiveMessageAsyncTests
         message2.Attributes["ApproximateReceiveCount"].ShouldBe("1");
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task ReceiveMessageAsync_ApproximateReceiveCount_MultipleMessages(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -351,7 +351,7 @@ public abstract class SqsReceiveMessageAsyncTests
         result1.Messages.ShouldAllBe(m => m.Attributes["ApproximateReceiveCount"] == "1");
 
         // Wait for visibility timeout to expire
-        await AdvanceTime(TimeSpan.FromSeconds(6));
+        await WaitAsync(TimeSpan.FromSeconds(6));
 
         // Second receive
         var result2 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
@@ -363,7 +363,7 @@ public abstract class SqsReceiveMessageAsyncTests
             cancellationToken);
 
         // Wait for visibility timeout to expire again
-        await AdvanceTime(TimeSpan.FromSeconds(6));
+        await WaitAsync(TimeSpan.FromSeconds(6));
 
         // Third receive
         var result3 = await Sqs.ReceiveMessageAsync(request, cancellationToken);
@@ -371,7 +371,7 @@ public abstract class SqsReceiveMessageAsyncTests
         message3.Attributes["ApproximateReceiveCount"].ShouldBe("3");
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task ReceiveMessageAsync_MessageMovedToErrorQueue_AfterMaxReceives(CancellationToken cancellationToken)
     {
         // Create main queue and error queue
@@ -409,7 +409,7 @@ public abstract class SqsReceiveMessageAsyncTests
             var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
             var message = result.Messages.ShouldHaveSingleItem();
             message.Attributes["ApproximateReceiveCount"].ShouldBe((i + 1).ToString(NumberFormatInfo.InvariantInfo));
-            await AdvanceTime(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
+            await WaitAsync(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
         }
 
         // Try to receive from the main queue - should be empty
@@ -423,7 +423,7 @@ public abstract class SqsReceiveMessageAsyncTests
         errorMessage.Body.ShouldBe("Test message");
     }
 
-    [Test, Category("TimeBasedTests")]
+    [Test, Category(TimeBasedTests)]
     public async Task ReceiveMessageAsync_MessageNotMovedToErrorQueue_IfDeletedBeforeMaxReceives(CancellationToken cancellationToken)
     {
         // Create main queue and error queue
@@ -461,7 +461,7 @@ public abstract class SqsReceiveMessageAsyncTests
             var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
             result.Messages.ShouldHaveSingleItem();
             result.Messages[0].Attributes["ApproximateReceiveCount"].ShouldBe((i + 1).ToString(NumberFormatInfo.InvariantInfo));
-            await AdvanceTime(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
+            await WaitAsync(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
         }
 
         // Receive and delete the message on the third receive
@@ -536,7 +536,7 @@ public abstract class SqsReceiveMessageAsyncTests
         {
             var result = await Sqs.ReceiveMessageAsync(request, cancellationToken);
             result.Messages.Count.ShouldBe(2);
-            await AdvanceTime(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
+            await WaitAsync(TimeSpan.FromSeconds(6)); // Wait for visibility timeout to expire
         }
 
         // Check the error queue - messages should be there in order
@@ -1127,6 +1127,4 @@ public abstract class SqsReceiveMessageAsyncTests
         await Assert.ThrowsAsync<BatchRequestTooLongException>(async () =>
             await Sqs.SendMessageBatchAsync(request, cancellationToken));
     }
-
-    protected abstract Task AdvanceTime(TimeSpan timeSpan);
 }

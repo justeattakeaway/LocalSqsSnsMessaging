@@ -19,6 +19,4 @@ public class SnsPublishAsyncTestsLocalStack : SnsPublishAsyncTests
     }
 
     protected override bool SupportsAttributeSizeValidation() => true;
-
-    protected override Task WaitAsync(TimeSpan delay) => Task.Delay(delay);
 }
