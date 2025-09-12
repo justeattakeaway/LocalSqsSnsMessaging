@@ -26,7 +26,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     private readonly InMemoryAwsBus _bus;
     private readonly Lazy<ISQSPaginatorFactory> _paginators;
 
-    private const int MaxMessageSize = 262144;
+    private const int MaxMessageSize = 1_048_576; // 1MB
     private static readonly string[] InternalAttributes = [
         QueueAttributeName.ApproximateNumberOfMessages,
         QueueAttributeName.ApproximateNumberOfMessagesDelayed,
@@ -507,7 +507,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         if (totalSize > MaxMessageSize)
         {
             throw new AmazonSQSException(
-                $"Message size ({totalSize} bytes) exceeds the maximum allowed size ({MaxMessageSize} bytes)");
+                $"One or more parameters are invalid. Reason: Message must be shorter than {MaxMessageSize} bytes.");
         }
 
         if (queue.IsFifo)
