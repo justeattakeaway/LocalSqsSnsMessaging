@@ -922,8 +922,8 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
             cancellationToken)).QueueUrl;
 
-        // Create a message that exceeds 256KB (262,144 bytes)
-        var largeMessage = new string('x', 262145);
+        // Create a message that exceeds 1MB (1,048,576 bytes)
+        var largeMessage = new string('x', 1_048_576 + 1);
 
         var request = new SendMessageRequest
         {
@@ -936,17 +936,15 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
     }
 
     [Test]
-    public async Task SendMessageAsync_MessageAttributeFullSizeCalculation_ThrowsException(CancellationToken cancellationToken)
+    public async Task SendMessageAsync_MessageAttributeFullSizeCalculation_ThrowsException(
+        CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
             cancellationToken)).QueueUrl;
 
-        // The total size includes:
-        // 1. Message body
-        // 2. Each message attribute name
-        // 3. Each message attribute type (including "String", "Number", etc.)
-        // 4. Each message attribute value
-        var messageBody = new string('x', 200_000);
+        // The total size includes the message body and all message attribute parts.
+        // Let's construct a message that exceeds 1MB (1,048,576 bytes).
+        var messageBody = new string('x', 950_000); // 950,000 bytes
 
         var request = new SendMessageRequest
         {
@@ -954,20 +952,15 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
             MessageBody = messageBody,
             MessageAttributes = new Dictionary<string, MessageAttributeValue>
             {
-                // Long attribute name (contributes to size)
-                [new string('a', 1000)] = new MessageAttributeValue
+                // This attribute will push the total size over the 1MB limit.
+                [new string('a', 1000)] = new MessageAttributeValue // 1,000 bytes
                 {
                     DataType = "String", // 6 bytes
-                    StringValue = new string('y', 62000)
-                },
-                // Another attribute to push us over the limit
-                [new string('b', 100)] = new MessageAttributeValue
-                {
-                    DataType = "Number", // 6 bytes
-                    StringValue = "123"
+                    StringValue = new string('y', 100_000) // 100,000 bytes
                 }
             }
         };
+        // Total size: 950,000 + 1,000 + 6 + 100,000 = 1,051,006 bytes > 1MB
 
         await Assert.ThrowsAsync<AmazonSQSException>(() =>
             Sqs.SendMessageAsync(request, cancellationToken));
@@ -979,8 +972,8 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
             cancellationToken)).QueueUrl;
 
-        // Calculate sizes to reach exactly 256KB:
-        // - Message body: 200,000 bytes
+        // Calculate sizes to reach exactly 1MB:
+        // - Message body: 1,000,000 bytes
         // - First attribute:
         //   * Name: 100 bytes
         //   * Type: "String" (6 bytes)
@@ -988,24 +981,24 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         // - Second attribute:
         //   * Name: 20 bytes
         //   * Type: "Number" (6 bytes)
-        //   * Value: 31,012 bytes
-        // Total: 262,144 bytes (256KB)
+        //   * Value: 17,444 bytes
+        // Total: 1,048,576 bytes (1MB)
 
         var sendRequest = new SendMessageRequest
         {
             QueueUrl = queueUrl,
-            MessageBody = new string('x', 200000),
+            MessageBody = new string('x', 1_000_000),
             MessageAttributes = new Dictionary<string, MessageAttributeValue>
             {
                 [new string('a', 100)] = new MessageAttributeValue
                 {
                     DataType = "String",
-                    StringValue = new string('y', 31000)
+                    StringValue = new string('y', 31_000)
                 },
                 [new string('b', 20)] = new MessageAttributeValue
                 {
                     DataType = "Number",
-                    StringValue = new string('z', 31012)
+                    StringValue = new string('z', 17_444)
                 }
             }
         };
@@ -1040,7 +1033,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         var request = new SendMessageRequest
         {
             QueueUrl = queueUrl,
-            MessageBody = new string('x', 260000),
+            MessageBody = new string('x', 1_047_000),
             MessageAttributes = new Dictionary<string, MessageAttributeValue>
             {
                 ["BinaryAttribute"] = new MessageAttributeValue
@@ -1051,7 +1044,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
             }
         };
 
-        // Total size: 260,000 (body) + 14 (attribute name) + 6 (type) + 1,000 (binary value) = 261,020 bytes
+        // Total size: 1,047,000 (body) + 14 (attribute name) + 6 (type) + 1,000 (binary value) = 1,048,020 bytes
         var response = await Sqs.SendMessageAsync(request, cancellationToken);
         response.MessageId.ShouldNotBeNull();
     }
@@ -1063,12 +1056,12 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
             cancellationToken)).QueueUrl;
 
         // Using a custom attribute type name which counts towards the limit
-        var longCustomType = $"String.{new string('x', 1000)}";
+        var longCustomType = $"String.{new string('x', 100)}";
 
         var request = new SendMessageRequest
         {
             QueueUrl = queueUrl,
-            MessageBody = new string('x', 262000),
+            MessageBody = new string('x', 1_048_500),
             MessageAttributes = new Dictionary<string, MessageAttributeValue>
             {
                 ["CustomAttribute"] = new MessageAttributeValue
@@ -1080,8 +1073,9 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         };
 
         // The long custom type name should push us over the limit
-        await Assert.ThrowsAsync<AmazonSQSException>(() =>
+        var sqsException = await Assert.ThrowsAsync<AmazonSQSException>(() =>
             Sqs.SendMessageAsync(request, cancellationToken));
+        sqsException.ShouldNotBeNull().Message.ShouldBe("One or more parameters are invalid. Reason: Message must be shorter than 1048576 bytes.");
     }
 
     [Test]
@@ -1107,13 +1101,13 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         var oversizedMessage = new SendMessageBatchRequestEntry
         {
             Id = "2",
-            MessageBody = new string('x', 260000),
+            MessageBody = new string('x', 1_000_000), // Large body
             MessageAttributes = new Dictionary<string, MessageAttributeValue>
             {
-                [new string('a', 1000)] = new MessageAttributeValue // Long attribute name
+                [new string('a', 1_000)] = new MessageAttributeValue // Long attribute name
                 {
                     DataType = "String",
-                    StringValue = new string('y', 2000)
+                    StringValue = new string('y', 48_000)
                 }
             }
         };
