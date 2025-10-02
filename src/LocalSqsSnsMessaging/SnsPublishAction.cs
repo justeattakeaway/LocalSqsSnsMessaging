@@ -58,9 +58,28 @@ internal sealed class SnsPublishAction
 
                 sqsMessage.Attributes[MessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
-                if (queue.DeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
+                // Check if this is a fair queue with per-message-group deduplication
+                bool isFairQueue = IsFairQueue(queue);
+
+                if (isFairQueue)
                 {
-                    EnqueueFifoMessage(queue, request.MessageGroupId, sqsMessage);
+                    // Per-message-group deduplication
+                    var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
+                        request.MessageGroupId,
+                        _ => new ConcurrentDictionary<string, string>());
+
+                    if (groupDeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
+                    {
+                        EnqueueFifoMessage(queue, request.MessageGroupId, sqsMessage);
+                    }
+                }
+                else
+                {
+                    // Global deduplication (traditional FIFO)
+                    if (queue.DeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
+                    {
+                        EnqueueFifoMessage(queue, request.MessageGroupId, sqsMessage);
+                    }
                 }
             }
             else
@@ -73,6 +92,15 @@ internal sealed class SnsPublishAction
         {
             MessageId = messageId
         }.SetCommonProperties();
+    }
+
+    private static bool IsFairQueue(SqsQueueResource queue)
+    {
+        return queue.Attributes != null &&
+               queue.Attributes.TryGetValue(QueueAttributeName.DeduplicationScope, out var dedupScope) &&
+               dedupScope == "messageGroup" &&
+               queue.Attributes.TryGetValue(QueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
+               throughputLimit == "perMessageGroupId";
     }
 
     private static void EnqueueFifoMessage(SqsQueueResource queue, string messageGroupId, Message sqsMessage)
