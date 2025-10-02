@@ -388,29 +388,110 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         List<Message>? messages = null;
 
-        foreach (var group in queue.MessageGroups)
+        // Check if this is a fair queue (high-throughput mode)
+        bool isFairQueue = IsFairQueue(queue);
+
+        if (isFairQueue)
         {
-            if (messages is not null && messages.Count >= maxMessages)
+            // Fair queue: round-robin across message groups
+            messages = ReceiveFairQueueMessages(queue, maxMessages, visibilityTimeout, requestedSystemAttributes);
+        }
+        else
+        {
+            // Regular FIFO: exhaust each group before moving to the next
+            foreach (var group in queue.MessageGroups)
+            {
+                if (messages is not null && messages.Count >= maxMessages)
+                {
+                    break;
+                }
+
+                var groupId = group.Key;
+                var groupQueue = group.Value;
+                var groupLock = queue.MessageGroupLocks.GetOrAdd(groupId, _ => new object());
+
+                lock (groupLock)
+                {
+                    while (groupQueue.TryDequeue(out var message))
+                    {
+                        ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
+
+                        if (messages is not null && messages.Count >= maxMessages)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return messages;
+    }
+
+    private static bool IsFairQueue(SqsQueueResource queue)
+    {
+        return queue.Attributes != null &&
+               queue.Attributes.TryGetValue(QueueAttributeName.DeduplicationScope, out var dedupScope) &&
+               dedupScope == "messageGroup" &&
+               queue.Attributes.TryGetValue(QueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
+               throughputLimit == "perMessageGroupId";
+    }
+
+    private List<Message>? ReceiveFairQueueMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, List<string> requestedSystemAttributes)
+    {
+        List<Message>? messages = null;
+        // Sort message groups by key to ensure deterministic ordering
+        var messageGroups = queue.MessageGroups.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
+        
+        if (messageGroups.Count == 0)
+        {
+            return messages;
+        }
+
+        int currentGroupIndex = 0;
+        var exhaustedGroups = new HashSet<string>();
+
+        while (messages == null || messages.Count < maxMessages)
+        {
+            // All groups exhausted
+            if (exhaustedGroups.Count == messageGroups.Count)
             {
                 break;
             }
 
-            var groupId = group.Key;
-            var groupQueue = group.Value;
-            var groupLock = queue.MessageGroupLocks.GetOrAdd(groupId, _ => new object());
-
-            lock (groupLock)
+            var groupId = messageGroups[currentGroupIndex];
+            
+            // Skip if this group is already exhausted
+            if (exhaustedGroups.Contains(groupId))
             {
-                while (groupQueue.TryDequeue(out var message))
-                {
-                    ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
+                currentGroupIndex = (currentGroupIndex + 1) % messageGroups.Count;
+                continue;
+            }
 
-                    if (messages is not null && messages.Count >= maxMessages)
+            if (queue.MessageGroups.TryGetValue(groupId, out var groupQueue))
+            {
+                var groupLock = queue.MessageGroupLocks.GetOrAdd(groupId, _ => new object());
+
+                lock (groupLock)
+                {
+                    if (groupQueue.TryDequeue(out var message))
                     {
-                        break;
+                        ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
+                    }
+                    else
+                    {
+                        // This group is exhausted
+                        exhaustedGroups.Add(groupId);
                     }
                 }
             }
+            else
+            {
+                exhaustedGroups.Add(groupId);
+            }
+
+            // Move to next group
+            currentGroupIndex = (currentGroupIndex + 1) % messageGroups.Count;
         }
 
         return messages;
@@ -529,19 +610,45 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
             message.Attributes[MessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
-            if (queue.DeduplicationIds.TryAdd(deduplicationId, message.MessageId))
+            // Check if this is a fair queue with per-message-group deduplication
+            bool isFairQueue = IsFairQueue(queue);
+            bool isDuplicate;
+
+            if (isFairQueue)
             {
-                EnqueueFifoMessage(queue, request.MessageGroupId, message);
+                // Per-message-group deduplication
+                var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
+                    request.MessageGroupId, 
+                    _ => new ConcurrentDictionary<string, string>());
+                isDuplicate = !groupDeduplicationIds.TryAdd(deduplicationId, message.MessageId);
+                
+                if (isDuplicate)
+                {
+                    // Message with this deduplication ID already exists in this group
+                    return Task.FromResult(new SendMessageResponse
+                    {
+                        MessageId = groupDeduplicationIds[deduplicationId],
+                        MD5OfMessageBody = message.MD5OfBody
+                    }.SetCommonProperties());
+                }
             }
             else
             {
-                // Message with this deduplication ID already exists, return existing message ID
-                return Task.FromResult(new SendMessageResponse
+                // Global deduplication (traditional FIFO)
+                isDuplicate = !queue.DeduplicationIds.TryAdd(deduplicationId, message.MessageId);
+                
+                if (isDuplicate)
                 {
-                    MessageId = queue.DeduplicationIds[deduplicationId],
-                    MD5OfMessageBody = message.MD5OfBody
-                }.SetCommonProperties());
+                    // Message with this deduplication ID already exists, return existing message ID
+                    return Task.FromResult(new SendMessageResponse
+                    {
+                        MessageId = queue.DeduplicationIds[deduplicationId],
+                        MD5OfMessageBody = message.MD5OfBody
+                    }.SetCommonProperties());
+                }
             }
+
+            EnqueueFifoMessage(queue, request.MessageGroupId, message);
         }
         else
         {

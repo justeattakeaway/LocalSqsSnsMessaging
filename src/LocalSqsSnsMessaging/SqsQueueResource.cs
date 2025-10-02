@@ -22,4 +22,5 @@ internal sealed class SqsQueueResource
     public ConcurrentDictionary<string, ConcurrentQueue<Message>> MessageGroups { get; } = new();
     public ConcurrentDictionary<string, object> MessageGroupLocks { get; } = new();
     public ConcurrentDictionary<string, string> DeduplicationIds { get; } = new();
+    public ConcurrentDictionary<string, ConcurrentDictionary<string, string>> MessageGroupDeduplicationIds { get; } = new();
 }
