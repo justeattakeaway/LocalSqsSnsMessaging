@@ -388,6 +388,8 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         List<Message>? messages = null;
 
+        // Both regular FIFO and fair queues use the same receive logic
+        // Fair queues differ in deduplication scope (per-group vs global), not in receive behavior
         foreach (var group in queue.MessageGroups)
         {
             if (messages is not null && messages.Count >= maxMessages)
@@ -414,6 +416,15 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }
 
         return messages;
+    }
+
+    private static bool IsFairQueue(SqsQueueResource queue)
+    {
+        return queue.Attributes != null &&
+               queue.Attributes.TryGetValue(QueueAttributeName.DeduplicationScope, out var dedupScope) &&
+               dedupScope == "messageGroup" &&
+               queue.Attributes.TryGetValue(QueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
+               throughputLimit == "perMessageGroupId";
     }
 
     private static bool IsAtMaxReceiveCount(Message message, SqsQueueResource queue)
@@ -529,19 +540,45 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
             message.Attributes[MessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
-            if (queue.DeduplicationIds.TryAdd(deduplicationId, message.MessageId))
+            // Check if this is a fair queue with per-message-group deduplication
+            bool isFairQueue = IsFairQueue(queue);
+            bool isDuplicate;
+
+            if (isFairQueue)
             {
-                EnqueueFifoMessage(queue, request.MessageGroupId, message);
+                // Per-message-group deduplication
+                var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
+                    request.MessageGroupId, 
+                    _ => new ConcurrentDictionary<string, string>());
+                isDuplicate = !groupDeduplicationIds.TryAdd(deduplicationId, message.MessageId);
+                
+                if (isDuplicate)
+                {
+                    // Message with this deduplication ID already exists in this group
+                    return Task.FromResult(new SendMessageResponse
+                    {
+                        MessageId = groupDeduplicationIds[deduplicationId],
+                        MD5OfMessageBody = message.MD5OfBody
+                    }.SetCommonProperties());
+                }
             }
             else
             {
-                // Message with this deduplication ID already exists, return existing message ID
-                return Task.FromResult(new SendMessageResponse
+                // Global deduplication (traditional FIFO)
+                isDuplicate = !queue.DeduplicationIds.TryAdd(deduplicationId, message.MessageId);
+                
+                if (isDuplicate)
                 {
-                    MessageId = queue.DeduplicationIds[deduplicationId],
-                    MD5OfMessageBody = message.MD5OfBody
-                }.SetCommonProperties());
+                    // Message with this deduplication ID already exists, return existing message ID
+                    return Task.FromResult(new SendMessageResponse
+                    {
+                        MessageId = queue.DeduplicationIds[deduplicationId],
+                        MD5OfMessageBody = message.MD5OfBody
+                    }.SetCommonProperties());
+                }
             }
+
+            EnqueueFifoMessage(queue, request.MessageGroupId, message);
         }
         else
         {
