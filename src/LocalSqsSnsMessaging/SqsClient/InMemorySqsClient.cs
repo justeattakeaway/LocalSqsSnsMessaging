@@ -388,38 +388,28 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         List<Message>? messages = null;
 
-        // Check if this is a fair queue (high-throughput mode)
-        bool isFairQueue = IsFairQueue(queue);
-
-        if (isFairQueue)
+        // Both regular FIFO and fair queues use the same receive logic
+        // Fair queues differ in deduplication scope (per-group vs global), not in receive behavior
+        foreach (var group in queue.MessageGroups)
         {
-            // Fair queue: round-robin across message groups
-            messages = ReceiveFairQueueMessages(queue, maxMessages, visibilityTimeout, requestedSystemAttributes);
-        }
-        else
-        {
-            // Regular FIFO: exhaust each group before moving to the next
-            foreach (var group in queue.MessageGroups)
+            if (messages is not null && messages.Count >= maxMessages)
             {
-                if (messages is not null && messages.Count >= maxMessages)
-                {
-                    break;
-                }
+                break;
+            }
 
-                var groupId = group.Key;
-                var groupQueue = group.Value;
-                var groupLock = queue.MessageGroupLocks.GetOrAdd(groupId, _ => new object());
+            var groupId = group.Key;
+            var groupQueue = group.Value;
+            var groupLock = queue.MessageGroupLocks.GetOrAdd(groupId, _ => new object());
 
-                lock (groupLock)
+            lock (groupLock)
+            {
+                while (groupQueue.TryDequeue(out var message))
                 {
-                    while (groupQueue.TryDequeue(out var message))
+                    ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
+
+                    if (messages is not null && messages.Count >= maxMessages)
                     {
-                        ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
-
-                        if (messages is not null && messages.Count >= maxMessages)
-                        {
-                            break;
-                        }
+                        break;
                     }
                 }
             }
@@ -435,66 +425,6 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
                dedupScope == "messageGroup" &&
                queue.Attributes.TryGetValue(QueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
                throughputLimit == "perMessageGroupId";
-    }
-
-    private List<Message>? ReceiveFairQueueMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, List<string> requestedSystemAttributes)
-    {
-        List<Message>? messages = null;
-        // Sort message groups by key to ensure deterministic ordering
-        var messageGroups = queue.MessageGroups.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
-        
-        if (messageGroups.Count == 0)
-        {
-            return messages;
-        }
-
-        int currentGroupIndex = 0;
-        var exhaustedGroups = new HashSet<string>();
-
-        while (messages == null || messages.Count < maxMessages)
-        {
-            // All groups exhausted
-            if (exhaustedGroups.Count == messageGroups.Count)
-            {
-                break;
-            }
-
-            var groupId = messageGroups[currentGroupIndex];
-            
-            // Skip if this group is already exhausted
-            if (exhaustedGroups.Contains(groupId))
-            {
-                currentGroupIndex = (currentGroupIndex + 1) % messageGroups.Count;
-                continue;
-            }
-
-            if (queue.MessageGroups.TryGetValue(groupId, out var groupQueue))
-            {
-                var groupLock = queue.MessageGroupLocks.GetOrAdd(groupId, _ => new object());
-
-                lock (groupLock)
-                {
-                    if (groupQueue.TryDequeue(out var message))
-                    {
-                        ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
-                    }
-                    else
-                    {
-                        // This group is exhausted
-                        exhaustedGroups.Add(groupId);
-                    }
-                }
-            }
-            else
-            {
-                exhaustedGroups.Add(groupId);
-            }
-
-            // Move to next group
-            currentGroupIndex = (currentGroupIndex + 1) % messageGroups.Count;
-        }
-
-        return messages;
     }
 
     private static bool IsAtMaxReceiveCount(Message message, SqsQueueResource queue)
