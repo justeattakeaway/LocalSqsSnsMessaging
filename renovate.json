@@ -16,6 +16,12 @@
         "Aspire*"
       ],
       "groupName": "Aspire"
+    },
+    {
+      "matchPackagePatterns": [
+        "TUnit*"
+      ],
+      "groupName": "TUnit"
     }
   ]
 }
