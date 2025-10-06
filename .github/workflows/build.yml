@@ -59,6 +59,11 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
         restore-keys: ${{ runner.os }}-nuget-
 
+    - name: Testing
+      shell: pwsh
+      run: |
+        Write-Host 'Hello, World!'
+
     - name: Build, Test and Package
       shell: pwsh
       run: ./build.ps1
