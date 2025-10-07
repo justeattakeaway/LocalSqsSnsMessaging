@@ -2,9 +2,10 @@
 
 namespace LocalSqsSnsMessaging.Tests;
 
+[ApplyDefaultCategory]
 public abstract class WaitingTestBase
 {
-    protected const string TimeBasedTests = "TimeBasedTests";
+    protected const string TimeBased = ApplyDefaultCategoryAttribute.TimeBasedCategoryName;
     protected TimeProvider TimeProvider = TimeProvider.System;
 
     protected static TimeSpan DefaultShortWaitTime =>
@@ -15,9 +16,9 @@ public abstract class WaitingTestBase
     protected Task WaitAsync(TimeSpan timeSpan)
     {
         var categories = TestContext.Current?.TestDetails.Categories;
-        if (categories is null || !categories.Contains(TimeBasedTests, StringComparer.OrdinalIgnoreCase))
+        if (categories is null || !categories.Contains(TimeBased, StringComparer.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("This method should only be called for tests marked with the 'TimeBasedTests' category.");
+            throw new InvalidOperationException("This method should only be called for tests marked with the 'TimeBased' category.");
         }
 
         if (TimeProvider is FakeTimeProvider fakeTimeProvider)

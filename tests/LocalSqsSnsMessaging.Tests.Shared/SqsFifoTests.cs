@@ -4,7 +4,7 @@ using Shouldly;
 
 namespace LocalSqsSnsMessaging.Tests;
 
-public abstract class SqsFifoTests
+public abstract class SqsFifoTests : WaitingTestBase
 {
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;

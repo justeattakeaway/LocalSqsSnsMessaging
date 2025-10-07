@@ -4,7 +4,7 @@ using Shouldly;
 
 namespace LocalSqsSnsMessaging.Tests;
 
-public abstract class SqsQueueTagsTests
+public abstract class SqsQueueTagsTests : WaitingTestBase
 {
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
