@@ -21,7 +21,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests : WaitingTestBase
         });
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ChangeMessageVisibilityAsync_ValidRequest_ChangesVisibilityTimeout(CancellationToken cancellationToken)
     {
         await SetupQueueAndMessage();
@@ -87,7 +87,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests : WaitingTestBase
             }, cancellationToken));
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ChangeMessageVisibilityAsync_MessageNotInFlight_ThrowsException(CancellationToken cancellationToken)
     {
         await SetupQueueAndMessage();
@@ -112,7 +112,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests : WaitingTestBase
         secondReceiveResult.Messages.ShouldHaveSingleItem();
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ChangeMessageVisibilityAsync_ChangeMultipleTimes_LastChangeApplies(CancellationToken cancellationToken)
     {
         await SetupQueueAndMessage();

@@ -58,7 +58,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         result.Messages[1].Body.ShouldBe("Goodbye, world!");
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ReceiveMessageAsync_WaitsForMessages_ReturnsMessagesWhenAvailable(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -81,7 +81,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         receivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ReceiveMessageAsync_Timeout_ReturnsEmptyList(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -114,7 +114,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         );
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ReceiveMessageAsync_RespectVisibilityTimeout(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -154,7 +154,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         forthReceivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ReceiveMessageAsync_DelayedMessageBecomesVisible(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -190,7 +190,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         receivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Test, Category(TimeBasedTests), Retry(3)]
+    [Test, Category(TimeBased), Retry(3)]
     public async Task ReceiveMessageAsync_MultipleMessagesWithDifferentDelays(CancellationToken cancellationToken)
     {
         const int initialVisibilityTimeout = 6; // seconds
@@ -253,7 +253,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         result7.Messages.ShouldHaveSingleItem().Body.ShouldBe("Message 3");
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ReceiveMessageAsync_ApproximateReceiveCount_IncreasesWithEachReceive(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -325,7 +325,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         message2.Attributes["ApproximateReceiveCount"].ShouldBe("1");
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ReceiveMessageAsync_ApproximateReceiveCount_MultipleMessages(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
@@ -371,7 +371,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         message3.Attributes["ApproximateReceiveCount"].ShouldBe("3");
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ReceiveMessageAsync_MessageMovedToErrorQueue_AfterMaxReceives(CancellationToken cancellationToken)
     {
         // Create main queue and error queue
@@ -423,7 +423,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         errorMessage.Body.ShouldBe("Test message");
     }
 
-    [Test, Category(TimeBasedTests)]
+    [Test, Category(TimeBased)]
     public async Task ReceiveMessageAsync_MessageNotMovedToErrorQueue_IfDeletedBeforeMaxReceives(CancellationToken cancellationToken)
     {
         // Create main queue and error queue
