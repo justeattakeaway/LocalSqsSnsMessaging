@@ -5,13 +5,13 @@
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.0.12" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.0.11" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.9.0" />
-    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.0.4" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.1.0" />
     <PackageVersion Include="ReportGenerator" Version="5.4.17" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="System.Linq.Async" Version="6.0.3" />
-    <PackageVersion Include="TUnit" Version="0.70.7" />
-    <PackageVersion Include="TUnit.Assertions" Version="0.70.7" />
-    <PackageVersion Include="TUnit.Core" Version="0.70.7" />
+    <PackageVersion Include="TUnit" Version="0.71.0" />
+    <PackageVersion Include="TUnit.Assertions" Version="0.71.0" />
+    <PackageVersion Include="TUnit.Core" Version="0.71.0" />
   </ItemGroup>
   <ItemGroup Condition=" '$(IsTestProject)' == 'true' ">
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" PrivateAssets="All" />
