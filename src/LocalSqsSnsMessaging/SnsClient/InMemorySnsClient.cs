@@ -397,7 +397,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var messageSize = CalculateMessageSize(request.Message, request.MessageAttributes);
+        var messageSize = CalculateMessageSize(request.Message, request.Subject, request.MessageAttributes);
         if (messageSize > MaxMessageSize)
         {
             throw new InvalidParameterException($"Message size has exceeded the limit of {MaxMessageSize} bytes.");
@@ -409,12 +409,18 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         return Task.FromResult(result);
     }
 
-    private static int CalculateMessageSize(string message, Dictionary<string, MessageAttributeValue>? messageAttributes)
+    private static int CalculateMessageSize(string message, string? subject, Dictionary<string, MessageAttributeValue>? messageAttributes)
     {
         var totalSize = 0;
 
         // Add message body size
         totalSize += Encoding.UTF8.GetByteCount(message);
+
+        // Add subject size
+        if (!string.IsNullOrEmpty(subject))
+        {
+            totalSize += Encoding.UTF8.GetByteCount(subject);
+        }
 
         // Add message attributes size
         if (messageAttributes != null)
@@ -448,7 +454,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
     {
         ArgumentNullException.ThrowIfNull(request);
         var totalSize = request.PublishBatchRequestEntries
-            .Sum(requestEntry => CalculateMessageSize(requestEntry.Message, requestEntry.MessageAttributes));
+            .Sum(requestEntry => CalculateMessageSize(requestEntry.Message, requestEntry.Subject, requestEntry.MessageAttributes));
         if (totalSize > MaxMessageSize)
         {
             throw new InvalidParameterException($"Message size has exceeded the limit of {MaxMessageSize} bytes.");
