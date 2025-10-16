@@ -29,8 +29,8 @@ Additionally, some tests rely on the passage of time, but now with .NET's [`Time
 
 This library supports two modes of operation:
 
-1. **Direct In-Memory Clients** (`CreateSqsClient()` / `CreateSnsClient()`) - Returns lightweight implementations of `IAmazonSQS` and `IAmazonSimpleNotificationService`
-2. **SDK Clients with HttpMessageHandler** (`CreateSdkSqsClient()` / `CreateSdkSnsClient()`) - Returns real AWS SDK clients (`AmazonSQSClient` / `AmazonSimpleNotificationServiceClient`) configured with an in-memory HTTP handler
+1. **SDK Clients with HttpMessageHandler** (`CreateSqsClient()` / `CreateSnsClient()`) - Returns real AWS SDK clients (`AmazonSQSClient` / `AmazonSimpleNotificationServiceClient`) configured with an in-memory HTTP handler
+2. **Raw In-Memory Clients** (`CreateRawSqsClient()` / `CreateRawSnsClient()`) - Returns lightweight implementations of `IAmazonSQS` and `IAmazonSimpleNotificationService` which do not depend on the SDK clients.
 
 Use the SDK clients mode when you need concrete AWS SDK types (e.g., for dependency injection or libraries that require concrete types). Both modes share the same in-memory bus and are functionally identical.
 
@@ -45,8 +45,8 @@ using Amazon.SimpleNotificationService.Model;
 using LocalSqsSnsMessaging;
 
 var bus = new InMemoryAwsBus();
-using var sqs = bus.CreateSqsClient();
-using var sns = bus.CreateSnsClient();
+using var sqs = bus.CreateRawSqsClient();
+using var sns = bus.CreateRawSnsClient();
 
 // Create a queue and a topic
 var queueUrl = (await sqs.CreateQueueAsync("test-queue")).QueueUrl;
@@ -79,8 +79,8 @@ using Amazon.SimpleNotificationService;
 using LocalSqsSnsMessaging;
 
 var bus = new InMemoryAwsBus();
-using var sqs = bus.CreateSdkSqsClient();      // Returns AmazonSQSClient
-using var sns = bus.CreateSdkSnsClient();      // Returns AmazonSimpleNotificationServiceClient
+using var sqs = bus.CreateSqsClient();      // Returns AmazonSQSClient
+using var sns = bus.CreateSnsClient();      // Returns AmazonSimpleNotificationServiceClient
 
 // Same API as direct clients
 var queueUrl = (await sqs.CreateQueueAsync("test-queue")).QueueUrl;

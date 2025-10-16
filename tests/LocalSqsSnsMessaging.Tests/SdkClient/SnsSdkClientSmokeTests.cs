@@ -14,7 +14,7 @@ public sealed class SnsSdkClientSmokeTests
     {
         // Arrange
         var bus = new InMemoryAwsBus();
-        using var sns = bus.CreateSdkSnsClient();
+        using var sns = bus.CreateSnsClient();
 
         // Act
         var response = await sns.CreateTopicAsync("test-topic");
@@ -29,8 +29,8 @@ public sealed class SnsSdkClientSmokeTests
     {
         // Arrange
         var bus = new InMemoryAwsBus();
-        using var sns = bus.CreateSdkSnsClient();
-        using var sqs = bus.CreateSdkSqsClient();
+        using var sns = bus.CreateSnsClient();
+        using var sqs = bus.CreateSqsClient();
 
         var topicArn = (await sns.CreateTopicAsync("test-topic")).TopicArn;
         var queueUrl = (await sqs.CreateQueueAsync("test-queue")).QueueUrl;
@@ -60,7 +60,7 @@ public sealed class SnsSdkClientSmokeTests
     {
         // Arrange
         var bus = new InMemoryAwsBus();
-        using var sns = bus.CreateSdkSnsClient();
+        using var sns = bus.CreateSnsClient();
         var topicArn = (await sns.CreateTopicAsync("test-topic")).TopicArn;
 
         // Act

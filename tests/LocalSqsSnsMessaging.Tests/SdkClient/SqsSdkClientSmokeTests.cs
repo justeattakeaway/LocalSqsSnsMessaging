@@ -14,7 +14,7 @@ public sealed class SqsSdkClientSmokeTests
     {
         // Arrange
         var bus = new InMemoryAwsBus();
-        using var sqs = bus.CreateSdkSqsClient();
+        using var sqs = bus.CreateSqsClient();
 
         // Act
         var response = await sqs.CreateQueueAsync("test-queue");
@@ -29,7 +29,7 @@ public sealed class SqsSdkClientSmokeTests
     {
         // Arrange
         var bus = new InMemoryAwsBus();
-        using var sqs = bus.CreateSdkSqsClient();
+        using var sqs = bus.CreateSqsClient();
         var queueUrl = (await sqs.CreateQueueAsync("test-queue")).QueueUrl;
 
         // Act
@@ -55,7 +55,7 @@ public sealed class SqsSdkClientSmokeTests
     {
         // Arrange
         var bus = new InMemoryAwsBus();
-        using var sqs = bus.CreateSdkSqsClient();
+        using var sqs = bus.CreateSqsClient();
         var queueUrl = (await sqs.CreateQueueAsync("test-queue")).QueueUrl;
 
         // Act

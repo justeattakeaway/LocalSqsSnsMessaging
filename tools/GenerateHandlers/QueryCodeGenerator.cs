@@ -321,6 +321,11 @@ internal sealed class QueryCodeGenerator
                     var shapeName = helperName.Substring("SerializeStructure_".Length);
                     GenerateStructureSerializer(code, shapeName);
                 }
+                else if (helperName.StartsWith("DeserializeStructure_", StringComparison.Ordinal))
+                {
+                    var shapeName = helperName.Substring("DeserializeStructure_".Length);
+                    GenerateStructureDeserializer(code, shapeName);
+                }
             }
         }
     }
@@ -398,26 +403,45 @@ internal sealed class QueryCodeGenerator
         code.AppendLine($"            var keyParam = $\"{{prefix}}.entry.{{index}}.key\";");
         code.AppendLine($"            var valueParam = $\"{{prefix}}.entry.{{index}}.value\";");
         code.AppendLine("            var key = queryParams[keyParam];");
-        code.AppendLine("            var value = queryParams[valueParam];");
-        code.AppendLine("            if (key != null && value != null)");
-        code.AppendLine("            {");
 
         if (valueType == "string")
         {
+            code.AppendLine("            var value = queryParams[valueParam];");
+            code.AppendLine("            if (key != null && value != null)");
+            code.AppendLine("            {");
             code.AppendLine("                map[key] = value;");
+            code.AppendLine("            }");
+            code.AppendLine("            else");
+            code.AppendLine("                break;");
         }
         else if (valueType == "structure")
         {
-            code.AppendLine("                // TODO: Deserialize structure value");
+            code.AppendLine("            if (key != null)");
+            code.AppendLine("            {");
+            code.AppendLine($"                var structure = DeserializeStructure_{valueShape}(queryParams, valueParam);");
+            code.AppendLine("                if (structure != null)");
+            code.AppendLine("                {");
+            code.AppendLine("                    map[key] = structure;");
+            code.AppendLine("                }");
+            code.AppendLine("                else");
+            code.AppendLine("                {");
+            code.AppendLine("                    break;");
+            code.AppendLine("                }");
+            code.AppendLine("            }");
+            code.AppendLine("            else");
+            code.AppendLine("                break;");
+            _generatedHelpers.Add($"DeserializeStructure_{valueShape}");
         }
         else
         {
+            code.AppendLine("            var value = queryParams[valueParam];");
+            code.AppendLine("            if (key != null && value != null)");
+            code.AppendLine("            {");
             code.AppendLine("                // TODO: Handle other value types");
+            code.AppendLine("            }");
+            code.AppendLine("            else");
+            code.AppendLine("                break;");
         }
-
-        code.AppendLine("            }");
-        code.AppendLine("            else");
-        code.AppendLine("                break;");
         code.AppendLine("            index++;");
         code.AppendLine("        }");
         code.AppendLine("        return map.Count > 0 ? map : null;");
@@ -549,6 +573,79 @@ internal sealed class QueryCodeGenerator
         }
 
         code.AppendLine("        writer.WriteEndElement();");
+        code.AppendLine("    }");
+        code.AppendLine();
+    }
+
+    private void GenerateStructureDeserializer(StringBuilder code, string shapeName)
+    {
+        if (!_shapes.TryGetProperty(shapeName, out var shape))
+        {
+            code.AppendLine($"    // TODO: Shape {shapeName} not found");
+            code.AppendLine();
+            return;
+        }
+
+        code.AppendLine($"    private static {shapeName}? DeserializeStructure_{shapeName}(NameValueCollection queryParams, string prefix)");
+        code.AppendLine("    {");
+        code.AppendLine($"        var structure = new {shapeName}();");
+        code.AppendLine("        var hasAnyValue = false;");
+        code.AppendLine();
+
+        if (shape.TryGetProperty("members", out var members))
+        {
+            foreach (var member in members.EnumerateObject())
+            {
+                var memberName = member.Name;
+                var csharpPropertyName = ToPascalCase(memberName);
+                var memberShapeName = member.Value.GetProperty("shape").GetString()!;
+                var memberShape = _shapes.GetProperty(memberShapeName);
+                var memberType = memberShape.GetProperty("type").GetString()!;
+
+                code.AppendLine($"        // {memberName}");
+                code.AppendLine($"        var {ToCamelCase(memberName)}Param = $\"{{prefix}}.{memberName}\";");
+                code.AppendLine($"        var {ToCamelCase(memberName)}Value = queryParams[{ToCamelCase(memberName)}Param];");
+
+                if (memberType == "string")
+                {
+                    code.AppendLine($"        if ({ToCamelCase(memberName)}Value != null)");
+                    code.AppendLine("        {");
+                    code.AppendLine($"            structure.{csharpPropertyName} = {ToCamelCase(memberName)}Value;");
+                    code.AppendLine("            hasAnyValue = true;");
+                    code.AppendLine("        }");
+                }
+                else if (memberType == "integer" || memberType == "long" || memberType == "boolean" || memberType == "double")
+                {
+                    string parseMethod = memberType switch
+                    {
+                        "integer" => "int.TryParse",
+                        "long" => "long.TryParse",
+                        "boolean" => "bool.TryParse",
+                        "double" => "double.TryParse",
+                        _ => "int.TryParse"
+                    };
+
+                    code.AppendLine($"        if ({ToCamelCase(memberName)}Value != null && {parseMethod}({ToCamelCase(memberName)}Value, out var {ToCamelCase(memberName)}Parsed))");
+                    code.AppendLine("        {");
+                    code.AppendLine($"            structure.{csharpPropertyName} = {ToCamelCase(memberName)}Parsed;");
+                    code.AppendLine("            hasAnyValue = true;");
+                    code.AppendLine("        }");
+                }
+                else if (memberType == "blob")
+                {
+                    code.AppendLine($"        if ({ToCamelCase(memberName)}Value != null)");
+                    code.AppendLine("        {");
+                    code.AppendLine($"            structure.{csharpPropertyName} = new MemoryStream(Convert.FromBase64String({ToCamelCase(memberName)}Value));");
+                    code.AppendLine("            hasAnyValue = true;");
+                    code.AppendLine("        }");
+                }
+                // Add more types as needed
+
+                code.AppendLine();
+            }
+        }
+
+        code.AppendLine("        return hasAnyValue ? structure : null;");
         code.AppendLine("    }");
         code.AppendLine();
     }

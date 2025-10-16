@@ -1346,7 +1346,11 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             var destinationQueueName = GetQueueNameFromArn(request.DestinationArn);
             if (!_bus.Queues.TryGetValue(destinationQueueName, out destinationQueue))
             {
-                throw new ResourceNotFoundException("Destination queue not found.");
+                throw new ResourceNotFoundException("Destination queue not found.")
+                {
+                    ErrorCode = "ResourceNotFoundException",
+                    StatusCode = HttpStatusCode.BadRequest
+                };
             }
         }
 

@@ -9,14 +9,12 @@ namespace LocalSqsSnsMessaging.Http;
 internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
 {
     private readonly InMemoryAwsBus _bus;
-    private readonly AwsServiceType _serviceType;
     private readonly AwsProtocolType _protocolType;
 
     public InMemoryAwsHttpMessageHandler(InMemoryAwsBus bus, AwsServiceType serviceType)
     {
         ArgumentNullException.ThrowIfNull(bus);
         _bus = bus;
-        _serviceType = serviceType;
 
         // Determine protocol based on service type
         _protocolType = serviceType switch
@@ -35,40 +33,43 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
 
         try
         {
-            // Extract request context
-            var context = await ExtractRequestContextAsync(request, cancellationToken).ConfigureAwait(false);
-
-            // Serialize response based on protocol type
-            HttpResponseMessage response;
-            if (_protocolType == AwsProtocolType.Query)
+            // Extract operation name from request
+            string operationName;
+            if (_protocolType == AwsProtocolType.Json)
             {
-                // Query protocol: XML response using generated serializers
-                // SNS returns (object Response, string OperationName) tuple
-                var (responseObject, operationName) = await Handlers.SnsOperationHandler.HandleAsync(
-                    context, _bus, cancellationToken).ConfigureAwait(false);
-                var responseXml = Handlers.SnsQuerySerializers.SerializeResponse(responseObject, operationName);
-                response = new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
-                };
+                // For JSON protocol (SQS), the operation is in the x-amz-target header
+                operationName = ExtractOperationNameFromHeader(request);
             }
             else
             {
-                // JSON protocol: JSON response using generated serializers
-                // SQS returns (object Response, string OperationName) tuple
-                var (responseObject, operationName) = await Handlers.SqsOperationHandler.HandleAsync(
-                    context, _bus, cancellationToken).ConfigureAwait(false);
-                var responseJson = Handlers.SqsJsonSerializers.SerializeResponse(responseObject, operationName);
-                response = new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(responseJson, Encoding.UTF8, "application/x-amz-json-1.0")
-                };
+                // For Query protocol (SNS), the operation is in the Action parameter (in body or query string)
+                var requestBody = request.Content != null
+                    ? await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)
+                    : string.Empty;
+                operationName = ExtractOperationNameFromBody(request, requestBody);
+            }
+
+            // Route to appropriate handler based on protocol type
+            HttpResponseMessage response;
+            if (_protocolType == AwsProtocolType.Query)
+            {
+                response = await Handlers.SnsOperationHandler.HandleAsync(
+                    request, operationName, _bus, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                response = await Handlers.SqsOperationHandler.HandleAsync(
+                    request, operationName, _bus, cancellationToken).ConfigureAwait(false);
             }
 
             // Add AWS response headers
             response.Headers.Add("x-amzn-RequestId", Guid.NewGuid().ToString());
 
             return response;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
 #pragma warning disable CA1031
         catch (Exception ex)
@@ -79,42 +80,15 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         }
     }
 
-    private async Task<AwsRequestContext> ExtractRequestContextAsync(
-        HttpRequestMessage request,
-        CancellationToken cancellationToken)
+    private static string ExtractOperationNameFromHeader(HttpRequestMessage request)
     {
-        // Read request body
-        var requestBody = request.Content != null
-            ? await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)
-            : string.Empty;
-
-        // Extract operation name from x-amz-target header, URL, or body
-        var operationName = ExtractOperationName(request, requestBody);
-
-        // Extract headers
-        var headers = request.Headers
-            .ToDictionary(h => h.Key, h => string.Join(",", h.Value));
-
-        return new AwsRequestContext
-        {
-            ServiceType = _serviceType,
-            OperationName = operationName,
-            RequestBody = requestBody,
-            Headers = headers
-        };
-    }
-
-    private static string ExtractOperationName(HttpRequestMessage request, string requestBody)
-    {
-        // Try x-amz-target header first (used by JSON protocol like DynamoDB)
-        // Check both request headers and content headers
+        // Try x-amz-target header (used by JSON protocol like SQS)
         if (request.Headers.TryGetValues("x-amz-target", out var targetValues) ||
             (request.Content?.Headers.TryGetValues("x-amz-target", out targetValues) ?? false))
         {
             var target = targetValues.FirstOrDefault();
             if (!string.IsNullOrEmpty(target))
             {
-                // Format is typically "DynamoDB_20120810.GetItem"
                 var parts = target.Split('.');
                 if (parts.Length == 2)
                 {
@@ -123,6 +97,11 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
             }
         }
 
+        throw new InvalidOperationException($"Unable to determine operation name from x-amz-target header. URI: {request.RequestUri}");
+    }
+
+    private static string ExtractOperationNameFromBody(HttpRequestMessage request, string requestBody)
+    {
         // Try extracting from URL query string (Action parameter - used by Query protocol GET requests)
         if (request.RequestUri?.Query != null)
         {
@@ -135,10 +114,8 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         }
 
         // Try extracting from request body (Query protocol POST requests with form-encoded data)
-        // SNS and SQS use Query protocol which sends Action in the body for POST requests
         if (!string.IsNullOrWhiteSpace(requestBody))
         {
-            // For Query protocol with POST, body is form-urlencoded: "Action=CreateTopic&Name=test&Version=2010-03-31"
             var bodyParams = System.Web.HttpUtility.ParseQueryString(requestBody);
             var action = bodyParams["Action"];
             if (!string.IsNullOrEmpty(action))
@@ -147,8 +124,9 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
             }
         }
 
-        throw new InvalidOperationException($"Unable to determine operation name from request. URI: {request.RequestUri}, Headers: {string.Join(", ", request.Headers.Select(h => $"{h.Key}={string.Join(";", h.Value)}"))}");
+        throw new InvalidOperationException($"Unable to determine operation name from request body or query string. URI: {request.RequestUri}");
     }
+
 
     private static HttpResponseMessage CreateErrorResponse(Exception exception)
     {

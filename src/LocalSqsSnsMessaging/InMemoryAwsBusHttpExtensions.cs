@@ -16,7 +16,7 @@ public static class InMemoryAwsBusHttpExtensions
     /// </summary>
     /// <param name="bus">The in-memory AWS bus instance.</param>
     /// <returns>An AmazonSQSClient configured with the in-memory handler.</returns>
-    public static AmazonSQSClient CreateSdkSqsClient(this InMemoryAwsBus bus)
+    public static AmazonSQSClient CreateSqsClient(this InMemoryAwsBus bus)
     {
         ArgumentNullException.ThrowIfNull(bus);
 
@@ -44,7 +44,7 @@ public static class InMemoryAwsBusHttpExtensions
     /// </summary>
     /// <param name="bus">The in-memory AWS bus instance.</param>
     /// <returns>An AmazonSimpleNotificationServiceClient configured with the in-memory handler.</returns>
-    public static AmazonSimpleNotificationServiceClient CreateSdkSnsClient(this InMemoryAwsBus bus)
+    public static AmazonSimpleNotificationServiceClient CreateSnsClient(this InMemoryAwsBus bus)
     {
         ArgumentNullException.ThrowIfNull(bus);
 

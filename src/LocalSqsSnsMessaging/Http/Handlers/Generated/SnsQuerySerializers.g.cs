@@ -1668,13 +1668,21 @@ internal static class SnsQuerySerializers
         int index = 1;
         while (true)
         {
-            var keyParam = $"{prefix}.entry.{index}.key";
-            var valueParam = $"{prefix}.entry.{index}.value";
+            // AWS SDK sends MessageAttributes with .Name and .Value (capital N and V)
+            var keyParam = $"{prefix}.entry.{index}.Name";
+            var valueParam = $"{prefix}.entry.{index}.Value";
             var key = queryParams[keyParam];
-            var value = queryParams[valueParam];
-            if (key != null && value != null)
+            if (key != null)
             {
-                // TODO: Deserialize structure value
+                var structure = DeserializeStructure_MessageAttributeValue(queryParams, valueParam);
+                if (structure != null)
+                {
+                    map[key] = structure;
+                }
+                else
+                {
+                    break;
+                }
             }
             else
                 break;
@@ -1862,6 +1870,41 @@ internal static class SnsQuerySerializers
             writer.WriteEndElement();
         }
         writer.WriteEndElement();
+    }
+
+    private static MessageAttributeValue? DeserializeStructure_MessageAttributeValue(NameValueCollection queryParams, string prefix)
+    {
+        var structure = new MessageAttributeValue();
+        var hasAnyValue = false;
+
+        // DataType
+        var dataTypeParam = $"{prefix}.DataType";
+        var dataTypeValue = queryParams[dataTypeParam];
+        if (dataTypeValue != null)
+        {
+            structure.DataType = dataTypeValue;
+            hasAnyValue = true;
+        }
+
+        // StringValue
+        var stringValueParam = $"{prefix}.StringValue";
+        var stringValueValue = queryParams[stringValueParam];
+        if (stringValueValue != null)
+        {
+            structure.StringValue = stringValueValue;
+            hasAnyValue = true;
+        }
+
+        // BinaryValue
+        var binaryValueParam = $"{prefix}.BinaryValue";
+        var binaryValueValue = queryParams[binaryValueParam];
+        if (binaryValueValue != null)
+        {
+            structure.BinaryValue = new MemoryStream(Convert.FromBase64String(binaryValueValue));
+            hasAnyValue = true;
+        }
+
+        return hasAnyValue ? structure : null;
     }
 
     private static void SerializeStructure_BatchResultErrorEntry(XmlWriter writer, string elementName, BatchResultErrorEntry structure)

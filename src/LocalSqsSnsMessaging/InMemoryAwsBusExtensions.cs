@@ -10,7 +10,7 @@ public static class InMemoryAwsBusExtensions
     /// </summary>
     /// <param name="bus">The InMemoryAwsBus instance to associate with the SQS client.</param>
     /// <returns>An InMemorySqsClient instance connected to the provided InMemoryAwsBus.</returns>
-    public static InMemorySqsClient CreateSqsClient(this InMemoryAwsBus bus)
+    public static InMemorySqsClient CreateRawSqsClient(this InMemoryAwsBus bus)
     {
         return new InMemorySqsClient(bus);
     }
@@ -20,7 +20,7 @@ public static class InMemoryAwsBusExtensions
     /// </summary>
     /// <param name="bus">The InMemoryAwsBus instance to associate with the SNS client.</param>
     /// <returns>An InMemorySnsClient instance connected to the provided InMemoryAwsBus.</returns>
-    public static InMemorySnsClient CreateSnsClient(this InMemoryAwsBus bus)
+    public static InMemorySnsClient CreateRawSnsClient(this InMemoryAwsBus bus)
     {
         return new InMemorySnsClient(bus);
     }
