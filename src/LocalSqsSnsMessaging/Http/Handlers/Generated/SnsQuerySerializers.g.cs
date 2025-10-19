@@ -41,18 +41,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeAddPermissionResponse(AddPermissionResponse response)
+    internal static void SerializeAddPermissionResponse(AddPermissionResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("AddPermissionResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("AddPermissionResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static CheckIfPhoneNumberIsOptedOutRequest DeserializeCheckIfPhoneNumberIsOptedOutRequest(string requestBody)
@@ -68,23 +66,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeCheckIfPhoneNumberIsOptedOutResponse(CheckIfPhoneNumberIsOptedOutResponse response)
+    internal static void SerializeCheckIfPhoneNumberIsOptedOutResponse(CheckIfPhoneNumberIsOptedOutResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("CheckIfPhoneNumberIsOptedOutResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("CheckIfPhoneNumberIsOptedOutResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("CheckIfPhoneNumberIsOptedOutResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("CheckIfPhoneNumberIsOptedOutResult");
             // isOptedOut
             if (response.IsOptedOut != null)
                 writer.WriteElementString("isOptedOut", response.IsOptedOut.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static ConfirmSubscriptionRequest DeserializeConfirmSubscriptionRequest(string requestBody)
@@ -110,23 +106,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeConfirmSubscriptionResponse(ConfirmSubscriptionResponse response)
+    internal static void SerializeConfirmSubscriptionResponse(ConfirmSubscriptionResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("ConfirmSubscriptionResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ConfirmSubscriptionResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("ConfirmSubscriptionResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ConfirmSubscriptionResult");
             // SubscriptionArn
             if (response.SubscriptionArn != null)
                 writer.WriteElementString("SubscriptionArn", response.SubscriptionArn.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static CreatePlatformApplicationRequest DeserializeCreatePlatformApplicationRequest(string requestBody)
@@ -150,23 +144,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeCreatePlatformApplicationResponse(CreatePlatformApplicationResponse response)
+    internal static void SerializeCreatePlatformApplicationResponse(CreatePlatformApplicationResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("CreatePlatformApplicationResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("CreatePlatformApplicationResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("CreatePlatformApplicationResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("CreatePlatformApplicationResult");
             // PlatformApplicationArn
             if (response.PlatformApplicationArn != null)
                 writer.WriteElementString("PlatformApplicationArn", response.PlatformApplicationArn.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static CreatePlatformEndpointRequest DeserializeCreatePlatformEndpointRequest(string requestBody)
@@ -195,23 +187,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeCreatePlatformEndpointResponse(CreatePlatformEndpointResponse response)
+    internal static void SerializeCreatePlatformEndpointResponse(CreatePlatformEndpointResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("CreatePlatformEndpointResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("CreatePlatformEndpointResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("CreatePlatformEndpointResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("CreatePlatformEndpointResult");
             // EndpointArn
             if (response.EndpointArn != null)
                 writer.WriteElementString("EndpointArn", response.EndpointArn.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static CreateSMSSandboxPhoneNumberRequest DeserializeCreateSMSSandboxPhoneNumberRequest(string requestBody)
@@ -232,20 +222,18 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeCreateSMSSandboxPhoneNumberResponse(CreateSMSSandboxPhoneNumberResponse response)
+    internal static void SerializeCreateSMSSandboxPhoneNumberResponse(CreateSMSSandboxPhoneNumberResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("CreateSMSSandboxPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("CreateSMSSandboxPhoneNumberResult");
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("CreateSMSSandboxPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("CreateSMSSandboxPhoneNumberResult");
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static CreateTopicRequest DeserializeCreateTopicRequest(string requestBody)
@@ -272,23 +260,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeCreateTopicResponse(CreateTopicResponse response)
+    internal static void SerializeCreateTopicResponse(CreateTopicResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("CreateTopicResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("CreateTopicResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("CreateTopicResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("CreateTopicResult");
             // TopicArn
             if (response.TopicArn != null)
                 writer.WriteElementString("TopicArn", response.TopicArn.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static DeleteEndpointRequest DeserializeDeleteEndpointRequest(string requestBody)
@@ -304,18 +290,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeDeleteEndpointResponse(DeleteEndpointResponse response)
+    internal static void SerializeDeleteEndpointResponse(DeleteEndpointResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("DeleteEndpointResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("DeleteEndpointResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static DeletePlatformApplicationRequest DeserializeDeletePlatformApplicationRequest(string requestBody)
@@ -331,18 +315,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeDeletePlatformApplicationResponse(DeletePlatformApplicationResponse response)
+    internal static void SerializeDeletePlatformApplicationResponse(DeletePlatformApplicationResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("DeletePlatformApplicationResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("DeletePlatformApplicationResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static DeleteSMSSandboxPhoneNumberRequest DeserializeDeleteSMSSandboxPhoneNumberRequest(string requestBody)
@@ -358,20 +340,18 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeDeleteSMSSandboxPhoneNumberResponse(DeleteSMSSandboxPhoneNumberResponse response)
+    internal static void SerializeDeleteSMSSandboxPhoneNumberResponse(DeleteSMSSandboxPhoneNumberResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("DeleteSMSSandboxPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("DeleteSMSSandboxPhoneNumberResult");
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("DeleteSMSSandboxPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("DeleteSMSSandboxPhoneNumberResult");
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static DeleteTopicRequest DeserializeDeleteTopicRequest(string requestBody)
@@ -387,18 +367,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeDeleteTopicResponse(DeleteTopicResponse response)
+    internal static void SerializeDeleteTopicResponse(DeleteTopicResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("DeleteTopicResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("DeleteTopicResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static GetDataProtectionPolicyRequest DeserializeGetDataProtectionPolicyRequest(string requestBody)
@@ -414,23 +392,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeGetDataProtectionPolicyResponse(GetDataProtectionPolicyResponse response)
+    internal static void SerializeGetDataProtectionPolicyResponse(GetDataProtectionPolicyResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("GetDataProtectionPolicyResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("GetDataProtectionPolicyResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("GetDataProtectionPolicyResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("GetDataProtectionPolicyResult");
             // DataProtectionPolicy
             if (response.DataProtectionPolicy != null)
                 writer.WriteElementString("DataProtectionPolicy", response.DataProtectionPolicy.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static GetEndpointAttributesRequest DeserializeGetEndpointAttributesRequest(string requestBody)
@@ -446,23 +422,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeGetEndpointAttributesResponse(GetEndpointAttributesResponse response)
+    internal static void SerializeGetEndpointAttributesResponse(GetEndpointAttributesResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("GetEndpointAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("GetEndpointAttributesResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("GetEndpointAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("GetEndpointAttributesResult");
             // Attributes
             if (response.Attributes != null)
                 SerializeMap_MapStringToString(writer, "Attributes", response.Attributes);
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static GetPlatformApplicationAttributesRequest DeserializeGetPlatformApplicationAttributesRequest(string requestBody)
@@ -478,23 +452,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeGetPlatformApplicationAttributesResponse(GetPlatformApplicationAttributesResponse response)
+    internal static void SerializeGetPlatformApplicationAttributesResponse(GetPlatformApplicationAttributesResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("GetPlatformApplicationAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("GetPlatformApplicationAttributesResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("GetPlatformApplicationAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("GetPlatformApplicationAttributesResult");
             // Attributes
             if (response.Attributes != null)
                 SerializeMap_MapStringToString(writer, "Attributes", response.Attributes);
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static GetSMSAttributesRequest DeserializeGetSMSAttributesRequest(string requestBody)
@@ -508,23 +480,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeGetSMSAttributesResponse(GetSMSAttributesResponse response)
+    internal static void SerializeGetSMSAttributesResponse(GetSMSAttributesResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("GetSMSAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("GetSMSAttributesResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("GetSMSAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("GetSMSAttributesResult");
             // attributes
             if (response.Attributes != null)
                 SerializeMap_MapStringToString(writer, "attributes", response.Attributes);
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static GetSMSSandboxAccountStatusRequest DeserializeGetSMSSandboxAccountStatusRequest(string requestBody)
@@ -535,23 +505,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeGetSMSSandboxAccountStatusResponse(GetSMSSandboxAccountStatusResponse response)
+    internal static void SerializeGetSMSSandboxAccountStatusResponse(GetSMSSandboxAccountStatusResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("GetSMSSandboxAccountStatusResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("GetSMSSandboxAccountStatusResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("GetSMSSandboxAccountStatusResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("GetSMSSandboxAccountStatusResult");
             // IsInSandbox
             if (response.IsInSandbox != null)
                 writer.WriteElementString("IsInSandbox", response.IsInSandbox.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static GetSubscriptionAttributesRequest DeserializeGetSubscriptionAttributesRequest(string requestBody)
@@ -567,23 +535,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeGetSubscriptionAttributesResponse(GetSubscriptionAttributesResponse response)
+    internal static void SerializeGetSubscriptionAttributesResponse(GetSubscriptionAttributesResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("GetSubscriptionAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("GetSubscriptionAttributesResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("GetSubscriptionAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("GetSubscriptionAttributesResult");
             // Attributes
             if (response.Attributes != null)
                 SerializeMap_SubscriptionAttributesMap(writer, "Attributes", response.Attributes);
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static GetTopicAttributesRequest DeserializeGetTopicAttributesRequest(string requestBody)
@@ -599,23 +565,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeGetTopicAttributesResponse(GetTopicAttributesResponse response)
+    internal static void SerializeGetTopicAttributesResponse(GetTopicAttributesResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("GetTopicAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("GetTopicAttributesResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("GetTopicAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("GetTopicAttributesResult");
             // Attributes
             if (response.Attributes != null)
                 SerializeMap_TopicAttributesMap(writer, "Attributes", response.Attributes);
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static ListEndpointsByPlatformApplicationRequest DeserializeListEndpointsByPlatformApplicationRequest(string requestBody)
@@ -636,26 +600,24 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeListEndpointsByPlatformApplicationResponse(ListEndpointsByPlatformApplicationResponse response)
+    internal static void SerializeListEndpointsByPlatformApplicationResponse(ListEndpointsByPlatformApplicationResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("ListEndpointsByPlatformApplicationResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ListEndpointsByPlatformApplicationResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("ListEndpointsByPlatformApplicationResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ListEndpointsByPlatformApplicationResult");
             // Endpoints
             if (response.Endpoints != null)
                 SerializeList_ListOfEndpoints(writer, "Endpoints", response.Endpoints);
             // NextToken
             if (response.NextToken != null)
                 writer.WriteElementString("NextToken", response.NextToken.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static ListOriginationNumbersRequest DeserializeListOriginationNumbersRequest(string requestBody)
@@ -676,26 +638,24 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeListOriginationNumbersResponse(ListOriginationNumbersResponse response)
+    internal static void SerializeListOriginationNumbersResponse(ListOriginationNumbersResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("ListOriginationNumbersResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ListOriginationNumbersResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("ListOriginationNumbersResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ListOriginationNumbersResult");
             // NextToken
             if (response.NextToken != null)
                 writer.WriteElementString("NextToken", response.NextToken.ToString());
             // PhoneNumbers
             if (response.PhoneNumbers != null)
                 SerializeList_PhoneNumberInformationList(writer, "PhoneNumbers", response.PhoneNumbers);
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static ListPhoneNumbersOptedOutRequest DeserializeListPhoneNumbersOptedOutRequest(string requestBody)
@@ -711,26 +671,24 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeListPhoneNumbersOptedOutResponse(ListPhoneNumbersOptedOutResponse response)
+    internal static void SerializeListPhoneNumbersOptedOutResponse(ListPhoneNumbersOptedOutResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("ListPhoneNumbersOptedOutResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ListPhoneNumbersOptedOutResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("ListPhoneNumbersOptedOutResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ListPhoneNumbersOptedOutResult");
             // phoneNumbers
             if (response.PhoneNumbers != null)
                 SerializeList_PhoneNumberList(writer, "phoneNumbers", response.PhoneNumbers);
             // nextToken
             if (response.NextToken != null)
                 writer.WriteElementString("nextToken", response.NextToken.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static ListPlatformApplicationsRequest DeserializeListPlatformApplicationsRequest(string requestBody)
@@ -746,26 +704,24 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeListPlatformApplicationsResponse(ListPlatformApplicationsResponse response)
+    internal static void SerializeListPlatformApplicationsResponse(ListPlatformApplicationsResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("ListPlatformApplicationsResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ListPlatformApplicationsResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("ListPlatformApplicationsResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ListPlatformApplicationsResult");
             // PlatformApplications
             if (response.PlatformApplications != null)
                 SerializeList_ListOfPlatformApplications(writer, "PlatformApplications", response.PlatformApplications);
             // NextToken
             if (response.NextToken != null)
                 writer.WriteElementString("NextToken", response.NextToken.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static ListSMSSandboxPhoneNumbersRequest DeserializeListSMSSandboxPhoneNumbersRequest(string requestBody)
@@ -786,26 +742,24 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeListSMSSandboxPhoneNumbersResponse(ListSMSSandboxPhoneNumbersResponse response)
+    internal static void SerializeListSMSSandboxPhoneNumbersResponse(ListSMSSandboxPhoneNumbersResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("ListSMSSandboxPhoneNumbersResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ListSMSSandboxPhoneNumbersResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("ListSMSSandboxPhoneNumbersResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ListSMSSandboxPhoneNumbersResult");
             // PhoneNumbers
             if (response.PhoneNumbers != null)
                 SerializeList_SMSSandboxPhoneNumberList(writer, "PhoneNumbers", response.PhoneNumbers);
             // NextToken
             if (response.NextToken != null)
                 writer.WriteElementString("NextToken", response.NextToken.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static ListSubscriptionsRequest DeserializeListSubscriptionsRequest(string requestBody)
@@ -821,26 +775,24 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeListSubscriptionsResponse(ListSubscriptionsResponse response)
+    internal static void SerializeListSubscriptionsResponse(ListSubscriptionsResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("ListSubscriptionsResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ListSubscriptionsResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("ListSubscriptionsResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ListSubscriptionsResult");
             // Subscriptions
             if (response.Subscriptions != null)
                 SerializeList_SubscriptionsList(writer, "Subscriptions", response.Subscriptions);
             // NextToken
             if (response.NextToken != null)
                 writer.WriteElementString("NextToken", response.NextToken.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static ListSubscriptionsByTopicRequest DeserializeListSubscriptionsByTopicRequest(string requestBody)
@@ -861,26 +813,24 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeListSubscriptionsByTopicResponse(ListSubscriptionsByTopicResponse response)
+    internal static void SerializeListSubscriptionsByTopicResponse(ListSubscriptionsByTopicResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("ListSubscriptionsByTopicResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ListSubscriptionsByTopicResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("ListSubscriptionsByTopicResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ListSubscriptionsByTopicResult");
             // Subscriptions
             if (response.Subscriptions != null)
                 SerializeList_SubscriptionsList(writer, "Subscriptions", response.Subscriptions);
             // NextToken
             if (response.NextToken != null)
                 writer.WriteElementString("NextToken", response.NextToken.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static ListTagsForResourceRequest DeserializeListTagsForResourceRequest(string requestBody)
@@ -896,23 +846,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeListTagsForResourceResponse(ListTagsForResourceResponse response)
+    internal static void SerializeListTagsForResourceResponse(ListTagsForResourceResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("ListTagsForResourceResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ListTagsForResourceResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("ListTagsForResourceResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ListTagsForResourceResult");
             // Tags
             if (response.Tags != null)
                 SerializeList_TagList(writer, "Tags", response.Tags);
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static ListTopicsRequest DeserializeListTopicsRequest(string requestBody)
@@ -928,26 +876,24 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeListTopicsResponse(ListTopicsResponse response)
+    internal static void SerializeListTopicsResponse(ListTopicsResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("ListTopicsResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ListTopicsResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("ListTopicsResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ListTopicsResult");
             // Topics
             if (response.Topics != null)
                 SerializeList_TopicsList(writer, "Topics", response.Topics);
             // NextToken
             if (response.NextToken != null)
                 writer.WriteElementString("NextToken", response.NextToken.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static OptInPhoneNumberRequest DeserializeOptInPhoneNumberRequest(string requestBody)
@@ -963,20 +909,18 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeOptInPhoneNumberResponse(OptInPhoneNumberResponse response)
+    internal static void SerializeOptInPhoneNumberResponse(OptInPhoneNumberResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("OptInPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("OptInPhoneNumberResult");
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("OptInPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("OptInPhoneNumberResult");
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static PublishRequest DeserializePublishRequest(string requestBody)
@@ -1030,26 +974,24 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializePublishResponse(PublishResponse response)
+    internal static void SerializePublishResponse(PublishResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("PublishResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("PublishResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("PublishResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("PublishResult");
             // MessageId
             if (response.MessageId != null)
                 writer.WriteElementString("MessageId", response.MessageId.ToString());
             // SequenceNumber
             if (response.SequenceNumber != null)
                 writer.WriteElementString("SequenceNumber", response.SequenceNumber.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static PublishBatchRequest DeserializePublishBatchRequest(string requestBody)
@@ -1068,26 +1010,24 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializePublishBatchResponse(PublishBatchResponse response)
+    internal static void SerializePublishBatchResponse(PublishBatchResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("PublishBatchResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("PublishBatchResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("PublishBatchResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("PublishBatchResult");
             // Successful
             if (response.Successful != null)
                 SerializeList_PublishBatchResultEntryList(writer, "Successful", response.Successful);
             // Failed
             if (response.Failed != null)
                 SerializeList_BatchResultErrorEntryList(writer, "Failed", response.Failed);
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static PutDataProtectionPolicyRequest DeserializePutDataProtectionPolicyRequest(string requestBody)
@@ -1108,18 +1048,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializePutDataProtectionPolicyResponse(PutDataProtectionPolicyResponse response)
+    internal static void SerializePutDataProtectionPolicyResponse(PutDataProtectionPolicyResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("PutDataProtectionPolicyResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("PutDataProtectionPolicyResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static RemovePermissionRequest DeserializeRemovePermissionRequest(string requestBody)
@@ -1140,18 +1078,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeRemovePermissionResponse(RemovePermissionResponse response)
+    internal static void SerializeRemovePermissionResponse(RemovePermissionResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("RemovePermissionResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("RemovePermissionResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static SetEndpointAttributesRequest DeserializeSetEndpointAttributesRequest(string requestBody)
@@ -1170,18 +1106,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeSetEndpointAttributesResponse(SetEndpointAttributesResponse response)
+    internal static void SerializeSetEndpointAttributesResponse(SetEndpointAttributesResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("SetEndpointAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("SetEndpointAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static SetPlatformApplicationAttributesRequest DeserializeSetPlatformApplicationAttributesRequest(string requestBody)
@@ -1200,18 +1134,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeSetPlatformApplicationAttributesResponse(SetPlatformApplicationAttributesResponse response)
+    internal static void SerializeSetPlatformApplicationAttributesResponse(SetPlatformApplicationAttributesResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("SetPlatformApplicationAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("SetPlatformApplicationAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static SetSMSAttributesRequest DeserializeSetSMSAttributesRequest(string requestBody)
@@ -1225,20 +1157,18 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeSetSMSAttributesResponse(SetSMSAttributesResponse response)
+    internal static void SerializeSetSMSAttributesResponse(SetSMSAttributesResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("SetSMSAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("SetSMSAttributesResult");
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("SetSMSAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("SetSMSAttributesResult");
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static SetSubscriptionAttributesRequest DeserializeSetSubscriptionAttributesRequest(string requestBody)
@@ -1264,18 +1194,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeSetSubscriptionAttributesResponse(SetSubscriptionAttributesResponse response)
+    internal static void SerializeSetSubscriptionAttributesResponse(SetSubscriptionAttributesResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("SetSubscriptionAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("SetSubscriptionAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static SetTopicAttributesRequest DeserializeSetTopicAttributesRequest(string requestBody)
@@ -1301,18 +1229,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeSetTopicAttributesResponse(SetTopicAttributesResponse response)
+    internal static void SerializeSetTopicAttributesResponse(SetTopicAttributesResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("SetTopicAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("SetTopicAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static SubscribeRequest DeserializeSubscribeRequest(string requestBody)
@@ -1346,23 +1272,21 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeSubscribeResponse(SubscribeResponse response)
+    internal static void SerializeSubscribeResponse(SubscribeResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("SubscribeResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("SubscribeResult");
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("SubscribeResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("SubscribeResult");
             // SubscriptionArn
             if (response.SubscriptionArn != null)
                 writer.WriteElementString("SubscriptionArn", response.SubscriptionArn.ToString());
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static TagResourceRequest DeserializeTagResourceRequest(string requestBody)
@@ -1381,20 +1305,18 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeTagResourceResponse(TagResourceResponse response)
+    internal static void SerializeTagResourceResponse(TagResourceResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("TagResourceResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("TagResourceResult");
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("TagResourceResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("TagResourceResult");
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static UnsubscribeRequest DeserializeUnsubscribeRequest(string requestBody)
@@ -1410,18 +1332,16 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeUnsubscribeResponse(UnsubscribeResponse response)
+    internal static void SerializeUnsubscribeResponse(UnsubscribeResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("UnsubscribeResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("UnsubscribeResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static UntagResourceRequest DeserializeUntagResourceRequest(string requestBody)
@@ -1440,20 +1360,18 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeUntagResourceResponse(UntagResourceResponse response)
+    internal static void SerializeUntagResourceResponse(UntagResourceResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("UntagResourceResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("UntagResourceResult");
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("UntagResourceResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("UntagResourceResult");
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     internal static VerifySMSSandboxPhoneNumberRequest DeserializeVerifySMSSandboxPhoneNumberRequest(string requestBody)
@@ -1474,73 +1392,18 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static string SerializeVerifySMSSandboxPhoneNumberResponse(VerifySMSSandboxPhoneNumberResponse response)
+    internal static void SerializeVerifySMSSandboxPhoneNumberResponse(VerifySMSSandboxPhoneNumberResponse response, Stream stream)
     {
-        var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))
-        {
-            writer.WriteStartElement("VerifySMSSandboxPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
-            writer.WriteStartElement("VerifySMSSandboxPhoneNumberResult");
-            writer.WriteEndElement(); // Result
-            writer.WriteStartElement("ResponseMetadata");
-            writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
-            writer.WriteEndElement(); // ResponseMetadata
-            writer.WriteEndElement(); // Response
-        }
-        return sb.ToString();
-    }
-
-    /// <summary>
-    /// Dispatches response serialization to the appropriate operation-specific serializer.
-    /// </summary>
-    internal static string SerializeResponse(object response, string operationName)
-    {
-        return operationName switch
-        {
-            "AddPermission" => SerializeAddPermissionResponse((AddPermissionResponse)response),
-            "CheckIfPhoneNumberIsOptedOut" => SerializeCheckIfPhoneNumberIsOptedOutResponse((CheckIfPhoneNumberIsOptedOutResponse)response),
-            "ConfirmSubscription" => SerializeConfirmSubscriptionResponse((ConfirmSubscriptionResponse)response),
-            "CreatePlatformApplication" => SerializeCreatePlatformApplicationResponse((CreatePlatformApplicationResponse)response),
-            "CreatePlatformEndpoint" => SerializeCreatePlatformEndpointResponse((CreatePlatformEndpointResponse)response),
-            "CreateSMSSandboxPhoneNumber" => SerializeCreateSMSSandboxPhoneNumberResponse((CreateSMSSandboxPhoneNumberResponse)response),
-            "CreateTopic" => SerializeCreateTopicResponse((CreateTopicResponse)response),
-            "DeleteEndpoint" => SerializeDeleteEndpointResponse((DeleteEndpointResponse)response),
-            "DeletePlatformApplication" => SerializeDeletePlatformApplicationResponse((DeletePlatformApplicationResponse)response),
-            "DeleteSMSSandboxPhoneNumber" => SerializeDeleteSMSSandboxPhoneNumberResponse((DeleteSMSSandboxPhoneNumberResponse)response),
-            "DeleteTopic" => SerializeDeleteTopicResponse((DeleteTopicResponse)response),
-            "GetDataProtectionPolicy" => SerializeGetDataProtectionPolicyResponse((GetDataProtectionPolicyResponse)response),
-            "GetEndpointAttributes" => SerializeGetEndpointAttributesResponse((GetEndpointAttributesResponse)response),
-            "GetPlatformApplicationAttributes" => SerializeGetPlatformApplicationAttributesResponse((GetPlatformApplicationAttributesResponse)response),
-            "GetSMSAttributes" => SerializeGetSMSAttributesResponse((GetSMSAttributesResponse)response),
-            "GetSMSSandboxAccountStatus" => SerializeGetSMSSandboxAccountStatusResponse((GetSMSSandboxAccountStatusResponse)response),
-            "GetSubscriptionAttributes" => SerializeGetSubscriptionAttributesResponse((GetSubscriptionAttributesResponse)response),
-            "GetTopicAttributes" => SerializeGetTopicAttributesResponse((GetTopicAttributesResponse)response),
-            "ListEndpointsByPlatformApplication" => SerializeListEndpointsByPlatformApplicationResponse((ListEndpointsByPlatformApplicationResponse)response),
-            "ListOriginationNumbers" => SerializeListOriginationNumbersResponse((ListOriginationNumbersResponse)response),
-            "ListPhoneNumbersOptedOut" => SerializeListPhoneNumbersOptedOutResponse((ListPhoneNumbersOptedOutResponse)response),
-            "ListPlatformApplications" => SerializeListPlatformApplicationsResponse((ListPlatformApplicationsResponse)response),
-            "ListSMSSandboxPhoneNumbers" => SerializeListSMSSandboxPhoneNumbersResponse((ListSMSSandboxPhoneNumbersResponse)response),
-            "ListSubscriptions" => SerializeListSubscriptionsResponse((ListSubscriptionsResponse)response),
-            "ListSubscriptionsByTopic" => SerializeListSubscriptionsByTopicResponse((ListSubscriptionsByTopicResponse)response),
-            "ListTagsForResource" => SerializeListTagsForResourceResponse((ListTagsForResourceResponse)response),
-            "ListTopics" => SerializeListTopicsResponse((ListTopicsResponse)response),
-            "OptInPhoneNumber" => SerializeOptInPhoneNumberResponse((OptInPhoneNumberResponse)response),
-            "Publish" => SerializePublishResponse((PublishResponse)response),
-            "PublishBatch" => SerializePublishBatchResponse((PublishBatchResponse)response),
-            "PutDataProtectionPolicy" => SerializePutDataProtectionPolicyResponse((PutDataProtectionPolicyResponse)response),
-            "RemovePermission" => SerializeRemovePermissionResponse((RemovePermissionResponse)response),
-            "SetEndpointAttributes" => SerializeSetEndpointAttributesResponse((SetEndpointAttributesResponse)response),
-            "SetPlatformApplicationAttributes" => SerializeSetPlatformApplicationAttributesResponse((SetPlatformApplicationAttributesResponse)response),
-            "SetSMSAttributes" => SerializeSetSMSAttributesResponse((SetSMSAttributesResponse)response),
-            "SetSubscriptionAttributes" => SerializeSetSubscriptionAttributesResponse((SetSubscriptionAttributesResponse)response),
-            "SetTopicAttributes" => SerializeSetTopicAttributesResponse((SetTopicAttributesResponse)response),
-            "Subscribe" => SerializeSubscribeResponse((SubscribeResponse)response),
-            "TagResource" => SerializeTagResourceResponse((TagResourceResponse)response),
-            "Unsubscribe" => SerializeUnsubscribeResponse((UnsubscribeResponse)response),
-            "UntagResource" => SerializeUntagResourceResponse((UntagResourceResponse)response),
-            "VerifySMSSandboxPhoneNumber" => SerializeVerifySMSSandboxPhoneNumberResponse((VerifySMSSandboxPhoneNumberResponse)response),
-            _ => throw new NotSupportedException($"Operation '{operationName}' does not have a response serializer.")
-        };
+        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
+        using var writer = XmlWriter.Create(stream, settings);
+        writer.WriteStartElement("VerifySMSSandboxPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
+        writer.WriteStartElement("VerifySMSSandboxPhoneNumberResult");
+        writer.WriteEndElement(); // Result
+        writer.WriteStartElement("ResponseMetadata");
+        writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
+        writer.WriteEndElement(); // ResponseMetadata
+        writer.WriteEndElement(); // Response
+        writer.Flush();
     }
 
     // Helper methods
@@ -1668,7 +1531,6 @@ internal static class SnsQuerySerializers
         int index = 1;
         while (true)
         {
-            // AWS SDK sends MessageAttributes with .Name and .Value (capital N and V)
             var keyParam = $"{prefix}.entry.{index}.Name";
             var valueParam = $"{prefix}.entry.{index}.Value";
             var key = queryParams[keyParam];

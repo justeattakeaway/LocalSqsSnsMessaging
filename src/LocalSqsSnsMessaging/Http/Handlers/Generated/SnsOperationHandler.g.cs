@@ -85,7 +85,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeAddPermissionRequest(requestBody);
             var result = await client.AddPermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeAddPermissionResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeAddPermissionResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -113,7 +116,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeCheckIfPhoneNumberIsOptedOutRequest(requestBody);
             var result = await client.CheckIfPhoneNumberIsOptedOutAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeCheckIfPhoneNumberIsOptedOutResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeCheckIfPhoneNumberIsOptedOutResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -141,7 +147,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeConfirmSubscriptionRequest(requestBody);
             var result = await client.ConfirmSubscriptionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeConfirmSubscriptionResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeConfirmSubscriptionResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -169,7 +178,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeCreatePlatformApplicationRequest(requestBody);
             var result = await client.CreatePlatformApplicationAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeCreatePlatformApplicationResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeCreatePlatformApplicationResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -197,7 +209,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeCreatePlatformEndpointRequest(requestBody);
             var result = await client.CreatePlatformEndpointAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeCreatePlatformEndpointResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeCreatePlatformEndpointResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -225,7 +240,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeCreateSMSSandboxPhoneNumberRequest(requestBody);
             var result = await client.CreateSMSSandboxPhoneNumberAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeCreateSMSSandboxPhoneNumberResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeCreateSMSSandboxPhoneNumberResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -253,7 +271,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeCreateTopicRequest(requestBody);
             var result = await client.CreateTopicAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeCreateTopicResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeCreateTopicResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -281,7 +302,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeDeleteEndpointRequest(requestBody);
             var result = await client.DeleteEndpointAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeDeleteEndpointResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeDeleteEndpointResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -309,7 +333,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeDeletePlatformApplicationRequest(requestBody);
             var result = await client.DeletePlatformApplicationAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeDeletePlatformApplicationResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeDeletePlatformApplicationResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -337,7 +364,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeDeleteSMSSandboxPhoneNumberRequest(requestBody);
             var result = await client.DeleteSMSSandboxPhoneNumberAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeDeleteSMSSandboxPhoneNumberResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeDeleteSMSSandboxPhoneNumberResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -365,7 +395,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeDeleteTopicRequest(requestBody);
             var result = await client.DeleteTopicAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeDeleteTopicResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeDeleteTopicResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -393,7 +426,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeGetDataProtectionPolicyRequest(requestBody);
             var result = await client.GetDataProtectionPolicyAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeGetDataProtectionPolicyResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeGetDataProtectionPolicyResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -421,7 +457,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeGetEndpointAttributesRequest(requestBody);
             var result = await client.GetEndpointAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeGetEndpointAttributesResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeGetEndpointAttributesResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -449,7 +488,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeGetPlatformApplicationAttributesRequest(requestBody);
             var result = await client.GetPlatformApplicationAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeGetPlatformApplicationAttributesResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeGetPlatformApplicationAttributesResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -477,7 +519,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeGetSMSAttributesRequest(requestBody);
             var result = await client.GetSMSAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeGetSMSAttributesResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeGetSMSAttributesResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -505,7 +550,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeGetSMSSandboxAccountStatusRequest(requestBody);
             var result = await client.GetSMSSandboxAccountStatusAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeGetSMSSandboxAccountStatusResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeGetSMSSandboxAccountStatusResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -533,7 +581,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeGetSubscriptionAttributesRequest(requestBody);
             var result = await client.GetSubscriptionAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeGetSubscriptionAttributesResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeGetSubscriptionAttributesResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -561,7 +612,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeGetTopicAttributesRequest(requestBody);
             var result = await client.GetTopicAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeGetTopicAttributesResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeGetTopicAttributesResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -589,7 +643,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeListEndpointsByPlatformApplicationRequest(requestBody);
             var result = await client.ListEndpointsByPlatformApplicationAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeListEndpointsByPlatformApplicationResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeListEndpointsByPlatformApplicationResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -617,7 +674,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeListOriginationNumbersRequest(requestBody);
             var result = await client.ListOriginationNumbersAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeListOriginationNumbersResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeListOriginationNumbersResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -645,7 +705,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeListPhoneNumbersOptedOutRequest(requestBody);
             var result = await client.ListPhoneNumbersOptedOutAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeListPhoneNumbersOptedOutResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeListPhoneNumbersOptedOutResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -673,7 +736,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeListPlatformApplicationsRequest(requestBody);
             var result = await client.ListPlatformApplicationsAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeListPlatformApplicationsResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeListPlatformApplicationsResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -701,7 +767,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeListSMSSandboxPhoneNumbersRequest(requestBody);
             var result = await client.ListSMSSandboxPhoneNumbersAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeListSMSSandboxPhoneNumbersResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeListSMSSandboxPhoneNumbersResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -729,7 +798,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeListSubscriptionsRequest(requestBody);
             var result = await client.ListSubscriptionsAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeListSubscriptionsResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeListSubscriptionsResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -757,7 +829,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeListSubscriptionsByTopicRequest(requestBody);
             var result = await client.ListSubscriptionsByTopicAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeListSubscriptionsByTopicResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeListSubscriptionsByTopicResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -785,7 +860,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeListTagsForResourceRequest(requestBody);
             var result = await client.ListTagsForResourceAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeListTagsForResourceResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeListTagsForResourceResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -813,7 +891,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeListTopicsRequest(requestBody);
             var result = await client.ListTopicsAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeListTopicsResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeListTopicsResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -841,7 +922,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeOptInPhoneNumberRequest(requestBody);
             var result = await client.OptInPhoneNumberAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeOptInPhoneNumberResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeOptInPhoneNumberResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -866,13 +950,13 @@ internal static partial class SnsOperationHandler
         try
         {
             var requestBody = request.Content != null ? await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false) : string.Empty;
-            Console.WriteLine("=== SNS Publish Request Body ===");
-            Console.WriteLine(requestBody);
-            Console.WriteLine("=================================");
             var requestObject = SnsQuerySerializers.DeserializePublishRequest(requestBody);
             var result = await client.PublishAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializePublishResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializePublishResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -900,7 +984,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializePublishBatchRequest(requestBody);
             var result = await client.PublishBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializePublishBatchResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializePublishBatchResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -928,7 +1015,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializePutDataProtectionPolicyRequest(requestBody);
             var result = await client.PutDataProtectionPolicyAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializePutDataProtectionPolicyResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializePutDataProtectionPolicyResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -956,7 +1046,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeRemovePermissionRequest(requestBody);
             var result = await client.RemovePermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeRemovePermissionResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeRemovePermissionResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -984,7 +1077,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeSetEndpointAttributesRequest(requestBody);
             var result = await client.SetEndpointAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeSetEndpointAttributesResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeSetEndpointAttributesResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -1012,7 +1108,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeSetPlatformApplicationAttributesRequest(requestBody);
             var result = await client.SetPlatformApplicationAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeSetPlatformApplicationAttributesResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeSetPlatformApplicationAttributesResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -1040,7 +1139,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeSetSMSAttributesRequest(requestBody);
             var result = await client.SetSMSAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeSetSMSAttributesResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeSetSMSAttributesResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -1068,7 +1170,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeSetSubscriptionAttributesRequest(requestBody);
             var result = await client.SetSubscriptionAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeSetSubscriptionAttributesResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeSetSubscriptionAttributesResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -1096,7 +1201,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeSetTopicAttributesRequest(requestBody);
             var result = await client.SetTopicAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeSetTopicAttributesResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeSetTopicAttributesResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -1124,7 +1232,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeSubscribeRequest(requestBody);
             var result = await client.SubscribeAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeSubscribeResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeSubscribeResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -1152,7 +1263,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeTagResourceRequest(requestBody);
             var result = await client.TagResourceAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeTagResourceResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeTagResourceResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -1180,7 +1294,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeUnsubscribeRequest(requestBody);
             var result = await client.UnsubscribeAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeUnsubscribeResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeUnsubscribeResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -1208,7 +1325,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeUntagResourceRequest(requestBody);
             var result = await client.UntagResourceAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeUntagResourceResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeUntagResourceResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
@@ -1236,7 +1356,10 @@ internal static partial class SnsOperationHandler
             var requestObject = SnsQuerySerializers.DeserializeVerifySMSSandboxPhoneNumberRequest(requestBody);
             var result = await client.VerifySMSSandboxPhoneNumberAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            var responseXml = SnsQuerySerializers.SerializeVerifySMSSandboxPhoneNumberResponse(result);
+            var responseStream = new MemoryStream();
+            SnsQuerySerializers.SerializeVerifySMSSandboxPhoneNumberResponse(result, responseStream);
+            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());
+
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(responseXml, Encoding.UTF8, "text/xml")
