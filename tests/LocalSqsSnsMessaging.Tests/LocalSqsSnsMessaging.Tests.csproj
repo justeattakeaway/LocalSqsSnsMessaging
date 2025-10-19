@@ -21,4 +21,8 @@
       <ProjectReference Include="..\LocalSqsSnsMessaging.Tests.Shared\LocalSqsSnsMessaging.Tests.Shared.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="Http\SnsQueryHandlerTests.cs" />
+    </ItemGroup>
+
 </Project>

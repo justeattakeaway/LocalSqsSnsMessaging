@@ -99,7 +99,7 @@ static void GenerateJsonHandler(string serviceName, string sdkNamespace, string 
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
-    code.AppendLine($"        using {clientType} client = bus.Create{serviceName}Client();");
+    code.AppendLine($"        using {clientType} client = bus.CreateRaw{serviceName}Client();");
     code.AppendLine();
     code.AppendLine("        return operationName switch");
     code.AppendLine("        {");
@@ -145,7 +145,7 @@ static void GenerateJsonHandler(string serviceName, string sdkNamespace, string 
         code.AppendLine();
         code.AppendLine("            var response = new HttpResponseMessage(HttpStatusCode.OK)");
         code.AppendLine("            {");
-        code.AppendLine($"                Content = JsonContent.Create(result, options: JsonOptions)");
+        code.AppendLine("                Content = JsonContent.Create(result, options: JsonOptions)");
         code.AppendLine("            };");
         code.AppendLine("            response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(\"application/x-amz-json-1.0\");");
         code.AppendLine("            return response;");
@@ -260,7 +260,7 @@ static void GenerateQueryHandler(string serviceName, string sdkNamespace, string
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
-    code.AppendLine($"        using {clientType} client = bus.Create{serviceName}Client();");
+    code.AppendLine($"        using {clientType} client = bus.CreateRaw{serviceName}Client();");
     code.AppendLine();
     code.AppendLine("        return operationName switch");
     code.AppendLine("        {");
@@ -304,7 +304,10 @@ static void GenerateQueryHandler(string serviceName, string sdkNamespace, string
         code.AppendLine($"            var requestObject = {serviceName}QuerySerializers.Deserialize{opName}Request(requestBody);");
         code.AppendLine($"            var result = await client.{opName}Async(requestObject, cancellationToken).ConfigureAwait(false);");
         code.AppendLine();
-        code.AppendLine($"            var responseXml = {serviceName}QuerySerializers.Serialize{opName}Response(result);");
+        code.AppendLine("            var responseStream = new MemoryStream();");
+        code.AppendLine($"            {serviceName}QuerySerializers.Serialize{opName}Response(result, responseStream);");
+        code.AppendLine("            var responseXml = Encoding.UTF8.GetString(responseStream.ToArray());");
+        code.AppendLine();
         code.AppendLine("            var response = new HttpResponseMessage(HttpStatusCode.OK)");
         code.AppendLine("            {");
         code.AppendLine("                Content = new StringContent(responseXml, Encoding.UTF8, \"text/xml\")");

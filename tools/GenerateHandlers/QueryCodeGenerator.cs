@@ -76,9 +76,6 @@ internal sealed class QueryCodeGenerator
             }
         }
 
-        // Generate response dispatcher
-        GenerateResponseDispatcher(code, operations);
-
         // Generate helper methods for complex types (lists, maps, structures)
         GenerateHelperMethods(code);
 
@@ -86,28 +83,6 @@ internal sealed class QueryCodeGenerator
         return code.ToString();
     }
 
-    private static void GenerateResponseDispatcher(StringBuilder code, JsonElement operations)
-    {
-        code.AppendLine("    /// <summary>");
-        code.AppendLine("    /// Dispatches response serialization to the appropriate operation-specific serializer.");
-        code.AppendLine("    /// </summary>");
-        code.AppendLine("    internal static string SerializeResponse(object response, string operationName)");
-        code.AppendLine("    {");
-        code.AppendLine("        return operationName switch");
-        code.AppendLine("        {");
-
-        foreach (var operation in operations.EnumerateObject())
-        {
-            var opName = operation.Name;
-            // Include all operations in the dispatcher (both with and without output)
-            code.AppendLine($"            \"{opName}\" => Serialize{opName}Response(({opName}Response)response),");
-        }
-
-        code.AppendLine($"            _ => throw new NotSupportedException($\"Operation '{{operationName}}' does not have a response serializer.\")");
-        code.AppendLine("        };");
-        code.AppendLine("    }");
-        code.AppendLine();
-    }
 
     private void GenerateRequestDeserializer(StringBuilder code, string opName, JsonElement inputShape)
     {
@@ -193,13 +168,12 @@ internal sealed class QueryCodeGenerator
 
     private void GenerateResponseSerializer(StringBuilder code, string opName, JsonElement outputShape, string resultWrapper)
     {
-        code.AppendLine($"    internal static string Serialize{opName}Response({opName}Response response)");
+        code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, Stream stream)");
         code.AppendLine("    {");
-        code.AppendLine("        var sb = new StringBuilder();");
-        code.AppendLine("        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))");
-        code.AppendLine("        {");
-        code.AppendLine($"            writer.WriteStartElement(\"{opName}Response\", \"{_xmlNamespace}\");");
-        code.AppendLine($"            writer.WriteStartElement(\"{resultWrapper}\");");
+        code.AppendLine("        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };");
+        code.AppendLine("        using var writer = XmlWriter.Create(stream, settings);");
+        code.AppendLine($"        writer.WriteStartElement(\"{opName}Response\", \"{_xmlNamespace}\");");
+        code.AppendLine($"        writer.WriteStartElement(\"{resultWrapper}\");");
 
         if (outputShape.TryGetProperty("members", out var members))
         {
@@ -215,31 +189,28 @@ internal sealed class QueryCodeGenerator
             }
         }
 
-        code.AppendLine("            writer.WriteEndElement(); // Result");
-        code.AppendLine("            writer.WriteStartElement(\"ResponseMetadata\");");
-        code.AppendLine("            writer.WriteElementString(\"RequestId\", System.Guid.NewGuid().ToString());");
-        code.AppendLine("            writer.WriteEndElement(); // ResponseMetadata");
-        code.AppendLine("            writer.WriteEndElement(); // Response");
-        code.AppendLine("        }");
-        code.AppendLine("        return sb.ToString();");
+        code.AppendLine("        writer.WriteEndElement(); // Result");
+        code.AppendLine("        writer.WriteStartElement(\"ResponseMetadata\");");
+        code.AppendLine("        writer.WriteElementString(\"RequestId\", System.Guid.NewGuid().ToString());");
+        code.AppendLine("        writer.WriteEndElement(); // ResponseMetadata");
+        code.AppendLine("        writer.WriteEndElement(); // Response");
+        code.AppendLine("        writer.Flush();");
         code.AppendLine("    }");
         code.AppendLine();
     }
 
     private void GenerateEmptyResponseSerializer(StringBuilder code, string opName)
     {
-        code.AppendLine($"    internal static string Serialize{opName}Response({opName}Response response)");
+        code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, Stream stream)");
         code.AppendLine("    {");
-        code.AppendLine("        var sb = new StringBuilder();");
-        code.AppendLine("        using (var writer = XmlWriter.Create(sb, new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = Encoding.UTF8 }))");
-        code.AppendLine("        {");
-        code.AppendLine($"            writer.WriteStartElement(\"{opName}Response\", \"{_xmlNamespace}\");");
-        code.AppendLine("            writer.WriteStartElement(\"ResponseMetadata\");");
-        code.AppendLine("            writer.WriteElementString(\"RequestId\", System.Guid.NewGuid().ToString());");
-        code.AppendLine("            writer.WriteEndElement(); // ResponseMetadata");
-        code.AppendLine("            writer.WriteEndElement(); // Response");
-        code.AppendLine("        }");
-        code.AppendLine("        return sb.ToString();");
+        code.AppendLine("        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };");
+        code.AppendLine("        using var writer = XmlWriter.Create(stream, settings);");
+        code.AppendLine($"        writer.WriteStartElement(\"{opName}Response\", \"{_xmlNamespace}\");");
+        code.AppendLine("        writer.WriteStartElement(\"ResponseMetadata\");");
+        code.AppendLine("        writer.WriteElementString(\"RequestId\", System.Guid.NewGuid().ToString());");
+        code.AppendLine("        writer.WriteEndElement(); // ResponseMetadata");
+        code.AppendLine("        writer.WriteEndElement(); // Response");
+        code.AppendLine("        writer.Flush();");
         code.AppendLine("    }");
         code.AppendLine();
     }
@@ -394,14 +365,18 @@ internal sealed class QueryCodeGenerator
 
         string valueCSharType = GetCSharpType(valueShape, valueType);
 
+        // MessageAttributeMap uses Name/Value (capitalized) instead of key/value
+        var keyParam = shapeName == "MessageAttributeMap" ? "Name" : "key";
+        var valueParam = shapeName == "MessageAttributeMap" ? "Value" : "value";
+
         code.AppendLine($"    private static Dictionary<string, {valueCSharType}>? DeserializeMap_{shapeName}(NameValueCollection queryParams, string prefix)");
         code.AppendLine("    {");
         code.AppendLine($"        var map = new Dictionary<string, {valueCSharType}>();");
         code.AppendLine("        int index = 1;");
         code.AppendLine("        while (true)");
         code.AppendLine("        {");
-        code.AppendLine($"            var keyParam = $\"{{prefix}}.entry.{{index}}.key\";");
-        code.AppendLine($"            var valueParam = $\"{{prefix}}.entry.{{index}}.value\";");
+        code.AppendLine($"            var keyParam = $\"{{prefix}}.entry.{{index}}.{keyParam}\";");
+        code.AppendLine($"            var valueParam = $\"{{prefix}}.entry.{{index}}.{valueParam}\";");
         code.AppendLine("            var key = queryParams[keyParam];");
 
         if (valueType == "string")
