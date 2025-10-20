@@ -332,7 +332,9 @@ internal sealed class JsonCodeGenerator
                 }
                 else if (valueType == "structure")
                 {
-                    code.AppendLine($"                // TODO: Deserialize {valueShape} structure");
+                    code.AppendLine($"                request.{csharpPropertyName}[prop.Name] = new {valueShape}();");
+                    _itemCounter = 0;
+                    GenerateStructureDeserializationMembers(code, valueShape, "prop.Value", "                ", request: false);
                 }
                 else
                 {
@@ -518,6 +520,84 @@ internal sealed class JsonCodeGenerator
 
                 default:
                     code.AppendLine($"{indent}// TODO: Serialize {memberType} for {csharpPropertyName}");
+                    break;
+            }
+        }
+    }
+
+    private void GenerateStructureDeserializationMembers(StringBuilder code, string shapeName, string sourceElement, string indent, bool request = true)
+    {
+        if (!_shapes.TryGetProperty(shapeName, out var shape))
+        {
+            code.AppendLine($"{indent}// Shape {shapeName} not found");
+            return;
+        }
+
+        if (!shape.TryGetProperty("members", out var members))
+        {
+            return;
+        }
+
+        var structVar = request ? "request" : "request";
+        var resultVar = request ? $"request.MessageAttributes[prop.Name]" : $"{sourceElement}";
+
+        foreach (var member in members.EnumerateObject())
+        {
+            var memberName = member.Name;
+            var memberShapeName = member.Value.GetProperty("shape").GetString()!;
+            var memberShape = _shapes.GetProperty(memberShapeName);
+            var memberType = memberShape.GetProperty("type").GetString()!;
+
+            var csharpPropertyName = ToPascalCase(memberName);
+            var jsonPropertyName = ToCamelCase(memberName);
+
+            switch (memberType)
+            {
+                case "string":
+                    code.AppendLine($"{indent}if ({sourceElement}.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem))");
+                    code.AppendLine($"{indent}    request.MessageAttributes[prop.Name].{csharpPropertyName} = {jsonPropertyName}Elem.GetString();");
+                    break;
+
+                case "integer":
+                case "long":
+                    code.AppendLine($"{indent}if ({sourceElement}.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem) && {jsonPropertyName}Elem.TryGetInt32(out var {jsonPropertyName}Val))");
+                    code.AppendLine($"{indent}    request.MessageAttributes[prop.Name].{csharpPropertyName} = {jsonPropertyName}Val;");
+                    break;
+
+                case "list":
+                    var listMemberShape = memberShape.GetProperty("member").GetProperty("shape").GetString()!;
+                    var listMemberType = _shapes.GetProperty(listMemberShape).GetProperty("type").GetString()!;
+
+                    code.AppendLine($"{indent}if ({sourceElement}.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem) && {jsonPropertyName}Elem.ValueKind == JsonValueKind.Array)");
+                    code.AppendLine($"{indent}{{");
+                    code.AppendLine($"{indent}    request.MessageAttributes[prop.Name].{csharpPropertyName} = new List<{GetCSharpType(listMemberShape, listMemberType)}>();");
+                    code.AppendLine($"{indent}    foreach (var item in {jsonPropertyName}Elem.EnumerateArray())");
+                    code.AppendLine($"{indent}    {{");
+
+                    if (listMemberType == "string")
+                    {
+                        code.AppendLine($"{indent}        request.MessageAttributes[prop.Name].{csharpPropertyName}.Add(item.GetString()!);");
+                    }
+                    else
+                    {
+                        code.AppendLine($"{indent}        // TODO: Deserialize {listMemberType}");
+                    }
+
+                    code.AppendLine($"{indent}    }}");
+                    code.AppendLine($"{indent}}}");
+                    break;
+
+                case "blob":
+                    code.AppendLine($"{indent}if ({sourceElement}.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem))");
+                    code.AppendLine($"{indent}{{");
+                    code.AppendLine($"{indent}    var base64 = {jsonPropertyName}Elem.GetString();");
+                    code.AppendLine($"{indent}    if (base64 != null)");
+                    code.AppendLine($"{indent}        request.MessageAttributes[prop.Name].{csharpPropertyName} = new MemoryStream(Convert.FromBase64String(base64));");
+                    code.AppendLine($"{indent}}}");
+                    break;
+
+                default:
+                    code.AppendLine($"{indent}// TODO: Deserialize {memberType} for {csharpPropertyName}");
                     break;
             }
         }
