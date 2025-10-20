@@ -457,7 +457,8 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             .Sum(requestEntry => CalculateMessageSize(requestEntry.Message, requestEntry.Subject, requestEntry.MessageAttributes));
         if (totalSize > MaxMessageSize)
         {
-            throw new InvalidParameterException($"Message size has exceeded the limit of {MaxMessageSize} bytes.");
+            throw new BatchRequestTooLongException(
+                $"Batch size ({totalSize} bytes) exceeds the maximum allowed size ({MaxMessageSize} bytes)");
         }
 
         var topic = GetTopicByArn(request.TopicArn);

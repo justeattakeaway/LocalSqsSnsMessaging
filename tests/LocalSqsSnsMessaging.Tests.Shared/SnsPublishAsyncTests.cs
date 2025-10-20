@@ -891,4 +891,37 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
             await Assert.ThrowsAsync<InvalidParameterException>(testAction);
         }
     }
+
+    [Test]
+    public async Task PublishBatchAsync_TotalMessageSizeExceedsLimit_ThrowsBatchRequestTooLongException(CancellationToken cancellationToken)
+    {
+        // Arrange
+        var topicName = "TestTopic";
+        var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
+        await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicName }, cancellationToken);
+
+        var request = new PublishBatchRequest
+        {
+            TopicArn = topicArn,
+            PublishBatchRequestEntries =
+            [
+                new PublishBatchRequestEntry
+                {
+                    Id = "1",
+                    Message = new string('x', 200000)
+                },
+                new PublishBatchRequestEntry
+                {
+                    Id = "2",
+                    Message = new string('y', 62145) // Total exceeds 256KB
+                }
+            ]
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<Amazon.SimpleNotificationService.Model.BatchRequestTooLongException>(() =>
+            Sns.PublishBatchAsync(request, cancellationToken));
+    }
+
+
 }

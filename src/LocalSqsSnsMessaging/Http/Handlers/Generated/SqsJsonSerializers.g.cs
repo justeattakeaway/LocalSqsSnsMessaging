@@ -807,18 +807,33 @@ internal static class SqsJsonSerializers
             request.MessageAttributes = new Dictionary<string, MessageAttributeValue>();
             foreach (var prop in messageAttributesElem.EnumerateObject())
             {
-                var attrValue = new MessageAttributeValue();
+                request.MessageAttributes[prop.Name] = new MessageAttributeValue();
                 if (prop.Value.TryGetProperty("stringValue", out var stringValueElem))
-                    attrValue.StringValue = stringValueElem.GetString();
+                    request.MessageAttributes[prop.Name].StringValue = stringValueElem.GetString();
                 if (prop.Value.TryGetProperty("binaryValue", out var binaryValueElem))
                 {
                     var base64 = binaryValueElem.GetString();
                     if (base64 != null)
-                        attrValue.BinaryValue = new MemoryStream(Convert.FromBase64String(base64));
+                        request.MessageAttributes[prop.Name].BinaryValue = new MemoryStream(Convert.FromBase64String(base64));
+                }
+                if (prop.Value.TryGetProperty("stringListValues", out var stringListValuesElem) && stringListValuesElem.ValueKind == JsonValueKind.Array)
+                {
+                    request.MessageAttributes[prop.Name].StringListValues = new List<string>();
+                    foreach (var item in stringListValuesElem.EnumerateArray())
+                    {
+                        request.MessageAttributes[prop.Name].StringListValues.Add(item.GetString()!);
+                    }
+                }
+                if (prop.Value.TryGetProperty("binaryListValues", out var binaryListValuesElem) && binaryListValuesElem.ValueKind == JsonValueKind.Array)
+                {
+                    request.MessageAttributes[prop.Name].BinaryListValues = new List<MemoryStream>();
+                    foreach (var item in binaryListValuesElem.EnumerateArray())
+                    {
+                        // TODO: Deserialize blob
+                    }
                 }
                 if (prop.Value.TryGetProperty("dataType", out var dataTypeElem))
-                    attrValue.DataType = dataTypeElem.GetString();
-                request.MessageAttributes[prop.Name] = attrValue;
+                    request.MessageAttributes[prop.Name].DataType = dataTypeElem.GetString();
             }
         }
 
@@ -828,7 +843,33 @@ internal static class SqsJsonSerializers
             request.MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>();
             foreach (var prop in messageSystemAttributesElem.EnumerateObject())
             {
-                // TODO: Deserialize MessageSystemAttributeValue structure
+                request.MessageSystemAttributes[prop.Name] = new MessageSystemAttributeValue();
+                if (prop.Value.TryGetProperty("stringValue", out var stringValueElem))
+                    request.MessageAttributes[prop.Name].StringValue = stringValueElem.GetString();
+                if (prop.Value.TryGetProperty("binaryValue", out var binaryValueElem))
+                {
+                    var base64 = binaryValueElem.GetString();
+                    if (base64 != null)
+                        request.MessageAttributes[prop.Name].BinaryValue = new MemoryStream(Convert.FromBase64String(base64));
+                }
+                if (prop.Value.TryGetProperty("stringListValues", out var stringListValuesElem) && stringListValuesElem.ValueKind == JsonValueKind.Array)
+                {
+                    request.MessageAttributes[prop.Name].StringListValues = new List<string>();
+                    foreach (var item in stringListValuesElem.EnumerateArray())
+                    {
+                        request.MessageAttributes[prop.Name].StringListValues.Add(item.GetString()!);
+                    }
+                }
+                if (prop.Value.TryGetProperty("binaryListValues", out var binaryListValuesElem) && binaryListValuesElem.ValueKind == JsonValueKind.Array)
+                {
+                    request.MessageAttributes[prop.Name].BinaryListValues = new List<MemoryStream>();
+                    foreach (var item in binaryListValuesElem.EnumerateArray())
+                    {
+                        // TODO: Deserialize blob
+                    }
+                }
+                if (prop.Value.TryGetProperty("dataType", out var dataTypeElem))
+                    request.MessageAttributes[prop.Name].DataType = dataTypeElem.GetString();
             }
         }
 

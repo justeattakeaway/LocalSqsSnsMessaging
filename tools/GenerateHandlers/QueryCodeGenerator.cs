@@ -334,8 +334,12 @@ internal sealed class QueryCodeGenerator
         }
         else if (memberType == "structure")
         {
-            code.AppendLine("            // TODO: Deserialize structure from queryParams with prefix");
-            code.AppendLine("            break;");
+            _generatedHelpers.Add($"DeserializeStructure_{memberShape}");
+            code.AppendLine($"            var item = DeserializeStructure_{memberShape}(queryParams, key);");
+            code.AppendLine("            if (item != null)");
+            code.AppendLine("                list.Add(item);");
+            code.AppendLine("            else");
+            code.AppendLine("                break;");
         }
         else
         {
@@ -578,11 +582,11 @@ internal sealed class QueryCodeGenerator
                 var memberType = memberShape.GetProperty("type").GetString()!;
 
                 code.AppendLine($"        // {memberName}");
-                code.AppendLine($"        var {ToCamelCase(memberName)}Param = $\"{{prefix}}.{memberName}\";");
-                code.AppendLine($"        var {ToCamelCase(memberName)}Value = queryParams[{ToCamelCase(memberName)}Param];");
 
                 if (memberType == "string")
                 {
+                    code.AppendLine($"        var {ToCamelCase(memberName)}Param = $\"{{prefix}}.{memberName}\";");
+                    code.AppendLine($"        var {ToCamelCase(memberName)}Value = queryParams[{ToCamelCase(memberName)}Param];");
                     code.AppendLine($"        if ({ToCamelCase(memberName)}Value != null)");
                     code.AppendLine("        {");
                     code.AppendLine($"            structure.{csharpPropertyName} = {ToCamelCase(memberName)}Value;");
@@ -591,6 +595,9 @@ internal sealed class QueryCodeGenerator
                 }
                 else if (memberType == "integer" || memberType == "long" || memberType == "boolean" || memberType == "double")
                 {
+                    code.AppendLine($"        var {ToCamelCase(memberName)}Param = $\"{{prefix}}.{memberName}\";");
+                    code.AppendLine($"        var {ToCamelCase(memberName)}Value = queryParams[{ToCamelCase(memberName)}Param];");
+                    
                     string parseMethod = memberType switch
                     {
                         "integer" => "int.TryParse",
@@ -608,9 +615,33 @@ internal sealed class QueryCodeGenerator
                 }
                 else if (memberType == "blob")
                 {
+                    code.AppendLine($"        var {ToCamelCase(memberName)}Param = $\"{{prefix}}.{memberName}\";");
+                    code.AppendLine($"        var {ToCamelCase(memberName)}Value = queryParams[{ToCamelCase(memberName)}Param];");
                     code.AppendLine($"        if ({ToCamelCase(memberName)}Value != null)");
                     code.AppendLine("        {");
                     code.AppendLine($"            structure.{csharpPropertyName} = new MemoryStream(Convert.FromBase64String({ToCamelCase(memberName)}Value));");
+                    code.AppendLine("            hasAnyValue = true;");
+                    code.AppendLine("        }");
+                }
+                else if (memberType == "map")
+                {
+                    _generatedHelpers.Add($"DeserializeMap_{memberShapeName}");
+                    code.AppendLine($"        var {ToCamelCase(memberName)}Param = $\"{{prefix}}.{memberName}\";");
+                    code.AppendLine($"        var {ToCamelCase(memberName)}Map = DeserializeMap_{memberShapeName}(queryParams, {ToCamelCase(memberName)}Param);");
+                    code.AppendLine($"        if ({ToCamelCase(memberName)}Map != null)");
+                    code.AppendLine("        {");
+                    code.AppendLine($"            structure.{csharpPropertyName} = {ToCamelCase(memberName)}Map;");
+                    code.AppendLine("            hasAnyValue = true;");
+                    code.AppendLine("        }");
+                }
+                else if (memberType == "list")
+                {
+                    _generatedHelpers.Add($"DeserializeList_{memberShapeName}");
+                    code.AppendLine($"        var {ToCamelCase(memberName)}Param = $\"{{prefix}}.{memberName}\";");
+                    code.AppendLine($"        var {ToCamelCase(memberName)}List = DeserializeList_{memberShapeName}(queryParams, {ToCamelCase(memberName)}Param);");
+                    code.AppendLine($"        if ({ToCamelCase(memberName)}List != null)");
+                    code.AppendLine("        {");
+                    code.AppendLine($"            structure.{csharpPropertyName} = {ToCamelCase(memberName)}List;");
                     code.AppendLine("            hasAnyValue = true;");
                     code.AppendLine("        }");
                 }

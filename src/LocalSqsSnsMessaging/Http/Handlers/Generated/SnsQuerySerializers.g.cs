@@ -1466,8 +1466,11 @@ internal static class SnsQuerySerializers
         while (true)
         {
             var key = $"{prefix}.member.{index}";
-            // TODO: Deserialize structure from queryParams with prefix
-            break;
+            var item = DeserializeStructure_PublishBatchRequestEntry(queryParams, key);
+            if (item != null)
+                list.Add(item);
+            else
+                break;
             index++;
         }
         return list.Count > 0 ? list : null;
@@ -1497,8 +1500,11 @@ internal static class SnsQuerySerializers
         while (true)
         {
             var key = $"{prefix}.member.{index}";
-            // TODO: Deserialize structure from queryParams with prefix
-            break;
+            var item = DeserializeStructure_Tag(queryParams, key);
+            if (item != null)
+                list.Add(item);
+            else
+                break;
             index++;
         }
         return list.Count > 0 ? list : null;
@@ -1763,6 +1769,103 @@ internal static class SnsQuerySerializers
         if (binaryValueValue != null)
         {
             structure.BinaryValue = new MemoryStream(Convert.FromBase64String(binaryValueValue));
+            hasAnyValue = true;
+        }
+
+        return hasAnyValue ? structure : null;
+    }
+
+    private static PublishBatchRequestEntry? DeserializeStructure_PublishBatchRequestEntry(NameValueCollection queryParams, string prefix)
+    {
+        var structure = new PublishBatchRequestEntry();
+        var hasAnyValue = false;
+
+        // Id
+        var idParam = $"{prefix}.Id";
+        var idValue = queryParams[idParam];
+        if (idValue != null)
+        {
+            structure.Id = idValue;
+            hasAnyValue = true;
+        }
+
+        // Message
+        var messageParam = $"{prefix}.Message";
+        var messageValue = queryParams[messageParam];
+        if (messageValue != null)
+        {
+            structure.Message = messageValue;
+            hasAnyValue = true;
+        }
+
+        // Subject
+        var subjectParam = $"{prefix}.Subject";
+        var subjectValue = queryParams[subjectParam];
+        if (subjectValue != null)
+        {
+            structure.Subject = subjectValue;
+            hasAnyValue = true;
+        }
+
+        // MessageStructure
+        var messageStructureParam = $"{prefix}.MessageStructure";
+        var messageStructureValue = queryParams[messageStructureParam];
+        if (messageStructureValue != null)
+        {
+            structure.MessageStructure = messageStructureValue;
+            hasAnyValue = true;
+        }
+
+        // MessageAttributes
+        var messageAttributesParam = $"{prefix}.MessageAttributes";
+        var messageAttributesMap = DeserializeMap_MessageAttributeMap(queryParams, messageAttributesParam);
+        if (messageAttributesMap != null)
+        {
+            structure.MessageAttributes = messageAttributesMap;
+            hasAnyValue = true;
+        }
+
+        // MessageDeduplicationId
+        var messageDeduplicationIdParam = $"{prefix}.MessageDeduplicationId";
+        var messageDeduplicationIdValue = queryParams[messageDeduplicationIdParam];
+        if (messageDeduplicationIdValue != null)
+        {
+            structure.MessageDeduplicationId = messageDeduplicationIdValue;
+            hasAnyValue = true;
+        }
+
+        // MessageGroupId
+        var messageGroupIdParam = $"{prefix}.MessageGroupId";
+        var messageGroupIdValue = queryParams[messageGroupIdParam];
+        if (messageGroupIdValue != null)
+        {
+            structure.MessageGroupId = messageGroupIdValue;
+            hasAnyValue = true;
+        }
+
+        return hasAnyValue ? structure : null;
+    }
+
+    private static Tag? DeserializeStructure_Tag(NameValueCollection queryParams, string prefix)
+    {
+        var structure = new Tag();
+        var hasAnyValue = false;
+
+        // Key
+        var keyParam = $"{prefix}.Key";
+        var keyValue = queryParams[keyParam];
+        if (keyValue != null)
+        {
+            structure.Key = keyValue;
+            hasAnyValue = true;
+        }
+
+        // Value
+        var valueParam = $"{prefix}.Value";
+        var valueValue = queryParams[valueParam];
+        if (valueValue != null)
+        {
+            structure.Value = valueValue;
             hasAnyValue = true;
         }
 
