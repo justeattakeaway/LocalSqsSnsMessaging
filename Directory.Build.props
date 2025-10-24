@@ -26,7 +26,7 @@
     <LangVersion>latest</LangVersion>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <NeutralLanguage>en-US</NeutralLanguage>
-    <NoWarn Condition=" '$(GenerateDocumentationFile)' == 'false' ">$(NoWarn);SA0001;CA1303</NoWarn>
+    <NoWarn Condition=" '$(GenerateDocumentationFile)' == 'false' ">$(NoWarn);SA0001;CA1303;CS8002</NoWarn>
     <Nullable>enable</Nullable>
     <PackageIcon>package-icon.png</PackageIcon>
     <PackageProjectUrl Condition=" '$(PackageProjectUrl)' == '' AND '$(GITHUB_ACTIONS)' != '' ">$(GITHUB_SERVER_URL)/$(GITHUB_REPOSITORY)</PackageProjectUrl>
