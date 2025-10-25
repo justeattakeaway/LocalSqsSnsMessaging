@@ -35,11 +35,29 @@ This PowerShell script:
 dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --coverage --coverage-output-format xml --timeout 2m
 ```
 
-### Run Single Test
+### Run Specific Tests
+
+**IMPORTANT**: TUnit uses `--treenode-filter` (NOT `--filter`) for filtering tests. However, filters can be tricky - the easiest approach is usually to run all tests or use `--list-tests` to find the exact test name first.
+
 ```bash
-# TUnit uses different test filtering syntax
-dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --filter "FullyQualifiedName~TestMethodName"
+# List all tests (helpful for finding exact test names)
+dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --list-tests
+
+# Run all tests (usually fastest and most reliable)
+dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --timeout 30s
+
+# Filter tests by pattern (use with caution - may not match anything if pattern is wrong)
+dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --treenode-filter "*/PartOfTestName*" --timeout 2m
+
+# Grep for specific test results after running all tests
+dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --timeout 30s 2>&1 | grep "TestName"
 ```
+
+**Common pitfalls:**
+- Using `--filter` instead of `--treenode-filter` (wrong parameter name)
+- Tree node filters often don't match - when in doubt, run all tests with `grep`
+- Use absolute paths if running from different directories
+- Always rebuild after code changes: `dotnet build tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release`
 
 ### Verification Tests (LocalStack)
 The project includes verification tests that run against LocalStack to ensure correctness:
@@ -174,10 +192,16 @@ Operation handlers in `src/LocalSqsSnsMessaging/Http/Handlers/Generated/` are au
 ```bash
 pwsh tools/GenerateHandlers/generate-handlers.ps1
 # or
-dotnet run --project tools/GenerateHandlers
+dotnet run --project tools/GenerateHandlers/GenerateHandlers.csproj -- src/LocalSqsSnsMessaging
+
+# Use absolute paths to avoid ambiguity:
+dotnet run --project /Users/stuart/git/github/LocalSqsSnsMessaging/tools/GenerateHandlers/GenerateHandlers.csproj -- /Users/stuart/git/github/LocalSqsSnsMessaging/src/LocalSqsSnsMessaging
 ```
 
-**Important**: When AWS SDK request formats don't match expectations, check the generated deserializers first. The AWS SDK may use different parameter names than documented (e.g., `MessageAttributes.entry.1.Name` vs `MessageAttributes.entry.1.key`).
+**Important**:
+- When AWS SDK request formats don't match expectations, check the generated deserializers first. The AWS SDK may use different parameter names than documented (e.g., `MessageAttributes.entry.1.Name` vs `MessageAttributes.entry.1.key`).
+- After modifying the code generator in `tools/GenerateHandlers/`, always regenerate the handlers before testing.
+- The generator is located at `tools/GenerateHandlers/JsonCodeGenerator.cs` (for SQS/JSON) and `QueryCodeGenerator.cs` (for SNS/Query).
 
 ## Project Structure
 
