@@ -33,11 +33,12 @@ internal sealed class QueryCodeGenerator
         code.AppendLine("#pragma warning disable CS0162 // Unreachable code detected");
         code.AppendLine("#pragma warning disable CS8600, CS8601, CS8602, CS8603, CS8604 // Null reference warnings");
         code.AppendLine();
-        code.AppendLine("using System.Collections.Specialized;");
+        code.AppendLine("using System.Buffers;");
         code.AppendLine("using System.Globalization;");
         code.AppendLine("using System.Text;");
         code.AppendLine("using System.Xml;");
         code.AppendLine($"using {_sdkNamespace}.Model;");
+        code.AppendLine("using LocalSqsSnsMessaging.Http;");
         code.AppendLine();
         code.AppendLine("namespace LocalSqsSnsMessaging.Http.Handlers;");
         code.AppendLine();
@@ -86,9 +87,9 @@ internal sealed class QueryCodeGenerator
 
     private void GenerateRequestDeserializer(StringBuilder code, string opName, JsonElement inputShape)
     {
-        code.AppendLine($"    internal static {opName}Request Deserialize{opName}Request(string requestBody)");
+        code.AppendLine($"    internal static {opName}Request Deserialize{opName}Request(ReadOnlySpan<byte> requestBytes)");
         code.AppendLine("    {");
-        code.AppendLine("        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);");
+        code.AppendLine("        var queryParams = QueryStringParser.Parse(requestBytes);");
         code.AppendLine($"        var request = new {opName}Request();");
         code.AppendLine();
 
@@ -120,32 +121,27 @@ internal sealed class QueryCodeGenerator
         switch (shapeType)
         {
             case "string":
-                code.AppendLine($"        var {variableName}Value = {sourceVar}[\"{memberName}\"];");
-                code.AppendLine($"        if ({variableName}Value != null)");
+                code.AppendLine($"        if ({sourceVar}.TryGetValue(\"{memberName}\", out var {variableName}Value))");
                 code.AppendLine($"            {targetVar}.{csharpPropertyName} = {variableName}Value;");
                 break;
 
             case "integer":
-                code.AppendLine($"        var {variableName}Value = {sourceVar}[\"{memberName}\"];");
-                code.AppendLine($"        if ({variableName}Value != null && int.TryParse({variableName}Value, out var {variableName}Parsed))");
+                code.AppendLine($"        if ({sourceVar}.TryGetValue(\"{memberName}\", out var {variableName}Value) && int.TryParse({variableName}Value, out var {variableName}Parsed))");
                 code.AppendLine($"            {targetVar}.{csharpPropertyName} = {variableName}Parsed;");
                 break;
 
             case "long":
-                code.AppendLine($"        var {variableName}Value = {sourceVar}[\"{memberName}\"];");
-                code.AppendLine($"        if ({variableName}Value != null && long.TryParse({variableName}Value, out var {variableName}Parsed))");
+                code.AppendLine($"        if ({sourceVar}.TryGetValue(\"{memberName}\", out var {variableName}Value) && long.TryParse({variableName}Value, out var {variableName}Parsed))");
                 code.AppendLine($"            {targetVar}.{csharpPropertyName} = {variableName}Parsed;");
                 break;
 
             case "boolean":
-                code.AppendLine($"        var {variableName}Value = {sourceVar}[\"{memberName}\"];");
-                code.AppendLine($"        if ({variableName}Value != null && bool.TryParse({variableName}Value, out var {variableName}Parsed))");
+                code.AppendLine($"        if ({sourceVar}.TryGetValue(\"{memberName}\", out var {variableName}Value) && bool.TryParse({variableName}Value, out var {variableName}Parsed))");
                 code.AppendLine($"            {targetVar}.{csharpPropertyName} = {variableName}Parsed;");
                 break;
 
             case "double":
-                code.AppendLine($"        var {variableName}Value = {sourceVar}[\"{memberName}\"];");
-                code.AppendLine($"        if ({variableName}Value != null && double.TryParse({variableName}Value, CultureInfo.InvariantCulture, out var {variableName}Parsed))");
+                code.AppendLine($"        if ({sourceVar}.TryGetValue(\"{memberName}\", out var {variableName}Value) && double.TryParse({variableName}Value, CultureInfo.InvariantCulture, out var {variableName}Parsed))");
                 code.AppendLine($"            {targetVar}.{csharpPropertyName} = {variableName}Parsed;");
                 break;
 
@@ -168,8 +164,9 @@ internal sealed class QueryCodeGenerator
 
     private void GenerateResponseSerializer(StringBuilder code, string opName, JsonElement outputShape, string resultWrapper)
     {
-        code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, Stream stream)");
+        code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, IBufferWriter<byte> buffer)");
         code.AppendLine("    {");
+        code.AppendLine("        using var stream = new BufferWriterStream(buffer);");
         code.AppendLine("        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };");
         code.AppendLine("        using var writer = XmlWriter.Create(stream, settings);");
         code.AppendLine($"        writer.WriteStartElement(\"{opName}Response\", \"{_xmlNamespace}\");");
@@ -201,8 +198,9 @@ internal sealed class QueryCodeGenerator
 
     private void GenerateEmptyResponseSerializer(StringBuilder code, string opName)
     {
-        code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, Stream stream)");
+        code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, IBufferWriter<byte> buffer)");
         code.AppendLine("    {");
+        code.AppendLine("        using var stream = new BufferWriterStream(buffer);");
         code.AppendLine("        var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };");
         code.AppendLine("        using var writer = XmlWriter.Create(stream, settings);");
         code.AppendLine($"        writer.WriteStartElement(\"{opName}Response\", \"{_xmlNamespace}\");");
@@ -316,7 +314,7 @@ internal sealed class QueryCodeGenerator
         // Determine the C# type
         string csharpType = GetCSharpType(memberShape, memberType);
 
-        code.AppendLine($"    private static List<{csharpType}>? DeserializeList_{shapeName}(NameValueCollection queryParams, string prefix)");
+        code.AppendLine($"    private static List<{csharpType}>? DeserializeList_{shapeName}(Dictionary<string, string> queryParams, string prefix)");
         code.AppendLine("    {");
         code.AppendLine($"        var list = new List<{csharpType}>();");
         code.AppendLine("        int index = 1;");
@@ -326,8 +324,7 @@ internal sealed class QueryCodeGenerator
 
         if (memberType == "string")
         {
-            code.AppendLine("            var value = queryParams[key];");
-            code.AppendLine("            if (value != null)");
+            code.AppendLine("            if (queryParams.TryGetValue(key, out var value))");
             code.AppendLine("                list.Add(value);");
             code.AppendLine("            else");
             code.AppendLine("                break;");
@@ -373,7 +370,7 @@ internal sealed class QueryCodeGenerator
         var keyParam = shapeName == "MessageAttributeMap" ? "Name" : "key";
         var valueParam = shapeName == "MessageAttributeMap" ? "Value" : "value";
 
-        code.AppendLine($"    private static Dictionary<string, {valueCSharType}>? DeserializeMap_{shapeName}(NameValueCollection queryParams, string prefix)");
+        code.AppendLine($"    private static Dictionary<string, {valueCSharType}>? DeserializeMap_{shapeName}(Dictionary<string, string> queryParams, string prefix)");
         code.AppendLine("    {");
         code.AppendLine($"        var map = new Dictionary<string, {valueCSharType}>();");
         code.AppendLine("        int index = 1;");
@@ -381,12 +378,13 @@ internal sealed class QueryCodeGenerator
         code.AppendLine("        {");
         code.AppendLine($"            var keyParam = $\"{{prefix}}.entry.{{index}}.{keyParam}\";");
         code.AppendLine($"            var valueParam = $\"{{prefix}}.entry.{{index}}.{valueParam}\";");
-        code.AppendLine("            var key = queryParams[keyParam];");
+        code.AppendLine("            if (!queryParams.TryGetValue(keyParam, out var key))");
+        code.AppendLine("                break;");
+        code.AppendLine();
 
         if (valueType == "string")
         {
-            code.AppendLine("            var value = queryParams[valueParam];");
-            code.AppendLine("            if (key != null && value != null)");
+            code.AppendLine("            if (queryParams.TryGetValue(valueParam, out var value))");
             code.AppendLine("            {");
             code.AppendLine("                map[key] = value;");
             code.AppendLine("            }");
@@ -565,7 +563,7 @@ internal sealed class QueryCodeGenerator
             return;
         }
 
-        code.AppendLine($"    private static {shapeName}? DeserializeStructure_{shapeName}(NameValueCollection queryParams, string prefix)");
+        code.AppendLine($"    private static {shapeName}? DeserializeStructure_{shapeName}(Dictionary<string, string> queryParams, string prefix)");
         code.AppendLine("    {");
         code.AppendLine($"        var structure = new {shapeName}();");
         code.AppendLine("        var hasAnyValue = false;");
@@ -586,8 +584,7 @@ internal sealed class QueryCodeGenerator
                 if (memberType == "string")
                 {
                     code.AppendLine($"        var {ToCamelCase(memberName)}Param = $\"{{prefix}}.{memberName}\";");
-                    code.AppendLine($"        var {ToCamelCase(memberName)}Value = queryParams[{ToCamelCase(memberName)}Param];");
-                    code.AppendLine($"        if ({ToCamelCase(memberName)}Value != null)");
+                    code.AppendLine($"        if (queryParams.TryGetValue({ToCamelCase(memberName)}Param, out var {ToCamelCase(memberName)}Value))");
                     code.AppendLine("        {");
                     code.AppendLine($"            structure.{csharpPropertyName} = {ToCamelCase(memberName)}Value;");
                     code.AppendLine("            hasAnyValue = true;");
@@ -596,8 +593,7 @@ internal sealed class QueryCodeGenerator
                 else if (memberType == "integer" || memberType == "long" || memberType == "boolean" || memberType == "double")
                 {
                     code.AppendLine($"        var {ToCamelCase(memberName)}Param = $\"{{prefix}}.{memberName}\";");
-                    code.AppendLine($"        var {ToCamelCase(memberName)}Value = queryParams[{ToCamelCase(memberName)}Param];");
-                    
+
                     string parseMethod = memberType switch
                     {
                         "integer" => "int.TryParse",
@@ -607,7 +603,7 @@ internal sealed class QueryCodeGenerator
                         _ => "int.TryParse"
                     };
 
-                    code.AppendLine($"        if ({ToCamelCase(memberName)}Value != null && {parseMethod}({ToCamelCase(memberName)}Value, out var {ToCamelCase(memberName)}Parsed))");
+                    code.AppendLine($"        if (queryParams.TryGetValue({ToCamelCase(memberName)}Param, out var {ToCamelCase(memberName)}Value) && {parseMethod}({ToCamelCase(memberName)}Value, out var {ToCamelCase(memberName)}Parsed))");
                     code.AppendLine("        {");
                     code.AppendLine($"            structure.{csharpPropertyName} = {ToCamelCase(memberName)}Parsed;");
                     code.AppendLine("            hasAnyValue = true;");
@@ -616,8 +612,7 @@ internal sealed class QueryCodeGenerator
                 else if (memberType == "blob")
                 {
                     code.AppendLine($"        var {ToCamelCase(memberName)}Param = $\"{{prefix}}.{memberName}\";");
-                    code.AppendLine($"        var {ToCamelCase(memberName)}Value = queryParams[{ToCamelCase(memberName)}Param];");
-                    code.AppendLine($"        if ({ToCamelCase(memberName)}Value != null)");
+                    code.AppendLine($"        if (queryParams.TryGetValue({ToCamelCase(memberName)}Param, out var {ToCamelCase(memberName)}Value))");
                     code.AppendLine("        {");
                     code.AppendLine($"            structure.{csharpPropertyName} = new MemoryStream(Convert.FromBase64String({ToCamelCase(memberName)}Value));");
                     code.AppendLine("            hasAnyValue = true;");

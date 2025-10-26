@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 using System.Xml.Linq;
 using Amazon.SimpleNotificationService.Model;
@@ -19,7 +20,7 @@ public sealed class SnsQuerySerializersTests
         var queryString = "TopicArn=arn:aws:sns:us-east-1:123456789012:my-topic&Message=Hello%2C+World!";
 
         // Act
-        var request = SnsQuerySerializers.DeserializePublishRequest(queryString);
+        var request = SnsQuerySerializers.DeserializePublishRequest(Encoding.UTF8.GetBytes(queryString));
 
         // Assert
         request.TopicArn.ShouldBe("arn:aws:sns:us-east-1:123456789012:my-topic");
@@ -40,7 +41,7 @@ public sealed class SnsQuerySerializersTests
                           "&MessageAttributes.entry.2.Value.StringValue=1";
 
         // Act
-        var request = SnsQuerySerializers.DeserializePublishRequest(queryString);
+        var request = SnsQuerySerializers.DeserializePublishRequest(Encoding.UTF8.GetBytes(queryString));
 
         // Assert
         request.TopicArn.ShouldBe("arn:aws:sns:us-east-1:123456789012:my-topic");
@@ -63,14 +64,13 @@ public sealed class SnsQuerySerializersTests
             MessageId = "msg-12345-abcde",
             SequenceNumber = "seq-67890"
         };
-        using var stream = new MemoryStream();
+        var buffer = new ArrayBufferWriter<byte>();
 
         // Act
-        SnsQuerySerializers.SerializePublishResponse(response, stream);
+        SnsQuerySerializers.SerializePublishResponse(response, buffer);
 
         // Assert
-        stream.Position = 0;
-        var xml = Encoding.UTF8.GetString(stream.ToArray());
+        var xml = Encoding.UTF8.GetString(buffer.WrittenSpan);
         var doc = XDocument.Parse(xml);
 
         var ns = XNamespace.Get("http://sns.amazonaws.com/doc/2010-03-31/");
@@ -95,7 +95,7 @@ public sealed class SnsQuerySerializersTests
         var queryString = "Name=my-new-topic&Attributes.entry.1.key=FifoTopic&Attributes.entry.1.value=true";
 
         // Act
-        var request = SnsQuerySerializers.DeserializeCreateTopicRequest(queryString);
+        var request = SnsQuerySerializers.DeserializeCreateTopicRequest(Encoding.UTF8.GetBytes(queryString));
 
         // Assert
         request.Name.ShouldBe("my-new-topic");
@@ -112,15 +112,14 @@ public sealed class SnsQuerySerializersTests
         {
             TopicArn = "arn:aws:sns:us-east-1:123456789012:my-new-topic"
         };
-        using var stream = new MemoryStream();
+        var buffer = new ArrayBufferWriter<byte>();
 
         // Act
-        SnsQuerySerializers.SerializeCreateTopicResponse(response, stream);
+        SnsQuerySerializers.SerializeCreateTopicResponse(response, buffer);
 
         // Assert
-        stream.Position.ShouldBeGreaterThan(0L, "Stream should have data written to it");
-        stream.Position = 0;
-        var xml = Encoding.UTF8.GetString(stream.ToArray());
+        buffer.WrittenCount.ShouldBeGreaterThan(0, "Buffer should have data written to it");
+        var xml = Encoding.UTF8.GetString(buffer.WrittenSpan);
         xml.ShouldNotBeNullOrWhiteSpace("XML should not be empty");
         var doc = XDocument.Parse(xml);
 
@@ -144,7 +143,7 @@ public sealed class SnsQuerySerializersTests
                           "&ReturnSubscriptionArn=true";
 
         // Act
-        var request = SnsQuerySerializers.DeserializeSubscribeRequest(queryString);
+        var request = SnsQuerySerializers.DeserializeSubscribeRequest(Encoding.UTF8.GetBytes(queryString));
 
         // Assert
         request.TopicArn.ShouldBe("arn:aws:sns:us-east-1:123456789012:my-topic");
@@ -161,14 +160,13 @@ public sealed class SnsQuerySerializersTests
         {
             SubscriptionArn = "arn:aws:sns:us-east-1:123456789012:my-topic:12345678-1234-1234-1234-123456789012"
         };
-        using var stream = new MemoryStream();
+        var buffer = new ArrayBufferWriter<byte>();
 
         // Act
-        SnsQuerySerializers.SerializeSubscribeResponse(response, stream);
+        SnsQuerySerializers.SerializeSubscribeResponse(response, buffer);
 
         // Assert
-        stream.Position = 0;
-        var xml = Encoding.UTF8.GetString(stream.ToArray());
+        var xml = Encoding.UTF8.GetString(buffer.WrittenSpan);
         var doc = XDocument.Parse(xml);
 
         var ns = XNamespace.Get("http://sns.amazonaws.com/doc/2010-03-31/");
@@ -188,7 +186,7 @@ public sealed class SnsQuerySerializersTests
         var queryString = "TopicArn=arn:aws:sns:us-east-1:123456789012:topic-to-delete";
 
         // Act
-        var request = SnsQuerySerializers.DeserializeDeleteTopicRequest(queryString);
+        var request = SnsQuerySerializers.DeserializeDeleteTopicRequest(Encoding.UTF8.GetBytes(queryString));
 
         // Assert
         request.TopicArn.ShouldBe("arn:aws:sns:us-east-1:123456789012:topic-to-delete");
@@ -207,14 +205,13 @@ public sealed class SnsQuerySerializersTests
                 { "SubscriptionsConfirmed", "3" }
             }
         };
-        using var stream = new MemoryStream();
+        var buffer = new ArrayBufferWriter<byte>();
 
         // Act
-        SnsQuerySerializers.SerializeGetTopicAttributesResponse(response, stream);
+        SnsQuerySerializers.SerializeGetTopicAttributesResponse(response, buffer);
 
         // Assert
-        stream.Position = 0;
-        var xml = Encoding.UTF8.GetString(stream.ToArray());
+        var xml = Encoding.UTF8.GetString(buffer.WrittenSpan);
         var doc = XDocument.Parse(xml);
 
         var ns = XNamespace.Get("http://sns.amazonaws.com/doc/2010-03-31/");
@@ -249,7 +246,7 @@ public sealed class SnsQuerySerializersTests
         var queryString = "SubscriptionArn=arn:aws:sns:us-east-1:123456789012:my-topic:12345678-1234-1234-1234-123456789012";
 
         // Act
-        var request = SnsQuerySerializers.DeserializeUnsubscribeRequest(queryString);
+        var request = SnsQuerySerializers.DeserializeUnsubscribeRequest(Encoding.UTF8.GetBytes(queryString));
 
         // Assert
         request.SubscriptionArn.ShouldBe("arn:aws:sns:us-east-1:123456789012:my-topic:12345678-1234-1234-1234-123456789012");

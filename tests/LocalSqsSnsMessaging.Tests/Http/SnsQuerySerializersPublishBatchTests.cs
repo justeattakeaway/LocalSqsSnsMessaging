@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.Text;
 using Amazon.SimpleNotificationService.Model;
 using LocalSqsSnsMessaging.Http.Handlers;
 using Shouldly;
@@ -15,7 +17,7 @@ public class SnsQuerySerializersPublishBatchTests
                           "&PublishBatchRequestEntries.member.2.Id=2&PublishBatchRequestEntries.member.2.Message=Test2";
 
         // Act
-        var request = SnsQuerySerializers.DeserializePublishBatchRequest(requestBody);
+        var request = SnsQuerySerializers.DeserializePublishBatchRequest(Encoding.UTF8.GetBytes(requestBody));
 
         // Assert
         request.ShouldNotBeNull();

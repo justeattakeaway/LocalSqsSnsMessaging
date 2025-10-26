@@ -4,11 +4,12 @@
 #pragma warning disable CS0162 // Unreachable code detected
 #pragma warning disable CS8600, CS8601, CS8602, CS8603, CS8604 // Null reference warnings
 
-using System.Collections.Specialized;
+using System.Buffers;
 using System.Globalization;
 using System.Text;
 using System.Xml;
 using Amazon.SimpleNotificationService.Model;
+using LocalSqsSnsMessaging.Http;
 
 namespace LocalSqsSnsMessaging.Http.Handlers;
 
@@ -17,19 +18,17 @@ namespace LocalSqsSnsMessaging.Http.Handlers;
 /// </summary>
 internal static class SnsQuerySerializers
 {
-    internal static AddPermissionRequest DeserializeAddPermissionRequest(string requestBody)
+    internal static AddPermissionRequest DeserializeAddPermissionRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new AddPermissionRequest();
 
         // TopicArn
-        var topicArnValue = queryParams["TopicArn"];
-        if (topicArnValue != null)
+        if (queryParams.TryGetValue("TopicArn", out var topicArnValue))
             request.TopicArn = topicArnValue;
 
         // Label
-        var labelValue = queryParams["Label"];
-        if (labelValue != null)
+        if (queryParams.TryGetValue("Label", out var labelValue))
             request.Label = labelValue;
 
         // AWSAccountId
@@ -41,8 +40,9 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static void SerializeAddPermissionResponse(AddPermissionResponse response, Stream stream)
+    internal static void SerializeAddPermissionResponse(AddPermissionResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("AddPermissionResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -53,21 +53,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static CheckIfPhoneNumberIsOptedOutRequest DeserializeCheckIfPhoneNumberIsOptedOutRequest(string requestBody)
+    internal static CheckIfPhoneNumberIsOptedOutRequest DeserializeCheckIfPhoneNumberIsOptedOutRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new CheckIfPhoneNumberIsOptedOutRequest();
 
         // phoneNumber
-        var phoneNumberValue = queryParams["phoneNumber"];
-        if (phoneNumberValue != null)
+        if (queryParams.TryGetValue("phoneNumber", out var phoneNumberValue))
             request.PhoneNumber = phoneNumberValue;
 
         return request;
     }
 
-    internal static void SerializeCheckIfPhoneNumberIsOptedOutResponse(CheckIfPhoneNumberIsOptedOutResponse response, Stream stream)
+    internal static void SerializeCheckIfPhoneNumberIsOptedOutResponse(CheckIfPhoneNumberIsOptedOutResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("CheckIfPhoneNumberIsOptedOutResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -83,31 +83,29 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static ConfirmSubscriptionRequest DeserializeConfirmSubscriptionRequest(string requestBody)
+    internal static ConfirmSubscriptionRequest DeserializeConfirmSubscriptionRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new ConfirmSubscriptionRequest();
 
         // TopicArn
-        var topicArnValue = queryParams["TopicArn"];
-        if (topicArnValue != null)
+        if (queryParams.TryGetValue("TopicArn", out var topicArnValue))
             request.TopicArn = topicArnValue;
 
         // Token
-        var tokenValue = queryParams["Token"];
-        if (tokenValue != null)
+        if (queryParams.TryGetValue("Token", out var tokenValue))
             request.Token = tokenValue;
 
         // AuthenticateOnUnsubscribe
-        var authenticateOnUnsubscribeValue = queryParams["AuthenticateOnUnsubscribe"];
-        if (authenticateOnUnsubscribeValue != null)
+        if (queryParams.TryGetValue("AuthenticateOnUnsubscribe", out var authenticateOnUnsubscribeValue))
             request.AuthenticateOnUnsubscribe = authenticateOnUnsubscribeValue;
 
         return request;
     }
 
-    internal static void SerializeConfirmSubscriptionResponse(ConfirmSubscriptionResponse response, Stream stream)
+    internal static void SerializeConfirmSubscriptionResponse(ConfirmSubscriptionResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("ConfirmSubscriptionResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -123,19 +121,17 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static CreatePlatformApplicationRequest DeserializeCreatePlatformApplicationRequest(string requestBody)
+    internal static CreatePlatformApplicationRequest DeserializeCreatePlatformApplicationRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new CreatePlatformApplicationRequest();
 
         // Name
-        var nameValue = queryParams["Name"];
-        if (nameValue != null)
+        if (queryParams.TryGetValue("Name", out var nameValue))
             request.Name = nameValue;
 
         // Platform
-        var platformValue = queryParams["Platform"];
-        if (platformValue != null)
+        if (queryParams.TryGetValue("Platform", out var platformValue))
             request.Platform = platformValue;
 
         // Attributes
@@ -144,8 +140,9 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static void SerializeCreatePlatformApplicationResponse(CreatePlatformApplicationResponse response, Stream stream)
+    internal static void SerializeCreatePlatformApplicationResponse(CreatePlatformApplicationResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("CreatePlatformApplicationResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -161,24 +158,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static CreatePlatformEndpointRequest DeserializeCreatePlatformEndpointRequest(string requestBody)
+    internal static CreatePlatformEndpointRequest DeserializeCreatePlatformEndpointRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new CreatePlatformEndpointRequest();
 
         // PlatformApplicationArn
-        var platformApplicationArnValue = queryParams["PlatformApplicationArn"];
-        if (platformApplicationArnValue != null)
+        if (queryParams.TryGetValue("PlatformApplicationArn", out var platformApplicationArnValue))
             request.PlatformApplicationArn = platformApplicationArnValue;
 
         // Token
-        var tokenValue = queryParams["Token"];
-        if (tokenValue != null)
+        if (queryParams.TryGetValue("Token", out var tokenValue))
             request.Token = tokenValue;
 
         // CustomUserData
-        var customUserDataValue = queryParams["CustomUserData"];
-        if (customUserDataValue != null)
+        if (queryParams.TryGetValue("CustomUserData", out var customUserDataValue))
             request.CustomUserData = customUserDataValue;
 
         // Attributes
@@ -187,8 +181,9 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static void SerializeCreatePlatformEndpointResponse(CreatePlatformEndpointResponse response, Stream stream)
+    internal static void SerializeCreatePlatformEndpointResponse(CreatePlatformEndpointResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("CreatePlatformEndpointResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -204,26 +199,25 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static CreateSMSSandboxPhoneNumberRequest DeserializeCreateSMSSandboxPhoneNumberRequest(string requestBody)
+    internal static CreateSMSSandboxPhoneNumberRequest DeserializeCreateSMSSandboxPhoneNumberRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new CreateSMSSandboxPhoneNumberRequest();
 
         // PhoneNumber
-        var phoneNumberValue = queryParams["PhoneNumber"];
-        if (phoneNumberValue != null)
+        if (queryParams.TryGetValue("PhoneNumber", out var phoneNumberValue))
             request.PhoneNumber = phoneNumberValue;
 
         // LanguageCode
-        var languageCodeValue = queryParams["LanguageCode"];
-        if (languageCodeValue != null)
+        if (queryParams.TryGetValue("LanguageCode", out var languageCodeValue))
             request.LanguageCode = languageCodeValue;
 
         return request;
     }
 
-    internal static void SerializeCreateSMSSandboxPhoneNumberResponse(CreateSMSSandboxPhoneNumberResponse response, Stream stream)
+    internal static void SerializeCreateSMSSandboxPhoneNumberResponse(CreateSMSSandboxPhoneNumberResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("CreateSMSSandboxPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -236,14 +230,13 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static CreateTopicRequest DeserializeCreateTopicRequest(string requestBody)
+    internal static CreateTopicRequest DeserializeCreateTopicRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new CreateTopicRequest();
 
         // Name
-        var nameValue = queryParams["Name"];
-        if (nameValue != null)
+        if (queryParams.TryGetValue("Name", out var nameValue))
             request.Name = nameValue;
 
         // Attributes
@@ -253,15 +246,15 @@ internal static class SnsQuerySerializers
         request.Tags = DeserializeList_TagList(queryParams, "Tags");
 
         // DataProtectionPolicy
-        var dataProtectionPolicyValue = queryParams["DataProtectionPolicy"];
-        if (dataProtectionPolicyValue != null)
+        if (queryParams.TryGetValue("DataProtectionPolicy", out var dataProtectionPolicyValue))
             request.DataProtectionPolicy = dataProtectionPolicyValue;
 
         return request;
     }
 
-    internal static void SerializeCreateTopicResponse(CreateTopicResponse response, Stream stream)
+    internal static void SerializeCreateTopicResponse(CreateTopicResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("CreateTopicResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -277,21 +270,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static DeleteEndpointRequest DeserializeDeleteEndpointRequest(string requestBody)
+    internal static DeleteEndpointRequest DeserializeDeleteEndpointRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new DeleteEndpointRequest();
 
         // EndpointArn
-        var endpointArnValue = queryParams["EndpointArn"];
-        if (endpointArnValue != null)
+        if (queryParams.TryGetValue("EndpointArn", out var endpointArnValue))
             request.EndpointArn = endpointArnValue;
 
         return request;
     }
 
-    internal static void SerializeDeleteEndpointResponse(DeleteEndpointResponse response, Stream stream)
+    internal static void SerializeDeleteEndpointResponse(DeleteEndpointResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("DeleteEndpointResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -302,21 +295,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static DeletePlatformApplicationRequest DeserializeDeletePlatformApplicationRequest(string requestBody)
+    internal static DeletePlatformApplicationRequest DeserializeDeletePlatformApplicationRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new DeletePlatformApplicationRequest();
 
         // PlatformApplicationArn
-        var platformApplicationArnValue = queryParams["PlatformApplicationArn"];
-        if (platformApplicationArnValue != null)
+        if (queryParams.TryGetValue("PlatformApplicationArn", out var platformApplicationArnValue))
             request.PlatformApplicationArn = platformApplicationArnValue;
 
         return request;
     }
 
-    internal static void SerializeDeletePlatformApplicationResponse(DeletePlatformApplicationResponse response, Stream stream)
+    internal static void SerializeDeletePlatformApplicationResponse(DeletePlatformApplicationResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("DeletePlatformApplicationResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -327,21 +320,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static DeleteSMSSandboxPhoneNumberRequest DeserializeDeleteSMSSandboxPhoneNumberRequest(string requestBody)
+    internal static DeleteSMSSandboxPhoneNumberRequest DeserializeDeleteSMSSandboxPhoneNumberRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new DeleteSMSSandboxPhoneNumberRequest();
 
         // PhoneNumber
-        var phoneNumberValue = queryParams["PhoneNumber"];
-        if (phoneNumberValue != null)
+        if (queryParams.TryGetValue("PhoneNumber", out var phoneNumberValue))
             request.PhoneNumber = phoneNumberValue;
 
         return request;
     }
 
-    internal static void SerializeDeleteSMSSandboxPhoneNumberResponse(DeleteSMSSandboxPhoneNumberResponse response, Stream stream)
+    internal static void SerializeDeleteSMSSandboxPhoneNumberResponse(DeleteSMSSandboxPhoneNumberResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("DeleteSMSSandboxPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -354,21 +347,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static DeleteTopicRequest DeserializeDeleteTopicRequest(string requestBody)
+    internal static DeleteTopicRequest DeserializeDeleteTopicRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new DeleteTopicRequest();
 
         // TopicArn
-        var topicArnValue = queryParams["TopicArn"];
-        if (topicArnValue != null)
+        if (queryParams.TryGetValue("TopicArn", out var topicArnValue))
             request.TopicArn = topicArnValue;
 
         return request;
     }
 
-    internal static void SerializeDeleteTopicResponse(DeleteTopicResponse response, Stream stream)
+    internal static void SerializeDeleteTopicResponse(DeleteTopicResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("DeleteTopicResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -379,21 +372,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static GetDataProtectionPolicyRequest DeserializeGetDataProtectionPolicyRequest(string requestBody)
+    internal static GetDataProtectionPolicyRequest DeserializeGetDataProtectionPolicyRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new GetDataProtectionPolicyRequest();
 
         // ResourceArn
-        var resourceArnValue = queryParams["ResourceArn"];
-        if (resourceArnValue != null)
+        if (queryParams.TryGetValue("ResourceArn", out var resourceArnValue))
             request.ResourceArn = resourceArnValue;
 
         return request;
     }
 
-    internal static void SerializeGetDataProtectionPolicyResponse(GetDataProtectionPolicyResponse response, Stream stream)
+    internal static void SerializeGetDataProtectionPolicyResponse(GetDataProtectionPolicyResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("GetDataProtectionPolicyResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -409,21 +402,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static GetEndpointAttributesRequest DeserializeGetEndpointAttributesRequest(string requestBody)
+    internal static GetEndpointAttributesRequest DeserializeGetEndpointAttributesRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new GetEndpointAttributesRequest();
 
         // EndpointArn
-        var endpointArnValue = queryParams["EndpointArn"];
-        if (endpointArnValue != null)
+        if (queryParams.TryGetValue("EndpointArn", out var endpointArnValue))
             request.EndpointArn = endpointArnValue;
 
         return request;
     }
 
-    internal static void SerializeGetEndpointAttributesResponse(GetEndpointAttributesResponse response, Stream stream)
+    internal static void SerializeGetEndpointAttributesResponse(GetEndpointAttributesResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("GetEndpointAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -439,21 +432,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static GetPlatformApplicationAttributesRequest DeserializeGetPlatformApplicationAttributesRequest(string requestBody)
+    internal static GetPlatformApplicationAttributesRequest DeserializeGetPlatformApplicationAttributesRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new GetPlatformApplicationAttributesRequest();
 
         // PlatformApplicationArn
-        var platformApplicationArnValue = queryParams["PlatformApplicationArn"];
-        if (platformApplicationArnValue != null)
+        if (queryParams.TryGetValue("PlatformApplicationArn", out var platformApplicationArnValue))
             request.PlatformApplicationArn = platformApplicationArnValue;
 
         return request;
     }
 
-    internal static void SerializeGetPlatformApplicationAttributesResponse(GetPlatformApplicationAttributesResponse response, Stream stream)
+    internal static void SerializeGetPlatformApplicationAttributesResponse(GetPlatformApplicationAttributesResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("GetPlatformApplicationAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -469,9 +462,9 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static GetSMSAttributesRequest DeserializeGetSMSAttributesRequest(string requestBody)
+    internal static GetSMSAttributesRequest DeserializeGetSMSAttributesRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new GetSMSAttributesRequest();
 
         // attributes
@@ -480,8 +473,9 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static void SerializeGetSMSAttributesResponse(GetSMSAttributesResponse response, Stream stream)
+    internal static void SerializeGetSMSAttributesResponse(GetSMSAttributesResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("GetSMSAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -497,16 +491,17 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static GetSMSSandboxAccountStatusRequest DeserializeGetSMSSandboxAccountStatusRequest(string requestBody)
+    internal static GetSMSSandboxAccountStatusRequest DeserializeGetSMSSandboxAccountStatusRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new GetSMSSandboxAccountStatusRequest();
 
         return request;
     }
 
-    internal static void SerializeGetSMSSandboxAccountStatusResponse(GetSMSSandboxAccountStatusResponse response, Stream stream)
+    internal static void SerializeGetSMSSandboxAccountStatusResponse(GetSMSSandboxAccountStatusResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("GetSMSSandboxAccountStatusResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -522,21 +517,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static GetSubscriptionAttributesRequest DeserializeGetSubscriptionAttributesRequest(string requestBody)
+    internal static GetSubscriptionAttributesRequest DeserializeGetSubscriptionAttributesRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new GetSubscriptionAttributesRequest();
 
         // SubscriptionArn
-        var subscriptionArnValue = queryParams["SubscriptionArn"];
-        if (subscriptionArnValue != null)
+        if (queryParams.TryGetValue("SubscriptionArn", out var subscriptionArnValue))
             request.SubscriptionArn = subscriptionArnValue;
 
         return request;
     }
 
-    internal static void SerializeGetSubscriptionAttributesResponse(GetSubscriptionAttributesResponse response, Stream stream)
+    internal static void SerializeGetSubscriptionAttributesResponse(GetSubscriptionAttributesResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("GetSubscriptionAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -552,21 +547,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static GetTopicAttributesRequest DeserializeGetTopicAttributesRequest(string requestBody)
+    internal static GetTopicAttributesRequest DeserializeGetTopicAttributesRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new GetTopicAttributesRequest();
 
         // TopicArn
-        var topicArnValue = queryParams["TopicArn"];
-        if (topicArnValue != null)
+        if (queryParams.TryGetValue("TopicArn", out var topicArnValue))
             request.TopicArn = topicArnValue;
 
         return request;
     }
 
-    internal static void SerializeGetTopicAttributesResponse(GetTopicAttributesResponse response, Stream stream)
+    internal static void SerializeGetTopicAttributesResponse(GetTopicAttributesResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("GetTopicAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -582,26 +577,25 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static ListEndpointsByPlatformApplicationRequest DeserializeListEndpointsByPlatformApplicationRequest(string requestBody)
+    internal static ListEndpointsByPlatformApplicationRequest DeserializeListEndpointsByPlatformApplicationRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new ListEndpointsByPlatformApplicationRequest();
 
         // PlatformApplicationArn
-        var platformApplicationArnValue = queryParams["PlatformApplicationArn"];
-        if (platformApplicationArnValue != null)
+        if (queryParams.TryGetValue("PlatformApplicationArn", out var platformApplicationArnValue))
             request.PlatformApplicationArn = platformApplicationArnValue;
 
         // NextToken
-        var nextTokenValue = queryParams["NextToken"];
-        if (nextTokenValue != null)
+        if (queryParams.TryGetValue("NextToken", out var nextTokenValue))
             request.NextToken = nextTokenValue;
 
         return request;
     }
 
-    internal static void SerializeListEndpointsByPlatformApplicationResponse(ListEndpointsByPlatformApplicationResponse response, Stream stream)
+    internal static void SerializeListEndpointsByPlatformApplicationResponse(ListEndpointsByPlatformApplicationResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("ListEndpointsByPlatformApplicationResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -620,26 +614,25 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static ListOriginationNumbersRequest DeserializeListOriginationNumbersRequest(string requestBody)
+    internal static ListOriginationNumbersRequest DeserializeListOriginationNumbersRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new ListOriginationNumbersRequest();
 
         // NextToken
-        var nextTokenValue = queryParams["NextToken"];
-        if (nextTokenValue != null)
+        if (queryParams.TryGetValue("NextToken", out var nextTokenValue))
             request.NextToken = nextTokenValue;
 
         // MaxResults
-        var maxResultsValue = queryParams["MaxResults"];
-        if (maxResultsValue != null && int.TryParse(maxResultsValue, out var maxResultsParsed))
+        if (queryParams.TryGetValue("MaxResults", out var maxResultsValue) && int.TryParse(maxResultsValue, out var maxResultsParsed))
             request.MaxResults = maxResultsParsed;
 
         return request;
     }
 
-    internal static void SerializeListOriginationNumbersResponse(ListOriginationNumbersResponse response, Stream stream)
+    internal static void SerializeListOriginationNumbersResponse(ListOriginationNumbersResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("ListOriginationNumbersResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -658,21 +651,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static ListPhoneNumbersOptedOutRequest DeserializeListPhoneNumbersOptedOutRequest(string requestBody)
+    internal static ListPhoneNumbersOptedOutRequest DeserializeListPhoneNumbersOptedOutRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new ListPhoneNumbersOptedOutRequest();
 
         // nextToken
-        var nextTokenValue = queryParams["nextToken"];
-        if (nextTokenValue != null)
+        if (queryParams.TryGetValue("nextToken", out var nextTokenValue))
             request.NextToken = nextTokenValue;
 
         return request;
     }
 
-    internal static void SerializeListPhoneNumbersOptedOutResponse(ListPhoneNumbersOptedOutResponse response, Stream stream)
+    internal static void SerializeListPhoneNumbersOptedOutResponse(ListPhoneNumbersOptedOutResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("ListPhoneNumbersOptedOutResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -691,21 +684,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static ListPlatformApplicationsRequest DeserializeListPlatformApplicationsRequest(string requestBody)
+    internal static ListPlatformApplicationsRequest DeserializeListPlatformApplicationsRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new ListPlatformApplicationsRequest();
 
         // NextToken
-        var nextTokenValue = queryParams["NextToken"];
-        if (nextTokenValue != null)
+        if (queryParams.TryGetValue("NextToken", out var nextTokenValue))
             request.NextToken = nextTokenValue;
 
         return request;
     }
 
-    internal static void SerializeListPlatformApplicationsResponse(ListPlatformApplicationsResponse response, Stream stream)
+    internal static void SerializeListPlatformApplicationsResponse(ListPlatformApplicationsResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("ListPlatformApplicationsResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -724,26 +717,25 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static ListSMSSandboxPhoneNumbersRequest DeserializeListSMSSandboxPhoneNumbersRequest(string requestBody)
+    internal static ListSMSSandboxPhoneNumbersRequest DeserializeListSMSSandboxPhoneNumbersRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new ListSMSSandboxPhoneNumbersRequest();
 
         // NextToken
-        var nextTokenValue = queryParams["NextToken"];
-        if (nextTokenValue != null)
+        if (queryParams.TryGetValue("NextToken", out var nextTokenValue))
             request.NextToken = nextTokenValue;
 
         // MaxResults
-        var maxResultsValue = queryParams["MaxResults"];
-        if (maxResultsValue != null && int.TryParse(maxResultsValue, out var maxResultsParsed))
+        if (queryParams.TryGetValue("MaxResults", out var maxResultsValue) && int.TryParse(maxResultsValue, out var maxResultsParsed))
             request.MaxResults = maxResultsParsed;
 
         return request;
     }
 
-    internal static void SerializeListSMSSandboxPhoneNumbersResponse(ListSMSSandboxPhoneNumbersResponse response, Stream stream)
+    internal static void SerializeListSMSSandboxPhoneNumbersResponse(ListSMSSandboxPhoneNumbersResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("ListSMSSandboxPhoneNumbersResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -762,21 +754,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static ListSubscriptionsRequest DeserializeListSubscriptionsRequest(string requestBody)
+    internal static ListSubscriptionsRequest DeserializeListSubscriptionsRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new ListSubscriptionsRequest();
 
         // NextToken
-        var nextTokenValue = queryParams["NextToken"];
-        if (nextTokenValue != null)
+        if (queryParams.TryGetValue("NextToken", out var nextTokenValue))
             request.NextToken = nextTokenValue;
 
         return request;
     }
 
-    internal static void SerializeListSubscriptionsResponse(ListSubscriptionsResponse response, Stream stream)
+    internal static void SerializeListSubscriptionsResponse(ListSubscriptionsResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("ListSubscriptionsResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -795,26 +787,25 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static ListSubscriptionsByTopicRequest DeserializeListSubscriptionsByTopicRequest(string requestBody)
+    internal static ListSubscriptionsByTopicRequest DeserializeListSubscriptionsByTopicRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new ListSubscriptionsByTopicRequest();
 
         // TopicArn
-        var topicArnValue = queryParams["TopicArn"];
-        if (topicArnValue != null)
+        if (queryParams.TryGetValue("TopicArn", out var topicArnValue))
             request.TopicArn = topicArnValue;
 
         // NextToken
-        var nextTokenValue = queryParams["NextToken"];
-        if (nextTokenValue != null)
+        if (queryParams.TryGetValue("NextToken", out var nextTokenValue))
             request.NextToken = nextTokenValue;
 
         return request;
     }
 
-    internal static void SerializeListSubscriptionsByTopicResponse(ListSubscriptionsByTopicResponse response, Stream stream)
+    internal static void SerializeListSubscriptionsByTopicResponse(ListSubscriptionsByTopicResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("ListSubscriptionsByTopicResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -833,21 +824,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static ListTagsForResourceRequest DeserializeListTagsForResourceRequest(string requestBody)
+    internal static ListTagsForResourceRequest DeserializeListTagsForResourceRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new ListTagsForResourceRequest();
 
         // ResourceArn
-        var resourceArnValue = queryParams["ResourceArn"];
-        if (resourceArnValue != null)
+        if (queryParams.TryGetValue("ResourceArn", out var resourceArnValue))
             request.ResourceArn = resourceArnValue;
 
         return request;
     }
 
-    internal static void SerializeListTagsForResourceResponse(ListTagsForResourceResponse response, Stream stream)
+    internal static void SerializeListTagsForResourceResponse(ListTagsForResourceResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("ListTagsForResourceResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -863,21 +854,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static ListTopicsRequest DeserializeListTopicsRequest(string requestBody)
+    internal static ListTopicsRequest DeserializeListTopicsRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new ListTopicsRequest();
 
         // NextToken
-        var nextTokenValue = queryParams["NextToken"];
-        if (nextTokenValue != null)
+        if (queryParams.TryGetValue("NextToken", out var nextTokenValue))
             request.NextToken = nextTokenValue;
 
         return request;
     }
 
-    internal static void SerializeListTopicsResponse(ListTopicsResponse response, Stream stream)
+    internal static void SerializeListTopicsResponse(ListTopicsResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("ListTopicsResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -896,21 +887,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static OptInPhoneNumberRequest DeserializeOptInPhoneNumberRequest(string requestBody)
+    internal static OptInPhoneNumberRequest DeserializeOptInPhoneNumberRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new OptInPhoneNumberRequest();
 
         // phoneNumber
-        var phoneNumberValue = queryParams["phoneNumber"];
-        if (phoneNumberValue != null)
+        if (queryParams.TryGetValue("phoneNumber", out var phoneNumberValue))
             request.PhoneNumber = phoneNumberValue;
 
         return request;
     }
 
-    internal static void SerializeOptInPhoneNumberResponse(OptInPhoneNumberResponse response, Stream stream)
+    internal static void SerializeOptInPhoneNumberResponse(OptInPhoneNumberResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("OptInPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -923,59 +914,52 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static PublishRequest DeserializePublishRequest(string requestBody)
+    internal static PublishRequest DeserializePublishRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new PublishRequest();
 
         // TopicArn
-        var topicArnValue = queryParams["TopicArn"];
-        if (topicArnValue != null)
+        if (queryParams.TryGetValue("TopicArn", out var topicArnValue))
             request.TopicArn = topicArnValue;
 
         // TargetArn
-        var targetArnValue = queryParams["TargetArn"];
-        if (targetArnValue != null)
+        if (queryParams.TryGetValue("TargetArn", out var targetArnValue))
             request.TargetArn = targetArnValue;
 
         // PhoneNumber
-        var phoneNumberValue = queryParams["PhoneNumber"];
-        if (phoneNumberValue != null)
+        if (queryParams.TryGetValue("PhoneNumber", out var phoneNumberValue))
             request.PhoneNumber = phoneNumberValue;
 
         // Message
-        var messageValue = queryParams["Message"];
-        if (messageValue != null)
+        if (queryParams.TryGetValue("Message", out var messageValue))
             request.Message = messageValue;
 
         // Subject
-        var subjectValue = queryParams["Subject"];
-        if (subjectValue != null)
+        if (queryParams.TryGetValue("Subject", out var subjectValue))
             request.Subject = subjectValue;
 
         // MessageStructure
-        var messageStructureValue = queryParams["MessageStructure"];
-        if (messageStructureValue != null)
+        if (queryParams.TryGetValue("MessageStructure", out var messageStructureValue))
             request.MessageStructure = messageStructureValue;
 
         // MessageAttributes
         request.MessageAttributes = DeserializeMap_MessageAttributeMap(queryParams, "MessageAttributes");
 
         // MessageDeduplicationId
-        var messageDeduplicationIdValue = queryParams["MessageDeduplicationId"];
-        if (messageDeduplicationIdValue != null)
+        if (queryParams.TryGetValue("MessageDeduplicationId", out var messageDeduplicationIdValue))
             request.MessageDeduplicationId = messageDeduplicationIdValue;
 
         // MessageGroupId
-        var messageGroupIdValue = queryParams["MessageGroupId"];
-        if (messageGroupIdValue != null)
+        if (queryParams.TryGetValue("MessageGroupId", out var messageGroupIdValue))
             request.MessageGroupId = messageGroupIdValue;
 
         return request;
     }
 
-    internal static void SerializePublishResponse(PublishResponse response, Stream stream)
+    internal static void SerializePublishResponse(PublishResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("PublishResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -994,14 +978,13 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static PublishBatchRequest DeserializePublishBatchRequest(string requestBody)
+    internal static PublishBatchRequest DeserializePublishBatchRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new PublishBatchRequest();
 
         // TopicArn
-        var topicArnValue = queryParams["TopicArn"];
-        if (topicArnValue != null)
+        if (queryParams.TryGetValue("TopicArn", out var topicArnValue))
             request.TopicArn = topicArnValue;
 
         // PublishBatchRequestEntries
@@ -1010,8 +993,9 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static void SerializePublishBatchResponse(PublishBatchResponse response, Stream stream)
+    internal static void SerializePublishBatchResponse(PublishBatchResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("PublishBatchResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1030,26 +1014,25 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static PutDataProtectionPolicyRequest DeserializePutDataProtectionPolicyRequest(string requestBody)
+    internal static PutDataProtectionPolicyRequest DeserializePutDataProtectionPolicyRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new PutDataProtectionPolicyRequest();
 
         // ResourceArn
-        var resourceArnValue = queryParams["ResourceArn"];
-        if (resourceArnValue != null)
+        if (queryParams.TryGetValue("ResourceArn", out var resourceArnValue))
             request.ResourceArn = resourceArnValue;
 
         // DataProtectionPolicy
-        var dataProtectionPolicyValue = queryParams["DataProtectionPolicy"];
-        if (dataProtectionPolicyValue != null)
+        if (queryParams.TryGetValue("DataProtectionPolicy", out var dataProtectionPolicyValue))
             request.DataProtectionPolicy = dataProtectionPolicyValue;
 
         return request;
     }
 
-    internal static void SerializePutDataProtectionPolicyResponse(PutDataProtectionPolicyResponse response, Stream stream)
+    internal static void SerializePutDataProtectionPolicyResponse(PutDataProtectionPolicyResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("PutDataProtectionPolicyResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1060,26 +1043,25 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static RemovePermissionRequest DeserializeRemovePermissionRequest(string requestBody)
+    internal static RemovePermissionRequest DeserializeRemovePermissionRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new RemovePermissionRequest();
 
         // TopicArn
-        var topicArnValue = queryParams["TopicArn"];
-        if (topicArnValue != null)
+        if (queryParams.TryGetValue("TopicArn", out var topicArnValue))
             request.TopicArn = topicArnValue;
 
         // Label
-        var labelValue = queryParams["Label"];
-        if (labelValue != null)
+        if (queryParams.TryGetValue("Label", out var labelValue))
             request.Label = labelValue;
 
         return request;
     }
 
-    internal static void SerializeRemovePermissionResponse(RemovePermissionResponse response, Stream stream)
+    internal static void SerializeRemovePermissionResponse(RemovePermissionResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("RemovePermissionResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1090,14 +1072,13 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static SetEndpointAttributesRequest DeserializeSetEndpointAttributesRequest(string requestBody)
+    internal static SetEndpointAttributesRequest DeserializeSetEndpointAttributesRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new SetEndpointAttributesRequest();
 
         // EndpointArn
-        var endpointArnValue = queryParams["EndpointArn"];
-        if (endpointArnValue != null)
+        if (queryParams.TryGetValue("EndpointArn", out var endpointArnValue))
             request.EndpointArn = endpointArnValue;
 
         // Attributes
@@ -1106,8 +1087,9 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static void SerializeSetEndpointAttributesResponse(SetEndpointAttributesResponse response, Stream stream)
+    internal static void SerializeSetEndpointAttributesResponse(SetEndpointAttributesResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("SetEndpointAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1118,14 +1100,13 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static SetPlatformApplicationAttributesRequest DeserializeSetPlatformApplicationAttributesRequest(string requestBody)
+    internal static SetPlatformApplicationAttributesRequest DeserializeSetPlatformApplicationAttributesRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new SetPlatformApplicationAttributesRequest();
 
         // PlatformApplicationArn
-        var platformApplicationArnValue = queryParams["PlatformApplicationArn"];
-        if (platformApplicationArnValue != null)
+        if (queryParams.TryGetValue("PlatformApplicationArn", out var platformApplicationArnValue))
             request.PlatformApplicationArn = platformApplicationArnValue;
 
         // Attributes
@@ -1134,8 +1115,9 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static void SerializeSetPlatformApplicationAttributesResponse(SetPlatformApplicationAttributesResponse response, Stream stream)
+    internal static void SerializeSetPlatformApplicationAttributesResponse(SetPlatformApplicationAttributesResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("SetPlatformApplicationAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1146,9 +1128,9 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static SetSMSAttributesRequest DeserializeSetSMSAttributesRequest(string requestBody)
+    internal static SetSMSAttributesRequest DeserializeSetSMSAttributesRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new SetSMSAttributesRequest();
 
         // attributes
@@ -1157,8 +1139,9 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static void SerializeSetSMSAttributesResponse(SetSMSAttributesResponse response, Stream stream)
+    internal static void SerializeSetSMSAttributesResponse(SetSMSAttributesResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("SetSMSAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1171,31 +1154,29 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static SetSubscriptionAttributesRequest DeserializeSetSubscriptionAttributesRequest(string requestBody)
+    internal static SetSubscriptionAttributesRequest DeserializeSetSubscriptionAttributesRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new SetSubscriptionAttributesRequest();
 
         // SubscriptionArn
-        var subscriptionArnValue = queryParams["SubscriptionArn"];
-        if (subscriptionArnValue != null)
+        if (queryParams.TryGetValue("SubscriptionArn", out var subscriptionArnValue))
             request.SubscriptionArn = subscriptionArnValue;
 
         // AttributeName
-        var attributeNameValue = queryParams["AttributeName"];
-        if (attributeNameValue != null)
+        if (queryParams.TryGetValue("AttributeName", out var attributeNameValue))
             request.AttributeName = attributeNameValue;
 
         // AttributeValue
-        var attributeValueValue = queryParams["AttributeValue"];
-        if (attributeValueValue != null)
+        if (queryParams.TryGetValue("AttributeValue", out var attributeValueValue))
             request.AttributeValue = attributeValueValue;
 
         return request;
     }
 
-    internal static void SerializeSetSubscriptionAttributesResponse(SetSubscriptionAttributesResponse response, Stream stream)
+    internal static void SerializeSetSubscriptionAttributesResponse(SetSubscriptionAttributesResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("SetSubscriptionAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1206,31 +1187,29 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static SetTopicAttributesRequest DeserializeSetTopicAttributesRequest(string requestBody)
+    internal static SetTopicAttributesRequest DeserializeSetTopicAttributesRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new SetTopicAttributesRequest();
 
         // TopicArn
-        var topicArnValue = queryParams["TopicArn"];
-        if (topicArnValue != null)
+        if (queryParams.TryGetValue("TopicArn", out var topicArnValue))
             request.TopicArn = topicArnValue;
 
         // AttributeName
-        var attributeNameValue = queryParams["AttributeName"];
-        if (attributeNameValue != null)
+        if (queryParams.TryGetValue("AttributeName", out var attributeNameValue))
             request.AttributeName = attributeNameValue;
 
         // AttributeValue
-        var attributeValueValue = queryParams["AttributeValue"];
-        if (attributeValueValue != null)
+        if (queryParams.TryGetValue("AttributeValue", out var attributeValueValue))
             request.AttributeValue = attributeValueValue;
 
         return request;
     }
 
-    internal static void SerializeSetTopicAttributesResponse(SetTopicAttributesResponse response, Stream stream)
+    internal static void SerializeSetTopicAttributesResponse(SetTopicAttributesResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("SetTopicAttributesResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1241,39 +1220,36 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static SubscribeRequest DeserializeSubscribeRequest(string requestBody)
+    internal static SubscribeRequest DeserializeSubscribeRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new SubscribeRequest();
 
         // TopicArn
-        var topicArnValue = queryParams["TopicArn"];
-        if (topicArnValue != null)
+        if (queryParams.TryGetValue("TopicArn", out var topicArnValue))
             request.TopicArn = topicArnValue;
 
         // Protocol
-        var protocolValue = queryParams["Protocol"];
-        if (protocolValue != null)
+        if (queryParams.TryGetValue("Protocol", out var protocolValue))
             request.Protocol = protocolValue;
 
         // Endpoint
-        var endpointValue = queryParams["Endpoint"];
-        if (endpointValue != null)
+        if (queryParams.TryGetValue("Endpoint", out var endpointValue))
             request.Endpoint = endpointValue;
 
         // Attributes
         request.Attributes = DeserializeMap_SubscriptionAttributesMap(queryParams, "Attributes");
 
         // ReturnSubscriptionArn
-        var returnSubscriptionArnValue = queryParams["ReturnSubscriptionArn"];
-        if (returnSubscriptionArnValue != null && bool.TryParse(returnSubscriptionArnValue, out var returnSubscriptionArnParsed))
+        if (queryParams.TryGetValue("ReturnSubscriptionArn", out var returnSubscriptionArnValue) && bool.TryParse(returnSubscriptionArnValue, out var returnSubscriptionArnParsed))
             request.ReturnSubscriptionArn = returnSubscriptionArnParsed;
 
         return request;
     }
 
-    internal static void SerializeSubscribeResponse(SubscribeResponse response, Stream stream)
+    internal static void SerializeSubscribeResponse(SubscribeResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("SubscribeResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1289,14 +1265,13 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static TagResourceRequest DeserializeTagResourceRequest(string requestBody)
+    internal static TagResourceRequest DeserializeTagResourceRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new TagResourceRequest();
 
         // ResourceArn
-        var resourceArnValue = queryParams["ResourceArn"];
-        if (resourceArnValue != null)
+        if (queryParams.TryGetValue("ResourceArn", out var resourceArnValue))
             request.ResourceArn = resourceArnValue;
 
         // Tags
@@ -1305,8 +1280,9 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static void SerializeTagResourceResponse(TagResourceResponse response, Stream stream)
+    internal static void SerializeTagResourceResponse(TagResourceResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("TagResourceResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1319,21 +1295,21 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static UnsubscribeRequest DeserializeUnsubscribeRequest(string requestBody)
+    internal static UnsubscribeRequest DeserializeUnsubscribeRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new UnsubscribeRequest();
 
         // SubscriptionArn
-        var subscriptionArnValue = queryParams["SubscriptionArn"];
-        if (subscriptionArnValue != null)
+        if (queryParams.TryGetValue("SubscriptionArn", out var subscriptionArnValue))
             request.SubscriptionArn = subscriptionArnValue;
 
         return request;
     }
 
-    internal static void SerializeUnsubscribeResponse(UnsubscribeResponse response, Stream stream)
+    internal static void SerializeUnsubscribeResponse(UnsubscribeResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("UnsubscribeResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1344,14 +1320,13 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static UntagResourceRequest DeserializeUntagResourceRequest(string requestBody)
+    internal static UntagResourceRequest DeserializeUntagResourceRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new UntagResourceRequest();
 
         // ResourceArn
-        var resourceArnValue = queryParams["ResourceArn"];
-        if (resourceArnValue != null)
+        if (queryParams.TryGetValue("ResourceArn", out var resourceArnValue))
             request.ResourceArn = resourceArnValue;
 
         // TagKeys
@@ -1360,8 +1335,9 @@ internal static class SnsQuerySerializers
         return request;
     }
 
-    internal static void SerializeUntagResourceResponse(UntagResourceResponse response, Stream stream)
+    internal static void SerializeUntagResourceResponse(UntagResourceResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("UntagResourceResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1374,26 +1350,25 @@ internal static class SnsQuerySerializers
         writer.Flush();
     }
 
-    internal static VerifySMSSandboxPhoneNumberRequest DeserializeVerifySMSSandboxPhoneNumberRequest(string requestBody)
+    internal static VerifySMSSandboxPhoneNumberRequest DeserializeVerifySMSSandboxPhoneNumberRequest(ReadOnlySpan<byte> requestBytes)
     {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(requestBody);
+        var queryParams = QueryStringParser.Parse(requestBytes);
         var request = new VerifySMSSandboxPhoneNumberRequest();
 
         // PhoneNumber
-        var phoneNumberValue = queryParams["PhoneNumber"];
-        if (phoneNumberValue != null)
+        if (queryParams.TryGetValue("PhoneNumber", out var phoneNumberValue))
             request.PhoneNumber = phoneNumberValue;
 
         // OneTimePassword
-        var oneTimePasswordValue = queryParams["OneTimePassword"];
-        if (oneTimePasswordValue != null)
+        if (queryParams.TryGetValue("OneTimePassword", out var oneTimePasswordValue))
             request.OneTimePassword = oneTimePasswordValue;
 
         return request;
     }
 
-    internal static void SerializeVerifySMSSandboxPhoneNumberResponse(VerifySMSSandboxPhoneNumberResponse response, Stream stream)
+    internal static void SerializeVerifySMSSandboxPhoneNumberResponse(VerifySMSSandboxPhoneNumberResponse response, IBufferWriter<byte> buffer)
     {
+        using var stream = new BufferWriterStream(buffer);
         var settings = new XmlWriterSettings { OmitXmlDeclaration = false, Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false };
         using var writer = XmlWriter.Create(stream, settings);
         writer.WriteStartElement("VerifySMSSandboxPhoneNumberResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
@@ -1408,15 +1383,14 @@ internal static class SnsQuerySerializers
 
     // Helper methods
 
-    private static List<string>? DeserializeList_ActionsList(NameValueCollection queryParams, string prefix)
+    private static List<string>? DeserializeList_ActionsList(Dictionary<string, string> queryParams, string prefix)
     {
         var list = new List<string>();
         int index = 1;
         while (true)
         {
             var key = $"{prefix}.member.{index}";
-            var value = queryParams[key];
-            if (value != null)
+            if (queryParams.TryGetValue(key, out var value))
                 list.Add(value);
             else
                 break;
@@ -1425,15 +1399,14 @@ internal static class SnsQuerySerializers
         return list.Count > 0 ? list : null;
     }
 
-    private static List<string>? DeserializeList_DelegatesList(NameValueCollection queryParams, string prefix)
+    private static List<string>? DeserializeList_DelegatesList(Dictionary<string, string> queryParams, string prefix)
     {
         var list = new List<string>();
         int index = 1;
         while (true)
         {
             var key = $"{prefix}.member.{index}";
-            var value = queryParams[key];
-            if (value != null)
+            if (queryParams.TryGetValue(key, out var value))
                 list.Add(value);
             else
                 break;
@@ -1442,15 +1415,14 @@ internal static class SnsQuerySerializers
         return list.Count > 0 ? list : null;
     }
 
-    private static List<string>? DeserializeList_ListString(NameValueCollection queryParams, string prefix)
+    private static List<string>? DeserializeList_ListString(Dictionary<string, string> queryParams, string prefix)
     {
         var list = new List<string>();
         int index = 1;
         while (true)
         {
             var key = $"{prefix}.member.{index}";
-            var value = queryParams[key];
-            if (value != null)
+            if (queryParams.TryGetValue(key, out var value))
                 list.Add(value);
             else
                 break;
@@ -1459,7 +1431,7 @@ internal static class SnsQuerySerializers
         return list.Count > 0 ? list : null;
     }
 
-    private static List<PublishBatchRequestEntry>? DeserializeList_PublishBatchRequestEntryList(NameValueCollection queryParams, string prefix)
+    private static List<PublishBatchRequestEntry>? DeserializeList_PublishBatchRequestEntryList(Dictionary<string, string> queryParams, string prefix)
     {
         var list = new List<PublishBatchRequestEntry>();
         int index = 1;
@@ -1476,15 +1448,14 @@ internal static class SnsQuerySerializers
         return list.Count > 0 ? list : null;
     }
 
-    private static List<string>? DeserializeList_TagKeyList(NameValueCollection queryParams, string prefix)
+    private static List<string>? DeserializeList_TagKeyList(Dictionary<string, string> queryParams, string prefix)
     {
         var list = new List<string>();
         int index = 1;
         while (true)
         {
             var key = $"{prefix}.member.{index}";
-            var value = queryParams[key];
-            if (value != null)
+            if (queryParams.TryGetValue(key, out var value))
                 list.Add(value);
             else
                 break;
@@ -1493,7 +1464,7 @@ internal static class SnsQuerySerializers
         return list.Count > 0 ? list : null;
     }
 
-    private static List<Tag>? DeserializeList_TagList(NameValueCollection queryParams, string prefix)
+    private static List<Tag>? DeserializeList_TagList(Dictionary<string, string> queryParams, string prefix)
     {
         var list = new List<Tag>();
         int index = 1;
@@ -1510,7 +1481,7 @@ internal static class SnsQuerySerializers
         return list.Count > 0 ? list : null;
     }
 
-    private static Dictionary<string, string>? DeserializeMap_MapStringToString(NameValueCollection queryParams, string prefix)
+    private static Dictionary<string, string>? DeserializeMap_MapStringToString(Dictionary<string, string> queryParams, string prefix)
     {
         var map = new Dictionary<string, string>();
         int index = 1;
@@ -1518,9 +1489,10 @@ internal static class SnsQuerySerializers
         {
             var keyParam = $"{prefix}.entry.{index}.key";
             var valueParam = $"{prefix}.entry.{index}.value";
-            var key = queryParams[keyParam];
-            var value = queryParams[valueParam];
-            if (key != null && value != null)
+            if (!queryParams.TryGetValue(keyParam, out var key))
+                break;
+
+            if (queryParams.TryGetValue(valueParam, out var value))
             {
                 map[key] = value;
             }
@@ -1531,7 +1503,7 @@ internal static class SnsQuerySerializers
         return map.Count > 0 ? map : null;
     }
 
-    private static Dictionary<string, MessageAttributeValue>? DeserializeMap_MessageAttributeMap(NameValueCollection queryParams, string prefix)
+    private static Dictionary<string, MessageAttributeValue>? DeserializeMap_MessageAttributeMap(Dictionary<string, string> queryParams, string prefix)
     {
         var map = new Dictionary<string, MessageAttributeValue>();
         int index = 1;
@@ -1539,7 +1511,9 @@ internal static class SnsQuerySerializers
         {
             var keyParam = $"{prefix}.entry.{index}.Name";
             var valueParam = $"{prefix}.entry.{index}.Value";
-            var key = queryParams[keyParam];
+            if (!queryParams.TryGetValue(keyParam, out var key))
+                break;
+
             if (key != null)
             {
                 var structure = DeserializeStructure_MessageAttributeValue(queryParams, valueParam);
@@ -1559,7 +1533,7 @@ internal static class SnsQuerySerializers
         return map.Count > 0 ? map : null;
     }
 
-    private static Dictionary<string, string>? DeserializeMap_SubscriptionAttributesMap(NameValueCollection queryParams, string prefix)
+    private static Dictionary<string, string>? DeserializeMap_SubscriptionAttributesMap(Dictionary<string, string> queryParams, string prefix)
     {
         var map = new Dictionary<string, string>();
         int index = 1;
@@ -1567,9 +1541,10 @@ internal static class SnsQuerySerializers
         {
             var keyParam = $"{prefix}.entry.{index}.key";
             var valueParam = $"{prefix}.entry.{index}.value";
-            var key = queryParams[keyParam];
-            var value = queryParams[valueParam];
-            if (key != null && value != null)
+            if (!queryParams.TryGetValue(keyParam, out var key))
+                break;
+
+            if (queryParams.TryGetValue(valueParam, out var value))
             {
                 map[key] = value;
             }
@@ -1580,7 +1555,7 @@ internal static class SnsQuerySerializers
         return map.Count > 0 ? map : null;
     }
 
-    private static Dictionary<string, string>? DeserializeMap_TopicAttributesMap(NameValueCollection queryParams, string prefix)
+    private static Dictionary<string, string>? DeserializeMap_TopicAttributesMap(Dictionary<string, string> queryParams, string prefix)
     {
         var map = new Dictionary<string, string>();
         int index = 1;
@@ -1588,9 +1563,10 @@ internal static class SnsQuerySerializers
         {
             var keyParam = $"{prefix}.entry.{index}.key";
             var valueParam = $"{prefix}.entry.{index}.value";
-            var key = queryParams[keyParam];
-            var value = queryParams[valueParam];
-            if (key != null && value != null)
+            if (!queryParams.TryGetValue(keyParam, out var key))
+                break;
+
+            if (queryParams.TryGetValue(valueParam, out var value))
             {
                 map[key] = value;
             }
@@ -1740,15 +1716,14 @@ internal static class SnsQuerySerializers
         writer.WriteEndElement();
     }
 
-    private static MessageAttributeValue? DeserializeStructure_MessageAttributeValue(NameValueCollection queryParams, string prefix)
+    private static MessageAttributeValue? DeserializeStructure_MessageAttributeValue(Dictionary<string, string> queryParams, string prefix)
     {
         var structure = new MessageAttributeValue();
         var hasAnyValue = false;
 
         // DataType
         var dataTypeParam = $"{prefix}.DataType";
-        var dataTypeValue = queryParams[dataTypeParam];
-        if (dataTypeValue != null)
+        if (queryParams.TryGetValue(dataTypeParam, out var dataTypeValue))
         {
             structure.DataType = dataTypeValue;
             hasAnyValue = true;
@@ -1756,8 +1731,7 @@ internal static class SnsQuerySerializers
 
         // StringValue
         var stringValueParam = $"{prefix}.StringValue";
-        var stringValueValue = queryParams[stringValueParam];
-        if (stringValueValue != null)
+        if (queryParams.TryGetValue(stringValueParam, out var stringValueValue))
         {
             structure.StringValue = stringValueValue;
             hasAnyValue = true;
@@ -1765,8 +1739,7 @@ internal static class SnsQuerySerializers
 
         // BinaryValue
         var binaryValueParam = $"{prefix}.BinaryValue";
-        var binaryValueValue = queryParams[binaryValueParam];
-        if (binaryValueValue != null)
+        if (queryParams.TryGetValue(binaryValueParam, out var binaryValueValue))
         {
             structure.BinaryValue = new MemoryStream(Convert.FromBase64String(binaryValueValue));
             hasAnyValue = true;
@@ -1775,15 +1748,14 @@ internal static class SnsQuerySerializers
         return hasAnyValue ? structure : null;
     }
 
-    private static PublishBatchRequestEntry? DeserializeStructure_PublishBatchRequestEntry(NameValueCollection queryParams, string prefix)
+    private static PublishBatchRequestEntry? DeserializeStructure_PublishBatchRequestEntry(Dictionary<string, string> queryParams, string prefix)
     {
         var structure = new PublishBatchRequestEntry();
         var hasAnyValue = false;
 
         // Id
         var idParam = $"{prefix}.Id";
-        var idValue = queryParams[idParam];
-        if (idValue != null)
+        if (queryParams.TryGetValue(idParam, out var idValue))
         {
             structure.Id = idValue;
             hasAnyValue = true;
@@ -1791,8 +1763,7 @@ internal static class SnsQuerySerializers
 
         // Message
         var messageParam = $"{prefix}.Message";
-        var messageValue = queryParams[messageParam];
-        if (messageValue != null)
+        if (queryParams.TryGetValue(messageParam, out var messageValue))
         {
             structure.Message = messageValue;
             hasAnyValue = true;
@@ -1800,8 +1771,7 @@ internal static class SnsQuerySerializers
 
         // Subject
         var subjectParam = $"{prefix}.Subject";
-        var subjectValue = queryParams[subjectParam];
-        if (subjectValue != null)
+        if (queryParams.TryGetValue(subjectParam, out var subjectValue))
         {
             structure.Subject = subjectValue;
             hasAnyValue = true;
@@ -1809,8 +1779,7 @@ internal static class SnsQuerySerializers
 
         // MessageStructure
         var messageStructureParam = $"{prefix}.MessageStructure";
-        var messageStructureValue = queryParams[messageStructureParam];
-        if (messageStructureValue != null)
+        if (queryParams.TryGetValue(messageStructureParam, out var messageStructureValue))
         {
             structure.MessageStructure = messageStructureValue;
             hasAnyValue = true;
@@ -1827,8 +1796,7 @@ internal static class SnsQuerySerializers
 
         // MessageDeduplicationId
         var messageDeduplicationIdParam = $"{prefix}.MessageDeduplicationId";
-        var messageDeduplicationIdValue = queryParams[messageDeduplicationIdParam];
-        if (messageDeduplicationIdValue != null)
+        if (queryParams.TryGetValue(messageDeduplicationIdParam, out var messageDeduplicationIdValue))
         {
             structure.MessageDeduplicationId = messageDeduplicationIdValue;
             hasAnyValue = true;
@@ -1836,8 +1804,7 @@ internal static class SnsQuerySerializers
 
         // MessageGroupId
         var messageGroupIdParam = $"{prefix}.MessageGroupId";
-        var messageGroupIdValue = queryParams[messageGroupIdParam];
-        if (messageGroupIdValue != null)
+        if (queryParams.TryGetValue(messageGroupIdParam, out var messageGroupIdValue))
         {
             structure.MessageGroupId = messageGroupIdValue;
             hasAnyValue = true;
@@ -1846,15 +1813,14 @@ internal static class SnsQuerySerializers
         return hasAnyValue ? structure : null;
     }
 
-    private static Tag? DeserializeStructure_Tag(NameValueCollection queryParams, string prefix)
+    private static Tag? DeserializeStructure_Tag(Dictionary<string, string> queryParams, string prefix)
     {
         var structure = new Tag();
         var hasAnyValue = false;
 
         // Key
         var keyParam = $"{prefix}.Key";
-        var keyValue = queryParams[keyParam];
-        if (keyValue != null)
+        if (queryParams.TryGetValue(keyParam, out var keyValue))
         {
             structure.Key = keyValue;
             hasAnyValue = true;
@@ -1862,8 +1828,7 @@ internal static class SnsQuerySerializers
 
         // Value
         var valueParam = $"{prefix}.Value";
-        var valueValue = queryParams[valueParam];
-        if (valueValue != null)
+        if (queryParams.TryGetValue(valueParam, out var valueValue))
         {
             structure.Value = valueValue;
             hasAnyValue = true;
