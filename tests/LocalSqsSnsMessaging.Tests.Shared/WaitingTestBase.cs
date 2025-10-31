@@ -15,7 +15,7 @@ public abstract class WaitingTestBase
 
     protected Task WaitAsync(TimeSpan timeSpan)
     {
-        var categories = TestContext.Current?.TestDetails.Categories;
+        var categories = TestContext.Current?.Metadata.TestDetails.Categories;
         if (categories is null || !categories.Contains(TimeBased, StringComparer.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("This method should only be called for tests marked with the 'TimeBased' category.");
