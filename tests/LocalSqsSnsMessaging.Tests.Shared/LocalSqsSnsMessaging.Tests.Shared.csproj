@@ -16,7 +16,7 @@
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
       <PackageReference Include="Shouldly" />
-      <PackageReference Include="System.Linq.Async" />
+      <PackageReference Include="System.Linq.AsyncEnumerable" />
       <PackageReference Include="TUnit.Assertions" />
       <PackageReference Include="TUnit.Core" />
     </ItemGroup>
