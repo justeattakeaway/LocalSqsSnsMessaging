@@ -9,9 +9,9 @@
     <PackageVersion Include="ReportGenerator" Version="5.5.1" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="System.Linq.AsyncEnumerable" Version="10.0.0" />
-    <PackageVersion Include="TUnit" Version="1.5.1" />
-    <PackageVersion Include="TUnit.Assertions" Version="1.5.1" />
-    <PackageVersion Include="TUnit.Core" Version="1.5.1" />
+    <PackageVersion Include="TUnit" Version="1.5.6" />
+    <PackageVersion Include="TUnit.Assertions" Version="1.5.6" />
+    <PackageVersion Include="TUnit.Core" Version="1.5.6" />
   </ItemGroup>
   <ItemGroup Condition=" '$(IsTestProject)' == 'true' ">
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" PrivateAssets="All" />
