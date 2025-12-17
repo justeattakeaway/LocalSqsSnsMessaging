@@ -77,8 +77,8 @@ internal static class SqsJsonSerializers
         writer.WriteStartObject();
 
         // ApproximateNumberOfMessagesMoved
-        if (response.ApproximateNumberOfMessagesMoved.HasValue)
-            writer.WriteNumber("approximateNumberOfMessagesMoved", response.ApproximateNumberOfMessagesMoved.Value);
+        if (SdkCompatibility.HasNonDefaultValue(response.ApproximateNumberOfMessagesMoved))
+            writer.WriteNumber("approximateNumberOfMessagesMoved", SdkCompatibility.GetValue(response.ApproximateNumberOfMessagesMoved));
 
         writer.WriteEndObject();
         writer.Flush();
@@ -166,8 +166,8 @@ internal static class SqsJsonSerializers
                 writer.WriteStartObject();
                 if (item.Id != null)
                     writer.WriteString("id", item.Id);
-                if (item.SenderFault.HasValue)
-                    writer.WriteBoolean("senderFault", item.SenderFault.Value);
+                if (SdkCompatibility.HasNonDefaultValue(item.SenderFault))
+                    writer.WriteBoolean("senderFault", SdkCompatibility.GetValue(item.SenderFault));
                 if (item.Code != null)
                     writer.WriteString("code", item.Code);
                 if (item.Message != null)
@@ -305,8 +305,8 @@ internal static class SqsJsonSerializers
                 writer.WriteStartObject();
                 if (item.Id != null)
                     writer.WriteString("id", item.Id);
-                if (item.SenderFault.HasValue)
-                    writer.WriteBoolean("senderFault", item.SenderFault.Value);
+                if (SdkCompatibility.HasNonDefaultValue(item.SenderFault))
+                    writer.WriteBoolean("senderFault", SdkCompatibility.GetValue(item.SenderFault));
                 if (item.Code != null)
                     writer.WriteString("code", item.Code);
                 if (item.Message != null)
@@ -499,16 +499,16 @@ internal static class SqsJsonSerializers
                     writer.WriteString("sourceArn", item.SourceArn);
                 if (item.DestinationArn != null)
                     writer.WriteString("destinationArn", item.DestinationArn);
-                if (item.MaxNumberOfMessagesPerSecond.HasValue)
-                    writer.WriteNumber("maxNumberOfMessagesPerSecond", item.MaxNumberOfMessagesPerSecond.Value);
-                if (item.ApproximateNumberOfMessagesMoved.HasValue)
-                    writer.WriteNumber("approximateNumberOfMessagesMoved", item.ApproximateNumberOfMessagesMoved.Value);
-                if (item.ApproximateNumberOfMessagesToMove.HasValue)
-                    writer.WriteNumber("approximateNumberOfMessagesToMove", item.ApproximateNumberOfMessagesToMove.Value);
+                if (SdkCompatibility.HasNonDefaultValue(item.MaxNumberOfMessagesPerSecond))
+                    writer.WriteNumber("maxNumberOfMessagesPerSecond", SdkCompatibility.GetValue(item.MaxNumberOfMessagesPerSecond));
+                if (SdkCompatibility.HasNonDefaultValue(item.ApproximateNumberOfMessagesMoved))
+                    writer.WriteNumber("approximateNumberOfMessagesMoved", SdkCompatibility.GetValue(item.ApproximateNumberOfMessagesMoved));
+                if (SdkCompatibility.HasNonDefaultValue(item.ApproximateNumberOfMessagesToMove))
+                    writer.WriteNumber("approximateNumberOfMessagesToMove", SdkCompatibility.GetValue(item.ApproximateNumberOfMessagesToMove));
                 if (item.FailureReason != null)
                     writer.WriteString("failureReason", item.FailureReason);
-                if (item.StartedTimestamp.HasValue)
-                    writer.WriteNumber("startedTimestamp", item.StartedTimestamp.Value);
+                if (SdkCompatibility.HasNonDefaultValue(item.StartedTimestamp))
+                    writer.WriteNumber("startedTimestamp", SdkCompatibility.GetValue(item.StartedTimestamp));
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -976,8 +976,8 @@ internal static class SqsJsonSerializers
                 writer.WriteStartObject();
                 if (item.Id != null)
                     writer.WriteString("id", item.Id);
-                if (item.SenderFault.HasValue)
-                    writer.WriteBoolean("senderFault", item.SenderFault.Value);
+                if (SdkCompatibility.HasNonDefaultValue(item.SenderFault))
+                    writer.WriteBoolean("senderFault", SdkCompatibility.GetValue(item.SenderFault));
                 if (item.Code != null)
                     writer.WriteString("code", item.Code);
                 if (item.Message != null)

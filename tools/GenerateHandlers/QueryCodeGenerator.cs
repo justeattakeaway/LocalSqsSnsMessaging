@@ -220,13 +220,25 @@ internal sealed class QueryCodeGenerator
         switch (shapeType)
         {
             case "string":
+                code.AppendLine($"            if ({sourceVar}.{csharpPropertyName} != null)");
+                code.AppendLine($"                writer.WriteElementString(\"{memberName}\", {sourceVar}.{csharpPropertyName});");
+                break;
+
             case "integer":
             case "long":
-            case "boolean":
             case "double":
+                code.AppendLine($"            if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                code.AppendLine($"                writer.WriteElementString(\"{memberName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}).ToString());");
+                break;
+
+            case "boolean":
+                code.AppendLine($"            if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                code.AppendLine($"                writer.WriteElementString(\"{memberName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}).ToString().ToLowerInvariant());");
+                break;
+
             case "timestamp":
-                code.AppendLine($"            if ({sourceVar}.{csharpPropertyName} != null)");
-                code.AppendLine($"                writer.WriteElementString(\"{memberName}\", {sourceVar}.{csharpPropertyName}.ToString());");
+                code.AppendLine($"            if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                code.AppendLine($"                writer.WriteElementString(\"{memberName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}).ToString(\"O\"));");
                 break;
 
             case "list":
@@ -535,10 +547,15 @@ internal sealed class QueryCodeGenerator
                     code.AppendLine($"        if (structure.{csharpPropertyName} != null)");
                     code.AppendLine($"            writer.WriteElementString(\"{memberName}\", structure.{csharpPropertyName});");
                 }
-                else if (memberType == "integer" || memberType == "long" || memberType == "boolean" || memberType == "double")
+                else if (memberType == "integer" || memberType == "long" || memberType == "double")
                 {
-                    code.AppendLine($"        if (structure.{csharpPropertyName} != null)");
-                    code.AppendLine($"            writer.WriteElementString(\"{memberName}\", structure.{csharpPropertyName}.ToString());");
+                    code.AppendLine($"        if (SdkCompatibility.HasNonDefaultValue(structure.{csharpPropertyName}))");
+                    code.AppendLine($"            writer.WriteElementString(\"{memberName}\", SdkCompatibility.GetValue(structure.{csharpPropertyName}).ToString());");
+                }
+                else if (memberType == "boolean")
+                {
+                    code.AppendLine($"        if (SdkCompatibility.HasNonDefaultValue(structure.{csharpPropertyName}))");
+                    code.AppendLine($"            writer.WriteElementString(\"{memberName}\", SdkCompatibility.GetValue(structure.{csharpPropertyName}).ToString().ToLowerInvariant());");
                 }
                 else if (memberType == "blob")
                 {

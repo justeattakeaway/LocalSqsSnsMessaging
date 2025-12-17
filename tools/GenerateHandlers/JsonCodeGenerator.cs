@@ -155,29 +155,29 @@ internal sealed class JsonCodeGenerator
                 break;
 
             case "integer":
-                code.AppendLine($"        if ({sourceVar}.{csharpPropertyName}.HasValue)");
-                code.AppendLine($"            writer.WriteNumber(\"{jsonPropertyName}\", {sourceVar}.{csharpPropertyName}.Value);");
+                code.AppendLine($"        if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                code.AppendLine($"            writer.WriteNumber(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                 break;
 
             case "long":
-                code.AppendLine($"        if ({sourceVar}.{csharpPropertyName}.HasValue)");
-                code.AppendLine($"            writer.WriteNumber(\"{jsonPropertyName}\", {sourceVar}.{csharpPropertyName}.Value);");
+                code.AppendLine($"        if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                code.AppendLine($"            writer.WriteNumber(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                 break;
 
             case "boolean":
-                code.AppendLine($"        if ({sourceVar}.{csharpPropertyName}.HasValue)");
-                code.AppendLine($"            writer.WriteBoolean(\"{jsonPropertyName}\", {sourceVar}.{csharpPropertyName}.Value);");
+                code.AppendLine($"        if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                code.AppendLine($"            writer.WriteBoolean(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                 break;
 
             case "double":
             case "float":
-                code.AppendLine($"        if ({sourceVar}.{csharpPropertyName}.HasValue)");
-                code.AppendLine($"            writer.WriteNumber(\"{jsonPropertyName}\", {sourceVar}.{csharpPropertyName}.Value);");
+                code.AppendLine($"        if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                code.AppendLine($"            writer.WriteNumber(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                 break;
 
             case "timestamp":
-                code.AppendLine($"        if ({sourceVar}.{csharpPropertyName}.HasValue)");
-                code.AppendLine($"            writer.WriteString(\"{jsonPropertyName}\", {sourceVar}.{csharpPropertyName}.Value.ToString(\"O\"));");
+                code.AppendLine($"        if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                code.AppendLine($"            writer.WriteString(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}).ToString(\"O\"));");
                 break;
 
             case "list":
@@ -415,24 +415,24 @@ internal sealed class JsonCodeGenerator
 
                 case "integer":
                 case "long":
-                    code.AppendLine($"{indent}if ({sourceVar}.{csharpPropertyName}.HasValue)");
-                    code.AppendLine($"{indent}    writer.WriteNumber(\"{jsonPropertyName}\", {sourceVar}.{csharpPropertyName}.Value);");
+                    code.AppendLine($"{indent}if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                    code.AppendLine($"{indent}    writer.WriteNumber(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                     break;
 
                 case "boolean":
-                    code.AppendLine($"{indent}if ({sourceVar}.{csharpPropertyName}.HasValue)");
-                    code.AppendLine($"{indent}    writer.WriteBoolean(\"{jsonPropertyName}\", {sourceVar}.{csharpPropertyName}.Value);");
+                    code.AppendLine($"{indent}if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                    code.AppendLine($"{indent}    writer.WriteBoolean(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                     break;
 
                 case "double":
                 case "float":
-                    code.AppendLine($"{indent}if ({sourceVar}.{csharpPropertyName}.HasValue)");
-                    code.AppendLine($"{indent}    writer.WriteNumber(\"{jsonPropertyName}\", {sourceVar}.{csharpPropertyName}.Value);");
+                    code.AppendLine($"{indent}if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                    code.AppendLine($"{indent}    writer.WriteNumber(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                     break;
 
                 case "timestamp":
-                    code.AppendLine($"{indent}if ({sourceVar}.{csharpPropertyName}.HasValue)");
-                    code.AppendLine($"{indent}    writer.WriteString(\"{jsonPropertyName}\", {sourceVar}.{csharpPropertyName}.Value.ToString(\"O\"));");
+                    code.AppendLine($"{indent}if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
+                    code.AppendLine($"{indent}    writer.WriteString(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}).ToString(\"O\"));");
                     break;
 
                 case "map":
