@@ -1,6 +1,9 @@
 // Pooled ArrayBufferWriter to reduce allocations for HTTP response serialization
 
 using System.Buffers;
+#if NETSTANDARD2_0
+using LocalSqsSnsMessaging.Http.Internal;
+#endif
 
 namespace LocalSqsSnsMessaging.Http;
 

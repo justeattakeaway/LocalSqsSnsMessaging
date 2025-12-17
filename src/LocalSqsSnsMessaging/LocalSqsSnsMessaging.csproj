@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Library</OutputType>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
@@ -10,6 +10,14 @@
     <ItemGroup>
         <PackageReference Include="AWSSDK.SQS" />
         <PackageReference Include="AWSSDK.SimpleNotificationService" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="System.Net.Http.Json" />
+      <PackageReference Include="System.Threading.Channels" />
+      <PackageReference Include="Meziantou.Polyfill" PrivateAssets="all" />
+      <PackageReference Include="Microsoft.Bcl.TimeProvider" />
+      <PackageReference Include="System.Memory" />
     </ItemGroup>
 
     <ItemGroup>

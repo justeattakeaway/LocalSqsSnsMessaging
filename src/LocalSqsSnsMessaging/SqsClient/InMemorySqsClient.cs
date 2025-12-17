@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -112,7 +113,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             if (visibilityTimeout == TimeSpan.Zero)
             {
                 // Atomically remove from in-flight and re-queue if successful.
-                if (queue.InFlightMessages.Remove(request.ReceiptHandle, out var removedInfo))
+                if (queue.InFlightMessages.TryRemove(request.ReceiptHandle, out var removedInfo))
                 {
                     removedInfo.Item2.Dispose(); // Dispose the expiration job
 
@@ -136,6 +137,18 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
     private static bool IsReceiptHandleValid(string receiptHandle, string queueArn)
     {
+#if NETSTANDARD2_0
+        byte[] buffer;
+        try
+        {
+            buffer = Convert.FromBase64String(receiptHandle);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        var decoded = Encoding.UTF8.GetString(buffer);
+#else
         var bufferLength = receiptHandle.Length * 3 / 4;
         var buffer = bufferLength <= 1024 ? stackalloc byte[bufferLength] : new byte[bufferLength];
         if (!Convert.TryFromBase64String(receiptHandle, buffer, out var written))
@@ -143,6 +156,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             return false;
         }
         var decoded = Encoding.UTF8.GetString(buffer[..written]);
+#endif
         var parts = decoded.Split(' ');
         return parts switch
         {
@@ -222,7 +236,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
-        if (queue.InFlightMessages.Remove(request.ReceiptHandle, out var inFlightInfo))
+        if (queue.InFlightMessages.TryRemove(request.ReceiptHandle, out var inFlightInfo))
         {
             var (message, expirationHandler) = inFlightInfo;
             expirationHandler.Dispose();
@@ -322,7 +336,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
                 }.SetCommonProperties();
             }
 
-            using var receiveTimeout = new CancellationTokenSource(waitTime, _bus.TimeProvider);
+            using var receiveTimeout = _bus.TimeProvider.CreateCancellationTokenSource(waitTime);
             using var linkedToken =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, receiveTimeout.Token);
 
@@ -548,10 +562,10 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             {
                 // Per-message-group deduplication
                 var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
-                    request.MessageGroupId, 
+                    request.MessageGroupId,
                     _ => new ConcurrentDictionary<string, string>());
                 isDuplicate = !groupDeduplicationIds.TryAdd(deduplicationId, message.MessageId);
-                
+
                 if (isDuplicate)
                 {
                     // Message with this deduplication ID already exists in this group
@@ -566,7 +580,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             {
                 // Global deduplication (traditional FIFO)
                 isDuplicate = !queue.DeduplicationIds.TryAdd(deduplicationId, message.MessageId);
-                
+
                 if (isDuplicate)
                 {
                     // Message with this deduplication ID already exists, return existing message ID
@@ -695,7 +709,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
     private async Task SendDelayedMessageAsync(SqsQueueResource queue, Message message, int delaySeconds)
     {
-        await Task.Delay(TimeSpan.FromSeconds(delaySeconds), _bus.TimeProvider).ConfigureAwait(true);
+        await _bus.TimeProvider.Delay(TimeSpan.FromSeconds(delaySeconds)).ConfigureAwait(true);
         queue.Messages.Writer.TryWrite(message);
     }
 
@@ -833,7 +847,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         {
             try
             {
-                if (queue.InFlightMessages.Remove(entry.ReceiptHandle, out _))
+                if (queue.InFlightMessages.TryRemove(entry.ReceiptHandle, out _))
                 {
                     response.Successful.Add(new DeleteMessageBatchResultEntry
                     {
@@ -1127,7 +1141,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         foreach (var receipt in inflightMessageReceipts)
         {
-            queue.InFlightMessages.Remove(receipt, out var inFlightInfo);
+            queue.InFlightMessages.TryRemove(receipt, out var inFlightInfo);
             var (_, expirationHandler) = inFlightInfo;
             expirationHandler.Dispose();
         }
@@ -1470,8 +1484,23 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
     }
 
+#if !NETSTANDARD2_0
     [UnsafeAccessor(UnsafeAccessorKind.Constructor)]
     private static extern SQSPaginatorFactory GetPaginatorFactory(IAmazonSQS client);
+#else
+    private static SQSPaginatorFactory GetPaginatorFactory(IAmazonSQS client)
+    {
+        var ctor = typeof(SQSPaginatorFactory)
+            .GetConstructor(
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
+            null,
+            [typeof(IAmazonSQS)],
+            null)
+            ?? throw new InvalidOperationException("Constructor not found on SQSPaginatorFactory");
+
+        return (SQSPaginatorFactory)ctor.Invoke([client]);
+    }
+#endif
 
     public ISQSPaginatorFactory Paginators => _paginators.Value;
 }

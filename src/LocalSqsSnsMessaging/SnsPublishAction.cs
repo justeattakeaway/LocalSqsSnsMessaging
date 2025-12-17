@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Numerics;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json.Nodes;
 using Amazon.SimpleNotificationService.Model;
 using Amazon.SQS;
@@ -18,15 +17,36 @@ internal sealed class SnsPublishAction
 
     private readonly List<(SnsSubscription Subscription, SqsQueueResource Queue)> _subscriptionsAndQueues;
     private readonly TimeProvider _timeProvider;
-    private static Int128 _sequenceNumber = CreateSequenceNumber();
+    private static BigInteger _sequenceNumber = CreateSequenceNumber();
     private static SpinLock _sequenceSpinLock = new(false);
 
-    private static Int128 CreateSequenceNumber()
+    private static BigInteger CreateSequenceNumber()
     {
-        var bytes = RandomNumberGenerator.GetBytes(16);
+        var bytes = new byte[16];
+#if !NETSTANDARD2_0
+    RandomNumberGenerator.Fill(bytes);
+#else
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(bytes);
+        }
+#endif
         var randomBigInt = new BigInteger(bytes);
-        var twentyDigitBigInt = BigInteger.Abs(randomBigInt % BigInteger.Pow(10, 20));
-        return (Int128)twentyDigitBigInt;
+        return BigInteger.Abs(randomBigInt % BigInteger.Pow(10, 20));
+    }
+
+    private static BigInteger GetNextSequenceNumber()
+    {
+        var lockTaken = false;
+        try
+        {
+            _sequenceSpinLock.Enter(ref lockTaken);
+            return ++_sequenceNumber;
+        }
+        finally
+        {
+            if (lockTaken) _sequenceSpinLock.Exit();
+        }
     }
 
     public SnsPublishAction(List<(SnsSubscription Subscription, SqsQueueResource Queue)> subscriptionsAndQueues, TimeProvider timeProvider)
@@ -281,19 +301,5 @@ internal sealed class SnsPublishAction
     {
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(messageBody));
         return Convert.ToBase64String(hashBytes);
-    }
-
-    private static Int128 GetNextSequenceNumber()
-    {
-        var lockTaken = false;
-        try
-        {
-            _sequenceSpinLock.Enter(ref lockTaken);
-            return ++_sequenceNumber;
-        }
-        finally
-        {
-            if (lockTaken) _sequenceSpinLock.Exit();
-        }
     }
 }

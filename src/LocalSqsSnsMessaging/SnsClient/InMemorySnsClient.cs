@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Amazon.Auth.AccessControlPolicy;
 using Amazon.Runtime;
@@ -796,8 +797,23 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
     }
 
+#if !NETSTANDARD2_0
     [UnsafeAccessor(UnsafeAccessorKind.Constructor)]
     private static extern SimpleNotificationServicePaginatorFactory GetPaginatorFactory(IAmazonSimpleNotificationService client);
+#else
+    private static SimpleNotificationServicePaginatorFactory GetPaginatorFactory(IAmazonSimpleNotificationService client)
+    {
+        var ctor = typeof(SimpleNotificationServicePaginatorFactory)
+                       .GetConstructor(
+                           BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
+                           null,
+                           [typeof(IAmazonSimpleNotificationService)],
+                           null)
+                   ?? throw new InvalidOperationException("Constructor not found on SimpleNotificationServicePaginatorFactory");
+
+        return (SimpleNotificationServicePaginatorFactory)ctor.Invoke([client]);
+    }
+#endif
 
     public ISimpleNotificationServicePaginatorFactory Paginators => _paginators.Value;
 }
