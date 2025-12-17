@@ -11,7 +11,6 @@
     <PackageVersion Include="ReportGenerator" Version="5.5.1" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="System.Linq.AsyncEnumerable" Version="10.0.1" />
-    <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Net.Http.Json" Version="10.0.1" />
     <PackageVersion Include="System.Threading.Channels" Version="10.0.1" />
     <PackageVersion Include="TUnit" Version="1.5.60" />

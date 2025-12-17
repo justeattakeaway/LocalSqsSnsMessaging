@@ -21,7 +21,6 @@
         <PackageReference Include="Microsoft.Bcl.TimeProvider" />
         <PackageReference Include="System.Net.Http.Json" />
         <PackageReference Include="System.Threading.Channels" />
-        <PackageReference Include="System.Memory" />
     </ItemGroup>
 
     <ItemGroup>
