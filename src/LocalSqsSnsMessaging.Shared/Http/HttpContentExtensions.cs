@@ -1,6 +1,9 @@
-﻿namespace LocalSqsSnsMessaging.Http;
+﻿using System.ComponentModel;
+
+namespace LocalSqsSnsMessaging.Http;
 
 #if NETSTANDARD2_0
+[EditorBrowsable(EditorBrowsableState.Never)]
 internal static class HttpContentExtensions
 {
     extension(HttpContent content)
