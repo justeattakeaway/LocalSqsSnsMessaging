@@ -1,10 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Library</OutputType>
         <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <RootNamespace>LocalSqsSnsMessaging</RootNamespace>
+        <AssemblyName>LocalSqsSnsMessaging.AWSSDKv3</AssemblyName>
+        <DefineConstants>$(DefineConstants);AWS_SDK_V3</DefineConstants>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,8 +15,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.SQS" />
-        <PackageReference Include="AWSSDK.SimpleNotificationService" />
+        <PackageReference Include="AWSSDK.SQS" VersionOverride="3.7.502" />
+        <PackageReference Include="AWSSDK.SimpleNotificationService" VersionOverride="3.7.502" />
     </ItemGroup>
 
     <ItemGroup>

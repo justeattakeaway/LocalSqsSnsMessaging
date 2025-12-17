@@ -73,8 +73,8 @@ internal static class SnsQuerySerializers
         writer.WriteStartElement("CheckIfPhoneNumberIsOptedOutResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
         writer.WriteStartElement("CheckIfPhoneNumberIsOptedOutResult");
             // isOptedOut
-            if (response.IsOptedOut != null)
-                writer.WriteElementString("isOptedOut", response.IsOptedOut.ToString());
+            if (SdkCompatibility.HasNonDefaultValue(response.IsOptedOut))
+                writer.WriteElementString("isOptedOut", SdkCompatibility.GetValue(response.IsOptedOut).ToString().ToLowerInvariant());
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -112,7 +112,7 @@ internal static class SnsQuerySerializers
         writer.WriteStartElement("ConfirmSubscriptionResult");
             // SubscriptionArn
             if (response.SubscriptionArn != null)
-                writer.WriteElementString("SubscriptionArn", response.SubscriptionArn.ToString());
+                writer.WriteElementString("SubscriptionArn", response.SubscriptionArn);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -149,7 +149,7 @@ internal static class SnsQuerySerializers
         writer.WriteStartElement("CreatePlatformApplicationResult");
             // PlatformApplicationArn
             if (response.PlatformApplicationArn != null)
-                writer.WriteElementString("PlatformApplicationArn", response.PlatformApplicationArn.ToString());
+                writer.WriteElementString("PlatformApplicationArn", response.PlatformApplicationArn);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -190,7 +190,7 @@ internal static class SnsQuerySerializers
         writer.WriteStartElement("CreatePlatformEndpointResult");
             // EndpointArn
             if (response.EndpointArn != null)
-                writer.WriteElementString("EndpointArn", response.EndpointArn.ToString());
+                writer.WriteElementString("EndpointArn", response.EndpointArn);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -261,7 +261,7 @@ internal static class SnsQuerySerializers
         writer.WriteStartElement("CreateTopicResult");
             // TopicArn
             if (response.TopicArn != null)
-                writer.WriteElementString("TopicArn", response.TopicArn.ToString());
+                writer.WriteElementString("TopicArn", response.TopicArn);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -393,7 +393,7 @@ internal static class SnsQuerySerializers
         writer.WriteStartElement("GetDataProtectionPolicyResult");
             // DataProtectionPolicy
             if (response.DataProtectionPolicy != null)
-                writer.WriteElementString("DataProtectionPolicy", response.DataProtectionPolicy.ToString());
+                writer.WriteElementString("DataProtectionPolicy", response.DataProtectionPolicy);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -507,8 +507,8 @@ internal static class SnsQuerySerializers
         writer.WriteStartElement("GetSMSSandboxAccountStatusResponse", "http://sns.amazonaws.com/doc/2010-03-31/");
         writer.WriteStartElement("GetSMSSandboxAccountStatusResult");
             // IsInSandbox
-            if (response.IsInSandbox != null)
-                writer.WriteElementString("IsInSandbox", response.IsInSandbox.ToString());
+            if (SdkCompatibility.HasNonDefaultValue(response.IsInSandbox))
+                writer.WriteElementString("IsInSandbox", SdkCompatibility.GetValue(response.IsInSandbox).ToString().ToLowerInvariant());
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -605,7 +605,7 @@ internal static class SnsQuerySerializers
                 SerializeList_ListOfEndpoints(writer, "Endpoints", response.Endpoints);
             // NextToken
             if (response.NextToken != null)
-                writer.WriteElementString("NextToken", response.NextToken.ToString());
+                writer.WriteElementString("NextToken", response.NextToken);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -639,7 +639,7 @@ internal static class SnsQuerySerializers
         writer.WriteStartElement("ListOriginationNumbersResult");
             // NextToken
             if (response.NextToken != null)
-                writer.WriteElementString("NextToken", response.NextToken.ToString());
+                writer.WriteElementString("NextToken", response.NextToken);
             // PhoneNumbers
             if (response.PhoneNumbers != null)
                 SerializeList_PhoneNumberInformationList(writer, "PhoneNumbers", response.PhoneNumbers);
@@ -675,7 +675,7 @@ internal static class SnsQuerySerializers
                 SerializeList_PhoneNumberList(writer, "phoneNumbers", response.PhoneNumbers);
             // nextToken
             if (response.NextToken != null)
-                writer.WriteElementString("nextToken", response.NextToken.ToString());
+                writer.WriteElementString("nextToken", response.NextToken);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -708,7 +708,7 @@ internal static class SnsQuerySerializers
                 SerializeList_ListOfPlatformApplications(writer, "PlatformApplications", response.PlatformApplications);
             // NextToken
             if (response.NextToken != null)
-                writer.WriteElementString("NextToken", response.NextToken.ToString());
+                writer.WriteElementString("NextToken", response.NextToken);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -745,7 +745,7 @@ internal static class SnsQuerySerializers
                 SerializeList_SMSSandboxPhoneNumberList(writer, "PhoneNumbers", response.PhoneNumbers);
             // NextToken
             if (response.NextToken != null)
-                writer.WriteElementString("NextToken", response.NextToken.ToString());
+                writer.WriteElementString("NextToken", response.NextToken);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -778,7 +778,7 @@ internal static class SnsQuerySerializers
                 SerializeList_SubscriptionsList(writer, "Subscriptions", response.Subscriptions);
             // NextToken
             if (response.NextToken != null)
-                writer.WriteElementString("NextToken", response.NextToken.ToString());
+                writer.WriteElementString("NextToken", response.NextToken);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -815,7 +815,7 @@ internal static class SnsQuerySerializers
                 SerializeList_SubscriptionsList(writer, "Subscriptions", response.Subscriptions);
             // NextToken
             if (response.NextToken != null)
-                writer.WriteElementString("NextToken", response.NextToken.ToString());
+                writer.WriteElementString("NextToken", response.NextToken);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -878,7 +878,7 @@ internal static class SnsQuerySerializers
                 SerializeList_TopicsList(writer, "Topics", response.Topics);
             // NextToken
             if (response.NextToken != null)
-                writer.WriteElementString("NextToken", response.NextToken.ToString());
+                writer.WriteElementString("NextToken", response.NextToken);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -966,10 +966,10 @@ internal static class SnsQuerySerializers
         writer.WriteStartElement("PublishResult");
             // MessageId
             if (response.MessageId != null)
-                writer.WriteElementString("MessageId", response.MessageId.ToString());
+                writer.WriteElementString("MessageId", response.MessageId);
             // SequenceNumber
             if (response.SequenceNumber != null)
-                writer.WriteElementString("SequenceNumber", response.SequenceNumber.ToString());
+                writer.WriteElementString("SequenceNumber", response.SequenceNumber);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -1256,7 +1256,7 @@ internal static class SnsQuerySerializers
         writer.WriteStartElement("SubscribeResult");
             // SubscriptionArn
             if (response.SubscriptionArn != null)
-                writer.WriteElementString("SubscriptionArn", response.SubscriptionArn.ToString());
+                writer.WriteElementString("SubscriptionArn", response.SubscriptionArn);
         writer.WriteEndElement(); // Result
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", System.Guid.NewGuid().ToString());
@@ -1846,8 +1846,8 @@ internal static class SnsQuerySerializers
             writer.WriteElementString("Code", structure.Code);
         if (structure.Message != null)
             writer.WriteElementString("Message", structure.Message);
-        if (structure.SenderFault != null)
-            writer.WriteElementString("SenderFault", structure.SenderFault.ToString());
+        if (SdkCompatibility.HasNonDefaultValue(structure.SenderFault))
+            writer.WriteElementString("SenderFault", SdkCompatibility.GetValue(structure.SenderFault).ToString().ToLowerInvariant());
         writer.WriteEndElement();
     }
 

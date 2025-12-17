@@ -699,7 +699,11 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
     {
         var statement = new Statement(Statement.StatementEffect.Allow);
 #pragma warning disable CS0612,CS0618
+#if AWS_SDK_V3
+        statement.Actions.Add(new ActionIdentifier("sqs:SendMessage"));
+#else
         statement.Actions.Add("sqs:SendMessage");
+#endif
 #pragma warning restore CS0612,CS0618
         statement.Resources.Add(new Resource(sqsQueueArn));
         statement.Conditions.Add(ConditionFactory.NewSourceArnCondition(topicArn));

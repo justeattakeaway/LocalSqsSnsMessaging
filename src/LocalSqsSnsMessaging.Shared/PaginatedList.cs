@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace LocalSqsSnsMessaging;
 
 internal sealed class PaginatedList<T>
@@ -6,7 +8,7 @@ internal sealed class PaginatedList<T>
 
     public PaginatedList(IEnumerable<T> items)
     {
-        _items = items.ToList();
+        _items = [.. items];
     }
 
     /// <summary>
@@ -25,7 +27,7 @@ internal sealed class PaginatedList<T>
     {
         ArgumentNullException.ThrowIfNull(tokenGenerator);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(pageSize, 0, "Page size must be positive.");
-        
+
         var query = filter != null ? _items.Where(filter).ToList() : _items;
 
         var startIndex = 0;
@@ -47,16 +49,20 @@ internal sealed class PaginatedList<T>
     }
 }
 
+[EditorBrowsable(EditorBrowsableState.Never)]
 internal static class EnumerableExtensions
 {
-    public static int FindIndex<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+    extension<T>(IEnumerable<T> source)
     {
-        var index = 0;
-        foreach (var item in source)
+        public int FindIndex(Func<T, bool> predicate)
         {
-            if (predicate(item)) return index;
-            index++;
+            var index = 0;
+            foreach (var item in source)
+            {
+                if (predicate(item)) return index;
+                index++;
+            }
+            return -1;
         }
-        return -1;
     }
 }

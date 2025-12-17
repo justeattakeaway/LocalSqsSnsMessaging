@@ -102,7 +102,8 @@ $testProjects = @(
 )
 
 $packageProjects = @(
-    (Join-Path $solutionPath "src" "LocalSqsSnsMessaging" "LocalSqsSnsMessaging.csproj")
+    (Join-Path $solutionPath "src" "LocalSqsSnsMessaging" "LocalSqsSnsMessaging.csproj"),
+    (Join-Path $solutionPath "src" "LocalSqsSnsMessaging.AWSSDKv3" "LocalSqsSnsMessaging.AWSSDKv3.csproj")
 )
 
 Write-Host "Building $($packageProjects.Count) NuGet package(s)..." -ForegroundColor Green
