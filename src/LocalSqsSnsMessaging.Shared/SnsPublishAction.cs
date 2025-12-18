@@ -23,7 +23,7 @@ internal sealed class SnsPublishAction
     private static BigInteger CreateSequenceNumber()
     {
         var bytes = new byte[16];
-#if !NETSTANDARD2_0
+#if NET
     RandomNumberGenerator.Fill(bytes);
 #else
         using (var rng = RandomNumberGenerator.Create())

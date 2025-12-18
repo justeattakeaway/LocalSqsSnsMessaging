@@ -1,7 +1,10 @@
 using System.Collections.Concurrent;
 using System.Net;
-using System.Reflection;
+#if NET
 using System.Runtime.CompilerServices;
+#else
+using System.Reflection;
+#endif
 using System.Security.Cryptography;
 using System.Text.Json;
 using Amazon.Auth.AccessControlPolicy;
@@ -17,7 +20,7 @@ using ResourceNotFoundException = Amazon.SQS.Model.ResourceNotFoundException;
 namespace LocalSqsSnsMessaging;
 
 /// <summary>
-/// Represents an in-memory implementation of Amazon Simple Queue Service (SQS) client.
+/// Represents an in-memory implementation of an Amazon Simple Queue Service (SQS) client.
 /// This class provides methods to interact with SQS queues in a local, in-memory environment,
 /// primarily for testing and development purposes without connecting to actual AWS services.
 /// It implements the IAmazonSQS interface to maintain compatibility with the AWS SDK.
@@ -1500,7 +1503,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
     }
 
-#if !NETSTANDARD2_0
+#if NET
     [UnsafeAccessor(UnsafeAccessorKind.Constructor)]
     private static extern SQSPaginatorFactory GetPaginatorFactory(IAmazonSQS client);
 #else

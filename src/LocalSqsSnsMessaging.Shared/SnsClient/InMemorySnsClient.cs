@@ -1,5 +1,8 @@
-using System.Reflection;
+#if NET
 using System.Runtime.CompilerServices;
+#else
+using System.Reflection;
+#endif
 using Amazon.Auth.AccessControlPolicy;
 using Amazon.Runtime;
 using Amazon.Runtime.SharedInterfaces;
@@ -11,7 +14,7 @@ using RemovePermissionResponse = Amazon.SimpleNotificationService.Model.RemovePe
 namespace LocalSqsSnsMessaging;
 
 /// <summary>
-/// Represents an in-memory implementation of Amazon Simple Notification Service (SNS) client.
+/// Represents an in-memory implementation of an Amazon Simple Notification Service (SNS) client.
 /// This class provides methods to interact with SNS topics and subscriptions in a local, in-memory environment,
 /// primarily for testing and development purposes without connecting to actual AWS services.
 /// </summary>
@@ -718,7 +721,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             // See if the statement contains the topic as a resource
             var containsResource = statement.Resources.Any(resource => resource.Id.Equals(sqsQueueArn, StringComparison.OrdinalIgnoreCase));
 
-            // If queue found as the resource see if the condition is for this topic
+            // If queue found as the resource, see if the condition is for this topic
             if (containsResource)
             {
                 foreach (var condition in statement.Conditions)
@@ -801,7 +804,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
     }
 
-#if !NETSTANDARD2_0
+#if NET
     [UnsafeAccessor(UnsafeAccessorKind.Constructor)]
     private static extern SimpleNotificationServicePaginatorFactory GetPaginatorFactory(IAmazonSimpleNotificationService client);
 #else
