@@ -38,7 +38,7 @@ internal sealed class BufferWriterStream : Stream
         _position += count;
     }
 
-#if !NETSTANDARD2_0
+#if NET
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         var span = _bufferWriter.GetSpan(buffer.Length);
@@ -54,7 +54,7 @@ internal sealed class BufferWriterStream : Stream
         await Task.CompletedTask.ConfigureAwait(false);
     }
 
-#if !NETSTANDARD2_0
+#if NET
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
         Write(buffer.Span);
