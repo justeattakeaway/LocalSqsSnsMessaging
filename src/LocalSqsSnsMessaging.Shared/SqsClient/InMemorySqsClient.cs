@@ -130,11 +130,13 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
                 expirationHandler.UpdateTimeout(visibilityTimeout);
             }
 
+            _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ChangeMessageVisibility, queue.Arn);
             return Task.FromResult(new ChangeMessageVisibilityResponse().SetCommonProperties());
         }
 
         // If the message is not in-flight, it might have already been processed or expired.
         // SQS does not throw an error in this case, so we return a success response.
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ChangeMessageVisibility, queue.Arn);
         return Task.FromResult(new ChangeMessageVisibilityResponse().SetCommonProperties());
     }
 
@@ -210,6 +212,8 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         UpdateQueueProperties(queue);
         _bus.Queues.TryAdd(request.QueueName, queue);
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.CreateQueue, queue.Arn);
+
         var response = new CreateQueueResponse
         {
             QueueUrl = queueUrl
@@ -262,6 +266,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
                 }
             }
 
+            _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.DeleteMessage, queue.Arn);
             return Task.FromResult(new DeleteMessageResponse().SetCommonProperties());
         }
 
@@ -333,6 +338,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             ReadAvailableMessages();
             if (messages is not null && messages.Count > 0 || waitTime == TimeSpan.Zero)
             {
+                _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ReceiveMessage, queue.Arn);
                 return new ReceiveMessageResponse
                 {
                     Messages = messages.ToInitializedList()
@@ -359,6 +365,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             messages = ReceiveFifoMessages(queue, SdkCompatibility.GetValueOrDefault(request.MaxNumberOfMessages, 1), visibilityTimeout, request.MessageSystemAttributeNames, cancellationToken);
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ReceiveMessage, queue.Arn);
         return new ReceiveMessageResponse
         {
             Messages = messages.ToInitializedList(),
@@ -613,6 +620,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             }
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.SendMessage, queue.Arn);
         return Task.FromResult(new SendMessageResponse
         {
             MessageId = message.MessageId,
@@ -730,6 +738,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         task.MoveTaskJob.Dispose();
         task.Status = MoveTaskStatus.Cancelled;
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.CancelMessageMoveTask, task.SourceQueue.Arn);
         return Task.FromResult(new CancelMessageMoveTaskResponse
         {
             ApproximateNumberOfMessagesMoved = task.ApproximateNumberOfMessagesMoved
@@ -830,6 +839,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             }
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ChangeMessageVisibilityBatch, queue.Arn);
         return Task.FromResult(response.SetCommonProperties());
     }
 
@@ -897,6 +907,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             }
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.DeleteMessageBatch, queue.Arn);
         return Task.FromResult(response.SetCommonProperties());
     }
 
@@ -906,7 +917,9 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl);
-        _bus.Queues.TryRemove(queueName, out _);
+        _bus.Queues.TryRemove(queueName, out var removedQueue);
+        var queueArn = removedQueue?.Arn ?? $"arn:aws:sqs:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:{queueName}";
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.DeleteQueue, queueArn);
         return Task.FromResult(new DeleteQueueResponse().SetCommonProperties());
     }
 
@@ -955,6 +968,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             }
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.GetQueueAttributes, queue.Arn);
         return Task.FromResult(new GetQueueAttributesResponse
         {
             Attributes = attributes
@@ -1025,6 +1039,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueName} does not exist.");
         }
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.GetQueueUrl, queue.Arn);
         return Task.FromResult(new GetQueueUrlResponse { QueueUrl = queue.Url }.SetCommonProperties());
     }
 
@@ -1048,6 +1063,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             SdkCompatibility.GetValueOrDefault(request.MaxResults, 1000),
             request.NextToken);
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ListDeadLetterSourceQueues);
         return Task.FromResult(new ListDeadLetterSourceQueuesResponse
         {
             QueueUrls = items,
@@ -1078,6 +1094,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
                 ApproximateNumberOfMessagesToMove = t.ApproximateNumberOfMessagesToMove
             });
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ListMessageMoveTasks, request.SourceArn);
         return Task.FromResult(new ListMessageMoveTasksResponse
         {
             Results = tasks.ToList()
@@ -1103,6 +1120,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             SdkCompatibility.GetValueOrDefault(request.MaxResults, 1000),
             request.NextToken);
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ListQueues);
         return Task.FromResult(new ListQueuesResponse
         {
             QueueUrls = items,
@@ -1126,6 +1144,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             throw new QueueDoesNotExistException("Queue not found.");
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ListQueueTags, queue.Arn);
         return Task.FromResult(new ListQueueTagsResponse
         {
             Tags = queue.Tags.ToInitializedDictionary()
@@ -1164,6 +1183,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             expirationHandler.Dispose();
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.PurgeQueue, queue.Arn);
         return Task.FromResult(new PurgeQueueResponse().SetCommonProperties());
     }
 
@@ -1210,6 +1230,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             queue.Attributes.Remove("Policy");
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.RemovePermission, queue.Arn);
         return Task.FromResult(new RemovePermissionResponse().SetCommonProperties());
     }
 
@@ -1272,6 +1293,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             });
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.SendMessageBatch, queue.Arn);
         return Task.FromResult(response.SetCommonProperties());
     }
 
@@ -1305,6 +1327,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         UpdateQueueProperties(queue);
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.SetQueueAttributes, queue.Arn);
         return Task.FromResult(new SetQueueAttributesResponse
         {
             HttpStatusCode = HttpStatusCode.OK
@@ -1404,6 +1427,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         _bus.MoveTasks.TryAdd(moveTask.TaskHandle, moveTask);
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.StartMessageMoveTask, sourceQueue.Arn);
         return Task.FromResult(new StartMessageMoveTaskResponse
         {
             TaskHandle = moveTask.TaskHandle
@@ -1429,6 +1453,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             }
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.TagQueue, queue.Arn);
         return Task.FromResult(new TagQueueResponse().SetCommonProperties());
     }
 
@@ -1448,6 +1473,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             queue.Tags?.Remove(tagKey);
         }
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.UntagQueue, queue.Arn);
         return Task.FromResult(new UntagQueueResponse().SetCommonProperties());
     }
 
@@ -1500,6 +1526,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         queue.Attributes ??= [];
         queue.Attributes["Policy"] = policy.ToJson();
 
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.AddPermission, queue.Arn);
         return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
     }
 
