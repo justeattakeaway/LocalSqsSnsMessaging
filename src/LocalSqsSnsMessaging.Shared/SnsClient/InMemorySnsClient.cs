@@ -121,6 +121,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
         _bus.Topics.TryAdd(request.Name, topic);
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.CreateTopic, topicArn);
         return Task.FromResult(new CreateTopicResponse
         {
             TopicArn = topicArn
@@ -140,6 +141,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         var topicName = GetTopicNameByArn(request.TopicArn);
         _bus.Topics.TryRemove(topicName, out _);
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.DeleteTopic, request.TopicArn);
         return Task.FromResult(new DeleteTopicResponse().SetCommonProperties());
     }
 
@@ -161,6 +163,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             throw new NotFoundException("Subscription not found.");
         }
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.GetSubscriptionAttributes, subscription.SubscriptionArn);
         return Task.FromResult(new GetSubscriptionAttributesResponse
         {
             Attributes = new Dictionary<string, string>
@@ -202,6 +205,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             ["TopicArn"] = topic.Arn
         };
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.GetTopicAttributes, topic.Arn);
         return Task.FromResult(new GetTopicAttributesResponse
         {
             Attributes = attributes
@@ -211,6 +215,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
     public Task<ListSubscriptionsResponse> ListSubscriptionsAsync(CancellationToken cancellationToken = default)
     {
         var subscriptions = _bus.Subscriptions.Values.ToList();
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListSubscriptions);
         return Task.FromResult(new ListSubscriptionsResponse
         {
             Subscriptions = subscriptions.Select(s => new Subscription
@@ -250,6 +255,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         var (items, nextToken) = pagedSubscriptions.GetPage(
             TokenGenerator, 100, request.NextToken);
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListSubscriptions);
         return Task.FromResult(new ListSubscriptionsResponse
         {
             Subscriptions = items,
@@ -307,6 +313,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         var (items, nextToken) = pagedSubscriptions.GetPage(
             TokenGenerator, 100, request.NextToken);
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListSubscriptionsByTopic, request.TopicArn);
         return Task.FromResult(new ListSubscriptionsByTopicResponse
         {
             Subscriptions = items,
@@ -332,6 +339,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
         var tags = topic.Tags.Select(t => new Tag { Key = t.Key, Value = t.Value }).ToList();
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListTagsForResource, request.ResourceArn);
         return Task.FromResult(new ListTagsForResourceResponse
         {
             Tags = tags
@@ -340,6 +348,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
     public Task<ListTopicsResponse> ListTopicsAsync(CancellationToken cancellationToken = default)
     {
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListTopics);
         return Task.FromResult(new ListTopicsResponse
         {
             Topics = _bus.Topics.Values.Select(t => new Topic
@@ -368,6 +377,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         var (items, nextToken) = pagedTopics.GetPage(
             TokenGenerator, 100, request.NextToken);
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListTopics);
         return Task.FromResult(new ListTopicsResponse
         {
             Topics = items,
@@ -410,6 +420,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         var topic = GetTopicByArn(request.TopicArn);
         var result = topic.PublishAction.Execute(request);
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Publish, request.TopicArn);
         return Task.FromResult(result);
     }
 
@@ -468,6 +479,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         var topic = GetTopicByArn(request.TopicArn);
         var result = topic.PublishAction.ExecuteBatch(request);
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.PublishBatch, request.TopicArn);
         return Task.FromResult(result);
     }
 
@@ -505,6 +517,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             topic.Attributes.Remove("Policy");
         }
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.RemovePermission, topic.Arn);
         return Task.FromResult(new RemovePermissionResponse().SetCommonProperties());
     }
 
@@ -555,6 +568,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             throw new InvalidParameterException($"Unsupported attribute: {request.AttributeName}");
         }
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetSubscriptionAttributes, subscription.SubscriptionArn);
         return Task.FromResult(new SetSubscriptionAttributesResponse().SetCommonProperties());
     }
 
@@ -582,6 +596,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         }
 
         topic.Attributes[request.AttributeName] = request.AttributeValue;
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetTopicAttributes, topic.Arn);
         return Task.FromResult(new SetTopicAttributesResponse().SetCommonProperties());
     }
 
@@ -633,6 +648,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
         SnsPublishActionFactory.UpdateTopicPublishAction(snsSubscription.TopicArn, _bus);
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Subscribe, request.TopicArn);
         return Task.FromResult(new SubscribeResponse
         {
             SubscriptionArn = snsSubscription.SubscriptionArn
@@ -655,6 +671,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             topic.Tags[tag.Key] = tag.Value;
         }
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.TagResource, request.ResourceArn);
         return Task.FromResult(new TagResourceResponse().SetCommonProperties());
     }
 
@@ -676,6 +693,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
         SnsPublishActionFactory.UpdateTopicPublishAction(subscription.TopicArn, _bus);
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Unsubscribe, request.SubscriptionArn);
         return Task.FromResult(new UnsubscribeResponse().SetCommonProperties());
     }
 
@@ -695,6 +713,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
             topic.Tags.Remove(tagKey);
         }
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.UntagResource, request.ResourceArn);
         return Task.FromResult(new UntagResourceResponse().SetCommonProperties());
     }
 
@@ -801,6 +820,7 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         policy.Statements.Add(statement);
         topic.Attributes["Policy"] = policy.ToJson();
 
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.AddPermission, topic.Arn);
         return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
     }
 
