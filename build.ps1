@@ -80,7 +80,7 @@ function DotNetTest {
 
     & $dotnet run --project $Project `
         --configuration "Release" `
-        -- $additionalArgs `
+        -- $additionalArgs
 
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet test failed with exit code $LASTEXITCODE"
