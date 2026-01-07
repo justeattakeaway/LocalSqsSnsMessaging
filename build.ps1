@@ -78,13 +78,23 @@ function DotNetTest {
         "--timeout"; "2m"
     )
 
+    Write-Host "Running tests for $Project..." -ForegroundColor Yellow
+    
+    # Let output flow directly to console (both stdout and stderr)
     & $dotnet run --project $Project `
         --configuration "Release" `
-        -- $additionalArgs `
+        -- $additionalArgs
 
     if ($LASTEXITCODE -ne 0) {
+        Write-Host "" -ForegroundColor Red
+        Write-Host "============================================================" -ForegroundColor Red
+        Write-Host "Test execution failed with exit code $LASTEXITCODE" -ForegroundColor Red
+        Write-Host "The test process encountered an error. See output above for details." -ForegroundColor Red
+        Write-Host "============================================================" -ForegroundColor Red
         throw "dotnet test failed with exit code $LASTEXITCODE"
     }
+    
+    Write-Host "Tests completed successfully" -ForegroundColor Green
 }
 
 function DotNetPack {
