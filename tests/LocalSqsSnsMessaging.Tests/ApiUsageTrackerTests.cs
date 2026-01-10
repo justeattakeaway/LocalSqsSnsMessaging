@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Amazon.SimpleNotificationService.Model;
 using Amazon.SQS.Model;
 using Shouldly;
@@ -31,10 +30,8 @@ public sealed class ApiUsageTrackerTests
         });
 
         // Assert
-        var actions = bus.UsageTracker.GetUsedActions().ToList();
-        actions.ShouldContain("sqs:CreateQueue");
-        actions.ShouldContain("sqs:SendMessage");
-        actions.ShouldContain("sqs:ReceiveMessage");
+        var actions = bus.UsageTracker.GetUsedActions().OrderBy(a => a).ToList();
+        actions.ShouldBe(["sqs:CreateQueue", "sqs:ReceiveMessage", "sqs:SendMessage"]);
     }
 
     [Test]
@@ -64,10 +61,8 @@ public sealed class ApiUsageTrackerTests
         });
 
         // Assert
-        var actions = bus.UsageTracker.GetUsedActions().ToList();
-        actions.ShouldContain("sns:CreateTopic");
-        actions.ShouldContain("sns:Subscribe");
-        actions.ShouldContain("sns:Publish");
+        var actions = bus.UsageTracker.GetUsedActions().OrderBy(a => a).ToList();
+        actions.ShouldBe(["sns:CreateTopic", "sns:Publish", "sns:Subscribe", "sqs:CreateQueue"]);
     }
 
     [Test]
@@ -84,9 +79,11 @@ public sealed class ApiUsageTrackerTests
         await sqs.SendMessageAsync(queue2.QueueUrl, "Message 2");
 
         // Assert
-        var resources = bus.UsageTracker.GetAccessedResources().ToList();
-        resources.ShouldContain(r => r.Contains("queue-1"));
-        resources.ShouldContain(r => r.Contains("queue-2"));
+        var resources = bus.UsageTracker.GetAccessedResources().OrderBy(r => r).ToList();
+        resources.ShouldBe([
+            $"arn:aws:sqs:{bus.CurrentRegion}:{bus.CurrentAccountId}:queue-1",
+            $"arn:aws:sqs:{bus.CurrentRegion}:{bus.CurrentAccountId}:queue-2"
+        ]);
     }
 
     [Test]
@@ -105,8 +102,8 @@ public sealed class ApiUsageTrackerTests
         var sqsResources = bus.UsageTracker.GetAccessedResourcesForService("sqs").ToList();
         var snsResources = bus.UsageTracker.GetAccessedResourcesForService("sns").ToList();
 
-        sqsResources.ShouldAllBe(r => r.Contains(":sqs:"));
-        snsResources.ShouldAllBe(r => r.Contains(":sns:"));
+        sqsResources.ShouldBe([$"arn:aws:sqs:{bus.CurrentRegion}:{bus.CurrentAccountId}:test-queue"]);
+        snsResources.ShouldBe([$"arn:aws:sns:{bus.CurrentRegion}:{bus.CurrentAccountId}:test-topic"]);
     }
 
     [Test]
@@ -125,10 +122,34 @@ public sealed class ApiUsageTrackerTests
         // Act
         var policyJson = bus.UsageTracker.GenerateIamPolicyJson();
 
-        // Assert - should be valid JSON
-        var policy = JsonDocument.Parse(policyJson);
-        policy.RootElement.GetProperty("Version").GetString().ShouldBe("2012-10-17");
-        policy.RootElement.GetProperty("Statement").GetArrayLength().ShouldBeGreaterThan(0);
+        // Assert
+        policyJson.ShouldBe(
+            """
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "sns:CreateTopic"
+                  ],
+                  "Resource": [
+                    "arn:aws:sns:us-east-1:000000000000:test-topic"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "sqs:CreateQueue",
+                    "sqs:SendMessage"
+                  ],
+                  "Resource": [
+                    "arn:aws:sqs:us-east-1:000000000000:test-queue"
+                  ]
+                }
+              ]
+            }
+            """);
     }
 
     [Test]
@@ -147,18 +168,17 @@ public sealed class ApiUsageTrackerTests
         var statements = bus.UsageTracker.GenerateIamStatements();
 
         // Assert
-        statements.Count.ShouldBe(2); // One for SQS, one for SNS
+        statements.Count.ShouldBe(2);
 
         var sqsStatement = statements.First(s => s.Actions.Any(a => a.StartsWith("sqs:", StringComparison.Ordinal)));
         sqsStatement.Effect.ShouldBe("Allow");
-        sqsStatement.Actions.ShouldContain("sqs:CreateQueue");
-        sqsStatement.Actions.ShouldContain("sqs:SendMessage");
-        sqsStatement.Resources.ShouldContain(r => r.Contains("test-queue"));
+        sqsStatement.Actions.OrderBy(a => a).ShouldBe(["sqs:CreateQueue", "sqs:SendMessage"]);
+        sqsStatement.Resources.ShouldBe([$"arn:aws:sqs:{bus.CurrentRegion}:{bus.CurrentAccountId}:test-queue"]);
 
         var snsStatement = statements.First(s => s.Actions.Any(a => a.StartsWith("sns:", StringComparison.Ordinal)));
         snsStatement.Effect.ShouldBe("Allow");
-        snsStatement.Actions.ShouldContain("sns:CreateTopic");
-        snsStatement.Resources.ShouldContain(r => r.Contains("test-topic"));
+        snsStatement.Actions.ShouldBe(["sns:CreateTopic"]);
+        snsStatement.Resources.ShouldBe([$"arn:aws:sns:{bus.CurrentRegion}:{bus.CurrentAccountId}:test-topic"]);
     }
 
     [Test]
@@ -194,11 +214,12 @@ public sealed class ApiUsageTrackerTests
         bus.UsageTrackingEnabled = true;
         await sqs.CreateQueueAsync("queue-3");
 
-        // Assert
-        var resources = bus.UsageTracker.GetAccessedResources().ToList();
-        resources.ShouldContain(r => r.Contains("queue-1"));
-        resources.ShouldNotContain(r => r.Contains("queue-2"));
-        resources.ShouldContain(r => r.Contains("queue-3"));
+        // Assert - verify that only queue-1 and queue-3 were tracked (not queue-2)
+        var resources = bus.UsageTracker.GetAccessedResources().OrderBy(r => r).ToList();
+        resources.ShouldBe([
+            $"arn:aws:sqs:{bus.CurrentRegion}:{bus.CurrentAccountId}:queue-1",
+            $"arn:aws:sqs:{bus.CurrentRegion}:{bus.CurrentAccountId}:queue-3"
+        ]);
     }
 
     [Test]
@@ -253,6 +274,8 @@ public sealed class ApiUsageTrackerTests
 
         // Assert
         var operation = bus.UsageTracker.Operations[0];
+        operation.Action.ShouldBe("CreateQueue");
+        operation.Service.ShouldBe("sqs");
         operation.Success.ShouldBeTrue();
     }
 
@@ -272,8 +295,8 @@ public sealed class ApiUsageTrackerTests
         var snsActions = bus.UsageTracker.GetUsedActionsForService("sns").ToList();
 
         // Assert
-        sqsActions.ShouldAllBe(a => a.StartsWith("sqs:"));
-        snsActions.ShouldAllBe(a => a.StartsWith("sns:"));
+        sqsActions.ShouldBe(["sqs:CreateQueue"]);
+        snsActions.ShouldBe(["sns:CreateTopic"]);
     }
 
     [Test]
@@ -288,6 +311,9 @@ public sealed class ApiUsageTrackerTests
 
         // Assert
         var operation = bus.UsageTracker.Operations.First(o => o.Action == "ListQueues");
+        operation.Action.ShouldBe("ListQueues");
+        operation.Service.ShouldBe("sqs");
         operation.ResourceArn.ShouldBeNull();
+        operation.Success.ShouldBeTrue();
     }
 }
