@@ -17,8 +17,10 @@
     <File Path="LICENSE" />
   </Folder>
   <Project Path="src/LocalSqsSnsMessaging.AWSSDKv3/LocalSqsSnsMessaging.AWSSDKv3.csproj" />
+  <Project Path="src/LocalSqsSnsMessaging.Server/LocalSqsSnsMessaging.Server.csproj" />
   <Project Path="src/LocalSqsSnsMessaging/LocalSqsSnsMessaging.csproj" />
   <Project Path="tests/LocalSqsSnsMessaging.Tests.Shared/LocalSqsSnsMessaging.Tests.Shared.csproj" />
   <Project Path="tests/LocalSqsSnsMessaging.Tests.Verification/LocalSqsSnsMessaging.Tests.Verification.csproj" />
+  <Project Path="tests/LocalSqsSnsMessaging.Tests.Server/LocalSqsSnsMessaging.Tests.Server.csproj" />
   <Project Path="tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj" />
 </Solution>

@@ -26,6 +26,13 @@ public sealed class InMemoryAwsBus
     public string CurrentRegion { get; init; } = "us-east-1";
 
     /// <summary>
+    /// Gets or sets the base service URL for queue URLs returned by CreateQueue.
+    /// When set, queue URLs will use this base instead of the default AWS format.
+    /// Example: "http://localhost:5050" produces URLs like "http://localhost:5050/000000000000/my-queue".
+    /// </summary>
+    public Uri? ServiceUrl { get; set; }
+
+    /// <summary>
     /// Gets or sets whether API usage tracking is enabled.
     /// When enabled, all API operations are recorded for later analysis.
     /// Disabled by default; set to true to enable tracking.
