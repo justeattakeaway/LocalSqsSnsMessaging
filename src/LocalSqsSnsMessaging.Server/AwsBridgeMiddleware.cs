@@ -1,13 +1,14 @@
 using System.Buffers;
-using System.Net;
+using System.Text;
 using LocalSqsSnsMessaging.Http.Handlers;
 using Microsoft.AspNetCore.Http;
 
 namespace LocalSqsSnsMessaging.Server;
 
 /// <summary>
-/// ASP.NET Core middleware that bridges between Kestrel's HttpContext and the
-/// existing AWS protocol handlers (SqsOperationHandler/SnsOperationHandler).
+/// ASP.NET Core middleware that routes Kestrel requests directly to the
+/// in-memory AWS protocol handlers (SqsOperationHandler/SnsOperationHandler)
+/// using their HttpContext-native overloads, avoiding HttpRequestMessage marshalling.
 /// </summary>
 internal sealed class AwsBridgeMiddleware
 {
@@ -34,13 +35,22 @@ internal sealed class AwsBridgeMiddleware
             var bodyBuffer = ms.GetBuffer();
             var bodyLength = (int)ms.Length;
 
-            using var requestMessage = BuildHttpRequestMessage(context.Request, bodyBuffer, bodyLength);
-
             try
             {
-                using var responseMessage = await HandleRequestAsync(context.Request, requestMessage, bodyBuffer, bodyLength, cancellationToken).ConfigureAwait(false);
-                responseMessage.Headers.Add("x-amzn-RequestId", Guid.NewGuid().ToString());
-                await WriteResponseAsync(context.Response, responseMessage).ConfigureAwait(false);
+                context.Response.Headers["x-amzn-RequestId"] = Guid.NewGuid().ToString();
+
+                if (IsSqsRequest(context.Request))
+                {
+                    var operationName = ExtractSqsOperationName(context.Request);
+                    await SqsOperationHandler.HandleAsync(
+                        context, bodyBuffer, bodyLength, operationName, _bus, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    var operationName = ExtractSnsOperationName(context.Request, bodyBuffer, bodyLength);
+                    await SnsOperationHandler.HandleAsync(
+                        context, bodyBuffer, bodyLength, operationName, _bus, cancellationToken).ConfigureAwait(false);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -50,8 +60,7 @@ internal sealed class AwsBridgeMiddleware
             catch (Exception ex)
 #pragma warning restore CA1031
             {
-                using var errorResponse = CreateErrorResponse(ex);
-                await WriteResponseAsync(context.Response, errorResponse).ConfigureAwait(false);
+                await WriteErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
             }
         }
         finally
@@ -59,47 +68,6 @@ internal sealed class AwsBridgeMiddleware
             await ms.DisposeAsync().ConfigureAwait(false);
             ArrayPool<byte>.Shared.Return(initialBuffer, clearArray: true);
         }
-    }
-
-    private async Task<HttpResponseMessage> HandleRequestAsync(
-        HttpRequest request,
-        HttpRequestMessage requestMessage,
-        byte[] bodyBytes,
-        int bodyLength,
-        CancellationToken cancellationToken)
-    {
-        if (IsSqsRequest(request))
-        {
-            var operationName = ExtractSqsOperationName(request);
-            return await SqsOperationHandler.HandleAsync(
-                requestMessage, operationName, _bus, cancellationToken).ConfigureAwait(false);
-        }
-
-        var snsOperationName = ExtractSnsOperationName(request, bodyBytes, bodyLength);
-        return await SnsOperationHandler.HandleAsync(
-            requestMessage, snsOperationName, _bus, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static HttpRequestMessage BuildHttpRequestMessage(HttpRequest request, byte[] bodyBytes, int bodyLength)
-    {
-        var uri = $"{request.Scheme}://{request.Host}{request.Path}{request.QueryString}";
-        var requestMessage = new HttpRequestMessage(new HttpMethod(request.Method), uri);
-
-        // Copy request headers
-        foreach (var header in request.Headers)
-        {
-            requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
-        }
-
-        // Set body content using the pooled buffer directly (no copy via ToArray)
-        var content = new ByteArrayContent(bodyBytes, 0, bodyLength);
-        foreach (var header in request.Headers)
-        {
-            content.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
-        }
-        requestMessage.Content = content;
-
-        return requestMessage;
     }
 
     private static bool IsSqsRequest(HttpRequest request)
@@ -146,29 +114,7 @@ internal sealed class AwsBridgeMiddleware
         throw new InvalidOperationException("Unable to determine SNS operation name from request.");
     }
 
-    private static async Task WriteResponseAsync(HttpResponse response, HttpResponseMessage responseMessage)
-    {
-        response.StatusCode = (int)responseMessage.StatusCode;
-
-        // Copy response headers
-        foreach (var header in responseMessage.Headers)
-        {
-            response.Headers[header.Key] = header.Value.ToArray();
-        }
-
-        if (responseMessage.Content != null)
-        {
-            // Copy content headers
-            foreach (var header in responseMessage.Content.Headers)
-            {
-                response.Headers[header.Key] = header.Value.ToArray();
-            }
-
-            await responseMessage.Content.CopyToAsync(response.Body).ConfigureAwait(false);
-        }
-    }
-
-    private static HttpResponseMessage CreateErrorResponse(Exception exception)
+    private static async Task WriteErrorResponseAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
     {
         var errorType = exception.GetType().Name;
         var errorMessage = exception.Message;
@@ -182,15 +128,15 @@ internal sealed class AwsBridgeMiddleware
 
         var statusCode = exception switch
         {
-            Amazon.SQS.Model.QueueDoesNotExistException => HttpStatusCode.BadRequest,
-            Amazon.SimpleNotificationService.Model.NotFoundException => HttpStatusCode.NotFound,
-            Amazon.Runtime.AmazonServiceException => HttpStatusCode.BadRequest,
-            _ => HttpStatusCode.InternalServerError
+            Amazon.SQS.Model.QueueDoesNotExistException => 400,
+            Amazon.SimpleNotificationService.Model.NotFoundException => 404,
+            Amazon.Runtime.AmazonServiceException => 400,
+            _ => 500
         };
 
-        return new HttpResponseMessage(statusCode)
-        {
-            Content = new StringContent(errorJson, Encoding.UTF8, "application/x-amz-json-1.0")
-        };
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/x-amz-json-1.0";
+        var errorBytes = Encoding.UTF8.GetBytes(errorJson);
+        await context.Response.Body.WriteAsync(errorBytes, cancellationToken).ConfigureAwait(false);
     }
 }

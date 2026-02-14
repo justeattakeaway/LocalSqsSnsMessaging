@@ -8,6 +8,7 @@
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>local-sqs-sns</ToolCommandName>
         <RootNamespace>LocalSqsSnsMessaging</RootNamespace>
+        <DefineConstants>$(DefineConstants);ASPNETCORE</DefineConstants>
     </PropertyGroup>
 
     <!-- Remove the ASP.NET Core implicit global usings that conflict with AWS SDK types -->
