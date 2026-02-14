@@ -1,0 +1,112 @@
+name: publish-native
+
+on:
+  push:
+    tags: [ v* ]
+  workflow_dispatch:
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_NOLOGO: true
+  DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION: 1
+  NUGET_XMLDOC_MODE: skip
+  TERM: xterm
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+          - rid: osx-x64
+            os: macos-13
+          - rid: osx-arm64
+            os: macos-latest
+          - rid: win-x64
+            os: windows-latest
+
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@baa11fbfe1d6520db94683bd5c7a3818018e4309 # v5.1.0
+
+    - name: Publish native AOT
+      shell: pwsh
+      run: |
+        dotnet publish src/LocalSqsSnsMessaging.Server/ `
+          -c Release `
+          -r ${{ matrix.rid }} `
+          -p:PublishAot=true `
+          -o ./publish
+
+    - name: Package (tar.gz)
+      if: runner.os != 'Windows'
+      shell: pwsh
+      run: |
+        tar -czf "local-sqs-sns-${{ matrix.rid }}.tar.gz" -C ./publish .
+
+    - name: Package (zip)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Compress-Archive -Path ./publish/* -DestinationPath "local-sqs-sns-${{ matrix.rid }}.zip"
+
+    - name: Attest artifacts
+      uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+      if: |
+        github.event.repository.fork == false &&
+        startsWith(github.ref, 'refs/tags/v')
+      with:
+        subject-path: local-sqs-sns-${{ matrix.rid }}.*
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      with:
+        name: local-sqs-sns-${{ matrix.rid }}
+        path: local-sqs-sns-${{ matrix.rid }}.*
+        if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: |
+      github.event.repository.fork == false &&
+      startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        path: ./artifacts
+        merge-multiple: true
+
+    - name: Attach to GitHub Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: pwsh
+      run: |
+        $tag = $env:GITHUB_REF_NAME
+        $files = Get-ChildItem ./artifacts -File | ForEach-Object { $_.FullName }
+        gh release upload $tag @files --repo ${{ github.repository }} --clobber

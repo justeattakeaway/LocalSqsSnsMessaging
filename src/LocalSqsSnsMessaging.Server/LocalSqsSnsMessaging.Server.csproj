@@ -2,12 +2,17 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>local-sqs-sns</ToolCommandName>
         <RootNamespace>LocalSqsSnsMessaging</RootNamespace>
+    </PropertyGroup>
+
+    <!-- Suppress trim/AOT warnings from shared library code (AWS SDK interop, generated handlers) -->
+    <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+        <NoWarn>$(NoWarn);IL2026;IL3050</NoWarn>
     </PropertyGroup>
 
     <!-- Remove the ASP.NET Core implicit global usings that conflict with AWS SDK types -->
@@ -28,6 +33,12 @@
 
     <ItemGroup>
         <Compile Include="..\LocalSqsSnsMessaging.Shared\**\*.cs" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="wwwroot\dashboard.html" LogicalName="dashboard.html" />
+        <EmbeddedResource Include="wwwroot\dashboard.css" LogicalName="dashboard.css" />
+        <EmbeddedResource Include="wwwroot\dashboard.js" LogicalName="dashboard.js" />
     </ItemGroup>
 
     <ItemGroup>
