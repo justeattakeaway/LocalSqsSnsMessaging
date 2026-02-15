@@ -53,7 +53,7 @@ jobs:
       id: setup-dotnet
 
     - name: Setup Bun
-      uses: oven-sh/setup-bun@v2
+      uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2
 
     - name: Build, Test and Package
       shell: pwsh
