@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -23,6 +24,7 @@ public sealed class ServerSmokeTests : IAsyncDisposable
 {
     private WebApplication? _app;
     private int _port;
+    private readonly ConcurrentDictionary<string, InMemoryAwsBus> _buses = new();
     private AmazonSQSClient? _sqsClient;
     private AmazonSimpleNotificationServiceClient? _snsClient;
 
@@ -31,10 +33,7 @@ public sealed class ServerSmokeTests : IAsyncDisposable
     {
         _port = GetAvailablePort();
 
-        var bus = new InMemoryAwsBus
-        {
-            ServiceUrl = new Uri($"http://localhost:{_port}")
-        };
+        var serviceUrl = new Uri($"http://localhost:{_port}");
 
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.ConfigureKestrel(options => options.ListenLocalhost(_port));
@@ -44,6 +43,7 @@ public sealed class ServerSmokeTests : IAsyncDisposable
 
         _app.Map("{**path}", async (HttpContext context) =>
         {
+            var bus = ResolveBus(context.Request, serviceUrl);
             await HandleAwsRequest(context, bus);
         });
 
@@ -213,6 +213,70 @@ public sealed class ServerSmokeTests : IAsyncDisposable
         response.QueueUrls.Count.ShouldBeGreaterThanOrEqualTo(2);
     }
 
+    [Test]
+    public async Task Sqs_MultiAccount_ShouldIsolateQueues()
+    {
+        // Create a second SQS client with a different 12-digit account ID
+        using var sqsClient2 = new AmazonSQSClient(
+            new BasicAWSCredentials("111111111111", "fake"),
+            new AmazonSQSConfig
+            {
+                ServiceURL = $"http://localhost:{_port}",
+                MaxErrorRetry = 0
+            });
+
+        // Create queues on each account
+        await _sqsClient!.CreateQueueAsync("account1-queue");
+        await sqsClient2.CreateQueueAsync("account2-queue");
+
+        // Each account should only see its own queues
+        var account1Queues = await _sqsClient.ListQueuesAsync(new ListQueuesRequest());
+        var account2Queues = await sqsClient2.ListQueuesAsync(new ListQueuesRequest());
+
+        account1Queues.QueueUrls.ShouldContain(q => q.Contains("account1-queue", StringComparison.Ordinal));
+        account1Queues.QueueUrls.ShouldNotContain(q => q.Contains("account2-queue", StringComparison.Ordinal));
+
+        account2Queues.QueueUrls.ShouldContain(q => q.Contains("account2-queue", StringComparison.Ordinal));
+        account2Queues.QueueUrls.ShouldNotContain(q => q.Contains("account1-queue", StringComparison.Ordinal));
+    }
+
+    [Test]
+    public async Task Sqs_MultiAccount_MessagesShouldBeIsolated()
+    {
+        using var sqsClient2 = new AmazonSQSClient(
+            new BasicAWSCredentials("222222222222", "fake"),
+            new AmazonSQSConfig
+            {
+                ServiceURL = $"http://localhost:{_port}",
+                MaxErrorRetry = 0
+            });
+
+        // Create same-named queue on both accounts
+        var url1 = (await _sqsClient!.CreateQueueAsync("shared-name-queue")).QueueUrl;
+        var url2 = (await sqsClient2.CreateQueueAsync("shared-name-queue")).QueueUrl;
+
+        // Send message only to account 1
+        await _sqsClient.SendMessageAsync(url1, "account1 message");
+
+        // Account 1 should receive the message
+        var recv1 = await _sqsClient.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = url1,
+            MaxNumberOfMessages = 1
+        });
+        recv1.Messages.ShouldHaveSingleItem();
+        recv1.Messages[0].Body.ShouldBe("account1 message");
+
+        // Account 2 should not receive any messages
+        var recv2 = await sqsClient2.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = url2,
+            MaxNumberOfMessages = 1,
+            WaitTimeSeconds = 0
+        });
+        (recv2.Messages ?? []).ShouldBeEmpty();
+    }
+
     private static int GetAvailablePort()
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -220,6 +284,40 @@ public sealed class ServerSmokeTests : IAsyncDisposable
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
         return port;
+    }
+
+    /// <summary>
+    /// Resolves the InMemoryAwsBus for a request based on the access key in the Authorization header.
+    /// If the access key is a 12-digit number, it's treated as an account ID (like LocalStack).
+    /// </summary>
+    private InMemoryAwsBus ResolveBus(HttpRequest request, Uri serviceUrl)
+    {
+        var accountId = "000000000000";
+
+        var authHeader = request.Headers.Authorization.ToString();
+        if (!string.IsNullOrEmpty(authHeader))
+        {
+            var credIdx = authHeader.IndexOf("Credential=", StringComparison.Ordinal);
+            if (credIdx >= 0)
+            {
+                var start = credIdx + "Credential=".Length;
+                var slashIdx = authHeader.IndexOf('/', start);
+                if (slashIdx > start)
+                {
+                    var accessKey = authHeader[start..slashIdx];
+                    if (accessKey.Length == 12 && accessKey.All(char.IsAsciiDigit))
+                    {
+                        accountId = accessKey;
+                    }
+                }
+            }
+        }
+
+        return _buses.GetOrAdd(accountId, id => new InMemoryAwsBus
+        {
+            CurrentAccountId = id,
+            ServiceUrl = serviceUrl
+        });
     }
 
     /// <summary>

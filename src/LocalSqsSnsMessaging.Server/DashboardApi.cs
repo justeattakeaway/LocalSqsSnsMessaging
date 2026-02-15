@@ -11,18 +11,22 @@ namespace LocalSqsSnsMessaging.Server;
 
 internal static class DashboardApi
 {
-    public static IResult GetState(InMemoryAwsBus bus)
+    public static IResult GetState(BusRegistry registry, string? account)
     {
-        return Results.Json(BuildState(bus), DashboardJsonContext.Default.BusState);
+        var bus = ResolveBus(registry, account);
+        var currentAccount = account ?? registry.DefaultAccountId;
+        return Results.Json(BuildState(bus, registry.AccountIds, currentAccount), DashboardJsonContext.Default.BusState);
     }
 
-    public static IResult StreamState(InMemoryAwsBus bus, CancellationToken cancellationToken)
+    public static IResult StreamState(BusRegistry registry, string? account, CancellationToken cancellationToken)
     {
-        return TypedResults.ServerSentEvents(GenerateStateEvents(bus, cancellationToken), eventType: "state");
+        return TypedResults.ServerSentEvents(GenerateStateEvents(registry, account, cancellationToken), eventType: "state");
     }
 
-    public static IResult GetQueueMessages(InMemoryAwsBus bus, string queueName)
+    public static IResult GetQueueMessages(BusRegistry registry, string? account, string queueName)
     {
+        var bus = ResolveBus(registry, account);
+
         if (!bus.Queues.TryGetValue(queueName, out var queue))
         {
             return Results.NotFound("Queue not found");
@@ -52,15 +56,28 @@ internal static class DashboardApi
         return Results.Json(result, DashboardJsonContext.Default.QueueMessages);
     }
 
+    private static InMemoryAwsBus ResolveBus(BusRegistry registry, string? account)
+    {
+        if (!string.IsNullOrEmpty(account))
+        {
+            return registry.GetOrCreate(account);
+        }
+
+        return registry.DefaultBus;
+    }
+
     private static async IAsyncEnumerable<string> GenerateStateEvents(
-        InMemoryAwsBus bus,
+        BusRegistry registry,
+        string? account,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var lastJson = "";
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            var state = BuildState(bus);
+            var bus = ResolveBus(registry, account);
+            var currentAccount = account ?? registry.DefaultAccountId;
+            var state = BuildState(bus, registry.AccountIds, currentAccount);
             var json = JsonSerializer.Serialize(state, DashboardJsonContext.Default.BusState);
 
             if (json != lastJson)
@@ -73,10 +90,13 @@ internal static class DashboardApi
         }
     }
 
-    private static BusState BuildState(InMemoryAwsBus bus)
+    private static BusState BuildState(InMemoryAwsBus bus, List<string> accounts, string currentAccount)
     {
         return new BusState
         {
+            Accounts = accounts,
+            CurrentAccount = currentAccount,
+
             Queues = bus.Queues.Values.Select(q => new QueueInfo
             {
                 Name = q.Name,
@@ -158,6 +178,8 @@ internal static class DashboardApi
 
     internal sealed class BusState
     {
+        public required List<string> Accounts { get; init; }
+        public required string CurrentAccount { get; init; }
         public required List<QueueInfo> Queues { get; init; }
         public required List<TopicInfo> Topics { get; init; }
         public required List<SubscriptionInfo> Subscriptions { get; init; }

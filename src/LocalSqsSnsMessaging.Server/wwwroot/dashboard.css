@@ -659,6 +659,37 @@ body {
     font-size: 13px;
 }
 
+/* Account selector */
+.account-select {
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 24px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b90a0'%3E%3Cpath d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.account-select:hover {
+    border-color: #3a3e4a;
+}
+.account-select:focus {
+    border-color: var(--border-highlight);
+}
+.account-label {
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+}
+
 @media (max-width: 900px) {
     .main { flex-direction: column; }
     .detail-panel { width: 100%; min-width: 100%; max-height: 50vh; border-left: none; border-top: 1px solid var(--border); }
