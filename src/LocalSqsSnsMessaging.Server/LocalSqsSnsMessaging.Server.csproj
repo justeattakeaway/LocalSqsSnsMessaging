@@ -16,6 +16,18 @@
         <NoWarn>$(NoWarn);IL2026;IL3050</NoWarn>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(PublishContainer)' == 'true'">
+        <ContainerFamily>noble-chiseled</ContainerFamily>
+        <ContainerRepository>justeattakeaway/local-sqs-sns</ContainerRepository>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(PublishContainer)' == 'true'">
+        <ContainerLabel Include="org.opencontainers.image.source" Value="https://github.com/justeattakeaway/LocalSqsSnsMessaging" />
+        <ContainerLabel Include="org.opencontainers.image.description" Value="In-memory drop-in replacement for AWS SQS and SNS" />
+        <ContainerLabel Include="org.opencontainers.image.licenses" Value="Apache-2.0" />
+        <ContainerPort Include="5050" Type="tcp" />
+    </ItemGroup>
+
     <ItemGroup>
         <InternalsVisibleTo Include="LocalSqsSnsMessaging.Tests.Server, PublicKey=00240000048000009400000006020000002400005253413100040000010001009D30C64BC42BA5037AEC3CF60334DF3A4C140FFC1DAB19FDD31C9765E4E29AFA441396FF9437A764B618C6473A3B350C56D706A0FBE83915F1F250EE23EB548B30306187AC685F65CAA48303DC86F08C1C24D99DC84966273C207EAA8570B440004C7F49CEF4EC77BC69118610AE2B53DB7D8ABEB465CBCD4BD190FEAF517AAD" />
     </ItemGroup>
