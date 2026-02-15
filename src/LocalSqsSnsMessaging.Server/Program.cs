@@ -1,4 +1,3 @@
-using LocalSqsSnsMessaging;
 using LocalSqsSnsMessaging.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -16,13 +15,7 @@ var accountId = builder.Configuration.GetValue("account-id", "000000000000")!;
 
 builder.WebHost.UseUrls($"http://*:{port}");
 
-var bus = new InMemoryAwsBus
-{
-    CurrentRegion = region,
-    CurrentAccountId = accountId,
-    ServiceUrl = new Uri($"http://localhost:{port}"),
-    UsageTrackingEnabled = true
-};
+var registry = new BusRegistry(accountId, region, new Uri($"http://localhost:{port}"));
 
 var app = builder.Build();
 
@@ -32,17 +25,30 @@ app.MapGet("/_ui/dashboard.css", Dashboard.ServeCss);
 app.MapGet("/_ui/dashboard.js", Dashboard.ServeJs);
 
 // Dashboard API
-app.MapGet("/_ui/api/state", () => DashboardApi.GetState(bus));
-app.MapGet("/_ui/api/state/stream", (CancellationToken ct) => DashboardApi.StreamState(bus, ct));
-app.MapGet("/_ui/api/queues/{name}/messages", (string name) => DashboardApi.GetQueueMessages(bus, name));
+app.MapGet("/_ui/api/state", (HttpContext ctx) =>
+{
+    var account = ctx.Request.Query["account"].FirstOrDefault();
+    return DashboardApi.GetState(registry, account);
+});
+app.MapGet("/_ui/api/state/stream", (HttpContext ctx, CancellationToken ct) =>
+{
+    var account = ctx.Request.Query["account"].FirstOrDefault();
+    return DashboardApi.StreamState(registry, account, ct);
+});
+app.MapGet("/_ui/api/queues/{name}/messages", (HttpContext ctx, string name) =>
+{
+    var account = ctx.Request.Query["account"].FirstOrDefault();
+    return DashboardApi.GetQueueMessages(registry, account, name);
+});
 
 // Fallback: all other requests go to the AWS bridge middleware
-var middleware = new AwsBridgeMiddleware(bus);
+var middleware = new AwsBridgeMiddleware(registry);
 app.MapFallback(middleware.InvokeAsync);
 
 Console.WriteLine($"LocalSqsSnsMessaging server listening on http://localhost:{port}");
-Console.WriteLine($"  Region:    {region}");
-Console.WriteLine($"  AccountId: {accountId}");
-Console.WriteLine($"  Dashboard: http://localhost:{port}/_ui");
+Console.WriteLine($"  Region:     {region}");
+Console.WriteLine($"  AccountId:  {accountId}");
+Console.WriteLine($"  Dashboard:  http://localhost:{port}/_ui");
+Console.WriteLine($"  Multi-account support enabled (12-digit access key = account ID)");
 
 app.Run();

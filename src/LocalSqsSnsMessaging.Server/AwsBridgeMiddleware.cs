@@ -14,16 +14,18 @@ internal sealed class AwsBridgeMiddleware
 {
     private const int InitialBufferSize = 4096;
 
-    private readonly InMemoryAwsBus _bus;
+    private readonly BusRegistry _registry;
 
-    public AwsBridgeMiddleware(InMemoryAwsBus bus)
+    public AwsBridgeMiddleware(BusRegistry registry)
     {
-        _bus = bus;
+        _registry = registry;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
         var cancellationToken = context.RequestAborted;
+
+        var bus = ResolveBus(context.Request);
 
         // Read the request body upfront using a pooled buffer - SNS Query protocol
         // needs it for both operation detection (Action param) and handler deserialization
@@ -43,13 +45,13 @@ internal sealed class AwsBridgeMiddleware
                 {
                     var operationName = ExtractSqsOperationName(context.Request);
                     await SqsOperationHandler.HandleAsync(
-                        context, bodyBuffer, bodyLength, operationName, _bus, cancellationToken).ConfigureAwait(false);
+                        context, bodyBuffer, bodyLength, operationName, bus, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
                     var operationName = ExtractSnsOperationName(context.Request, bodyBuffer, bodyLength);
                     await SnsOperationHandler.HandleAsync(
-                        context, bodyBuffer, bodyLength, operationName, _bus, cancellationToken).ConfigureAwait(false);
+                        context, bodyBuffer, bodyLength, operationName, bus, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -68,6 +70,61 @@ internal sealed class AwsBridgeMiddleware
             await ms.DisposeAsync().ConfigureAwait(false);
             ArrayPool<byte>.Shared.Return(initialBuffer, clearArray: true);
         }
+    }
+
+    private InMemoryAwsBus ResolveBus(HttpRequest request)
+    {
+        var accessKey = ExtractAccessKey(request);
+        if (accessKey is not null && IsAccountId(accessKey))
+        {
+            return _registry.GetOrCreate(accessKey);
+        }
+
+        return _registry.DefaultBus;
+    }
+
+    internal static string? ExtractAccessKey(HttpRequest request)
+    {
+        // AWS Signature V4 format:
+        // Authorization: AWS4-HMAC-SHA256 Credential=ACCESS_KEY_ID/20230101/us-east-1/sqs/aws4_request, ...
+        var authHeader = request.Headers.Authorization.ToString();
+        if (string.IsNullOrEmpty(authHeader))
+        {
+            return null;
+        }
+
+        var credentialIndex = authHeader.IndexOf("Credential=", StringComparison.Ordinal);
+        if (credentialIndex < 0)
+        {
+            return null;
+        }
+
+        var start = credentialIndex + "Credential=".Length;
+        var slashIndex = authHeader.IndexOf('/', start);
+        if (slashIndex < 0)
+        {
+            return null;
+        }
+
+        return authHeader[start..slashIndex];
+    }
+
+    private static bool IsAccountId(string accessKey)
+    {
+        if (accessKey.Length != 12)
+        {
+            return false;
+        }
+
+        foreach (var c in accessKey)
+        {
+            if (c is < '0' or > '9')
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool IsSqsRequest(HttpRequest request)

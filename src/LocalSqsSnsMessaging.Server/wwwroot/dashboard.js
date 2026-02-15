@@ -57,19 +57,20 @@ function simplifyArn(arn) {
 
 // --- SSE Hook ---
 
-function useSSE() {
-    const [state, setState] = useState({ queues: [], topics: [], subscriptions: [], recentOperations: [] });
+function useSSE(account) {
+    const [state, setState] = useState({ accounts: [], currentAccount: '', queues: [], topics: [], subscriptions: [], recentOperations: [] });
     const [connected, setConnected] = useState(false);
 
     useEffect(() => {
-        const es = new EventSource('/_ui/api/state/stream');
+        const params = account ? `?account=${encodeURIComponent(account)}` : '';
+        const es = new EventSource(`/_ui/api/state/stream${params}`);
         es.addEventListener('state', (event) => {
             setConnected(true);
             setState(JSON.parse(event.data));
         });
         es.onerror = () => setConnected(false);
         return () => es.close();
-    }, []);
+    }, [account]);
 
     return { state, connected };
 }
@@ -77,7 +78,8 @@ function useSSE() {
 // --- Components ---
 
 function App() {
-    const { state, connected } = useSSE();
+    const [currentAccount, setCurrentAccount] = useState(null);
+    const { state, connected } = useSSE(currentAccount);
     const [view, setView] = useState('resources');
     const [selectedArn, setSelectedArn] = useState(null);
     const [selectedType, setSelectedType] = useState(null);
@@ -106,8 +108,15 @@ function App() {
         setSelectedType('topic');
     }, []);
 
+    const handleAccountChange = useCallback((account) => {
+        setCurrentAccount(account);
+        setSelectedArn(null);
+        setSelectedType(null);
+    }, []);
+
     return html`
-        <${TopBar} view=${view} setView=${setView} state=${state} connected=${connected} />
+        <${TopBar} view=${view} setView=${setView} state=${state} connected=${connected}
+            currentAccount=${currentAccount} onAccountChange=${handleAccountChange} />
         ${view === 'resources' && html`
             <${ResourcesView} state=${state} selected=${selected} selectedType=${selectedType}
                 selectQueue=${selectQueue} selectTopic=${selectTopic} />
@@ -118,8 +127,11 @@ function App() {
     `;
 }
 
-function TopBar({ view, setView, state, connected }) {
+function TopBar({ view, setView, state, connected, currentAccount, onAccountChange }) {
+    const accounts = state.accounts || [];
+    const displayAccount = currentAccount || state.currentAccount || '';
     const opCount = (state.recentOperations || []).length;
+
     return html`
         <div class="topbar">
             <div class="topbar-left">
@@ -139,6 +151,18 @@ function TopBar({ view, setView, state, connected }) {
                 </div>
             </div>
             <div class="topbar-controls">
+                ${accounts.length > 1 && html`
+                    <select class="account-select"
+                        value=${displayAccount}
+                        onChange=${(e) => onAccountChange(e.target.value || null)}>
+                        ${accounts.map(acc => html`
+                            <option key=${acc} value=${acc}>${acc}</option>
+                        `)}
+                    </select>
+                `}
+                ${accounts.length <= 1 && displayAccount && html`
+                    <span class="account-label">${displayAccount}</span>
+                `}
                 <span class="connection-status ${connected ? 'connected' : ''}">
                     <span class="status-dot"></span>
                     <span>${connected ? 'Live' : 'Connecting...'}</span>
@@ -332,12 +356,13 @@ function QueueDetail({ state, queue }) {
 
     const loadMessages = useCallback(async () => {
         try {
-            const resp = await fetch(`/_ui/api/queues/${encodeURIComponent(queue.name)}/messages`);
+            const accountParam = state.currentAccount ? `?account=${encodeURIComponent(state.currentAccount)}` : '';
+            const resp = await fetch(`/_ui/api/queues/${encodeURIComponent(queue.name)}/messages${accountParam}`);
             if (resp.ok) setMessages(await resp.json());
         } catch {
             setMessages({ pendingMessages: [], inFlightMessages: [] });
         }
-    }, [queue.name]);
+    }, [queue.name, state.currentAccount]);
 
     useEffect(() => { loadMessages(); }, [loadMessages]);
 
