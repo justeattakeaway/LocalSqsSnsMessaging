@@ -30,6 +30,7 @@ internal sealed class JsonCodeGenerator
         code.AppendLine("#pragma warning disable CS0618 // Type or member is obsolete");
         code.AppendLine("#pragma warning disable CS8600, CS8602, CS8604 // Nullable reference warnings");
         code.AppendLine();
+        code.AppendLine("using System.Buffers;");
         code.AppendLine("using System.Text.Json;");
         code.AppendLine($"using {_modelNamespace};");
         code.AppendLine();
@@ -104,9 +105,9 @@ internal sealed class JsonCodeGenerator
     {
         _itemCounter = 0; // Reset counter for each response serializer
 
-        code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, Stream stream)");
+        code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, IBufferWriter<byte> bufferWriter)");
         code.AppendLine("    {");
-        code.AppendLine("        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });");
+        code.AppendLine("        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });");
         code.AppendLine("        writer.WriteStartObject();");
         code.AppendLine();
 
@@ -133,9 +134,9 @@ internal sealed class JsonCodeGenerator
 
     private static void GenerateEmptyResponseSerializer(StringBuilder code, string opName)
     {
-        code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, Stream stream)");
+        code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, IBufferWriter<byte> bufferWriter)");
         code.AppendLine("    {");
-        code.AppendLine("        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });");
+        code.AppendLine("        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });");
         code.AppendLine("        writer.WriteStartObject();");
         code.AppendLine("        writer.WriteEndObject();");
         code.AppendLine("        writer.Flush();");

@@ -86,12 +86,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeAddPermissionResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -117,12 +117,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeCheckIfPhoneNumberIsOptedOutResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -148,12 +148,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeConfirmSubscriptionResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -179,12 +179,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeCreatePlatformApplicationResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -210,12 +210,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeCreatePlatformEndpointResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -241,12 +241,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeCreateSMSSandboxPhoneNumberResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -272,12 +272,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeCreateTopicResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -303,12 +303,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeDeleteEndpointResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -334,12 +334,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeDeletePlatformApplicationResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -365,12 +365,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeDeleteSMSSandboxPhoneNumberResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -396,12 +396,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeDeleteTopicResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -427,12 +427,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeGetDataProtectionPolicyResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -458,12 +458,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeGetEndpointAttributesResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -489,12 +489,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeGetPlatformApplicationAttributesResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -520,12 +520,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeGetSMSAttributesResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -551,12 +551,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeGetSMSSandboxAccountStatusResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -582,12 +582,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeGetSubscriptionAttributesResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -613,12 +613,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeGetTopicAttributesResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -644,12 +644,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeListEndpointsByPlatformApplicationResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -675,12 +675,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeListOriginationNumbersResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -706,12 +706,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeListPhoneNumbersOptedOutResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -737,12 +737,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeListPlatformApplicationsResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -768,12 +768,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeListSMSSandboxPhoneNumbersResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -799,12 +799,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeListSubscriptionsResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -830,12 +830,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeListSubscriptionsByTopicResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -861,12 +861,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeListTagsForResourceResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -892,12 +892,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeListTopicsResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -923,12 +923,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeOptInPhoneNumberResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -954,12 +954,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializePublishResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -985,12 +985,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializePublishBatchResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1016,12 +1016,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializePutDataProtectionPolicyResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1047,12 +1047,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeRemovePermissionResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1078,12 +1078,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeSetEndpointAttributesResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1109,12 +1109,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeSetPlatformApplicationAttributesResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1140,12 +1140,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeSetSMSAttributesResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1171,12 +1171,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeSetSubscriptionAttributesResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1202,12 +1202,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeSetTopicAttributesResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1233,12 +1233,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeSubscribeResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1264,12 +1264,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeTagResourceResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1295,12 +1295,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeUnsubscribeResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1326,12 +1326,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeUntagResourceResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)
@@ -1357,12 +1357,12 @@ internal static partial class SnsOperationHandler
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             SnsQuerySerializers.SerializeVerifySMSSandboxPhoneNumberResponse(result, pooledBuffer.Writer);
-            var xmlString = Encoding.UTF8.GetString(pooledBuffer.Writer.WrittenSpan);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(xmlString, Encoding.UTF8, "text/xml")
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml") { CharSet = "utf-8" };
             return response;
         }
         catch (OperationCanceledException)

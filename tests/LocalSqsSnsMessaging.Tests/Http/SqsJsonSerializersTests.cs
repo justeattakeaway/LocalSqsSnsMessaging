@@ -1,4 +1,5 @@
 #pragma warning disable CS8602, CS8604
+using System.Buffers;
 using System.Text;
 using System.Text.Json;
 using LocalSqsSnsMessaging.Sqs.Model;
@@ -93,13 +94,13 @@ public sealed class SqsJsonSerializersTests
             MD5OfMessageBody = "abc123def456",
             SequenceNumber = "seq-789"
         };
-        using var stream = new MemoryStream();
+        var buffer = new ArrayBufferWriter<byte>();
 
         // Act
-        SqsJsonSerializers.SerializeSendMessageResponse(response, stream);
+        SqsJsonSerializers.SerializeSendMessageResponse(response, buffer);
 
         // Assert
-        var json = Encoding.UTF8.GetString(stream.ToArray());
+        var json = Encoding.UTF8.GetString(buffer.WrittenSpan);
         var expected = """
         {
             "MD5OfMessageBody": "abc123def456",
@@ -163,13 +164,13 @@ public sealed class SqsJsonSerializersTests
                 }
             ]
         };
-        using var stream = new MemoryStream();
+        var buffer = new ArrayBufferWriter<byte>();
 
         // Act
-        SqsJsonSerializers.SerializeReceiveMessageResponse(response, stream);
+        SqsJsonSerializers.SerializeReceiveMessageResponse(response, buffer);
 
         // Assert
-        var json = Encoding.UTF8.GetString(stream.ToArray());
+        var json = Encoding.UTF8.GetString(buffer.WrittenSpan);
         var expected = """
         {
             "Messages": [
@@ -230,13 +231,13 @@ public sealed class SqsJsonSerializersTests
         {
             QueueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/my-test-queue.fifo"
         };
-        using var stream = new MemoryStream();
+        var buffer = new ArrayBufferWriter<byte>();
 
         // Act
-        SqsJsonSerializers.SerializeCreateQueueResponse(response, stream);
+        SqsJsonSerializers.SerializeCreateQueueResponse(response, buffer);
 
         // Assert
-        var json = Encoding.UTF8.GetString(stream.ToArray());
+        var json = Encoding.UTF8.GetString(buffer.WrittenSpan);
         var expected = """
         {
             "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/my-test-queue.fifo"
@@ -279,13 +280,13 @@ public sealed class SqsJsonSerializersTests
                 { "VisibilityTimeout", "30" }
             }
         };
-        using var stream = new MemoryStream();
+        var buffer = new ArrayBufferWriter<byte>();
 
         // Act
-        SqsJsonSerializers.SerializeGetQueueAttributesResponse(response, stream);
+        SqsJsonSerializers.SerializeGetQueueAttributesResponse(response, buffer);
 
         // Assert
-        var json = Encoding.UTF8.GetString(stream.ToArray());
+        var json = Encoding.UTF8.GetString(buffer.WrittenSpan);
         var expected = """
         {
             "Attributes": {
