@@ -34,7 +34,7 @@ jobs:
           - rid: linux-arm64
             os: ubuntu-24.04-arm
           - rid: osx-x64
-            os: macos-13
+            os: macos-15-intel
           - rid: osx-arm64
             os: macos-latest
           - rid: win-x64
