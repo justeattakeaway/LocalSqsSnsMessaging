@@ -107,6 +107,25 @@ $packageProjects = @(
     (Join-Path $solutionPath "src" "LocalSqsSnsMessaging.Server" "LocalSqsSnsMessaging.Server.csproj")
 )
 
+# Build dashboard
+Write-Host "Building dashboard..." -ForegroundColor Green
+$dashboardDir = Join-Path $solutionPath "src" "LocalSqsSnsMessaging.Server" "dashboard"
+
+if ($null -eq (Get-Command "bun" -ErrorAction SilentlyContinue)) {
+    throw "Bun is required to build the dashboard. Install from https://bun.sh"
+}
+
+Push-Location $dashboardDir
+try {
+    & bun install
+    if ($LASTEXITCODE -ne 0) { throw "bun install failed" }
+
+    & bun run build
+    if ($LASTEXITCODE -ne 0) { throw "dashboard build failed" }
+} finally {
+    Pop-Location
+}
+
 Write-Host "Building $($packageProjects.Count) NuGet package(s)..." -ForegroundColor Green
 ForEach ($project in $packageProjects) {
     DotNetPack $project

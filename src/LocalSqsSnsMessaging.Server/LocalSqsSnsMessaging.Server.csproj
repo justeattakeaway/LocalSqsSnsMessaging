@@ -34,4 +34,10 @@
         <PackageReference Include="Meziantou.Polyfill" PrivateAssets="all" />
     </ItemGroup>
 
+    <Target Name="BuildDashboard" BeforeTargets="BeforeBuild"
+            Condition="!Exists('wwwroot/dashboard.js') OR '$(BuildDashboard)' == 'true'">
+        <Exec Command="bun install &amp;&amp; bun run build"
+              WorkingDirectory="$(MSBuildProjectDirectory)/dashboard" />
+    </Target>
+
 </Project>

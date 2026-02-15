@@ -48,6 +48,9 @@ jobs:
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@baa11fbfe1d6520db94683bd5c7a3818018e4309 # v5.1.0
 
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2
+
     - name: Publish native AOT
       shell: pwsh
       run: |
