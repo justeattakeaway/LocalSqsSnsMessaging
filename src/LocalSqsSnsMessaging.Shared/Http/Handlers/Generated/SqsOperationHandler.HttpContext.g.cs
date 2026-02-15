@@ -2,8 +2,10 @@
 // Generated HttpContext-native JSON protocol handler for Sqs
 #if ASPNETCORE
 
+using System.Buffers;
 using System.Text;
 using LocalSqsSnsMessaging.Sqs.Model;
+using LocalSqsSnsMessaging.Http;
 using Microsoft.AspNetCore.Http;
 
 namespace LocalSqsSnsMessaging.Http.Handlers;
@@ -115,10 +117,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeAddPermissionResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeAddPermissionResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -145,10 +146,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeCancelMessageMoveTaskResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeCancelMessageMoveTaskResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -175,10 +175,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeChangeMessageVisibilityResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeChangeMessageVisibilityResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -205,10 +204,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeChangeMessageVisibilityBatchResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeChangeMessageVisibilityBatchResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -235,10 +233,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeCreateQueueResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeCreateQueueResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -265,10 +262,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeDeleteMessageResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeDeleteMessageResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -295,10 +291,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeDeleteMessageBatchResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeDeleteMessageBatchResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -325,10 +320,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeDeleteQueueResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeDeleteQueueResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -355,10 +349,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeGetQueueAttributesResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeGetQueueAttributesResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -385,10 +378,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeGetQueueUrlResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeGetQueueUrlResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -415,10 +407,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeListDeadLetterSourceQueuesResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeListDeadLetterSourceQueuesResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -445,10 +436,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeListMessageMoveTasksResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeListMessageMoveTasksResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -475,10 +465,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeListQueueTagsResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeListQueueTagsResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -505,10 +494,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeListQueuesResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeListQueuesResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -535,10 +523,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializePurgeQueueResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializePurgeQueueResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -565,10 +552,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeReceiveMessageResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeReceiveMessageResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -595,10 +581,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeRemovePermissionResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeRemovePermissionResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -625,10 +610,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeSendMessageResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeSendMessageResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -655,10 +639,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeSendMessageBatchResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeSendMessageBatchResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -685,10 +668,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeSetQueueAttributesResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeSetQueueAttributesResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -715,10 +697,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeStartMessageMoveTaskResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeStartMessageMoveTaskResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -745,10 +726,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeTagQueueResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeTagQueueResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -775,10 +755,9 @@ internal static partial class SqsOperationHandler
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            using var responseBuffer = new MemoryStream();
-            SqsJsonSerializers.SerializeUntagQueueResponse(result, responseBuffer);
-            responseBuffer.Position = 0;
-            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeUntagQueueResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {

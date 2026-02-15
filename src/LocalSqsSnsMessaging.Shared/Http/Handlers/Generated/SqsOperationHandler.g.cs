@@ -2,9 +2,11 @@
 // Generated JSON protocol handler for Sqs (HttpRequestMessage variant - library only)
 #if !ASPNETCORE
 
+using System.Buffers;
 using System.Net;
 using System.Text;
 using LocalSqsSnsMessaging.Sqs.Model;
+using LocalSqsSnsMessaging.Http;
 
 namespace LocalSqsSnsMessaging.Http.Handlers;
 
@@ -62,13 +64,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeAddPermissionRequest(requestStream);
             var result = await client.AddPermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeAddPermissionResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeAddPermissionResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -94,13 +95,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeCancelMessageMoveTaskRequest(requestStream);
             var result = await client.CancelMessageMoveTaskAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeCancelMessageMoveTaskResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeCancelMessageMoveTaskResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -126,13 +126,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityRequest(requestStream);
             var result = await client.ChangeMessageVisibilityAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeChangeMessageVisibilityResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeChangeMessageVisibilityResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -158,13 +157,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityBatchRequest(requestStream);
             var result = await client.ChangeMessageVisibilityBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeChangeMessageVisibilityBatchResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeChangeMessageVisibilityBatchResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -190,13 +188,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeCreateQueueRequest(requestStream);
             var result = await client.CreateQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeCreateQueueResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeCreateQueueResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -222,13 +219,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeDeleteMessageRequest(requestStream);
             var result = await client.DeleteMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeDeleteMessageResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeDeleteMessageResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -254,13 +250,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeDeleteMessageBatchRequest(requestStream);
             var result = await client.DeleteMessageBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeDeleteMessageBatchResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeDeleteMessageBatchResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -286,13 +281,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeDeleteQueueRequest(requestStream);
             var result = await client.DeleteQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeDeleteQueueResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeDeleteQueueResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -318,13 +312,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeGetQueueAttributesRequest(requestStream);
             var result = await client.GetQueueAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeGetQueueAttributesResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeGetQueueAttributesResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -350,13 +343,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeGetQueueUrlRequest(requestStream);
             var result = await client.GetQueueUrlAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeGetQueueUrlResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeGetQueueUrlResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -382,13 +374,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeListDeadLetterSourceQueuesRequest(requestStream);
             var result = await client.ListDeadLetterSourceQueuesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeListDeadLetterSourceQueuesResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeListDeadLetterSourceQueuesResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -414,13 +405,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeListMessageMoveTasksRequest(requestStream);
             var result = await client.ListMessageMoveTasksAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeListMessageMoveTasksResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeListMessageMoveTasksResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -446,13 +436,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeListQueueTagsRequest(requestStream);
             var result = await client.ListQueueTagsAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeListQueueTagsResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeListQueueTagsResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -478,13 +467,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeListQueuesRequest(requestStream);
             var result = await client.ListQueuesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeListQueuesResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeListQueuesResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -510,13 +498,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializePurgeQueueRequest(requestStream);
             var result = await client.PurgeQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializePurgeQueueResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializePurgeQueueResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -542,13 +529,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeReceiveMessageRequest(requestStream);
             var result = await client.ReceiveMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeReceiveMessageResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeReceiveMessageResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -574,13 +560,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeRemovePermissionRequest(requestStream);
             var result = await client.RemovePermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeRemovePermissionResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeRemovePermissionResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -606,13 +591,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeSendMessageRequest(requestStream);
             var result = await client.SendMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeSendMessageResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeSendMessageResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -638,13 +622,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeSendMessageBatchRequest(requestStream);
             var result = await client.SendMessageBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeSendMessageBatchResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeSendMessageBatchResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -670,13 +653,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeSetQueueAttributesRequest(requestStream);
             var result = await client.SetQueueAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeSetQueueAttributesResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeSetQueueAttributesResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -702,13 +684,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeStartMessageMoveTaskRequest(requestStream);
             var result = await client.StartMessageMoveTaskAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeStartMessageMoveTaskResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeStartMessageMoveTaskResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -734,13 +715,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeTagQueueRequest(requestStream);
             var result = await client.TagQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeTagQueueResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeTagQueueResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;
@@ -766,13 +746,12 @@ internal static partial class SqsOperationHandler
             var requestObject = SqsJsonSerializers.DeserializeUntagQueueRequest(requestStream);
             var result = await client.UntagQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
-            using var responseStream = new MemoryStream();
-            SqsJsonSerializers.SerializeUntagQueueResponse(result, responseStream);
-            var responseBytes = responseStream.ToArray();
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            SqsJsonSerializers.SerializeUntagQueueResponse(result, pooledBuffer.Writer);
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(responseBytes)
+                Content = new ByteArrayContent(pooledBuffer.Writer.WrittenSpan.ToArray())
             };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-amz-json-1.0");
             return response;

@@ -4,6 +4,7 @@
 #pragma warning disable CS0618 // Type or member is obsolete
 #pragma warning disable CS8600, CS8602, CS8604 // Nullable reference warnings
 
+using System.Buffers;
 using System.Text.Json;
 using LocalSqsSnsMessaging.Sqs.Model;
 
@@ -51,9 +52,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeAddPermissionResponse(AddPermissionResponse response, Stream stream)
+    internal static void SerializeAddPermissionResponse(AddPermissionResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
@@ -72,9 +73,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeCancelMessageMoveTaskResponse(CancelMessageMoveTaskResponse response, Stream stream)
+    internal static void SerializeCancelMessageMoveTaskResponse(CancelMessageMoveTaskResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // ApproximateNumberOfMessagesMoved
@@ -106,9 +107,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeChangeMessageVisibilityResponse(ChangeMessageVisibilityResponse response, Stream stream)
+    internal static void SerializeChangeMessageVisibilityResponse(ChangeMessageVisibilityResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
@@ -144,9 +145,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeChangeMessageVisibilityBatchResponse(ChangeMessageVisibilityBatchResponse response, Stream stream)
+    internal static void SerializeChangeMessageVisibilityBatchResponse(ChangeMessageVisibilityBatchResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // Successful
@@ -222,9 +223,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeCreateQueueResponse(CreateQueueResponse response, Stream stream)
+    internal static void SerializeCreateQueueResponse(CreateQueueResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // QueueUrl
@@ -252,9 +253,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeDeleteMessageResponse(DeleteMessageResponse response, Stream stream)
+    internal static void SerializeDeleteMessageResponse(DeleteMessageResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
@@ -288,9 +289,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeDeleteMessageBatchResponse(DeleteMessageBatchResponse response, Stream stream)
+    internal static void SerializeDeleteMessageBatchResponse(DeleteMessageBatchResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // Successful
@@ -346,9 +347,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeDeleteQueueResponse(DeleteQueueResponse response, Stream stream)
+    internal static void SerializeDeleteQueueResponse(DeleteQueueResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
@@ -377,9 +378,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeGetQueueAttributesResponse(GetQueueAttributesResponse response, Stream stream)
+    internal static void SerializeGetQueueAttributesResponse(GetQueueAttributesResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // Attributes
@@ -415,9 +416,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeGetQueueUrlResponse(GetQueueUrlResponse response, Stream stream)
+    internal static void SerializeGetQueueUrlResponse(GetQueueUrlResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // QueueUrl
@@ -449,9 +450,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeListDeadLetterSourceQueuesResponse(ListDeadLetterSourceQueuesResponse response, Stream stream)
+    internal static void SerializeListDeadLetterSourceQueuesResponse(ListDeadLetterSourceQueuesResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // queueUrls
@@ -491,9 +492,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeListMessageMoveTasksResponse(ListMessageMoveTasksResponse response, Stream stream)
+    internal static void SerializeListMessageMoveTasksResponse(ListMessageMoveTasksResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // Results
@@ -544,9 +545,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeListQueueTagsResponse(ListQueueTagsResponse response, Stream stream)
+    internal static void SerializeListQueueTagsResponse(ListQueueTagsResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // Tags
@@ -586,9 +587,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeListQueuesResponse(ListQueuesResponse response, Stream stream)
+    internal static void SerializeListQueuesResponse(ListQueuesResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // QueueUrls
@@ -624,9 +625,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializePurgeQueueResponse(PurgeQueueResponse response, Stream stream)
+    internal static void SerializePurgeQueueResponse(PurgeQueueResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
@@ -691,9 +692,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeReceiveMessageResponse(ReceiveMessageResponse response, Stream stream)
+    internal static void SerializeReceiveMessageResponse(ReceiveMessageResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // Messages
@@ -788,9 +789,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeRemovePermissionResponse(RemovePermissionResponse response, Stream stream)
+    internal static void SerializeRemovePermissionResponse(RemovePermissionResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
@@ -897,9 +898,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeSendMessageResponse(SendMessageResponse response, Stream stream)
+    internal static void SerializeSendMessageResponse(SendMessageResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // MD5OfMessageBody
@@ -1028,9 +1029,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeSendMessageBatchResponse(SendMessageBatchResponse response, Stream stream)
+    internal static void SerializeSendMessageBatchResponse(SendMessageBatchResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // Successful
@@ -1106,9 +1107,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeSetQueueAttributesResponse(SetQueueAttributesResponse response, Stream stream)
+    internal static void SerializeSetQueueAttributesResponse(SetQueueAttributesResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
@@ -1135,9 +1136,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeStartMessageMoveTaskResponse(StartMessageMoveTaskResponse response, Stream stream)
+    internal static void SerializeStartMessageMoveTaskResponse(StartMessageMoveTaskResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
 
         // TaskHandle
@@ -1171,9 +1172,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeTagQueueResponse(TagQueueResponse response, Stream stream)
+    internal static void SerializeTagQueueResponse(TagQueueResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
@@ -1202,9 +1203,9 @@ internal static class SqsJsonSerializers
         return request;
     }
 
-    internal static void SerializeUntagQueueResponse(UntagQueueResponse response, Stream stream)
+    internal static void SerializeUntagQueueResponse(UntagQueueResponse response, IBufferWriter<byte> bufferWriter)
     {
-        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { SkipValidation = true });
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
