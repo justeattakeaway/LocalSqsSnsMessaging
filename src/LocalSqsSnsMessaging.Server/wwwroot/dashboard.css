@@ -30,6 +30,7 @@
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+#app { display: contents; }
 
 body {
     font-family: var(--font-sans);
