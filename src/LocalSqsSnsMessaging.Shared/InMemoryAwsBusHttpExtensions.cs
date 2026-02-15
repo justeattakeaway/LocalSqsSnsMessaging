@@ -1,3 +1,4 @@
+#if !ASPNETCORE
 using System.ComponentModel;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
@@ -70,3 +71,4 @@ public static class InMemoryAwsBusHttpExtensions
         }
     }
 }
+#endif

@@ -16,18 +16,6 @@
         <NoWarn>$(NoWarn);IL2026;IL3050</NoWarn>
     </PropertyGroup>
 
-    <!-- Remove the ASP.NET Core implicit global usings that conflict with AWS SDK types -->
-    <ItemGroup>
-        <Using Remove="Microsoft.AspNetCore.Builder" />
-        <Using Remove="Microsoft.AspNetCore.Hosting" />
-        <Using Remove="Microsoft.AspNetCore.Http" />
-        <Using Remove="Microsoft.AspNetCore.Routing" />
-        <Using Remove="Microsoft.Extensions.Configuration" />
-        <Using Remove="Microsoft.Extensions.DependencyInjection" />
-        <Using Remove="Microsoft.Extensions.Hosting" />
-        <Using Remove="Microsoft.Extensions.Logging" />
-    </ItemGroup>
-
     <ItemGroup>
         <InternalsVisibleTo Include="LocalSqsSnsMessaging.Tests.Server, PublicKey=00240000048000009400000006020000002400005253413100040000010001009D30C64BC42BA5037AEC3CF60334DF3A4C140FFC1DAB19FDD31C9765E4E29AFA441396FF9437A764B618C6473A3B350C56D706A0FBE83915F1F250EE23EB548B30306187AC685F65CAA48303DC86F08C1C24D99DC84966273C207EAA8570B440004C7F49CEF4EC77BC69118610AE2B53DB7D8ABEB465CBCD4BD190FEAF517AAD" />
     </ItemGroup>
@@ -43,9 +31,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.Core" />
-        <PackageReference Include="AWSSDK.SQS" />
-        <PackageReference Include="AWSSDK.SimpleNotificationService" />
         <PackageReference Include="Meziantou.Polyfill" PrivateAssets="all" />
     </ItemGroup>
 

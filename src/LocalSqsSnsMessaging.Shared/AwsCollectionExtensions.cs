@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel;
-using Amazon;
 
 namespace LocalSqsSnsMessaging;
 
@@ -10,12 +9,7 @@ internal static class AwsCollectionExtensions
     {
         public Dictionary<TKey, TValue>? ToInitializedDictionary()
         {
-            var result = source?.ToDictionary();
-            if (result is null && AWSConfigs.InitializeCollections)
-            {
-                return [];
-            }
-            return result;
+            return source?.ToDictionary() ?? [];
         }
     }
 
@@ -23,12 +17,7 @@ internal static class AwsCollectionExtensions
     {
         public List<TSource>? ToInitializedList()
         {
-            var result = source?.ToList();
-            if (result is null && AWSConfigs.InitializeCollections)
-            {
-                return [];
-            }
-            return result;
+            return source?.ToList() ?? [];
         }
     }
 }

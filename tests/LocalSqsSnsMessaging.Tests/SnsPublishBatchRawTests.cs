@@ -7,12 +7,12 @@ namespace LocalSqsSnsMessaging.Tests;
 public class SnsPublishBatchRawTests
 {
     [Test]
-    public async Task PublishBatchAsync_RawClient_ShouldReturnSuccessfulEntries()
+    public async Task PublishBatchAsync_ShouldReturnSuccessfulEntries()
     {
         // Arrange
         var bus = new InMemoryAwsBus();
-        using var sns = bus.CreateRawSnsClient();
-        using var sqs = bus.CreateRawSqsClient();
+        using var sns = bus.CreateSnsClient();
+        using var sqs = bus.CreateSqsClient();
 
         var topicName = "TestTopic";
         var queueName = "TestQueue";
@@ -46,9 +46,8 @@ public class SnsPublishBatchRawTests
         // Assert
         response.ShouldNotBeNull();
         response.Successful.ShouldNotBeNull();
-        response.Failed.ShouldNotBeNull();
         response.Successful.Count.ShouldBe(2);
-        response.Failed.Count.ShouldBe(0);
+        response.Failed.ShouldBeEmptyAwsCollection();
         response.Successful[0].Id.ShouldBe("1");
         response.Successful[0].MessageId.ShouldNotBeNullOrEmpty();
         response.Successful[1].Id.ShouldBe("2");

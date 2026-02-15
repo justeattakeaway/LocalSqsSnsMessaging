@@ -25,18 +25,9 @@ Don't take our word for it, here are our tests for this project at the time of w
 
 Additionally, some tests rely on the passage of time, but now with .NET's [`TimeProvider`](https://learn.microsoft.com/dotnet/api/system.timeprovider) you can control time in your tests, and travel through time like it's 1985, Great Scott!
 
-## Usage Modes
-
-This library supports two modes of operation:
-
-1. **SDK Clients with HttpMessageHandler** (`CreateSqsClient()` / `CreateSnsClient()`) - Returns real AWS SDK clients (`AmazonSQSClient` / `AmazonSimpleNotificationServiceClient`) configured with an in-memory HTTP handler
-2. **Raw In-Memory Clients** (`CreateRawSqsClient()` / `CreateRawSnsClient()`) - Returns lightweight implementations of `IAmazonSQS` and `IAmazonSimpleNotificationService` which do not depend on the SDK clients.
-
-Use the SDK clients mode when you need concrete AWS SDK types (e.g., for dependency injection or libraries that require concrete types). Both modes share the same in-memory bus and are functionally identical.
-
 ## Examples
 
-### Basic Usage (Direct In-Memory Clients)
+### Basic Usage
 
 Creating a topic, a queue, subscribing the queue to the topic, and sending a message to the topic, then receiving the message from the queue.
 
@@ -45,8 +36,8 @@ using Amazon.SimpleNotificationService.Model;
 using LocalSqsSnsMessaging;
 
 var bus = new InMemoryAwsBus();
-using var sqs = bus.CreateRawSqsClient();
-using var sns = bus.CreateRawSnsClient();
+using var sqs = bus.CreateSqsClient();
+using var sns = bus.CreateSnsClient();
 
 // Create a queue and a topic
 var queueUrl = (await sqs.CreateQueueAsync("test-queue")).QueueUrl;
@@ -67,25 +58,6 @@ var receiveMessageResponse = await sqs.ReceiveMessageAsync(queueUrl);
 var message = receiveMessageResponse.Messages.Single();
 
 Console.WriteLine(message.Body); // Hello, World!
-```
-
-### Using Real AWS SDK Clients
-
-For scenarios where you need the concrete AWS SDK client types:
-
-```csharp
-using Amazon.SQS;
-using Amazon.SimpleNotificationService;
-using LocalSqsSnsMessaging;
-
-var bus = new InMemoryAwsBus();
-using var sqs = bus.CreateSqsClient();      // Returns AmazonSQSClient
-using var sns = bus.CreateSnsClient();      // Returns AmazonSimpleNotificationServiceClient
-
-// Same API as direct clients
-var queueUrl = (await sqs.CreateQueueAsync("test-queue")).QueueUrl;
-await sqs.SendMessageAsync(queueUrl, "Hello from SDK client!");
-var messages = await sqs.ReceiveMessageAsync(queueUrl);
 ```
 
 ### Time Travel

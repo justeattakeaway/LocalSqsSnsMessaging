@@ -128,9 +128,8 @@ internal sealed class AwsBridgeMiddleware
 
         var statusCode = exception switch
         {
-            Amazon.SQS.Model.QueueDoesNotExistException => 400,
-            Amazon.SimpleNotificationService.Model.NotFoundException => 404,
-            Amazon.Runtime.AmazonServiceException => 400,
+            NotFoundException => 404,
+            AwsServiceException awsEx => (int)awsEx.StatusCode,
             _ => 500
         };
 

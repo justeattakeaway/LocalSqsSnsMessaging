@@ -8,7 +8,8 @@ using System.Buffers;
 using System.Globalization;
 using System.Text;
 using System.Xml;
-using Amazon.SimpleNotificationService.Model;
+using LocalSqsSnsMessaging.Sns.Model;
+using Endpoint = LocalSqsSnsMessaging.Sns.Model.Endpoint;
 using LocalSqsSnsMessaging.Http;
 
 namespace LocalSqsSnsMessaging.Http.Handlers;

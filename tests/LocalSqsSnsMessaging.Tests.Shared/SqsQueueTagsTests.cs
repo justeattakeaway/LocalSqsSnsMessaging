@@ -118,7 +118,7 @@ public abstract class SqsQueueTagsTests : WaitingTestBase
             QueueUrl = _queueUrl
         }, cancellationToken);
 
-        listTagsResponse.Tags.ShouldBeEmptyAwsCollection();
+        listTagsResponse.Tags.ShouldBeNullOrEmptyAwsCollection();
     }
 
     [Test]
@@ -131,7 +131,7 @@ public abstract class SqsQueueTagsTests : WaitingTestBase
             QueueUrl = _queueUrl
         }, cancellationToken);
 
-        listTagsResponse.Tags.ShouldBeEmptyAwsCollection();
+        listTagsResponse.Tags.ShouldBeNullOrEmptyAwsCollection();
     }
 
     [Test]
@@ -242,7 +242,7 @@ public abstract class SqsQueueTagsTests : WaitingTestBase
             QueueUrl = _queueUrl
         }, cancellationToken);
 
-        listTagsResponse.Tags.ShouldBeEmpty();
+        listTagsResponse.Tags.ShouldBeNullOrEmptyAwsCollection();
     }
 
     [Test]

@@ -1,3 +1,4 @@
+#if !ASPNETCORE
 using System.Net;
 using System.Text;
 
@@ -142,9 +143,8 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
 
         var statusCode = exception switch
         {
-            Amazon.SQS.Model.QueueDoesNotExistException => HttpStatusCode.BadRequest,
-            Amazon.SimpleNotificationService.Model.NotFoundException => HttpStatusCode.NotFound,
-            Amazon.Runtime.AmazonServiceException => HttpStatusCode.BadRequest,
+            NotFoundException => HttpStatusCode.NotFound,
+            AwsServiceException awsEx => awsEx.StatusCode,
             _ => HttpStatusCode.InternalServerError
         };
 
@@ -154,3 +154,4 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         };
     }
 }
+#endif

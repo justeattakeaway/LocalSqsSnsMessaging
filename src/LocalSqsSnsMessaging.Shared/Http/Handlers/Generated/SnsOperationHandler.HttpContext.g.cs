@@ -3,11 +3,8 @@
 #if ASPNETCORE
 
 using System.Buffers;
-using System.Net;
 using System.Text;
-using Amazon.SimpleNotificationService;
-using Amazon.SimpleNotificationService.Model;
-using Amazon.Runtime;
+using LocalSqsSnsMessaging.Sns.Model;
 using LocalSqsSnsMessaging.Http;
 using Microsoft.AspNetCore.Http;
 
@@ -27,7 +24,7 @@ internal static partial class SnsOperationHandler
         ArgumentNullException.ThrowIfNull(operationName);
         ArgumentNullException.ThrowIfNull(bus);
 
-        using IAmazonSimpleNotificationService client = bus.CreateRawSnsClient();
+        var client = new InternalSnsClient(bus);
 
         switch (operationName)
         {
@@ -166,7 +163,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -185,7 +182,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -195,7 +192,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -214,7 +211,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -224,7 +221,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -243,7 +240,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -253,7 +250,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -272,7 +269,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -282,7 +279,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -301,7 +298,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -311,7 +308,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -330,7 +327,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -340,7 +337,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -359,7 +356,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -369,7 +366,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -388,7 +385,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -398,7 +395,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -417,7 +414,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -427,7 +424,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -446,7 +443,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -456,7 +453,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -475,7 +472,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -485,7 +482,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -504,7 +501,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -514,7 +511,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -533,7 +530,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -543,7 +540,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -562,7 +559,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -572,7 +569,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -591,7 +588,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -601,7 +598,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -620,7 +617,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -630,7 +627,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -649,7 +646,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -659,7 +656,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -678,7 +675,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -688,7 +685,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -707,7 +704,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -717,7 +714,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -736,7 +733,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -746,7 +743,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -765,7 +762,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -775,7 +772,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -794,7 +791,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -804,7 +801,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -823,7 +820,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -833,7 +830,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -852,7 +849,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -862,7 +859,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -881,7 +878,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -891,7 +888,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -910,7 +907,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -920,7 +917,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -939,7 +936,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -949,7 +946,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -968,7 +965,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -978,7 +975,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -997,7 +994,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1007,7 +1004,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1026,7 +1023,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1036,7 +1033,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1055,7 +1052,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1065,7 +1062,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1084,7 +1081,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1094,7 +1091,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1113,7 +1110,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1123,7 +1120,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1142,7 +1139,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1152,7 +1149,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1171,7 +1168,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1181,7 +1178,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1200,7 +1197,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1210,7 +1207,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1229,7 +1226,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1239,7 +1236,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1258,7 +1255,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1268,7 +1265,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1287,7 +1284,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1297,7 +1294,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1316,7 +1313,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1326,7 +1323,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1345,7 +1342,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1355,7 +1352,7 @@ internal static partial class SnsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSimpleNotificationService client,
+        InternalSnsClient client,
         CancellationToken cancellationToken)
     {
         try
@@ -1374,7 +1371,7 @@ internal static partial class SnsOperationHandler
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteQueryErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -1386,7 +1383,7 @@ internal static partial class SnsOperationHandler
         string errorMessage;
         int statusCode;
 
-        if (exception is AmazonServiceException awsException)
+        if (exception is AwsServiceException awsException)
         {
             errorCode = awsException.ErrorCode ?? exception.GetType().Name.Replace("Exception", "");
             errorMessage = awsException.Message;

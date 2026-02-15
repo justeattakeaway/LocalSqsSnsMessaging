@@ -1,13 +1,12 @@
+#pragma warning disable CS8600, CS8601, CS8602, CS8604 // Nullable reference warnings - internal POCOs use nullable properties but values are set at runtime
+
 using System.Collections.Concurrent;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
-using Amazon.SimpleNotificationService.Model;
-using Amazon.SQS;
-using Amazon.SQS.Model;
-using MessageAttributeValue = Amazon.SimpleNotificationService.Model.MessageAttributeValue;
-using SnsBatchResultErrorEntry = Amazon.SimpleNotificationService.Model.BatchResultErrorEntry;
-using SqsMessageAttributeValue = Amazon.SQS.Model.MessageAttributeValue;
+using LocalSqsSnsMessaging.Sns.Model;
+using Message = LocalSqsSnsMessaging.Sqs.Model.Message;
+using SqsMessageAttributeValue = LocalSqsSnsMessaging.Sqs.Model.MessageAttributeValue;
 
 namespace LocalSqsSnsMessaging;
 
@@ -158,7 +157,7 @@ internal sealed class SnsPublishAction
             catch (Exception ex)
 #pragma warning restore CA1031
             {
-                response.Failed.Add(new SnsBatchResultErrorEntry
+                response.Failed.Add(new BatchResultErrorEntry
                 {
                     Id = entry.Id,
                     Code = "InternalError",

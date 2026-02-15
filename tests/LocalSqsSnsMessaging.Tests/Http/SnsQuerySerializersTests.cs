@@ -1,7 +1,7 @@
 using System.Buffers;
 using System.Text;
 using System.Xml.Linq;
-using Amazon.SimpleNotificationService.Model;
+using LocalSqsSnsMessaging.Sns.Model;
 using LocalSqsSnsMessaging.Http.Handlers;
 using Shouldly;
 

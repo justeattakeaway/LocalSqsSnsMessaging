@@ -7,10 +7,12 @@
       <Nullable>enable</Nullable>
       <IsPackable>false</IsPackable>
       <IsTestProject>true</IsTestProject>
-      <NoWarn>$(NoWarn);CA1051;CA2007;CA1707</NoWarn>
+      <NoWarn>$(NoWarn);CA1051;CA2007;CA1707;NU1901;NU1902</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="AWSSDK.SQS" />
+      <PackageReference Include="AWSSDK.SimpleNotificationService" />
       <PackageReference Include="Shouldly" />
     </ItemGroup>
 

@@ -1,3 +1,4 @@
+#if !ASPNETCORE
 using Amazon.Runtime;
 
 namespace LocalSqsSnsMessaging.Http;
@@ -43,3 +44,4 @@ internal sealed class InMemoryHttpClientFactory : HttpClientFactory
         return false;
     }
 }
+#endif
