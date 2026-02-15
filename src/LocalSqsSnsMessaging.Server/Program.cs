@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateSlimBuilder(args);
@@ -14,6 +15,7 @@ var region = builder.Configuration.GetValue("region", "us-east-1")!;
 var accountId = builder.Configuration.GetValue("account-id", "000000000000")!;
 
 builder.WebHost.UseUrls($"http://*:{port}");
+builder.Services.Configure<HostOptions>(options => options.ShutdownTimeout = TimeSpan.Zero);
 
 var registry = new BusRegistry(accountId, region, new Uri($"http://localhost:{port}"));
 
