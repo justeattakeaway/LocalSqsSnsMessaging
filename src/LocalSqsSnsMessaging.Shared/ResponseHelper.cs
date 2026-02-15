@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Net;
-using Amazon.Runtime;
 
 namespace LocalSqsSnsMessaging;
 

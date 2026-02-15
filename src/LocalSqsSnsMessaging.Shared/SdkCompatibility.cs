@@ -34,6 +34,19 @@ internal static class SdkCompatibility
     // Methods to convert our internal int? to SDK's int (v3)
     public static int ToSdkValue(int? value) => value.GetValueOrDefault();
     public static long ToSdkValue(long? value) => value.GetValueOrDefault();
+
+    // Nullable overloads for internal POCO types (which always use nullable primitives)
+    public static bool HasNonDefaultValue(int? value) => value.HasValue;
+    public static bool HasNonDefaultValue(long? value) => value.HasValue;
+    public static bool HasNonDefaultValue(bool? value) => value.HasValue;
+    public static bool HasNonDefaultValue(double? value) => value.HasValue;
+    public static bool HasNonDefaultValue(DateTime? value) => value.HasValue;
+
+    public static int GetValue(int? value) => value!.Value;
+    public static long GetValue(long? value) => value!.Value;
+    public static bool GetValue(bool? value) => value!.Value;
+    public static double GetValue(double? value) => value!.Value;
+    public static DateTime GetValue(DateTime? value) => value!.Value;
 #else
     // AWS SDK v4 uses nullable value types for most request properties.
 

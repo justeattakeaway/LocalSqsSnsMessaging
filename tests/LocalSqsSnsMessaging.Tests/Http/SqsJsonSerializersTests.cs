@@ -1,6 +1,7 @@
+#pragma warning disable CS8602, CS8604
 using System.Text;
 using System.Text.Json;
-using Amazon.SQS.Model;
+using LocalSqsSnsMessaging.Sqs.Model;
 using LocalSqsSnsMessaging.Http.Handlers;
 using Shouldly;
 
@@ -29,9 +30,9 @@ public sealed class SqsJsonSerializersTests
         // Arrange
         var json = """
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-            "messageBody": "Hello, World!",
-            "delaySeconds": 5
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+            "MessageBody": "Hello, World!",
+            "DelaySeconds": 5
         }
         """u8;
         using var stream = new MemoryStream(json.ToArray());
@@ -51,16 +52,16 @@ public sealed class SqsJsonSerializersTests
         // Arrange
         var json = """
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-            "messageBody": "Test message",
-            "messageAttributes": {
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+            "MessageBody": "Test message",
+            "MessageAttributes": {
                 "CustomerId": {
-                    "stringValue": "12345",
-                    "dataType": "String"
+                    "StringValue": "12345",
+                    "DataType": "String"
                 },
                 "Priority": {
-                    "stringValue": "1",
-                    "dataType": "Number"
+                    "StringValue": "1",
+                    "DataType": "Number"
                 }
             }
         }
@@ -101,9 +102,9 @@ public sealed class SqsJsonSerializersTests
         var json = Encoding.UTF8.GetString(stream.ToArray());
         var expected = """
         {
-            "mD5OfMessageBody": "abc123def456",
-            "messageId": "msg-12345",
-            "sequenceNumber": "seq-789"
+            "MD5OfMessageBody": "abc123def456",
+            "MessageId": "msg-12345",
+            "SequenceNumber": "seq-789"
         }
         """;
 
@@ -116,12 +117,12 @@ public sealed class SqsJsonSerializersTests
         // Arrange
         var json = """
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-            "maxNumberOfMessages": 10,
-            "visibilityTimeout": 30,
-            "waitTimeSeconds": 20,
-            "attributeNames": ["All"],
-            "messageAttributeNames": [".*"]
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+            "MaxNumberOfMessages": 10,
+            "VisibilityTimeout": 30,
+            "WaitTimeSeconds": 20,
+            "AttributeNames": ["All"],
+            "MessageAttributeNames": [".*"]
         }
         """u8;
         using var stream = new MemoryStream(json.ToArray());
@@ -134,9 +135,7 @@ public sealed class SqsJsonSerializersTests
         request.MaxNumberOfMessages.ShouldBe(10);
         request.VisibilityTimeout.ShouldBe(30);
         request.WaitTimeSeconds.ShouldBe(20);
-        #pragma warning disable CS0618 // Type or member is obsolete
         request.AttributeNames.ShouldContain("All");
-        #pragma warning restore CS0618
         request.MessageAttributeNames.ShouldContain(".*");
     }
 
@@ -173,18 +172,18 @@ public sealed class SqsJsonSerializersTests
         var json = Encoding.UTF8.GetString(stream.ToArray());
         var expected = """
         {
-            "messages": [
+            "Messages": [
                 {
-                    "messageId": "msg-1",
-                    "receiptHandle": "receipt-1",
-                    "mD5OfBody": "md5-1",
-                    "body": "Message 1"
+                    "MessageId": "msg-1",
+                    "ReceiptHandle": "receipt-1",
+                    "MD5OfBody": "md5-1",
+                    "Body": "Message 1"
                 },
                 {
-                    "messageId": "msg-2",
-                    "receiptHandle": "receipt-2",
-                    "mD5OfBody": "md5-2",
-                    "body": "Message 2"
+                    "MessageId": "msg-2",
+                    "ReceiptHandle": "receipt-2",
+                    "MD5OfBody": "md5-2",
+                    "Body": "Message 2"
                 }
             ]
         }
@@ -199,8 +198,8 @@ public sealed class SqsJsonSerializersTests
         // Arrange
         var json = """
         {
-            "queueName": "my-test-queue.fifo",
-            "attributes": {
+            "QueueName": "my-test-queue.fifo",
+            "Attributes": {
                 "FifoQueue": "true",
                 "ContentBasedDeduplication": "true",
                 "VisibilityTimeout": "30"
@@ -240,7 +239,7 @@ public sealed class SqsJsonSerializersTests
         var json = Encoding.UTF8.GetString(stream.ToArray());
         var expected = """
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/my-test-queue.fifo"
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/my-test-queue.fifo"
         }
         """;
 
@@ -253,8 +252,8 @@ public sealed class SqsJsonSerializersTests
         // Arrange
         var json = """
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-            "receiptHandle": "AQEBxyz123abc=="
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+            "ReceiptHandle": "AQEBxyz123abc=="
         }
         """u8;
         using var stream = new MemoryStream(json.ToArray());
@@ -289,7 +288,7 @@ public sealed class SqsJsonSerializersTests
         var json = Encoding.UTF8.GetString(stream.ToArray());
         var expected = """
         {
-            "attributes": {
+            "Attributes": {
                 "QueueArn": "arn:aws:sqs:us-east-1:123456789012:test-queue",
                 "ApproximateNumberOfMessages": "42",
                 "VisibilityTimeout": "30"
@@ -306,12 +305,12 @@ public sealed class SqsJsonSerializersTests
         // Arrange
         var json = """
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-            "messageBody": "Test message",
-            "messageSystemAttributes": {
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+            "MessageBody": "Test message",
+            "MessageSystemAttributes": {
                 "AWSTraceHeader": {
-                    "stringValue": "Root=1-5759e988-bd862e3fe1be46a994272793",
-                    "dataType": "String"
+                    "StringValue": "Root=1-5759e988-bd862e3fe1be46a994272793",
+                    "DataType": "String"
                 }
             }
         }
@@ -339,22 +338,22 @@ public sealed class SqsJsonSerializersTests
         // Arrange
         var json = """
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-            "messageBody": "Test message",
-            "messageAttributes": {
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+            "MessageBody": "Test message",
+            "MessageAttributes": {
                 "CustomerId": {
-                    "stringValue": "12345",
-                    "dataType": "String"
+                    "StringValue": "12345",
+                    "DataType": "String"
                 },
                 "Priority": {
-                    "stringValue": "1",
-                    "dataType": "Number"
+                    "StringValue": "1",
+                    "DataType": "Number"
                 }
             },
-            "messageSystemAttributes": {
+            "MessageSystemAttributes": {
                 "AWSTraceHeader": {
-                    "stringValue": "Root=1-5759e988-bd862e3fe1be46a994272793",
-                    "dataType": "String"
+                    "StringValue": "Root=1-5759e988-bd862e3fe1be46a994272793",
+                    "DataType": "String"
                 }
             }
         }
@@ -399,12 +398,12 @@ public sealed class SqsJsonSerializersTests
         var base64Data = Convert.ToBase64String(testData);
         var json = $$"""
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-            "messageBody": "Test message",
-            "messageSystemAttributes": {
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+            "MessageBody": "Test message",
+            "MessageSystemAttributes": {
                 "BinaryData": {
-                    "binaryValue": "{{base64Data}}",
-                    "dataType": "Binary"
+                    "BinaryValue": "{{base64Data}}",
+                    "DataType": "Binary"
                 }
             }
         }
@@ -428,12 +427,12 @@ public sealed class SqsJsonSerializersTests
         // Arrange
         var json = """
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-            "messageBody": "Test message",
-            "messageSystemAttributes": {
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+            "MessageBody": "Test message",
+            "MessageSystemAttributes": {
                 "Tags": {
-                    "stringListValues": ["tag1", "tag2", "tag3"],
-                    "dataType": "String.Array"
+                    "StringListValues": ["tag1", "tag2", "tag3"],
+                    "DataType": "String.Array"
                 }
             }
         }
@@ -462,20 +461,20 @@ public sealed class SqsJsonSerializersTests
         var base64Data = Convert.ToBase64String(testBinaryData);
         var json = $$"""
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-            "messageBody": "Test message",
-            "messageSystemAttributes": {
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+            "MessageBody": "Test message",
+            "MessageSystemAttributes": {
                 "StringAttr": {
-                    "stringValue": "test-string",
-                    "dataType": "String"
+                    "StringValue": "test-string",
+                    "DataType": "String"
                 },
                 "BinaryAttr": {
-                    "binaryValue": "{{base64Data}}",
-                    "dataType": "Binary"
+                    "BinaryValue": "{{base64Data}}",
+                    "DataType": "Binary"
                 },
                 "StringListAttr": {
-                    "stringListValues": ["item1", "item2"],
-                    "dataType": "String.Array"
+                    "StringListValues": ["item1", "item2"],
+                    "DataType": "String.Array"
                 }
             }
         }
@@ -509,10 +508,10 @@ public sealed class SqsJsonSerializersTests
         // Arrange
         var json = """
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue.fifo",
-            "messageBody": "Test FIFO message",
-            "messageDeduplicationId": "dedup-123",
-            "messageGroupId": "group-456"
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue.fifo",
+            "MessageBody": "Test FIFO message",
+            "MessageDeduplicationId": "dedup-123",
+            "MessageGroupId": "group-456"
         }
         """u8;
         using var stream = new MemoryStream(json.ToArray());
@@ -533,23 +532,23 @@ public sealed class SqsJsonSerializersTests
         // Arrange - A complete request with all possible fields
         var json = """
         {
-            "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue.fifo",
-            "messageBody": "Complete test message",
-            "delaySeconds": 10,
-            "messageAttributes": {
+            "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue.fifo",
+            "MessageBody": "Complete test message",
+            "DelaySeconds": 10,
+            "MessageAttributes": {
                 "UserAttribute": {
-                    "stringValue": "user-value",
-                    "dataType": "String"
+                    "StringValue": "user-value",
+                    "DataType": "String"
                 }
             },
-            "messageSystemAttributes": {
+            "MessageSystemAttributes": {
                 "AWSTraceHeader": {
-                    "stringValue": "Root=1-5759e988-bd862e3fe1be46a994272793",
-                    "dataType": "String"
+                    "StringValue": "Root=1-5759e988-bd862e3fe1be46a994272793",
+                    "DataType": "String"
                 }
             },
-            "messageDeduplicationId": "dedup-789",
-            "messageGroupId": "group-012"
+            "MessageDeduplicationId": "dedup-789",
+            "MessageGroupId": "group-012"
         }
         """u8;
         using var stream = new MemoryStream(json.ToArray());

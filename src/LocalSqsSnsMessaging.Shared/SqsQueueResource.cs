@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
-using Amazon.SQS.Model;
+using LocalSqsSnsMessaging.Sqs.Model;
 
 namespace LocalSqsSnsMessaging;
 

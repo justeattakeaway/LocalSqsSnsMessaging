@@ -9,15 +9,15 @@ namespace GenerateHandlers;
 internal sealed class QueryCodeGenerator
 {
     private readonly string _serviceName;
-    private readonly string _sdkNamespace;
+    private readonly string _modelNamespace;
     private readonly string _xmlNamespace;
     private readonly JsonElement _shapes;
     private readonly HashSet<string> _generatedHelpers = new();
 
-    public QueryCodeGenerator(string serviceName, string sdkNamespace, string xmlNamespace, JsonElement shapes)
+    public QueryCodeGenerator(string serviceName, string modelNamespace, string xmlNamespace, JsonElement shapes)
     {
         _serviceName = serviceName;
-        _sdkNamespace = sdkNamespace;
+        _modelNamespace = modelNamespace;
         _xmlNamespace = xmlNamespace;
         _shapes = shapes;
     }
@@ -37,7 +37,9 @@ internal sealed class QueryCodeGenerator
         code.AppendLine("using System.Globalization;");
         code.AppendLine("using System.Text;");
         code.AppendLine("using System.Xml;");
-        code.AppendLine($"using {_sdkNamespace}.Model;");
+        code.AppendLine($"using {_modelNamespace};");
+        // Disambiguate types that conflict with ASP.NET Core (e.g., Endpoint vs Microsoft.AspNetCore.Http.Endpoint)
+        code.AppendLine($"using Endpoint = {_modelNamespace}.Endpoint;");
         code.AppendLine("using LocalSqsSnsMessaging.Http;");
         code.AppendLine();
         code.AppendLine("namespace LocalSqsSnsMessaging.Http.Handlers;");

@@ -2,9 +2,10 @@
 // Generated JSON protocol serializers for Sqs
 #nullable enable
 #pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS8600, CS8602, CS8604 // Nullable reference warnings
 
 using System.Text.Json;
-using Amazon.SQS.Model;
+using LocalSqsSnsMessaging.Sqs.Model;
 
 namespace LocalSqsSnsMessaging.Http.Handlers;
 
@@ -20,28 +21,28 @@ internal static class SqsJsonSerializers
         var request = new AddPermissionRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // Label
-        if (root.TryGetProperty("label", out var labelElem))
-            request.Label = labelElem.GetString();
+        if (root.TryGetProperty("Label", out var LabelElem))
+            request.Label = LabelElem.GetString();
 
         // AWSAccountIds
-        if (root.TryGetProperty("aWSAccountIds", out var aWSAccountIdsElem) && aWSAccountIdsElem.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("AWSAccountIds", out var AWSAccountIdsElem) && AWSAccountIdsElem.ValueKind == JsonValueKind.Array)
         {
             request.AWSAccountIds = new List<string>();
-            foreach (var item in aWSAccountIdsElem.EnumerateArray())
+            foreach (var item in AWSAccountIdsElem.EnumerateArray())
             {
                 request.AWSAccountIds.Add(item.GetString()!);
             }
         }
 
         // Actions
-        if (root.TryGetProperty("actions", out var actionsElem) && actionsElem.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("Actions", out var ActionsElem) && ActionsElem.ValueKind == JsonValueKind.Array)
         {
             request.Actions = new List<string>();
-            foreach (var item in actionsElem.EnumerateArray())
+            foreach (var item in ActionsElem.EnumerateArray())
             {
                 request.Actions.Add(item.GetString()!);
             }
@@ -65,8 +66,8 @@ internal static class SqsJsonSerializers
         var request = new CancelMessageMoveTaskRequest();
 
         // TaskHandle
-        if (root.TryGetProperty("taskHandle", out var taskHandleElem))
-            request.TaskHandle = taskHandleElem.GetString();
+        if (root.TryGetProperty("TaskHandle", out var TaskHandleElem))
+            request.TaskHandle = TaskHandleElem.GetString();
 
         return request;
     }
@@ -78,7 +79,7 @@ internal static class SqsJsonSerializers
 
         // ApproximateNumberOfMessagesMoved
         if (SdkCompatibility.HasNonDefaultValue(response.ApproximateNumberOfMessagesMoved))
-            writer.WriteNumber("approximateNumberOfMessagesMoved", SdkCompatibility.GetValue(response.ApproximateNumberOfMessagesMoved));
+            writer.WriteNumber("ApproximateNumberOfMessagesMoved", SdkCompatibility.GetValue(response.ApproximateNumberOfMessagesMoved));
 
         writer.WriteEndObject();
         writer.Flush();
@@ -91,16 +92,16 @@ internal static class SqsJsonSerializers
         var request = new ChangeMessageVisibilityRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // ReceiptHandle
-        if (root.TryGetProperty("receiptHandle", out var receiptHandleElem))
-            request.ReceiptHandle = receiptHandleElem.GetString();
+        if (root.TryGetProperty("ReceiptHandle", out var ReceiptHandleElem))
+            request.ReceiptHandle = ReceiptHandleElem.GetString();
 
         // VisibilityTimeout
-        if (root.TryGetProperty("visibilityTimeout", out var visibilityTimeoutElem) && visibilityTimeoutElem.TryGetInt32(out var visibilityTimeoutVal))
-            request.VisibilityTimeout = visibilityTimeoutVal;
+        if (root.TryGetProperty("VisibilityTimeout", out var VisibilityTimeoutElem) && VisibilityTimeoutElem.TryGetInt32(out var VisibilityTimeoutVal))
+            request.VisibilityTimeout = VisibilityTimeoutVal;
 
         return request;
     }
@@ -120,16 +121,23 @@ internal static class SqsJsonSerializers
         var request = new ChangeMessageVisibilityBatchRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // Entries
-        if (root.TryGetProperty("entries", out var entriesElem) && entriesElem.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
         {
             request.Entries = new List<ChangeMessageVisibilityBatchRequestEntry>();
-            foreach (var item in entriesElem.EnumerateArray())
+            foreach (var item in EntriesElem.EnumerateArray())
             {
-                // TODO: Deserialize ChangeMessageVisibilityBatchRequestEntry structure
+                var entry0 = new ChangeMessageVisibilityBatchRequestEntry();
+                if (item.TryGetProperty("Id", out var _e1))
+                    entry0.Id = _e1.GetString();
+                if (item.TryGetProperty("ReceiptHandle", out var _e2))
+                    entry0.ReceiptHandle = _e2.GetString();
+                if (item.TryGetProperty("VisibilityTimeout", out var _e3) && _e3.TryGetInt32(out var _i3))
+                    entry0.VisibilityTimeout = _i3;
+                request.Entries.Add(entry0);
             }
         }
 
@@ -144,13 +152,13 @@ internal static class SqsJsonSerializers
         // Successful
         if (response.Successful != null && response.Successful.Count > 0)
         {
-            writer.WritePropertyName("successful");
+            writer.WritePropertyName("Successful");
             writer.WriteStartArray();
             foreach (var item in response.Successful)
             {
                 writer.WriteStartObject();
                 if (item.Id != null)
-                    writer.WriteString("id", item.Id);
+                    writer.WriteString("Id", item.Id);
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -159,19 +167,19 @@ internal static class SqsJsonSerializers
         // Failed
         if (response.Failed != null && response.Failed.Count > 0)
         {
-            writer.WritePropertyName("failed");
+            writer.WritePropertyName("Failed");
             writer.WriteStartArray();
             foreach (var item in response.Failed)
             {
                 writer.WriteStartObject();
                 if (item.Id != null)
-                    writer.WriteString("id", item.Id);
+                    writer.WriteString("Id", item.Id);
                 if (SdkCompatibility.HasNonDefaultValue(item.SenderFault))
-                    writer.WriteBoolean("senderFault", SdkCompatibility.GetValue(item.SenderFault));
+                    writer.WriteBoolean("SenderFault", SdkCompatibility.GetValue(item.SenderFault));
                 if (item.Code != null)
-                    writer.WriteString("code", item.Code);
+                    writer.WriteString("Code", item.Code);
                 if (item.Message != null)
-                    writer.WriteString("message", item.Message);
+                    writer.WriteString("Message", item.Message);
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -188,14 +196,14 @@ internal static class SqsJsonSerializers
         var request = new CreateQueueRequest();
 
         // QueueName
-        if (root.TryGetProperty("queueName", out var queueNameElem))
-            request.QueueName = queueNameElem.GetString();
+        if (root.TryGetProperty("QueueName", out var QueueNameElem))
+            request.QueueName = QueueNameElem.GetString();
 
         // Attributes
-        if (root.TryGetProperty("attributes", out var attributesElem) && attributesElem.ValueKind == JsonValueKind.Object)
+        if (root.TryGetProperty("Attributes", out var AttributesElem) && AttributesElem.ValueKind == JsonValueKind.Object)
         {
             request.Attributes = new Dictionary<string, string>();
-            foreach (var prop in attributesElem.EnumerateObject())
+            foreach (var prop in AttributesElem.EnumerateObject())
             {
                 request.Attributes[prop.Name] = prop.Value.GetString()!;
             }
@@ -221,7 +229,7 @@ internal static class SqsJsonSerializers
 
         // QueueUrl
         if (response.QueueUrl != null)
-            writer.WriteString("queueUrl", response.QueueUrl);
+            writer.WriteString("QueueUrl", response.QueueUrl);
 
         writer.WriteEndObject();
         writer.Flush();
@@ -234,12 +242,12 @@ internal static class SqsJsonSerializers
         var request = new DeleteMessageRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // ReceiptHandle
-        if (root.TryGetProperty("receiptHandle", out var receiptHandleElem))
-            request.ReceiptHandle = receiptHandleElem.GetString();
+        if (root.TryGetProperty("ReceiptHandle", out var ReceiptHandleElem))
+            request.ReceiptHandle = ReceiptHandleElem.GetString();
 
         return request;
     }
@@ -259,16 +267,21 @@ internal static class SqsJsonSerializers
         var request = new DeleteMessageBatchRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // Entries
-        if (root.TryGetProperty("entries", out var entriesElem) && entriesElem.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
         {
             request.Entries = new List<DeleteMessageBatchRequestEntry>();
-            foreach (var item in entriesElem.EnumerateArray())
+            foreach (var item in EntriesElem.EnumerateArray())
             {
-                // TODO: Deserialize DeleteMessageBatchRequestEntry structure
+                var entry4 = new DeleteMessageBatchRequestEntry();
+                if (item.TryGetProperty("Id", out var _e5))
+                    entry4.Id = _e5.GetString();
+                if (item.TryGetProperty("ReceiptHandle", out var _e6))
+                    entry4.ReceiptHandle = _e6.GetString();
+                request.Entries.Add(entry4);
             }
         }
 
@@ -283,13 +296,13 @@ internal static class SqsJsonSerializers
         // Successful
         if (response.Successful != null && response.Successful.Count > 0)
         {
-            writer.WritePropertyName("successful");
+            writer.WritePropertyName("Successful");
             writer.WriteStartArray();
             foreach (var item in response.Successful)
             {
                 writer.WriteStartObject();
                 if (item.Id != null)
-                    writer.WriteString("id", item.Id);
+                    writer.WriteString("Id", item.Id);
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -298,19 +311,19 @@ internal static class SqsJsonSerializers
         // Failed
         if (response.Failed != null && response.Failed.Count > 0)
         {
-            writer.WritePropertyName("failed");
+            writer.WritePropertyName("Failed");
             writer.WriteStartArray();
             foreach (var item in response.Failed)
             {
                 writer.WriteStartObject();
                 if (item.Id != null)
-                    writer.WriteString("id", item.Id);
+                    writer.WriteString("Id", item.Id);
                 if (SdkCompatibility.HasNonDefaultValue(item.SenderFault))
-                    writer.WriteBoolean("senderFault", SdkCompatibility.GetValue(item.SenderFault));
+                    writer.WriteBoolean("SenderFault", SdkCompatibility.GetValue(item.SenderFault));
                 if (item.Code != null)
-                    writer.WriteString("code", item.Code);
+                    writer.WriteString("Code", item.Code);
                 if (item.Message != null)
-                    writer.WriteString("message", item.Message);
+                    writer.WriteString("Message", item.Message);
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -327,8 +340,8 @@ internal static class SqsJsonSerializers
         var request = new DeleteQueueRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         return request;
     }
@@ -348,14 +361,14 @@ internal static class SqsJsonSerializers
         var request = new GetQueueAttributesRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // AttributeNames
-        if (root.TryGetProperty("attributeNames", out var attributeNamesElem) && attributeNamesElem.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("AttributeNames", out var AttributeNamesElem) && AttributeNamesElem.ValueKind == JsonValueKind.Array)
         {
             request.AttributeNames = new List<string>();
-            foreach (var item in attributeNamesElem.EnumerateArray())
+            foreach (var item in AttributeNamesElem.EnumerateArray())
             {
                 request.AttributeNames.Add(item.GetString()!);
             }
@@ -372,7 +385,7 @@ internal static class SqsJsonSerializers
         // Attributes
         if (response.Attributes != null && response.Attributes.Count > 0)
         {
-            writer.WritePropertyName("attributes");
+            writer.WritePropertyName("Attributes");
             writer.WriteStartObject();
             foreach (var kvp in response.Attributes)
             {
@@ -392,12 +405,12 @@ internal static class SqsJsonSerializers
         var request = new GetQueueUrlRequest();
 
         // QueueName
-        if (root.TryGetProperty("queueName", out var queueNameElem))
-            request.QueueName = queueNameElem.GetString();
+        if (root.TryGetProperty("QueueName", out var QueueNameElem))
+            request.QueueName = QueueNameElem.GetString();
 
         // QueueOwnerAWSAccountId
-        if (root.TryGetProperty("queueOwnerAWSAccountId", out var queueOwnerAWSAccountIdElem))
-            request.QueueOwnerAWSAccountId = queueOwnerAWSAccountIdElem.GetString();
+        if (root.TryGetProperty("QueueOwnerAWSAccountId", out var QueueOwnerAWSAccountIdElem))
+            request.QueueOwnerAWSAccountId = QueueOwnerAWSAccountIdElem.GetString();
 
         return request;
     }
@@ -409,7 +422,7 @@ internal static class SqsJsonSerializers
 
         // QueueUrl
         if (response.QueueUrl != null)
-            writer.WriteString("queueUrl", response.QueueUrl);
+            writer.WriteString("QueueUrl", response.QueueUrl);
 
         writer.WriteEndObject();
         writer.Flush();
@@ -422,16 +435,16 @@ internal static class SqsJsonSerializers
         var request = new ListDeadLetterSourceQueuesRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // NextToken
-        if (root.TryGetProperty("nextToken", out var nextTokenElem))
-            request.NextToken = nextTokenElem.GetString();
+        if (root.TryGetProperty("NextToken", out var NextTokenElem))
+            request.NextToken = NextTokenElem.GetString();
 
         // MaxResults
-        if (root.TryGetProperty("maxResults", out var maxResultsElem) && maxResultsElem.TryGetInt32(out var maxResultsVal))
-            request.MaxResults = maxResultsVal;
+        if (root.TryGetProperty("MaxResults", out var MaxResultsElem) && MaxResultsElem.TryGetInt32(out var MaxResultsVal))
+            request.MaxResults = MaxResultsVal;
 
         return request;
     }
@@ -455,7 +468,7 @@ internal static class SqsJsonSerializers
 
         // NextToken
         if (response.NextToken != null)
-            writer.WriteString("nextToken", response.NextToken);
+            writer.WriteString("NextToken", response.NextToken);
 
         writer.WriteEndObject();
         writer.Flush();
@@ -468,12 +481,12 @@ internal static class SqsJsonSerializers
         var request = new ListMessageMoveTasksRequest();
 
         // SourceArn
-        if (root.TryGetProperty("sourceArn", out var sourceArnElem))
-            request.SourceArn = sourceArnElem.GetString();
+        if (root.TryGetProperty("SourceArn", out var SourceArnElem))
+            request.SourceArn = SourceArnElem.GetString();
 
         // MaxResults
-        if (root.TryGetProperty("maxResults", out var maxResultsElem) && maxResultsElem.TryGetInt32(out var maxResultsVal))
-            request.MaxResults = maxResultsVal;
+        if (root.TryGetProperty("MaxResults", out var MaxResultsElem) && MaxResultsElem.TryGetInt32(out var MaxResultsVal))
+            request.MaxResults = MaxResultsVal;
 
         return request;
     }
@@ -486,29 +499,29 @@ internal static class SqsJsonSerializers
         // Results
         if (response.Results != null && response.Results.Count > 0)
         {
-            writer.WritePropertyName("results");
+            writer.WritePropertyName("Results");
             writer.WriteStartArray();
             foreach (var item in response.Results)
             {
                 writer.WriteStartObject();
                 if (item.TaskHandle != null)
-                    writer.WriteString("taskHandle", item.TaskHandle);
+                    writer.WriteString("TaskHandle", item.TaskHandle);
                 if (item.Status != null)
-                    writer.WriteString("status", item.Status);
+                    writer.WriteString("Status", item.Status);
                 if (item.SourceArn != null)
-                    writer.WriteString("sourceArn", item.SourceArn);
+                    writer.WriteString("SourceArn", item.SourceArn);
                 if (item.DestinationArn != null)
-                    writer.WriteString("destinationArn", item.DestinationArn);
+                    writer.WriteString("DestinationArn", item.DestinationArn);
                 if (SdkCompatibility.HasNonDefaultValue(item.MaxNumberOfMessagesPerSecond))
-                    writer.WriteNumber("maxNumberOfMessagesPerSecond", SdkCompatibility.GetValue(item.MaxNumberOfMessagesPerSecond));
+                    writer.WriteNumber("MaxNumberOfMessagesPerSecond", SdkCompatibility.GetValue(item.MaxNumberOfMessagesPerSecond));
                 if (SdkCompatibility.HasNonDefaultValue(item.ApproximateNumberOfMessagesMoved))
-                    writer.WriteNumber("approximateNumberOfMessagesMoved", SdkCompatibility.GetValue(item.ApproximateNumberOfMessagesMoved));
+                    writer.WriteNumber("ApproximateNumberOfMessagesMoved", SdkCompatibility.GetValue(item.ApproximateNumberOfMessagesMoved));
                 if (SdkCompatibility.HasNonDefaultValue(item.ApproximateNumberOfMessagesToMove))
-                    writer.WriteNumber("approximateNumberOfMessagesToMove", SdkCompatibility.GetValue(item.ApproximateNumberOfMessagesToMove));
+                    writer.WriteNumber("ApproximateNumberOfMessagesToMove", SdkCompatibility.GetValue(item.ApproximateNumberOfMessagesToMove));
                 if (item.FailureReason != null)
-                    writer.WriteString("failureReason", item.FailureReason);
+                    writer.WriteString("FailureReason", item.FailureReason);
                 if (SdkCompatibility.HasNonDefaultValue(item.StartedTimestamp))
-                    writer.WriteNumber("startedTimestamp", SdkCompatibility.GetValue(item.StartedTimestamp));
+                    writer.WriteNumber("StartedTimestamp", SdkCompatibility.GetValue(item.StartedTimestamp));
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -525,8 +538,8 @@ internal static class SqsJsonSerializers
         var request = new ListQueueTagsRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         return request;
     }
@@ -539,7 +552,7 @@ internal static class SqsJsonSerializers
         // Tags
         if (response.Tags != null && response.Tags.Count > 0)
         {
-            writer.WritePropertyName("tags");
+            writer.WritePropertyName("Tags");
             writer.WriteStartObject();
             foreach (var kvp in response.Tags)
             {
@@ -559,16 +572,16 @@ internal static class SqsJsonSerializers
         var request = new ListQueuesRequest();
 
         // QueueNamePrefix
-        if (root.TryGetProperty("queueNamePrefix", out var queueNamePrefixElem))
-            request.QueueNamePrefix = queueNamePrefixElem.GetString();
+        if (root.TryGetProperty("QueueNamePrefix", out var QueueNamePrefixElem))
+            request.QueueNamePrefix = QueueNamePrefixElem.GetString();
 
         // NextToken
-        if (root.TryGetProperty("nextToken", out var nextTokenElem))
-            request.NextToken = nextTokenElem.GetString();
+        if (root.TryGetProperty("NextToken", out var NextTokenElem))
+            request.NextToken = NextTokenElem.GetString();
 
         // MaxResults
-        if (root.TryGetProperty("maxResults", out var maxResultsElem) && maxResultsElem.TryGetInt32(out var maxResultsVal))
-            request.MaxResults = maxResultsVal;
+        if (root.TryGetProperty("MaxResults", out var MaxResultsElem) && MaxResultsElem.TryGetInt32(out var MaxResultsVal))
+            request.MaxResults = MaxResultsVal;
 
         return request;
     }
@@ -581,7 +594,7 @@ internal static class SqsJsonSerializers
         // QueueUrls
         if (response.QueueUrls != null && response.QueueUrls.Count > 0)
         {
-            writer.WritePropertyName("queueUrls");
+            writer.WritePropertyName("QueueUrls");
             writer.WriteStartArray();
             foreach (var item in response.QueueUrls)
             {
@@ -592,7 +605,7 @@ internal static class SqsJsonSerializers
 
         // NextToken
         if (response.NextToken != null)
-            writer.WriteString("nextToken", response.NextToken);
+            writer.WriteString("NextToken", response.NextToken);
 
         writer.WriteEndObject();
         writer.Flush();
@@ -605,8 +618,8 @@ internal static class SqsJsonSerializers
         var request = new PurgeQueueRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         return request;
     }
@@ -626,54 +639,54 @@ internal static class SqsJsonSerializers
         var request = new ReceiveMessageRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // AttributeNames
-        if (root.TryGetProperty("attributeNames", out var attributeNamesElem) && attributeNamesElem.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("AttributeNames", out var AttributeNamesElem) && AttributeNamesElem.ValueKind == JsonValueKind.Array)
         {
             request.AttributeNames = new List<string>();
-            foreach (var item in attributeNamesElem.EnumerateArray())
+            foreach (var item in AttributeNamesElem.EnumerateArray())
             {
                 request.AttributeNames.Add(item.GetString()!);
             }
         }
 
         // MessageSystemAttributeNames
-        if (root.TryGetProperty("messageSystemAttributeNames", out var messageSystemAttributeNamesElem) && messageSystemAttributeNamesElem.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("MessageSystemAttributeNames", out var MessageSystemAttributeNamesElem) && MessageSystemAttributeNamesElem.ValueKind == JsonValueKind.Array)
         {
             request.MessageSystemAttributeNames = new List<string>();
-            foreach (var item in messageSystemAttributeNamesElem.EnumerateArray())
+            foreach (var item in MessageSystemAttributeNamesElem.EnumerateArray())
             {
                 request.MessageSystemAttributeNames.Add(item.GetString()!);
             }
         }
 
         // MessageAttributeNames
-        if (root.TryGetProperty("messageAttributeNames", out var messageAttributeNamesElem) && messageAttributeNamesElem.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("MessageAttributeNames", out var MessageAttributeNamesElem) && MessageAttributeNamesElem.ValueKind == JsonValueKind.Array)
         {
             request.MessageAttributeNames = new List<string>();
-            foreach (var item in messageAttributeNamesElem.EnumerateArray())
+            foreach (var item in MessageAttributeNamesElem.EnumerateArray())
             {
                 request.MessageAttributeNames.Add(item.GetString()!);
             }
         }
 
         // MaxNumberOfMessages
-        if (root.TryGetProperty("maxNumberOfMessages", out var maxNumberOfMessagesElem) && maxNumberOfMessagesElem.TryGetInt32(out var maxNumberOfMessagesVal))
-            request.MaxNumberOfMessages = maxNumberOfMessagesVal;
+        if (root.TryGetProperty("MaxNumberOfMessages", out var MaxNumberOfMessagesElem) && MaxNumberOfMessagesElem.TryGetInt32(out var MaxNumberOfMessagesVal))
+            request.MaxNumberOfMessages = MaxNumberOfMessagesVal;
 
         // VisibilityTimeout
-        if (root.TryGetProperty("visibilityTimeout", out var visibilityTimeoutElem) && visibilityTimeoutElem.TryGetInt32(out var visibilityTimeoutVal))
-            request.VisibilityTimeout = visibilityTimeoutVal;
+        if (root.TryGetProperty("VisibilityTimeout", out var VisibilityTimeoutElem) && VisibilityTimeoutElem.TryGetInt32(out var VisibilityTimeoutVal))
+            request.VisibilityTimeout = VisibilityTimeoutVal;
 
         // WaitTimeSeconds
-        if (root.TryGetProperty("waitTimeSeconds", out var waitTimeSecondsElem) && waitTimeSecondsElem.TryGetInt32(out var waitTimeSecondsVal))
-            request.WaitTimeSeconds = waitTimeSecondsVal;
+        if (root.TryGetProperty("WaitTimeSeconds", out var WaitTimeSecondsElem) && WaitTimeSecondsElem.TryGetInt32(out var WaitTimeSecondsVal))
+            request.WaitTimeSeconds = WaitTimeSecondsVal;
 
         // ReceiveRequestAttemptId
-        if (root.TryGetProperty("receiveRequestAttemptId", out var receiveRequestAttemptIdElem))
-            request.ReceiveRequestAttemptId = receiveRequestAttemptIdElem.GetString();
+        if (root.TryGetProperty("ReceiveRequestAttemptId", out var ReceiveRequestAttemptIdElem))
+            request.ReceiveRequestAttemptId = ReceiveRequestAttemptIdElem.GetString();
 
         return request;
     }
@@ -686,22 +699,22 @@ internal static class SqsJsonSerializers
         // Messages
         if (response.Messages != null && response.Messages.Count > 0)
         {
-            writer.WritePropertyName("messages");
+            writer.WritePropertyName("Messages");
             writer.WriteStartArray();
             foreach (var item in response.Messages)
             {
                 writer.WriteStartObject();
                 if (item.MessageId != null)
-                    writer.WriteString("messageId", item.MessageId);
+                    writer.WriteString("MessageId", item.MessageId);
                 if (item.ReceiptHandle != null)
-                    writer.WriteString("receiptHandle", item.ReceiptHandle);
+                    writer.WriteString("ReceiptHandle", item.ReceiptHandle);
                 if (item.MD5OfBody != null)
-                    writer.WriteString("mD5OfBody", item.MD5OfBody);
+                    writer.WriteString("MD5OfBody", item.MD5OfBody);
                 if (item.Body != null)
-                    writer.WriteString("body", item.Body);
+                    writer.WriteString("Body", item.Body);
                 if (item.Attributes != null && item.Attributes.Count > 0)
                 {
-                    writer.WritePropertyName("attributes");
+                    writer.WritePropertyName("Attributes");
                     writer.WriteStartObject();
                     foreach (var kvp in item.Attributes)
                     {
@@ -710,22 +723,22 @@ internal static class SqsJsonSerializers
                     writer.WriteEndObject();
                 }
                 if (item.MD5OfMessageAttributes != null)
-                    writer.WriteString("mD5OfMessageAttributes", item.MD5OfMessageAttributes);
+                    writer.WriteString("MD5OfMessageAttributes", item.MD5OfMessageAttributes);
                 if (item.MessageAttributes != null && item.MessageAttributes.Count > 0)
                 {
-                    writer.WritePropertyName("messageAttributes");
+                    writer.WritePropertyName("MessageAttributes");
                     writer.WriteStartObject();
                     foreach (var kvp in item.MessageAttributes)
                     {
                         writer.WritePropertyName(kvp.Key);
                         writer.WriteStartObject();
                         if (kvp.Value.StringValue != null)
-                            writer.WriteString("stringValue", kvp.Value.StringValue);
+                            writer.WriteString("StringValue", kvp.Value.StringValue);
                         if (kvp.Value.BinaryValue != null)
-                            writer.WriteString("binaryValue", Convert.ToBase64String(kvp.Value.BinaryValue.ToArray()));
+                            writer.WriteString("BinaryValue", Convert.ToBase64String(kvp.Value.BinaryValue.ToArray()));
                         if (kvp.Value.StringListValues != null && kvp.Value.StringListValues.Count > 0)
                         {
-                            writer.WritePropertyName("stringListValues");
+                            writer.WritePropertyName("StringListValues");
                             writer.WriteStartArray();
                             foreach (var item0 in kvp.Value.StringListValues)
                             {
@@ -735,7 +748,7 @@ internal static class SqsJsonSerializers
                         }
                         if (kvp.Value.BinaryListValues != null && kvp.Value.BinaryListValues.Count > 0)
                         {
-                            writer.WritePropertyName("binaryListValues");
+                            writer.WritePropertyName("BinaryListValues");
                             writer.WriteStartArray();
                             foreach (var item1 in kvp.Value.BinaryListValues)
                             {
@@ -744,7 +757,7 @@ internal static class SqsJsonSerializers
                             writer.WriteEndArray();
                         }
                         if (kvp.Value.DataType != null)
-                            writer.WriteString("dataType", kvp.Value.DataType);
+                            writer.WriteString("DataType", kvp.Value.DataType);
                         writer.WriteEndObject();
                     }
                     writer.WriteEndObject();
@@ -765,12 +778,12 @@ internal static class SqsJsonSerializers
         var request = new RemovePermissionRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // Label
-        if (root.TryGetProperty("label", out var labelElem))
-            request.Label = labelElem.GetString();
+        if (root.TryGetProperty("Label", out var LabelElem))
+            request.Label = LabelElem.GetString();
 
         return request;
     }
@@ -790,96 +803,96 @@ internal static class SqsJsonSerializers
         var request = new SendMessageRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // MessageBody
-        if (root.TryGetProperty("messageBody", out var messageBodyElem))
-            request.MessageBody = messageBodyElem.GetString();
+        if (root.TryGetProperty("MessageBody", out var MessageBodyElem))
+            request.MessageBody = MessageBodyElem.GetString();
 
         // DelaySeconds
-        if (root.TryGetProperty("delaySeconds", out var delaySecondsElem) && delaySecondsElem.TryGetInt32(out var delaySecondsVal))
-            request.DelaySeconds = delaySecondsVal;
+        if (root.TryGetProperty("DelaySeconds", out var DelaySecondsElem) && DelaySecondsElem.TryGetInt32(out var DelaySecondsVal))
+            request.DelaySeconds = DelaySecondsVal;
 
         // MessageAttributes
-        if (root.TryGetProperty("messageAttributes", out var messageAttributesElem) && messageAttributesElem.ValueKind == JsonValueKind.Object)
+        if (root.TryGetProperty("MessageAttributes", out var MessageAttributesElem) && MessageAttributesElem.ValueKind == JsonValueKind.Object)
         {
             request.MessageAttributes = new Dictionary<string, MessageAttributeValue>();
-            foreach (var prop in messageAttributesElem.EnumerateObject())
+            foreach (var prop in MessageAttributesElem.EnumerateObject())
             {
-                request.MessageAttributes[prop.Name] = new MessageAttributeValue();
-                if (prop.Value.TryGetProperty("stringValue", out var stringValueElem))
-                    request.MessageAttributes[prop.Name].StringValue = stringValueElem.GetString();
-                if (prop.Value.TryGetProperty("binaryValue", out var binaryValueElem))
+                var mapVal7 = new MessageAttributeValue();
+                if (prop.Value.TryGetProperty("StringValue", out var _e8))
+                    mapVal7.StringValue = _e8.GetString();
+                if (prop.Value.TryGetProperty("BinaryValue", out var _e9))
                 {
-                    var base64 = binaryValueElem.GetString();
-                    if (base64 != null)
-                        request.MessageAttributes[prop.Name].BinaryValue = new MemoryStream(Convert.FromBase64String(base64));
+                    var _b64_9 = _e9.GetString();
+                    if (_b64_9 != null)
+                        mapVal7.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_9));
                 }
-                if (prop.Value.TryGetProperty("stringListValues", out var stringListValuesElem) && stringListValuesElem.ValueKind == JsonValueKind.Array)
+                if (prop.Value.TryGetProperty("StringListValues", out var _e10) && _e10.ValueKind == JsonValueKind.Array)
                 {
-                    request.MessageAttributes[prop.Name].StringListValues = new List<string>();
-                    foreach (var item in stringListValuesElem.EnumerateArray())
+                    mapVal7.StringListValues = new List<string>();
+                    foreach (var _li10 in _e10.EnumerateArray())
                     {
-                        request.MessageAttributes[prop.Name].StringListValues.Add(item.GetString()!);
+                        mapVal7.StringListValues.Add(_li10.GetString()!);
                     }
                 }
-                if (prop.Value.TryGetProperty("binaryListValues", out var binaryListValuesElem) && binaryListValuesElem.ValueKind == JsonValueKind.Array)
+                if (prop.Value.TryGetProperty("BinaryListValues", out var _e11) && _e11.ValueKind == JsonValueKind.Array)
                 {
-                    request.MessageAttributes[prop.Name].BinaryListValues = new List<MemoryStream>();
-                    foreach (var item in binaryListValuesElem.EnumerateArray())
+                    mapVal7.BinaryListValues = new List<MemoryStream>();
+                    foreach (var _li11 in _e11.EnumerateArray())
                     {
-                        // TODO: Deserialize blob
                     }
                 }
-                if (prop.Value.TryGetProperty("dataType", out var dataTypeElem))
-                    request.MessageAttributes[prop.Name].DataType = dataTypeElem.GetString();
+                if (prop.Value.TryGetProperty("DataType", out var _e12))
+                    mapVal7.DataType = _e12.GetString();
+                request.MessageAttributes[prop.Name] = mapVal7;
             }
         }
 
         // MessageSystemAttributes
-        if (root.TryGetProperty("messageSystemAttributes", out var messageSystemAttributesElem) && messageSystemAttributesElem.ValueKind == JsonValueKind.Object)
+        if (root.TryGetProperty("MessageSystemAttributes", out var MessageSystemAttributesElem) && MessageSystemAttributesElem.ValueKind == JsonValueKind.Object)
         {
             request.MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>();
-            foreach (var prop in messageSystemAttributesElem.EnumerateObject())
+            foreach (var prop in MessageSystemAttributesElem.EnumerateObject())
             {
-                request.MessageSystemAttributes[prop.Name] = new MessageSystemAttributeValue();
-                if (prop.Value.TryGetProperty("stringValue", out var stringValueElem))
-                    request.MessageSystemAttributes[prop.Name].StringValue = stringValueElem.GetString();
-                if (prop.Value.TryGetProperty("binaryValue", out var binaryValueElem))
+                var mapVal13 = new MessageSystemAttributeValue();
+                if (prop.Value.TryGetProperty("StringValue", out var _e14))
+                    mapVal13.StringValue = _e14.GetString();
+                if (prop.Value.TryGetProperty("BinaryValue", out var _e15))
                 {
-                    var base64 = binaryValueElem.GetString();
-                    if (base64 != null)
-                        request.MessageSystemAttributes[prop.Name].BinaryValue = new MemoryStream(Convert.FromBase64String(base64));
+                    var _b64_15 = _e15.GetString();
+                    if (_b64_15 != null)
+                        mapVal13.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_15));
                 }
-                if (prop.Value.TryGetProperty("stringListValues", out var stringListValuesElem) && stringListValuesElem.ValueKind == JsonValueKind.Array)
+                if (prop.Value.TryGetProperty("StringListValues", out var _e16) && _e16.ValueKind == JsonValueKind.Array)
                 {
-                    request.MessageSystemAttributes[prop.Name].StringListValues = new List<string>();
-                    foreach (var item in stringListValuesElem.EnumerateArray())
+                    mapVal13.StringListValues = new List<string>();
+                    foreach (var _li16 in _e16.EnumerateArray())
                     {
-                        request.MessageSystemAttributes[prop.Name].StringListValues.Add(item.GetString()!);
+                        mapVal13.StringListValues.Add(_li16.GetString()!);
                     }
                 }
-                if (prop.Value.TryGetProperty("binaryListValues", out var binaryListValuesElem) && binaryListValuesElem.ValueKind == JsonValueKind.Array)
+                if (prop.Value.TryGetProperty("BinaryListValues", out var _e17) && _e17.ValueKind == JsonValueKind.Array)
                 {
-                    request.MessageSystemAttributes[prop.Name].BinaryListValues = new List<MemoryStream>();
-                    foreach (var item in binaryListValuesElem.EnumerateArray())
+                    mapVal13.BinaryListValues = new List<MemoryStream>();
+                    foreach (var _li17 in _e17.EnumerateArray())
                     {
-                        // TODO: Deserialize blob
                     }
                 }
-                if (prop.Value.TryGetProperty("dataType", out var dataTypeElem))
-                    request.MessageSystemAttributes[prop.Name].DataType = dataTypeElem.GetString();
+                if (prop.Value.TryGetProperty("DataType", out var _e18))
+                    mapVal13.DataType = _e18.GetString();
+                request.MessageSystemAttributes[prop.Name] = mapVal13;
             }
         }
 
         // MessageDeduplicationId
-        if (root.TryGetProperty("messageDeduplicationId", out var messageDeduplicationIdElem))
-            request.MessageDeduplicationId = messageDeduplicationIdElem.GetString();
+        if (root.TryGetProperty("MessageDeduplicationId", out var MessageDeduplicationIdElem))
+            request.MessageDeduplicationId = MessageDeduplicationIdElem.GetString();
 
         // MessageGroupId
-        if (root.TryGetProperty("messageGroupId", out var messageGroupIdElem))
-            request.MessageGroupId = messageGroupIdElem.GetString();
+        if (root.TryGetProperty("MessageGroupId", out var MessageGroupIdElem))
+            request.MessageGroupId = MessageGroupIdElem.GetString();
 
         return request;
     }
@@ -891,23 +904,23 @@ internal static class SqsJsonSerializers
 
         // MD5OfMessageBody
         if (response.MD5OfMessageBody != null)
-            writer.WriteString("mD5OfMessageBody", response.MD5OfMessageBody);
+            writer.WriteString("MD5OfMessageBody", response.MD5OfMessageBody);
 
         // MD5OfMessageAttributes
         if (response.MD5OfMessageAttributes != null)
-            writer.WriteString("mD5OfMessageAttributes", response.MD5OfMessageAttributes);
+            writer.WriteString("MD5OfMessageAttributes", response.MD5OfMessageAttributes);
 
         // MD5OfMessageSystemAttributes
         if (response.MD5OfMessageSystemAttributes != null)
-            writer.WriteString("mD5OfMessageSystemAttributes", response.MD5OfMessageSystemAttributes);
+            writer.WriteString("MD5OfMessageSystemAttributes", response.MD5OfMessageSystemAttributes);
 
         // MessageId
         if (response.MessageId != null)
-            writer.WriteString("messageId", response.MessageId);
+            writer.WriteString("MessageId", response.MessageId);
 
         // SequenceNumber
         if (response.SequenceNumber != null)
-            writer.WriteString("sequenceNumber", response.SequenceNumber);
+            writer.WriteString("SequenceNumber", response.SequenceNumber);
 
         writer.WriteEndObject();
         writer.Flush();
@@ -920,16 +933,95 @@ internal static class SqsJsonSerializers
         var request = new SendMessageBatchRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // Entries
-        if (root.TryGetProperty("entries", out var entriesElem) && entriesElem.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
         {
             request.Entries = new List<SendMessageBatchRequestEntry>();
-            foreach (var item in entriesElem.EnumerateArray())
+            foreach (var item in EntriesElem.EnumerateArray())
             {
-                // TODO: Deserialize SendMessageBatchRequestEntry structure
+                var entry19 = new SendMessageBatchRequestEntry();
+                if (item.TryGetProperty("Id", out var _e20))
+                    entry19.Id = _e20.GetString();
+                if (item.TryGetProperty("MessageBody", out var _e21))
+                    entry19.MessageBody = _e21.GetString();
+                if (item.TryGetProperty("DelaySeconds", out var _e22) && _e22.TryGetInt32(out var _i22))
+                    entry19.DelaySeconds = _i22;
+                if (item.TryGetProperty("MessageAttributes", out var _e23) && _e23.ValueKind == JsonValueKind.Object)
+                {
+                    entry19.MessageAttributes = new Dictionary<string, MessageAttributeValue>();
+                    foreach (var _p23 in _e23.EnumerateObject())
+                    {
+                        var _mv23 = new MessageAttributeValue();
+                        if (_p23.Value.TryGetProperty("StringValue", out var _e24))
+                            _mv23.StringValue = _e24.GetString();
+                        if (_p23.Value.TryGetProperty("BinaryValue", out var _e25))
+                        {
+                            var _b64_25 = _e25.GetString();
+                            if (_b64_25 != null)
+                                _mv23.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_25));
+                        }
+                        if (_p23.Value.TryGetProperty("StringListValues", out var _e26) && _e26.ValueKind == JsonValueKind.Array)
+                        {
+                            _mv23.StringListValues = new List<string>();
+                            foreach (var _li26 in _e26.EnumerateArray())
+                            {
+                                _mv23.StringListValues.Add(_li26.GetString()!);
+                            }
+                        }
+                        if (_p23.Value.TryGetProperty("BinaryListValues", out var _e27) && _e27.ValueKind == JsonValueKind.Array)
+                        {
+                            _mv23.BinaryListValues = new List<MemoryStream>();
+                            foreach (var _li27 in _e27.EnumerateArray())
+                            {
+                            }
+                        }
+                        if (_p23.Value.TryGetProperty("DataType", out var _e28))
+                            _mv23.DataType = _e28.GetString();
+                        entry19.MessageAttributes[_p23.Name] = _mv23;
+                    }
+                }
+                if (item.TryGetProperty("MessageSystemAttributes", out var _e29) && _e29.ValueKind == JsonValueKind.Object)
+                {
+                    entry19.MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>();
+                    foreach (var _p29 in _e29.EnumerateObject())
+                    {
+                        var _mv29 = new MessageSystemAttributeValue();
+                        if (_p29.Value.TryGetProperty("StringValue", out var _e30))
+                            _mv29.StringValue = _e30.GetString();
+                        if (_p29.Value.TryGetProperty("BinaryValue", out var _e31))
+                        {
+                            var _b64_31 = _e31.GetString();
+                            if (_b64_31 != null)
+                                _mv29.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_31));
+                        }
+                        if (_p29.Value.TryGetProperty("StringListValues", out var _e32) && _e32.ValueKind == JsonValueKind.Array)
+                        {
+                            _mv29.StringListValues = new List<string>();
+                            foreach (var _li32 in _e32.EnumerateArray())
+                            {
+                                _mv29.StringListValues.Add(_li32.GetString()!);
+                            }
+                        }
+                        if (_p29.Value.TryGetProperty("BinaryListValues", out var _e33) && _e33.ValueKind == JsonValueKind.Array)
+                        {
+                            _mv29.BinaryListValues = new List<MemoryStream>();
+                            foreach (var _li33 in _e33.EnumerateArray())
+                            {
+                            }
+                        }
+                        if (_p29.Value.TryGetProperty("DataType", out var _e34))
+                            _mv29.DataType = _e34.GetString();
+                        entry19.MessageSystemAttributes[_p29.Name] = _mv29;
+                    }
+                }
+                if (item.TryGetProperty("MessageDeduplicationId", out var _e35))
+                    entry19.MessageDeduplicationId = _e35.GetString();
+                if (item.TryGetProperty("MessageGroupId", out var _e36))
+                    entry19.MessageGroupId = _e36.GetString();
+                request.Entries.Add(entry19);
             }
         }
 
@@ -944,23 +1036,23 @@ internal static class SqsJsonSerializers
         // Successful
         if (response.Successful != null && response.Successful.Count > 0)
         {
-            writer.WritePropertyName("successful");
+            writer.WritePropertyName("Successful");
             writer.WriteStartArray();
             foreach (var item in response.Successful)
             {
                 writer.WriteStartObject();
                 if (item.Id != null)
-                    writer.WriteString("id", item.Id);
+                    writer.WriteString("Id", item.Id);
                 if (item.MessageId != null)
-                    writer.WriteString("messageId", item.MessageId);
+                    writer.WriteString("MessageId", item.MessageId);
                 if (item.MD5OfMessageBody != null)
-                    writer.WriteString("mD5OfMessageBody", item.MD5OfMessageBody);
+                    writer.WriteString("MD5OfMessageBody", item.MD5OfMessageBody);
                 if (item.MD5OfMessageAttributes != null)
-                    writer.WriteString("mD5OfMessageAttributes", item.MD5OfMessageAttributes);
+                    writer.WriteString("MD5OfMessageAttributes", item.MD5OfMessageAttributes);
                 if (item.MD5OfMessageSystemAttributes != null)
-                    writer.WriteString("mD5OfMessageSystemAttributes", item.MD5OfMessageSystemAttributes);
+                    writer.WriteString("MD5OfMessageSystemAttributes", item.MD5OfMessageSystemAttributes);
                 if (item.SequenceNumber != null)
-                    writer.WriteString("sequenceNumber", item.SequenceNumber);
+                    writer.WriteString("SequenceNumber", item.SequenceNumber);
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -969,19 +1061,19 @@ internal static class SqsJsonSerializers
         // Failed
         if (response.Failed != null && response.Failed.Count > 0)
         {
-            writer.WritePropertyName("failed");
+            writer.WritePropertyName("Failed");
             writer.WriteStartArray();
             foreach (var item in response.Failed)
             {
                 writer.WriteStartObject();
                 if (item.Id != null)
-                    writer.WriteString("id", item.Id);
+                    writer.WriteString("Id", item.Id);
                 if (SdkCompatibility.HasNonDefaultValue(item.SenderFault))
-                    writer.WriteBoolean("senderFault", SdkCompatibility.GetValue(item.SenderFault));
+                    writer.WriteBoolean("SenderFault", SdkCompatibility.GetValue(item.SenderFault));
                 if (item.Code != null)
-                    writer.WriteString("code", item.Code);
+                    writer.WriteString("Code", item.Code);
                 if (item.Message != null)
-                    writer.WriteString("message", item.Message);
+                    writer.WriteString("Message", item.Message);
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -998,14 +1090,14 @@ internal static class SqsJsonSerializers
         var request = new SetQueueAttributesRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // Attributes
-        if (root.TryGetProperty("attributes", out var attributesElem) && attributesElem.ValueKind == JsonValueKind.Object)
+        if (root.TryGetProperty("Attributes", out var AttributesElem) && AttributesElem.ValueKind == JsonValueKind.Object)
         {
             request.Attributes = new Dictionary<string, string>();
-            foreach (var prop in attributesElem.EnumerateObject())
+            foreach (var prop in AttributesElem.EnumerateObject())
             {
                 request.Attributes[prop.Name] = prop.Value.GetString()!;
             }
@@ -1029,16 +1121,16 @@ internal static class SqsJsonSerializers
         var request = new StartMessageMoveTaskRequest();
 
         // SourceArn
-        if (root.TryGetProperty("sourceArn", out var sourceArnElem))
-            request.SourceArn = sourceArnElem.GetString();
+        if (root.TryGetProperty("SourceArn", out var SourceArnElem))
+            request.SourceArn = SourceArnElem.GetString();
 
         // DestinationArn
-        if (root.TryGetProperty("destinationArn", out var destinationArnElem))
-            request.DestinationArn = destinationArnElem.GetString();
+        if (root.TryGetProperty("DestinationArn", out var DestinationArnElem))
+            request.DestinationArn = DestinationArnElem.GetString();
 
         // MaxNumberOfMessagesPerSecond
-        if (root.TryGetProperty("maxNumberOfMessagesPerSecond", out var maxNumberOfMessagesPerSecondElem) && maxNumberOfMessagesPerSecondElem.TryGetInt32(out var maxNumberOfMessagesPerSecondVal))
-            request.MaxNumberOfMessagesPerSecond = maxNumberOfMessagesPerSecondVal;
+        if (root.TryGetProperty("MaxNumberOfMessagesPerSecond", out var MaxNumberOfMessagesPerSecondElem) && MaxNumberOfMessagesPerSecondElem.TryGetInt32(out var MaxNumberOfMessagesPerSecondVal))
+            request.MaxNumberOfMessagesPerSecond = MaxNumberOfMessagesPerSecondVal;
 
         return request;
     }
@@ -1050,7 +1142,7 @@ internal static class SqsJsonSerializers
 
         // TaskHandle
         if (response.TaskHandle != null)
-            writer.WriteString("taskHandle", response.TaskHandle);
+            writer.WriteString("TaskHandle", response.TaskHandle);
 
         writer.WriteEndObject();
         writer.Flush();
@@ -1063,14 +1155,14 @@ internal static class SqsJsonSerializers
         var request = new TagQueueRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // Tags
-        if (root.TryGetProperty("tags", out var tagsElem) && tagsElem.ValueKind == JsonValueKind.Object)
+        if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Object)
         {
             request.Tags = new Dictionary<string, string>();
-            foreach (var prop in tagsElem.EnumerateObject())
+            foreach (var prop in TagsElem.EnumerateObject())
             {
                 request.Tags[prop.Name] = prop.Value.GetString()!;
             }
@@ -1094,14 +1186,14 @@ internal static class SqsJsonSerializers
         var request = new UntagQueueRequest();
 
         // QueueUrl
-        if (root.TryGetProperty("queueUrl", out var queueUrlElem))
-            request.QueueUrl = queueUrlElem.GetString();
+        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+            request.QueueUrl = QueueUrlElem.GetString();
 
         // TagKeys
-        if (root.TryGetProperty("tagKeys", out var tagKeysElem) && tagKeysElem.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("TagKeys", out var TagKeysElem) && TagKeysElem.ValueKind == JsonValueKind.Array)
         {
             request.TagKeys = new List<string>();
-            foreach (var item in tagKeysElem.EnumerateArray())
+            foreach (var item in TagKeysElem.EnumerateArray())
             {
                 request.TagKeys.Add(item.GetString()!);
             }

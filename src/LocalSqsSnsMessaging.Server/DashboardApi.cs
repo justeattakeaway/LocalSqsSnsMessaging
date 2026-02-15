@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Channels;
-using Amazon.SQS.Model;
+using LocalSqsSnsMessaging.Sqs.Model;
 using Microsoft.AspNetCore.Http;
 
 namespace LocalSqsSnsMessaging.Server;
@@ -142,14 +142,14 @@ internal static class DashboardApi
         return new MessageInfo
         {
             MessageId = msg.MessageId ?? Guid.NewGuid().ToString(),
-            Body = msg.Body,
+            Body = msg.Body!,
             InFlight = inFlight,
             MessageGroupId = messageGroupId,
             Attributes = msg.Attributes is { Count: > 0 } ? msg.Attributes : null,
             MessageAttributes = msg.MessageAttributes is { Count: > 0 }
                 ? msg.MessageAttributes.ToDictionary(
                     kvp => kvp.Key,
-                    kvp => kvp.Value.DataType == "Number" ? kvp.Value.StringValue : kvp.Value.StringValue)
+                    kvp => kvp.Value.StringValue ?? "")
                 : null
         };
     }

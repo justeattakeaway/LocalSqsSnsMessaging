@@ -1,109 +1,19 @@
-#if NET
-using System.Runtime.CompilerServices;
-#else
-using System.Reflection;
-#endif
-using Amazon.Auth.AccessControlPolicy;
-using Amazon.Runtime;
-using Amazon.Runtime.SharedInterfaces;
-using Amazon.SimpleNotificationService;
-using Amazon.SimpleNotificationService.Model;
-using RemovePermissionRequest = Amazon.SimpleNotificationService.Model.RemovePermissionRequest;
-using RemovePermissionResponse = Amazon.SimpleNotificationService.Model.RemovePermissionResponse;
+#pragma warning disable CS8600, CS8601, CS8602, CS8604 // Nullable reference warnings - internal POCOs use nullable properties but values are set at runtime
+
+using System.Text.Json.Nodes;
+using LocalSqsSnsMessaging.Sns.Model;
 
 namespace LocalSqsSnsMessaging;
 
-/// <summary>
-/// Represents an in-memory implementation of an Amazon Simple Notification Service (SNS) client.
-/// This class provides methods to interact with SNS topics and subscriptions in a local, in-memory environment,
-/// primarily for testing and development purposes without connecting to actual AWS services.
-/// </summary>
-public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
+internal sealed class InternalSnsClient
 {
     private readonly InMemoryAwsBus _bus;
-    private readonly Lazy<ISimpleNotificationServicePaginatorFactory> _paginators;
 
     private const int MaxMessageSize = 262144;
 
-    internal InMemorySnsClient(InMemoryAwsBus bus)
+    internal InternalSnsClient(InMemoryAwsBus bus)
     {
         _bus = bus;
-        _paginators = new(() => GetPaginatorFactory(this));
-    }
-
-#pragma warning disable CA1063
-    void IDisposable.Dispose()
-#pragma warning restore CA1063
-    {
-    }
-
-    IClientConfig? IAmazonService.Config => null;
-
-    public async Task<string> SubscribeQueueAsync(string topicArn, ICoreAmazonSQS sqsClient, string sqsQueueUrl)
-    {
-        ArgumentNullException.ThrowIfNull(sqsClient);
-
-        // Get the queue's existing policy
-        var queueAttributes = await sqsClient.GetAttributesAsync(sqsQueueUrl).ConfigureAwait(true);
-
-        var sqsQueueArn = queueAttributes["QueueArn"];
-
-        string? policyStr = null;
-        if(queueAttributes.TryGetValue("Policy", out var attribute))
-        {
-            policyStr = attribute;
-        }
-        var policy = string.IsNullOrEmpty(policyStr) ? new Policy() : Policy.FromJson(policyStr);
-
-        if (!HasSqsPermission(policy, topicArn, sqsQueueArn))
-        {
-            AddSqsPermission(policy, topicArn, sqsQueueArn);
-        }
-
-        var response = await SubscribeAsync(new SubscribeRequest
-        {
-            TopicArn = topicArn,
-            Protocol = "sqs",
-            Endpoint = sqsQueueArn,
-        }).ConfigureAwait(true);
-
-        var setAttributes = new Dictionary<string, string> { { "Policy", policy.ToJson() } };
-        await sqsClient.SetAttributesAsync(sqsQueueUrl, setAttributes).ConfigureAwait(true);
-
-        return response.SubscriptionArn;
-    }
-
-    public async Task<IDictionary<string, string>> SubscribeQueueToTopicsAsync(IList<string> topicArns,
-        ICoreAmazonSQS sqsClient, string sqsQueueUrl)
-    {
-        ArgumentNullException.ThrowIfNull(topicArns);
-
-        Dictionary<string, string> topicSubscriptionMapping = new();
-        foreach (var topicArn in topicArns)
-        {
-            var subscriptionArn = await SubscribeQueueAsync(topicArn, sqsClient, sqsQueueUrl).ConfigureAwait(true);
-            topicSubscriptionMapping.Add(topicArn, subscriptionArn);
-        }
-
-        return topicSubscriptionMapping;
-    }
-
-    public Task<Topic?> FindTopicAsync(string topicName)
-    {
-        if (!_bus.Topics.TryGetValue(topicName, out var topic))
-        {
-            return Task.FromResult<Topic?>(null);
-        }
-
-        return Task.FromResult<Topic?>(new Topic
-        {
-            TopicArn = topic.Arn
-        });
-    }
-
-    public Task<CreateTopicResponse> CreateTopicAsync(string name, CancellationToken cancellationToken = default)
-    {
-        return CreateTopicAsync(new CreateTopicRequest { Name = name }, cancellationToken);
     }
 
     public Task<CreateTopicResponse> CreateTopicAsync(CreateTopicRequest request,
@@ -128,11 +38,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         }.SetCommonProperties());
     }
 
-    public Task<DeleteTopicResponse> DeleteTopicAsync(string topicArn, CancellationToken cancellationToken = default)
-    {
-        return DeleteTopicAsync(new DeleteTopicRequest { TopicArn = topicArn }, cancellationToken);
-    }
-
     public Task<DeleteTopicResponse> DeleteTopicAsync(DeleteTopicRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -143,13 +48,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.DeleteTopic, request.TopicArn);
         return Task.FromResult(new DeleteTopicResponse().SetCommonProperties());
-    }
-
-    public Task<GetSubscriptionAttributesResponse> GetSubscriptionAttributesAsync(string subscriptionArn,
-        CancellationToken cancellationToken = default)
-    {
-        return GetSubscriptionAttributesAsync(new GetSubscriptionAttributesRequest { SubscriptionArn = subscriptionArn },
-            cancellationToken);
     }
 
     public Task<GetSubscriptionAttributesResponse> GetSubscriptionAttributesAsync(
@@ -182,12 +80,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         }.SetCommonProperties());
     }
 
-    public Task<GetTopicAttributesResponse> GetTopicAttributesAsync(string topicArn,
-        CancellationToken cancellationToken = default)
-    {
-        return GetTopicAttributesAsync(new GetTopicAttributesRequest { TopicArn = topicArn }, cancellationToken);
-    }
-
     public Task<GetTopicAttributesResponse> GetTopicAttributesAsync(GetTopicAttributesRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -210,29 +102,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         {
             Attributes = attributes
         }.SetCommonProperties());
-    }
-
-    public Task<ListSubscriptionsResponse> ListSubscriptionsAsync(CancellationToken cancellationToken = default)
-    {
-        var subscriptions = _bus.Subscriptions.Values.ToList();
-        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListSubscriptions);
-        return Task.FromResult(new ListSubscriptionsResponse
-        {
-            Subscriptions = subscriptions.Select(s => new Subscription
-            {
-                SubscriptionArn = s.SubscriptionArn,
-                TopicArn = s.TopicArn,
-                Protocol = s.Protocol,
-                Endpoint = s.EndPoint,
-                Owner = _bus.CurrentAccountId,
-            }).ToList()
-        }.SetCommonProperties());
-    }
-
-    public Task<ListSubscriptionsResponse> ListSubscriptionsAsync(string nextToken,
-        CancellationToken cancellationToken = default)
-    {
-        return ListSubscriptionsAsync(new ListSubscriptionsRequest { NextToken = nextToken }, cancellationToken);
     }
 
     public Task<ListSubscriptionsResponse> ListSubscriptionsAsync(ListSubscriptionsRequest request,
@@ -266,23 +135,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         {
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(x.SubscriptionArn));
         }
-    }
-
-    public Task<ListSubscriptionsByTopicResponse> ListSubscriptionsByTopicAsync(string topicArn, string nextToken,
-        CancellationToken cancellationToken = default)
-    {
-        return ListSubscriptionsByTopicAsync(new ListSubscriptionsByTopicRequest
-        {
-            TopicArn = topicArn,
-            NextToken = nextToken
-        }, cancellationToken);
-    }
-
-    public Task<ListSubscriptionsByTopicResponse> ListSubscriptionsByTopicAsync(string topicArn,
-        CancellationToken cancellationToken = default)
-    {
-        return ListSubscriptionsByTopicAsync(new ListSubscriptionsByTopicRequest { TopicArn = topicArn },
-            cancellationToken);
     }
 
     public Task<ListSubscriptionsByTopicResponse> ListSubscriptionsByTopicAsync(ListSubscriptionsByTopicRequest request,
@@ -346,23 +198,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         }.SetCommonProperties());
     }
 
-    public Task<ListTopicsResponse> ListTopicsAsync(CancellationToken cancellationToken = default)
-    {
-        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListTopics);
-        return Task.FromResult(new ListTopicsResponse
-        {
-            Topics = _bus.Topics.Values.Select(t => new Topic
-            {
-                TopicArn = t.Arn
-            }).ToList()
-        }.SetCommonProperties());
-    }
-
-    public Task<ListTopicsResponse> ListTopicsAsync(string nextToken, CancellationToken cancellationToken = default)
-    {
-        return ListTopicsAsync(new ListTopicsRequest { NextToken = nextToken }, cancellationToken);
-    }
-
     public Task<ListTopicsResponse> ListTopicsAsync(ListTopicsRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -390,23 +225,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         }
     }
 
-    public Task<PublishResponse> PublishAsync(string topicArn, string message,
-        CancellationToken cancellationToken = default)
-    {
-        return PublishAsync(topicArn, message, null, cancellationToken);
-    }
-
-    public Task<PublishResponse> PublishAsync(string topicArn, string message, string? subject,
-        CancellationToken cancellationToken = default)
-    {
-        return PublishAsync(new PublishRequest
-        {
-            TopicArn = topicArn,
-            Message = message,
-            Subject = subject
-        }, cancellationToken);
-    }
-
     public Task<PublishResponse> PublishAsync(PublishRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -423,46 +241,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Publish, request.TopicArn);
         return Task.FromResult(result);
     }
-
-    private static int CalculateMessageSize(string message, string? subject, Dictionary<string, MessageAttributeValue>? messageAttributes)
-    {
-        var totalSize = 0;
-
-        // Add message body size
-        totalSize += Encoding.UTF8.GetByteCount(message);
-
-        // Add subject size
-        if (!string.IsNullOrEmpty(subject))
-        {
-            totalSize += Encoding.UTF8.GetByteCount(subject);
-        }
-
-        // Add message attributes size
-        if (messageAttributes != null)
-        {
-            foreach (var (key, attributeValue) in messageAttributes)
-            {
-                // Add attribute name size
-                totalSize += Encoding.UTF8.GetByteCount(key);
-
-                // Add data type size (including any custom type prefix)
-                totalSize += Encoding.UTF8.GetByteCount(attributeValue.DataType);
-
-                // Add value size based on the type
-                if (attributeValue.BinaryValue != null)
-                {
-                    totalSize += (int)attributeValue.BinaryValue.Length;
-                }
-                else if (attributeValue.StringValue != null)
-                {
-                    totalSize += Encoding.UTF8.GetByteCount(attributeValue.StringValue);
-                }
-            }
-        }
-
-        return totalSize;
-    }
-
 
     public Task<PublishBatchResponse> PublishBatchAsync(PublishBatchRequest request,
         CancellationToken cancellationToken = default)
@@ -483,12 +261,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         return Task.FromResult(result);
     }
 
-    public Task<RemovePermissionResponse> RemovePermissionAsync(string topicArn, string label,
-        CancellationToken cancellationToken = default)
-    {
-        return RemovePermissionAsync(new RemovePermissionRequest(), cancellationToken);
-    }
-
     public Task<RemovePermissionResponse> RemovePermissionAsync(RemovePermissionRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -496,21 +268,34 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
         var topic = GetTopicByArn(request.TopicArn);
 
-        var policy = topic.Attributes.TryGetValue("Policy", out var policyJson)
-            ? Policy.FromJson(policyJson)
-            : new Policy($"{topic.Arn}/SNSDefaultPolicy");
-
-        var statementToRemove = policy.Statements.FirstOrDefault(s => s.Id == request.Label);
-        if (statementToRemove == null)
+        if (!topic.Attributes.TryGetValue("Policy", out var policyJson))
         {
             throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: can't find label.");
         }
 
-        policy.Statements.Remove(statementToRemove);
+        var policy = JsonNode.Parse(policyJson)!.AsObject();
+        var statements = policy["Statement"]!.AsArray();
 
-        if (policy.Statements.Any())
+        int? indexToRemove = null;
+        for (int i = 0; i < statements.Count; i++)
         {
-            topic.Attributes["Policy"] = policy.ToJson();
+            if (statements[i]?["Sid"]?.GetValue<string>() == request.Label)
+            {
+                indexToRemove = i;
+                break;
+            }
+        }
+
+        if (indexToRemove is null)
+        {
+            throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: can't find label.");
+        }
+
+        statements.RemoveAt(indexToRemove.Value);
+
+        if (statements.Count > 0)
+        {
+            topic.Attributes["Policy"] = policy.ToJsonString();
         }
         else
         {
@@ -519,20 +304,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.RemovePermission, topic.Arn);
         return Task.FromResult(new RemovePermissionResponse().SetCommonProperties());
-    }
-
-    public Task<SetSubscriptionAttributesResponse> SetSubscriptionAttributesAsync(string subscriptionArn,
-        string attributeName, string attributeValue,
-        CancellationToken cancellationToken = default)
-    {
-        return SetSubscriptionAttributesAsync(
-            new SetSubscriptionAttributesRequest
-            {
-                SubscriptionArn = subscriptionArn,
-                AttributeName = attributeName,
-                AttributeValue = attributeValue
-            },
-            cancellationToken);
     }
 
     public Task<SetSubscriptionAttributesResponse> SetSubscriptionAttributesAsync(
@@ -572,18 +343,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         return Task.FromResult(new SetSubscriptionAttributesResponse().SetCommonProperties());
     }
 
-    public Task<SetTopicAttributesResponse> SetTopicAttributesAsync(string topicArn, string attributeName,
-        string attributeValue,
-        CancellationToken cancellationToken = default)
-    {
-        return SetTopicAttributesAsync(new SetTopicAttributesRequest
-        {
-            TopicArn = topicArn,
-            AttributeName = attributeName,
-            AttributeValue = attributeValue
-        }, cancellationToken);
-    }
-
     public Task<SetTopicAttributesResponse> SetTopicAttributesAsync(SetTopicAttributesRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -598,17 +357,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         topic.Attributes[request.AttributeName] = request.AttributeValue;
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetTopicAttributes, topic.Arn);
         return Task.FromResult(new SetTopicAttributesResponse().SetCommonProperties());
-    }
-
-    public Task<SubscribeResponse> SubscribeAsync(string topicArn, string protocol, string endpoint,
-        CancellationToken cancellationToken = default)
-    {
-        return SubscribeAsync(new SubscribeRequest
-        {
-            TopicArn = topicArn,
-            Protocol = protocol,
-            Endpoint = endpoint
-        }, cancellationToken);
     }
 
     public Task<SubscribeResponse> SubscribeAsync(SubscribeRequest request,
@@ -675,12 +423,6 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         return Task.FromResult(new TagResourceResponse().SetCommonProperties());
     }
 
-    public Task<UnsubscribeResponse> UnsubscribeAsync(string subscriptionArn,
-        CancellationToken cancellationToken = default)
-    {
-        return UnsubscribeAsync(new UnsubscribeRequest { SubscriptionArn = subscriptionArn }, cancellationToken);
-    }
-
     public Task<UnsubscribeResponse> UnsubscribeAsync(UnsubscribeRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -717,47 +459,140 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         return Task.FromResult(new UntagResourceResponse().SetCommonProperties());
     }
 
-    private static void AddSqsPermission(Policy policy, string topicArn, string sqsQueueArn)
+    public Task<AddPermissionResponse> AddPermissionAsync(AddPermissionRequest request, CancellationToken cancellationToken = default)
     {
-        var statement = new Statement(Statement.StatementEffect.Allow);
-#pragma warning disable CS0612,CS0618
-#if AWS_SDK_V3
-        statement.Actions.Add(new ActionIdentifier("sqs:SendMessage"));
-#else
-        statement.Actions.Add("sqs:SendMessage");
-#endif
-#pragma warning restore CS0612,CS0618
-        statement.Resources.Add(new Resource(sqsQueueArn));
-        statement.Conditions.Add(ConditionFactory.NewSourceArnCondition(topicArn));
-        statement.Principals.Add(new Principal("*"));
-        policy.Statements.Add(statement);
-    }
+        ArgumentNullException.ThrowIfNull(request);
 
-    private static bool HasSqsPermission(Policy policy, string topicArn, string sqsQueueArn)
-    {
-        foreach (var statement in policy.Statements)
+        var topic = GetTopicByArn(request.TopicArn);
+
+        JsonObject policy;
+        if (topic.Attributes.TryGetValue("Policy", out var policyJson))
         {
-            // See if the statement contains the topic as a resource
-            var containsResource = statement.Resources.Any(resource => resource.Id.Equals(sqsQueueArn, StringComparison.OrdinalIgnoreCase));
-
-            // If queue found as the resource, see if the condition is for this topic
-            if (containsResource)
+            policy = JsonNode.Parse(policyJson)!.AsObject();
+        }
+        else
+        {
+            policy = new JsonObject
             {
-                foreach (var condition in statement.Conditions)
-                {
-                    if ((string.Equals(condition.Type, nameof(ConditionFactory.StringComparisonType.StringLike), StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(condition.Type, nameof(ConditionFactory.StringComparisonType.StringEquals), StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(condition.Type, nameof(ConditionFactory.ArnComparisonType.ArnEquals), StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(condition.Type, nameof(ConditionFactory.ArnComparisonType.ArnLike), StringComparison.OrdinalIgnoreCase)) &&
-                        string.Equals(condition.ConditionKey, ConditionFactory.SOURCE_ARN_CONDITION_KEY, StringComparison.OrdinalIgnoreCase) &&
-                        condition.Values.Contains<string>(topicArn))
-                        return true;
-                }
+                ["Version"] = "2012-10-17",
+                ["Id"] = $"{topic.Arn}/SNSDefaultPolicy",
+                ["Statement"] = new JsonArray()
+            };
+        }
+
+        var statements = policy["Statement"]!.AsArray();
+
+        foreach (var stmt in statements)
+        {
+            if (stmt?["Sid"]?.GetValue<string>() == request.Label)
+            {
+                throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: Already exists.");
             }
         }
 
-        return false;
+        var principals = new JsonArray();
+        foreach (var accountId in request.AWSAccountId ?? [])
+        {
+            principals.Add($"arn:aws:iam::{accountId}:root");
+        }
+
+        var actions = new JsonArray();
+        foreach (var action in request.ActionName ?? [])
+        {
+            actions.Add($"SNS:{action}");
+        }
+
+        var newStatement = new JsonObject
+        {
+            ["Sid"] = request.Label,
+            ["Effect"] = "Allow",
+            ["Principal"] = new JsonObject { ["AWS"] = principals },
+            ["Action"] = actions,
+            ["Resource"] = topic.Arn
+        };
+
+        statements.Add(newStatement);
+        topic.Attributes["Policy"] = policy.ToJsonString();
+
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.AddPermission, topic.Arn);
+        return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
     }
+
+    // Stub methods for unsupported operations
+
+    public Task<CheckIfPhoneNumberIsOptedOutResponse> CheckIfPhoneNumberIsOptedOutAsync(CheckIfPhoneNumberIsOptedOutRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("CheckIfPhoneNumberIsOptedOut is not supported.");
+
+    public Task<ConfirmSubscriptionResponse> ConfirmSubscriptionAsync(ConfirmSubscriptionRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("ConfirmSubscription is not supported.");
+
+    public Task<CreatePlatformApplicationResponse> CreatePlatformApplicationAsync(CreatePlatformApplicationRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("CreatePlatformApplication is not supported.");
+
+    public Task<CreatePlatformEndpointResponse> CreatePlatformEndpointAsync(CreatePlatformEndpointRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("CreatePlatformEndpoint is not supported.");
+
+    public Task<CreateSMSSandboxPhoneNumberResponse> CreateSMSSandboxPhoneNumberAsync(CreateSMSSandboxPhoneNumberRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("CreateSMSSandboxPhoneNumber is not supported.");
+
+    public Task<DeleteEndpointResponse> DeleteEndpointAsync(DeleteEndpointRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("DeleteEndpoint is not supported.");
+
+    public Task<DeletePlatformApplicationResponse> DeletePlatformApplicationAsync(DeletePlatformApplicationRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("DeletePlatformApplication is not supported.");
+
+    public Task<DeleteSMSSandboxPhoneNumberResponse> DeleteSMSSandboxPhoneNumberAsync(DeleteSMSSandboxPhoneNumberRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("DeleteSMSSandboxPhoneNumber is not supported.");
+
+    public Task<GetDataProtectionPolicyResponse> GetDataProtectionPolicyAsync(GetDataProtectionPolicyRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("GetDataProtectionPolicy is not supported.");
+
+    public Task<GetEndpointAttributesResponse> GetEndpointAttributesAsync(GetEndpointAttributesRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("GetEndpointAttributes is not supported.");
+
+    public Task<GetPlatformApplicationAttributesResponse> GetPlatformApplicationAttributesAsync(GetPlatformApplicationAttributesRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("GetPlatformApplicationAttributes is not supported.");
+
+    public Task<GetSMSAttributesResponse> GetSMSAttributesAsync(GetSMSAttributesRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("GetSMSAttributes is not supported.");
+
+    public Task<GetSMSSandboxAccountStatusResponse> GetSMSSandboxAccountStatusAsync(GetSMSSandboxAccountStatusRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("GetSMSSandboxAccountStatus is not supported.");
+
+    public Task<ListEndpointsByPlatformApplicationResponse> ListEndpointsByPlatformApplicationAsync(ListEndpointsByPlatformApplicationRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("ListEndpointsByPlatformApplication is not supported.");
+
+    public Task<ListOriginationNumbersResponse> ListOriginationNumbersAsync(ListOriginationNumbersRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("ListOriginationNumbers is not supported.");
+
+    public Task<ListPhoneNumbersOptedOutResponse> ListPhoneNumbersOptedOutAsync(ListPhoneNumbersOptedOutRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("ListPhoneNumbersOptedOut is not supported.");
+
+    public Task<ListPlatformApplicationsResponse> ListPlatformApplicationsAsync(ListPlatformApplicationsRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("ListPlatformApplications is not supported.");
+
+    public Task<ListSMSSandboxPhoneNumbersResponse> ListSMSSandboxPhoneNumbersAsync(ListSMSSandboxPhoneNumbersRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("ListSMSSandboxPhoneNumbers is not supported.");
+
+    public Task<OptInPhoneNumberResponse> OptInPhoneNumberAsync(OptInPhoneNumberRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("OptInPhoneNumber is not supported.");
+
+    public Task<PutDataProtectionPolicyResponse> PutDataProtectionPolicyAsync(PutDataProtectionPolicyRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("PutDataProtectionPolicy is not supported.");
+
+    public Task<SetEndpointAttributesResponse> SetEndpointAttributesAsync(SetEndpointAttributesRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("SetEndpointAttributes is not supported.");
+
+    public Task<SetPlatformApplicationAttributesResponse> SetPlatformApplicationAttributesAsync(SetPlatformApplicationAttributesRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("SetPlatformApplicationAttributes is not supported.");
+
+    public Task<SetSMSAttributesResponse> SetSMSAttributesAsync(SetSMSAttributesRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("SetSMSAttributes is not supported.");
+
+    public Task<VerifySMSSandboxPhoneNumberResponse> VerifySMSSandboxPhoneNumberAsync(VerifySMSSandboxPhoneNumberRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("VerifySMSSandboxPhoneNumber is not supported.");
+
+    // Helper methods
 
     private SnsTopicResource GetTopicByArn(string topicArn)
     {
@@ -777,70 +612,42 @@ public sealed partial class InMemorySnsClient : IAmazonSimpleNotificationService
         return topicArn[(indexOfLastColon+1) ..];
     }
 
-    public Task<AddPermissionResponse> AddPermissionAsync(string topicArn, string label,
-        List<string> awsAccountId, List<string> actionName, CancellationToken cancellationToken = default)
+    private static int CalculateMessageSize(string message, string? subject, Dictionary<string, MessageAttributeValue>? messageAttributes)
     {
-        return AddPermissionAsync(new AddPermissionRequest
+        var totalSize = 0;
+
+        // Add message body size
+        totalSize += Encoding.UTF8.GetByteCount(message);
+
+        // Add subject size
+        if (!string.IsNullOrEmpty(subject))
         {
-            TopicArn = topicArn,
-            Label = label,
-            AWSAccountId = awsAccountId,
-            ActionName = actionName
-        }, cancellationToken);
-    }
-
-    public Task<AddPermissionResponse> AddPermissionAsync(AddPermissionRequest request, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        var topic = GetTopicByArn(request.TopicArn);
-
-        var policy = topic.Attributes.TryGetValue("Policy", out var policyJson)
-            ? Policy.FromJson(policyJson)
-            : new Policy($"{topic.Arn}/SNSDefaultPolicy");
-
-        var statement = new Statement(Statement.StatementEffect.Allow)
-        {
-            Id = request.Label,
-            Actions = request.ActionName.Select(action => new ActionIdentifier($"SNS:{action}")).ToList()
-        };
-
-        statement.Resources.Add(new Resource(topic.Arn));
-
-        foreach (var accountId in request.AWSAccountId)
-        {
-            statement.Principals.Add(new Principal($"arn:aws:iam::{accountId}:root"));
+            totalSize += Encoding.UTF8.GetByteCount(subject);
         }
 
-        if (policy.CheckIfStatementExists(statement))
+        // Add message attributes size
+        if (messageAttributes != null)
         {
-            throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: Already exists.");
+            foreach (var (key, attributeValue) in messageAttributes)
+            {
+                // Add attribute name size
+                totalSize += Encoding.UTF8.GetByteCount(key);
+
+                // Add data type size (including any custom type prefix)
+                totalSize += Encoding.UTF8.GetByteCount(attributeValue.DataType);
+
+                // Add value size based on the type
+                if (attributeValue.BinaryValue != null)
+                {
+                    totalSize += (int)attributeValue.BinaryValue.Length;
+                }
+                else if (attributeValue.StringValue != null)
+                {
+                    totalSize += Encoding.UTF8.GetByteCount(attributeValue.StringValue);
+                }
+            }
         }
 
-        policy.Statements.Add(statement);
-        topic.Attributes["Policy"] = policy.ToJson();
-
-        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.AddPermission, topic.Arn);
-        return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
+        return totalSize;
     }
-
-#if NET
-    [UnsafeAccessor(UnsafeAccessorKind.Constructor)]
-    private static extern SimpleNotificationServicePaginatorFactory GetPaginatorFactory(IAmazonSimpleNotificationService client);
-#else
-    private static SimpleNotificationServicePaginatorFactory GetPaginatorFactory(IAmazonSimpleNotificationService client)
-    {
-        var ctor = typeof(SimpleNotificationServicePaginatorFactory)
-                       .GetConstructor(
-                           BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
-                           null,
-                           [typeof(IAmazonSimpleNotificationService)],
-                           null)
-                   ?? throw new InvalidOperationException("Constructor not found on SimpleNotificationServicePaginatorFactory");
-
-        return (SimpleNotificationServicePaginatorFactory)ctor.Invoke([client]);
-    }
-#endif
-
-    public ISimpleNotificationServicePaginatorFactory Paginators => _paginators.Value;
 }

@@ -3,10 +3,7 @@
 #if ASPNETCORE
 
 using System.Text;
-using System.Text.Json;
-using Amazon.SQS;
-using Amazon.SQS.Model;
-using Amazon.Runtime;
+using LocalSqsSnsMessaging.Sqs.Model;
 using Microsoft.AspNetCore.Http;
 
 namespace LocalSqsSnsMessaging.Http.Handlers;
@@ -25,7 +22,7 @@ internal static partial class SqsOperationHandler
         ArgumentNullException.ThrowIfNull(operationName);
         ArgumentNullException.ThrowIfNull(bus);
 
-        using IAmazonSQS client = bus.CreateRawSqsClient();
+        var client = new InternalSqsClient(bus);
 
         switch (operationName)
         {
@@ -107,24 +104,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<AddPermissionRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeAddPermissionRequest(requestStream);
             var result = await client.AddPermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeAddPermissionResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -134,24 +134,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<CancelMessageMoveTaskRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeCancelMessageMoveTaskRequest(requestStream);
             var result = await client.CancelMessageMoveTaskAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeCancelMessageMoveTaskResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -161,24 +164,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<ChangeMessageVisibilityRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityRequest(requestStream);
             var result = await client.ChangeMessageVisibilityAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeChangeMessageVisibilityResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -188,24 +194,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<ChangeMessageVisibilityBatchRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityBatchRequest(requestStream);
             var result = await client.ChangeMessageVisibilityBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeChangeMessageVisibilityBatchResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -215,24 +224,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<CreateQueueRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeCreateQueueRequest(requestStream);
             var result = await client.CreateQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeCreateQueueResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -242,24 +254,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<DeleteMessageRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeDeleteMessageRequest(requestStream);
             var result = await client.DeleteMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeDeleteMessageResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -269,24 +284,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<DeleteMessageBatchRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeDeleteMessageBatchRequest(requestStream);
             var result = await client.DeleteMessageBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeDeleteMessageBatchResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -296,24 +314,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<DeleteQueueRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeDeleteQueueRequest(requestStream);
             var result = await client.DeleteQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeDeleteQueueResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -323,24 +344,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<GetQueueAttributesRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeGetQueueAttributesRequest(requestStream);
             var result = await client.GetQueueAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeGetQueueAttributesResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -350,24 +374,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<GetQueueUrlRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeGetQueueUrlRequest(requestStream);
             var result = await client.GetQueueUrlAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeGetQueueUrlResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -377,24 +404,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<ListDeadLetterSourceQueuesRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeListDeadLetterSourceQueuesRequest(requestStream);
             var result = await client.ListDeadLetterSourceQueuesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeListDeadLetterSourceQueuesResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -404,24 +434,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<ListMessageMoveTasksRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeListMessageMoveTasksRequest(requestStream);
             var result = await client.ListMessageMoveTasksAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeListMessageMoveTasksResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -431,24 +464,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<ListQueueTagsRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeListQueueTagsRequest(requestStream);
             var result = await client.ListQueueTagsAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeListQueueTagsResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -458,24 +494,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<ListQueuesRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeListQueuesRequest(requestStream);
             var result = await client.ListQueuesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeListQueuesResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -485,24 +524,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<PurgeQueueRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializePurgeQueueRequest(requestStream);
             var result = await client.PurgeQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializePurgeQueueResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -512,24 +554,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<ReceiveMessageRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeReceiveMessageRequest(requestStream);
             var result = await client.ReceiveMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeReceiveMessageResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -539,24 +584,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<RemovePermissionRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeRemovePermissionRequest(requestStream);
             var result = await client.RemovePermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeRemovePermissionResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -566,24 +614,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<SendMessageRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeSendMessageRequest(requestStream);
             var result = await client.SendMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeSendMessageResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -593,24 +644,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<SendMessageBatchRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeSendMessageBatchRequest(requestStream);
             var result = await client.SendMessageBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeSendMessageBatchResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -620,24 +674,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<SetQueueAttributesRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeSetQueueAttributesRequest(requestStream);
             var result = await client.SetQueueAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeSetQueueAttributesResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -647,24 +704,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<StartMessageMoveTaskRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeStartMessageMoveTaskRequest(requestStream);
             var result = await client.StartMessageMoveTaskAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeStartMessageMoveTaskResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -674,24 +734,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<TagQueueRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeTagQueueRequest(requestStream);
             var result = await client.TagQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeTagQueueResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -701,24 +764,27 @@ internal static partial class SqsOperationHandler
         HttpContext context,
         byte[] requestBody,
         int requestBodyLength,
-        IAmazonSQS client,
+        InternalSqsClient client,
         CancellationToken cancellationToken)
     {
         try
         {
             using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = await JsonSerializer.DeserializeAsync<UntagQueueRequest>(requestStream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeUntagQueueRequest(requestStream);
             var result = await client.UntagQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/x-amz-json-1.0";
-            await JsonSerializer.SerializeAsync(context.Response.Body, result, JsonOptions, cancellationToken).ConfigureAwait(false);
+            using var responseBuffer = new MemoryStream();
+            SqsJsonSerializers.SerializeUntagQueueResponse(result, responseBuffer);
+            responseBuffer.Position = 0;
+            await responseBuffer.CopyToAsync(context.Response.Body, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (AmazonServiceException ex)
+        catch (AwsServiceException ex)
         {
             await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
@@ -730,7 +796,7 @@ internal static partial class SqsOperationHandler
         string errorMessage;
         int statusCode;
 
-        if (exception is AmazonServiceException awsException)
+        if (exception is AwsServiceException awsException)
         {
             errorCode = awsException.ErrorCode ?? exception.GetType().Name.Replace("Exception", "");
             errorMessage = awsException.Message;

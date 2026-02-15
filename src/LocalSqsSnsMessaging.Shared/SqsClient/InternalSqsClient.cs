@@ -1,34 +1,17 @@
+#pragma warning disable CS8600, CS8601, CS8602, CS8604, CS8619 // Nullable reference warnings - internal POCOs use nullable properties but values are set at runtime
+
 using System.Collections.Concurrent;
 using System.Net;
-#if NET
-using System.Runtime.CompilerServices;
-#else
-using System.Reflection;
-#endif
 using System.Security.Cryptography;
 using System.Text.Json;
-using Amazon.Auth.AccessControlPolicy;
-using Amazon.Runtime;
-using Amazon.SQS;
-using Amazon.SQS.Model;
-using BatchResultErrorEntry = Amazon.SQS.Model.BatchResultErrorEntry;
-using MessageAttributeValue = Amazon.SQS.Model.MessageAttributeValue;
-using RemovePermissionRequest = Amazon.SQS.Model.RemovePermissionRequest;
-using RemovePermissionResponse = Amazon.SQS.Model.RemovePermissionResponse;
-using ResourceNotFoundException = Amazon.SQS.Model.ResourceNotFoundException;
+using System.Text.Json.Nodes;
+using LocalSqsSnsMessaging.Sqs.Model;
 
 namespace LocalSqsSnsMessaging;
 
-/// <summary>
-/// Represents an in-memory implementation of an Amazon Simple Queue Service (SQS) client.
-/// This class provides methods to interact with SQS queues in a local, in-memory environment,
-/// primarily for testing and development purposes without connecting to actual AWS services.
-/// It implements the IAmazonSQS interface to maintain compatibility with the AWS SDK.
-/// </summary>
-public sealed partial class InMemorySqsClient : IAmazonSQS
+internal sealed class InternalSqsClient
 {
     private readonly InMemoryAwsBus _bus;
-    private readonly Lazy<ISQSPaginatorFactory> _paginators;
 
     private const int MaxMessageSize = 1_048_576; // 1MB
     private static readonly string[] InternalAttributes = [
@@ -40,56 +23,9 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         QueueAttributeName.QueueArn
     ];
 
-    internal InMemorySqsClient(InMemoryAwsBus bus)
+    internal InternalSqsClient(InMemoryAwsBus bus)
     {
         _bus = bus;
-        _paginators = new(() => GetPaginatorFactory(this));
-    }
-
-#pragma warning disable CA1063
-    void IDisposable.Dispose()
-#pragma warning restore CA1063
-    {
-    }
-
-    IClientConfig? IAmazonService.Config => null;
-
-    public Task<Dictionary<string, string>> GetAttributesAsync(string queueUrl)
-    {
-        ArgumentNullException.ThrowIfNull(queueUrl);
-
-        var queueName = GetQueueNameFromUrl(queueUrl);
-        if (_bus.Queues.TryGetValue(queueName, out var queue))
-        {
-            return Task.FromResult(queue.Attributes ?? []);
-        }
-
-        throw new QueueDoesNotExistException($"Queue {queueUrl} does not exist.");
-    }
-
-    public Task SetAttributesAsync(string queueUrl, Dictionary<string, string> attributes)
-    {
-        ArgumentNullException.ThrowIfNull(queueUrl);
-        ArgumentNullException.ThrowIfNull(attributes);
-
-        var queueName = GetQueueNameFromUrl(queueUrl);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
-        {
-            throw new QueueDoesNotExistException($"Queue {queueName} does not exist.");
-        }
-
-        foreach (var (key, value) in attributes)
-        {
-            if (InternalAttributes.Contains(key))
-            {
-                throw new InvalidOperationException($"Cannot set internal attribute {key}");
-            }
-
-            queue.Attributes ??= [];
-            queue.Attributes[key] = value;
-        }
-
-        return Task.CompletedTask;
     }
 
     public Task<ChangeMessageVisibilityResponse> ChangeMessageVisibilityAsync(ChangeMessageVisibilityRequest request,
@@ -97,36 +33,32 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
-        if (!IsReceiptHandleValid(request.ReceiptHandle, queue.Arn))
+        if (!IsReceiptHandleValid(request.ReceiptHandle!, queue.Arn))
         {
             throw new ReceiptHandleIsInvalidException($"Receipt handle {request.ReceiptHandle} is invalid.");
         }
 
-        if (queue.InFlightMessages.TryGetValue(request.ReceiptHandle, out var inFlightInfo))
+        if (queue.InFlightMessages.TryGetValue(request.ReceiptHandle!, out var inFlightInfo))
         {
             var (message, expirationHandler) = inFlightInfo;
-            var visibilityTimeout = TimeSpan.FromSeconds(SdkCompatibility.GetValueOrZero(request.VisibilityTimeout));
+            var visibilityTimeout = TimeSpan.FromSeconds(request.VisibilityTimeout.GetValueOrDefault());
 
             if (visibilityTimeout == TimeSpan.Zero)
             {
-                // Atomically remove from in-flight and re-queue if successful.
-                if (queue.InFlightMessages.TryRemove(request.ReceiptHandle, out var removedInfo))
+                if (queue.InFlightMessages.TryRemove(request.ReceiptHandle!, out var removedInfo))
                 {
-                    removedInfo.Item2.Dispose(); // Dispose the expiration job
-
-                    // Re-queue the message to the correct location using the new abstracted method.
+                    removedInfo.Item2.Dispose();
                     EnqueueMessage(queue, message);
                 }
             }
             else
             {
-                // For non-zero timeouts, just update the expiration.
                 expirationHandler.UpdateTimeout(visibilityTimeout);
             }
 
@@ -134,8 +66,6 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             return Task.FromResult(new ChangeMessageVisibilityResponse().SetCommonProperties());
         }
 
-        // If the message is not in-flight, it might have already been processed or expired.
-        // SQS does not throw an error in this case, so we return a success response.
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ChangeMessageVisibility, queue.Arn);
         return Task.FromResult(new ChangeMessageVisibilityResponse().SetCommonProperties());
     }
@@ -170,15 +100,6 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         };
     }
 
-    public Task<CreateQueueResponse> CreateQueueAsync(string queueName,
-        CancellationToken cancellationToken = default)
-    {
-        return CreateQueueAsync(new CreateQueueRequest
-        {
-            QueueName = queueName,
-        }, cancellationToken);
-    }
-
     public Task<CreateQueueResponse> CreateQueueAsync(CreateQueueRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -193,7 +114,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         var queue = new SqsQueueResource
         {
-            Name = request.QueueName,
+            Name = request.QueueName!,
             Region = _bus.CurrentRegion,
             AccountId = _bus.CurrentAccountId,
             Url = queueUrl,
@@ -212,7 +133,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }
         queue.Attributes.Add("QueueArn", queue.Arn);
         UpdateQueueProperties(queue);
-        _bus.Queues.TryAdd(request.QueueName, queue);
+        _bus.Queues.TryAdd(request.QueueName!, queue);
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.CreateQueue, queue.Arn);
 
@@ -224,36 +145,25 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return Task.FromResult(response.SetCommonProperties());
     }
 
-    public Task<DeleteMessageResponse> DeleteMessageAsync(string queueUrl, string receiptHandle,
-        CancellationToken cancellationToken = default)
-    {
-        return DeleteMessageAsync(new DeleteMessageRequest
-        {
-            QueueUrl = queueUrl,
-            ReceiptHandle = receiptHandle
-        }, cancellationToken);
-    }
-
     public Task<DeleteMessageResponse> DeleteMessageAsync(DeleteMessageRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
-        if (queue.InFlightMessages.TryRemove(request.ReceiptHandle, out var inFlightInfo))
+        if (queue.InFlightMessages.TryRemove(request.ReceiptHandle!, out var inFlightInfo))
         {
             var (message, expirationHandler) = inFlightInfo;
             expirationHandler.Dispose();
 
             if (queue.IsFifo)
             {
-                // Remove the message from the MessageGroups if it's the last one in its group
-                if (message.Attributes.TryGetValue("MessageGroupId", out var groupId))
+                if (message.Attributes!.TryGetValue("MessageGroupId", out var groupId))
                 {
                     if (queue.MessageGroups.TryGetValue(groupId, out var groupQueue) && groupQueue.IsEmpty)
                     {
@@ -261,7 +171,6 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
                     }
                 }
 
-                // Remove the deduplication ID if it exists
                 if (message.Attributes.TryGetValue("MessageDeduplicationId", out var deduplicationId))
                 {
                     queue.DeduplicationIds.TryRemove(deduplicationId, out _);
@@ -275,40 +184,16 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         throw new ReceiptHandleIsInvalidException($"Receipt handle {request.ReceiptHandle} is invalid.");
     }
 
-    public Task<DeleteQueueResponse> DeleteQueueAsync(string queueUrl, CancellationToken cancellationToken = default)
-    {
-        return DeleteQueueAsync(new DeleteQueueRequest
-        {
-            QueueUrl = queueUrl
-        }, cancellationToken);
-    }
-
-    public Task<GetQueueUrlResponse> GetQueueUrlAsync(string queueName, CancellationToken cancellationToken = default)
-    {
-        return GetQueueUrlAsync(new GetQueueUrlRequest
-        {
-            QueueName = queueName
-        }, cancellationToken);
-    }
-
-    public Task<ListQueuesResponse> ListQueuesAsync(string queueNamePrefix,
+    public Task<DeleteQueueResponse> DeleteQueueAsync(DeleteQueueRequest request,
         CancellationToken cancellationToken = default)
     {
-        return ListQueuesAsync(new ListQueuesRequest
-        {
-            QueueNamePrefix = queueNamePrefix
-        }, cancellationToken);
-    }
+        ArgumentNullException.ThrowIfNull(request);
 
-    public Task<ReceiveMessageResponse> ReceiveMessageAsync(string queueUrl,
-        CancellationToken cancellationToken = default)
-    {
-        return ReceiveMessageAsync(new ReceiveMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MaxNumberOfMessages = 1,
-            WaitTimeSeconds = 0
-        }, cancellationToken);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
+        _bus.Queues.TryRemove(queueName, out var removedQueue);
+        var queueArn = removedQueue?.Arn ?? $"arn:aws:sqs:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:{queueName}";
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.DeleteQueue, queueArn);
+        return Task.FromResult(new DeleteQueueResponse().SetCommonProperties());
     }
 
     public async Task<ReceiveMessageResponse> ReceiveMessageAsync(ReceiveMessageRequest request,
@@ -316,12 +201,12 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (SdkCompatibility.GetValueOrDefault(request.MaxNumberOfMessages, 1) < 1)
+        if ((request.MaxNumberOfMessages ?? 1) < 1)
         {
             request.MaxNumberOfMessages = 1;
         }
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException ($"Queue '{queueName}' does not exist.");
@@ -329,9 +214,9 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         var reader = queue.Messages.Reader;
         List<Message>? messages = null;
-        var waitTime = TimeSpan.FromSeconds(SdkCompatibility.GetValueOrZero(request.WaitTimeSeconds));
+        var waitTime = TimeSpan.FromSeconds(request.WaitTimeSeconds.GetValueOrDefault());
         var visibilityTimeout =
-            SdkCompatibility.GetValueOrZero(request.VisibilityTimeout) > 0 ? TimeSpan.FromSeconds(SdkCompatibility.GetValueOrZero(request.VisibilityTimeout)) : queue.VisibilityTimeout;
+            request.VisibilityTimeout.GetValueOrDefault() > 0 ? TimeSpan.FromSeconds(request.VisibilityTimeout.GetValueOrDefault()) : queue.VisibilityTimeout;
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -364,7 +249,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }
         else
         {
-            messages = ReceiveFifoMessages(queue, SdkCompatibility.GetValueOrDefault(request.MaxNumberOfMessages, 1), visibilityTimeout, request.MessageSystemAttributeNames, cancellationToken);
+            messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, request.MessageSystemAttributeNames, cancellationToken);
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ReceiveMessage, queue.Arn);
@@ -378,7 +263,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             while (reader.TryRead(out var message))
             {
                 ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, request.MessageSystemAttributeNames);
-                if (messages is not null && messages.Count >= SdkCompatibility.GetValueOrDefault(request.MaxNumberOfMessages, 1))
+                if (messages is not null && messages.Count >= (request.MaxNumberOfMessages ?? 1))
                 {
                     break;
                 }
@@ -386,11 +271,10 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }
     }
 
-    private void ReceiveMessageImpl(Message message, ref List<Message>? messages, SqsQueueResource queue, TimeSpan visibilityTimeout, List<string> requestedSystemAttributes)
+    private void ReceiveMessageImpl(Message message, ref List<Message>? messages, SqsQueueResource queue, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes)
     {
         if (IsAtMaxReceiveCount(message, queue) && queue.ErrorQueue is not null)
         {
-            // Message has been received too many times, move it to the dead-letter queue.
             message.Attributes ??= [];
             message.Attributes[MessageSystemAttributeName.DeadLetterQueueSourceArn] = queue.Arn;
             EnqueueMessage(queue.ErrorQueue, message);
@@ -399,7 +283,6 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         IncrementReceiveCount(message);
 
         var clonedMessage = CloneMessage(message);
-        // Filter system attributes based on the request
         FilterSystemAttributes(clonedMessage, requestedSystemAttributes);
         var receiptHandle = CreateReceiptHandle(message, queue);
         clonedMessage.ReceiptHandle = receiptHandle;
@@ -410,12 +293,10 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             new SqsInflightMessageExpirationJob(receiptHandle, queue, visibilityTimeout, _bus.TimeProvider));
     }
 
-    private List<Message>? ReceiveFifoMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, List<string> requestedSystemAttributes, CancellationToken cancellationToken)
+    private List<Message>? ReceiveFifoMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes, CancellationToken cancellationToken)
     {
         List<Message>? messages = null;
 
-        // Both regular FIFO and fair queues use the same receive logic
-        // Fair queues differ in deduplication scope (per-group vs global), not in receive behavior
         foreach (var group in queue.MessageGroups)
         {
             if (messages is not null && messages.Count >= maxMessages)
@@ -517,33 +398,23 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }
     }
 
-    public Task<SendMessageResponse> SendMessageAsync(string queueUrl, string messageBody,
-        CancellationToken cancellationToken = default)
-    {
-        return SendMessageAsync(new SendMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MessageBody = messageBody
-        }, cancellationToken);
-    }
-
     public Task<SendMessageResponse> SendMessageAsync(SendMessageRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException("Queue not found");
         }
 
-        var message = CreateMessage(request.MessageBody, request.MessageAttributes, request.MessageSystemAttributes);
-        var totalSize = CalculateMessageSize(message.Body, message.MessageAttributes);
+        var message = CreateMessage(request.MessageBody!, request.MessageAttributes, request.MessageSystemAttributes);
+        var totalSize = CalculateMessageSize(message.Body!, message.MessageAttributes);
 
         if (totalSize > MaxMessageSize)
         {
-            throw new AmazonSQSException(
+            throw new SqsServiceException(
                 $"One or more parameters are invalid. Reason: Message must be shorter than {MaxMessageSize} bytes.");
         }
 
@@ -557,30 +428,26 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             message.Attributes ??= [];
             message.Attributes["MessageGroupId"] = request.MessageGroupId;
 
-            string deduplicationId = request.MessageDeduplicationId;
+            string? deduplicationId = request.MessageDeduplicationId;
             if (string.IsNullOrEmpty(deduplicationId))
             {
-                // Generate a deduplication ID based on the message body
-                deduplicationId = GenerateMessageBodyHash(request.MessageBody);
+                deduplicationId = GenerateMessageBodyHash(request.MessageBody!);
             }
 
             message.Attributes[MessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
-            // Check if this is a fair queue with per-message-group deduplication
             bool isFairQueue = IsFairQueue(queue);
             bool isDuplicate;
 
             if (isFairQueue)
             {
-                // Per-message-group deduplication
                 var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
                     request.MessageGroupId,
                     _ => new ConcurrentDictionary<string, string>());
-                isDuplicate = !groupDeduplicationIds.TryAdd(deduplicationId, message.MessageId);
+                isDuplicate = !groupDeduplicationIds.TryAdd(deduplicationId, message.MessageId!);
 
                 if (isDuplicate)
                 {
-                    // Message with this deduplication ID already exists in this group
                     return Task.FromResult(new SendMessageResponse
                     {
                         MessageId = groupDeduplicationIds[deduplicationId],
@@ -590,12 +457,10 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             }
             else
             {
-                // Global deduplication (traditional FIFO)
-                isDuplicate = !queue.DeduplicationIds.TryAdd(deduplicationId, message.MessageId);
+                isDuplicate = !queue.DeduplicationIds.TryAdd(deduplicationId, message.MessageId!);
 
                 if (isDuplicate)
                 {
-                    // Message with this deduplication ID already exists, return existing message ID
                     return Task.FromResult(new SendMessageResponse
                     {
                         MessageId = queue.DeduplicationIds[deduplicationId],
@@ -608,8 +473,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }
         else
         {
-            // TODO if DelaySeconds is set, we should use the default value for the queue
-            var delaySeconds = SdkCompatibility.GetValueOrZero(request.DelaySeconds);
+            var delaySeconds = request.DelaySeconds.GetValueOrDefault();
             if (delaySeconds > 0)
             {
                 message.Attributes ??= [];
@@ -634,21 +498,15 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         var totalSize = 0;
 
-        // Add message body size
         totalSize += Encoding.UTF8.GetByteCount(messageBody);
 
-        // Add message attributes size
         if (messageAttributes != null)
         {
             foreach (var (key, attributeValue) in messageAttributes)
             {
-                // Add attribute name size
                 totalSize += Encoding.UTF8.GetByteCount(key);
+                totalSize += Encoding.UTF8.GetByteCount(attributeValue.DataType!);
 
-                // Add data type size (including any custom type prefix)
-                totalSize += Encoding.UTF8.GetByteCount(attributeValue.DataType);
-
-                // Add value size based on the type
                 if (attributeValue.BinaryValue != null)
                 {
                     totalSize += (int)attributeValue.BinaryValue.Length;
@@ -667,9 +525,8 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         if (targetQueue.IsFifo)
         {
-            if (!message.Attributes.TryGetValue("MessageGroupId", out var groupId) || string.IsNullOrEmpty(groupId))
+            if (!message.Attributes!.TryGetValue("MessageGroupId", out var groupId) || string.IsNullOrEmpty(groupId))
             {
-                // A message being moved to a FIFO DLQ must retain its Group ID.
                 throw new InvalidOperationException("Message destined for a FIFO queue must have a MessageGroupId.");
             }
             EnqueueFifoMessage(targetQueue, groupId, message);
@@ -701,7 +558,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return Convert.ToBase64String(hashBytes);
     }
 
-    private static Message CreateMessage(string messageBody, Dictionary<string, MessageAttributeValue>? messageAttributes, Dictionary<string, MessageSystemAttributeValue> messageSystemAttributes)
+    private static Message CreateMessage(string messageBody, Dictionary<string, MessageAttributeValue>? messageAttributes, Dictionary<string, MessageSystemAttributeValue>? messageSystemAttributes)
     {
         var message = new Message
         {
@@ -732,7 +589,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!_bus.MoveTasks.TryGetValue(request.TaskHandle, out var task))
+        if (!_bus.MoveTasks.TryGetValue(request.TaskHandle!, out var task))
         {
             throw new ResourceNotFoundException("Task does not exist.");
         }
@@ -747,50 +604,13 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }.SetCommonProperties());
     }
 
-#if AWS_SDK_V3
-    public Task<ChangeMessageVisibilityResponse> ChangeMessageVisibilityAsync(string queueUrl, string receiptHandle,
-        int visibilityTimeout,
-        CancellationToken cancellationToken = default)
-    {
-        return ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
-        {
-            QueueUrl = queueUrl,
-            ReceiptHandle = receiptHandle,
-            VisibilityTimeout = visibilityTimeout
-        }, cancellationToken);
-    }
-#else
-    public Task<ChangeMessageVisibilityResponse> ChangeMessageVisibilityAsync(string queueUrl, string receiptHandle,
-        int? visibilityTimeout,
-        CancellationToken cancellationToken = default)
-    {
-        return ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
-        {
-            QueueUrl = queueUrl,
-            ReceiptHandle = receiptHandle,
-            VisibilityTimeout = visibilityTimeout
-        }, cancellationToken);
-    }
-#endif
-
-    public Task<ChangeMessageVisibilityBatchResponse> ChangeMessageVisibilityBatchAsync(string queueUrl,
-        List<ChangeMessageVisibilityBatchRequestEntry> entries,
-        CancellationToken cancellationToken = default)
-    {
-        return ChangeMessageVisibilityBatchAsync(new ChangeMessageVisibilityBatchRequest
-        {
-            QueueUrl = queueUrl,
-            Entries = entries
-        }, cancellationToken);
-    }
-
     public Task<ChangeMessageVisibilityBatchResponse> ChangeMessageVisibilityBatchAsync(
         ChangeMessageVisibilityBatchRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
@@ -802,14 +622,14 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             Failed = []
         };
 
-        foreach (var entry in request.Entries)
+        foreach (var entry in request.Entries!)
         {
             try
             {
-                if (queue.InFlightMessages.TryGetValue(entry.ReceiptHandle, out var message))
+                if (queue.InFlightMessages.TryGetValue(entry.ReceiptHandle!, out var message))
                 {
                     var (_, inFlightExpireCallback) = message;
-                    inFlightExpireCallback.UpdateTimeout(TimeSpan.FromSeconds(SdkCompatibility.GetValueOrZero(entry.VisibilityTimeout)));
+                    inFlightExpireCallback.UpdateTimeout(TimeSpan.FromSeconds(entry.VisibilityTimeout.GetValueOrDefault()));
 
                     response.Successful.Add(new ChangeMessageVisibilityBatchResultEntry
                     {
@@ -845,23 +665,12 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return Task.FromResult(response.SetCommonProperties());
     }
 
-    public Task<DeleteMessageBatchResponse> DeleteMessageBatchAsync(string queueUrl,
-        List<DeleteMessageBatchRequestEntry> entries,
-        CancellationToken cancellationToken = default)
-    {
-        return DeleteMessageBatchAsync(new DeleteMessageBatchRequest
-        {
-            QueueUrl = queueUrl,
-            Entries = entries
-        }, cancellationToken);
-    }
-
     public Task<DeleteMessageBatchResponse> DeleteMessageBatchAsync(DeleteMessageBatchRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
@@ -873,11 +682,11 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             Failed = []
         };
 
-        foreach (var entry in request.Entries)
+        foreach (var entry in request.Entries!)
         {
             try
             {
-                if (queue.InFlightMessages.TryRemove(entry.ReceiptHandle, out _))
+                if (queue.InFlightMessages.TryRemove(entry.ReceiptHandle!, out _))
                 {
                     response.Successful.Add(new DeleteMessageBatchResultEntry
                     {
@@ -913,51 +722,28 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return Task.FromResult(response.SetCommonProperties());
     }
 
-    public Task<DeleteQueueResponse> DeleteQueueAsync(DeleteQueueRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
-        _bus.Queues.TryRemove(queueName, out var removedQueue);
-        var queueArn = removedQueue?.Arn ?? $"arn:aws:sqs:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:{queueName}";
-        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.DeleteQueue, queueArn);
-        return Task.FromResult(new DeleteQueueResponse().SetCommonProperties());
-    }
-
-    public Task<GetQueueAttributesResponse> GetQueueAttributesAsync(string queueUrl, List<string> attributeNames,
-        CancellationToken cancellationToken = default)
-    {
-        return GetQueueAttributesAsync(
-            new GetQueueAttributesRequest
-            {
-                QueueUrl = queueUrl,
-                AttributeNames = attributeNames
-            },
-            cancellationToken);
-    }
-
     public Task<GetQueueAttributesResponse> GetQueueAttributesAsync(GetQueueAttributesRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         var attributes = new Dictionary<string, string>();
+        var attributeNames = request.AttributeNames ?? [];
 
-        if (request.AttributeNames.Count == 0 || request.AttributeNames.Contains("All"))
+        if (attributeNames.Count == 0 || attributeNames.Contains("All"))
         {
             attributes = new Dictionary<string, string>(queue.Attributes ?? []);
             AddComputedAttributes(queue, attributes);
         }
         else
         {
-            foreach (var attributeName in request.AttributeNames)
+            foreach (var attributeName in attributeNames)
             {
                 if (queue.Attributes?.TryGetValue(attributeName, out var value) == true)
                 {
@@ -1013,7 +799,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }
         else if (attributeName == QueueAttributeName.ApproximateNumberOfMessagesDelayed)
         {
-            attributes[attributeName] = "0"; // Assuming no delayed messages in this implementation
+            attributes[attributeName] = "0";
         }
     }
 
@@ -1037,7 +823,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!_bus.Queues.TryGetValue(request.QueueName, out var queue))
+        if (!_bus.Queues.TryGetValue(request.QueueName!, out var queue))
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueName} does not exist.");
         }
@@ -1062,7 +848,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         var (items, nextToken) = pagedQueues.GetPage(
             TokenGenerator,
-            SdkCompatibility.GetValueOrDefault(request.MaxResults, 1000),
+            request.MaxResults ?? 1000,
             request.NextToken);
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ListDeadLetterSourceQueues);
@@ -1090,7 +876,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
                 TaskHandle = t.TaskHandle,
                 SourceArn = t.SourceQueue.Arn,
                 DestinationArn = t.DestinationQueue?.Arn,
-                MaxNumberOfMessagesPerSecond = SdkCompatibility.ToSdkValue(t.MaxNumberOfMessagesPerSecond),
+                MaxNumberOfMessagesPerSecond = t.MaxNumberOfMessagesPerSecond,
                 Status = MoveTaskStatus.Running,
                 ApproximateNumberOfMessagesMoved = t.ApproximateNumberOfMessagesMoved,
                 ApproximateNumberOfMessagesToMove = t.ApproximateNumberOfMessagesToMove
@@ -1119,7 +905,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         var (items, nextToken) = pagedQueues.GetPage(
             TokenGenerator,
-            SdkCompatibility.GetValueOrDefault(request.MaxResults, 1000),
+            request.MaxResults ?? 1000,
             request.NextToken);
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ListQueues);
@@ -1140,7 +926,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException("Queue not found.");
@@ -1153,20 +939,12 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         }.SetCommonProperties());
     }
 
-    public Task<PurgeQueueResponse> PurgeQueueAsync(string queueUrl, CancellationToken cancellationToken = default)
-    {
-        return PurgeQueueAsync(new PurgeQueueRequest
-        {
-            QueueUrl = queueUrl
-        }, cancellationToken);
-    }
-
     public Task<PurgeQueueResponse> PurgeQueueAsync(PurgeQueueRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
@@ -1189,43 +967,46 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return Task.FromResult(new PurgeQueueResponse().SetCommonProperties());
     }
 
-    public Task<RemovePermissionResponse> RemovePermissionAsync(string queueUrl, string label,
-        CancellationToken cancellationToken = default)
-    {
-        return RemovePermissionAsync(new RemovePermissionRequest
-        {
-            QueueUrl = queueUrl,
-            Label = label
-        }, cancellationToken);
-    }
-
     public Task<RemovePermissionResponse> RemovePermissionAsync(RemovePermissionRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
-        var policy = queue.Attributes?.TryGetValue("Policy", out var policyJson) == true
-            ? Policy.FromJson(policyJson)
-            : new Policy($"{queue.Arn}/SQSDefaultPolicy");
-
-        var statementToRemove = policy.Statements.FirstOrDefault(s => s.Id == request.Label);
-        if (statementToRemove == null)
+        if (queue.Attributes?.TryGetValue("Policy", out var policyJson) != true)
         {
             throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: can't find label.");
         }
 
-        policy.Statements.Remove(statementToRemove);
+        var policy = JsonNode.Parse(policyJson)!.AsObject();
+        var statements = policy["Statement"]!.AsArray();
+
+        int? indexToRemove = null;
+        for (int i = 0; i < statements.Count; i++)
+        {
+            if (statements[i]?["Sid"]?.GetValue<string>() == request.Label)
+            {
+                indexToRemove = i;
+                break;
+            }
+        }
+
+        if (indexToRemove is null)
+        {
+            throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: can't find label.");
+        }
+
+        statements.RemoveAt(indexToRemove.Value);
 
         queue.Attributes ??= [];
-        if (policy.Statements.Any())
+        if (statements.Count > 0)
         {
-            queue.Attributes["Policy"] = policy.ToJson();
+            queue.Attributes["Policy"] = policy.ToJsonString();
         }
         else
         {
@@ -1236,23 +1017,12 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return Task.FromResult(new RemovePermissionResponse().SetCommonProperties());
     }
 
-    public Task<SendMessageBatchResponse> SendMessageBatchAsync(string queueUrl,
-        List<SendMessageBatchRequestEntry> entries,
-        CancellationToken cancellationToken = default)
-    {
-        return SendMessageBatchAsync(new SendMessageBatchRequest
-        {
-            QueueUrl = queueUrl,
-            Entries = entries
-        }, cancellationToken);
-    }
-
     public Task<SendMessageBatchResponse> SendMessageBatchAsync(SendMessageBatchRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
@@ -1264,7 +1034,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
             Failed = []
         };
 
-        var totalSize = request.Entries.Sum(e => CalculateMessageSize(e.MessageBody, e.MessageAttributes));
+        var totalSize = request.Entries!.Sum(e => CalculateMessageSize(e.MessageBody!, e.MessageAttributes));
 
         if (totalSize > MaxMessageSize)
         {
@@ -1274,12 +1044,12 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         foreach (var entry in request.Entries)
         {
-            var message = CreateMessage(entry.MessageBody, entry.MessageAttributes, entry.MessageSystemAttributes);
+            var message = CreateMessage(entry.MessageBody!, entry.MessageAttributes, entry.MessageSystemAttributes);
 
-            var entryDelaySeconds = SdkCompatibility.GetValueOrZero(entry.DelaySeconds);
+            var entryDelaySeconds = entry.DelaySeconds.GetValueOrDefault();
             if (entryDelaySeconds > 0)
             {
-                message.Attributes["DelaySeconds"] = entryDelaySeconds.ToString(NumberFormatInfo.InvariantInfo);
+                message.Attributes!["DelaySeconds"] = entryDelaySeconds.ToString(NumberFormatInfo.InvariantInfo);
                 _ = SendDelayedMessageAsync(queue, message, entryDelaySeconds);
             }
             else
@@ -1299,30 +1069,19 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return Task.FromResult(response.SetCommonProperties());
     }
 
-    public Task<SetQueueAttributesResponse> SetQueueAttributesAsync(string queueUrl,
-        Dictionary<string, string> attributes,
-        CancellationToken cancellationToken = default)
-    {
-        return SetQueueAttributesAsync(new SetQueueAttributesRequest
-        {
-            QueueUrl = queueUrl,
-            Attributes = attributes
-        }, cancellationToken);
-    }
-
     public Task<SetQueueAttributesResponse> SetQueueAttributesAsync(SetQueueAttributesRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         queue.Attributes ??= [];
-        foreach (var (key, value) in request.Attributes)
+        foreach (var (key, value) in request.Attributes ?? [])
         {
             queue.Attributes[key] = value;
         }
@@ -1376,7 +1135,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var sourceQueueName = GetQueueNameFromArn(request.SourceArn);
+        var sourceQueueName = GetQueueNameFromArn(request.SourceArn!);
         if (!_bus.Queues.TryGetValue(sourceQueueName, out var sourceQueue))
         {
             throw new ResourceNotFoundException("Source queue not found.");
@@ -1440,7 +1199,7 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException("Queue not found.");
@@ -1448,9 +1207,9 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
 
         foreach (var tag in request.Tags ?? [])
         {
-            queue.Tags ??= [];
             if (tag.Value is not null)
             {
+                queue.Tags ??= [];
                 queue.Tags[tag.Key] = tag.Value;
             }
         }
@@ -1464,13 +1223,13 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException("Queue not found.");
         }
 
-        foreach (var tagKey in request.TagKeys)
+        foreach (var tagKey in request.TagKeys ?? [])
         {
             queue.Tags?.Remove(tagKey);
         }
@@ -1479,76 +1238,68 @@ public sealed partial class InMemorySqsClient : IAmazonSQS
         return Task.FromResult(new UntagQueueResponse().SetCommonProperties());
     }
 
-    public Task<AddPermissionResponse> AddPermissionAsync(string queueUrl, string label, List<string> awsAccountIds,
-        List<string> actions, CancellationToken cancellationToken)
-    {
-        return AddPermissionAsync(new AddPermissionRequest
-        {
-            QueueUrl = queueUrl,
-            Label = label,
-            AWSAccountIds = awsAccountIds,
-            Actions = actions
-        }, cancellationToken);
-    }
-
     public Task<AddPermissionResponse> AddPermissionAsync(AddPermissionRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var queueName = GetQueueNameFromUrl(request.QueueUrl);
+        var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new QueueDoesNotExistException("Queue not found.");
         }
 
-        var policy = queue.Attributes?.TryGetValue("Policy", out var policyJson) == true
-            ? Policy.FromJson(policyJson)
-            : new Policy($"{queue.Arn}/SQSDefaultPolicy");
-
-        var statement = new Statement(Statement.StatementEffect.Allow)
+        JsonObject policy;
+        if (queue.Attributes?.TryGetValue("Policy", out var policyJson) == true)
         {
-            Id = request.Label,
-            Actions = request.Actions.Select(action => new ActionIdentifier($"SQS:{action}")).ToList()
+            policy = JsonNode.Parse(policyJson)!.AsObject();
+        }
+        else
+        {
+            policy = new JsonObject
+            {
+                ["Version"] = "2012-10-17",
+                ["Id"] = $"{queue.Arn}/SQSDefaultPolicy",
+                ["Statement"] = new JsonArray()
+            };
+        }
+
+        var statements = policy["Statement"]!.AsArray();
+
+        foreach (var stmt in statements)
+        {
+            if (stmt?["Sid"]?.GetValue<string>() == request.Label)
+            {
+                throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: Already exists.");
+            }
+        }
+
+        var principals = new JsonArray();
+        foreach (var accountId in request.AWSAccountIds ?? [])
+        {
+            principals.Add($"arn:aws:iam::{accountId}:root");
+        }
+
+        var actions = new JsonArray();
+        foreach (var action in request.Actions ?? [])
+        {
+            actions.Add($"SQS:{action}");
+        }
+
+        var newStatement = new JsonObject
+        {
+            ["Sid"] = request.Label,
+            ["Effect"] = "Allow",
+            ["Principal"] = new JsonObject { ["AWS"] = principals },
+            ["Action"] = actions,
+            ["Resource"] = queue.Arn
         };
 
-        statement.Resources.Add(new Resource(queue.Arn));
-
-        foreach (var accountId in request.AWSAccountIds)
-        {
-            statement.Principals.Add(new Principal($"arn:aws:iam::{accountId}:root"));
-        }
-
-        if (policy.CheckIfStatementExists(statement))
-        {
-            throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: Already exists.");
-        }
-
-        policy.Statements.Add(statement);
+        statements.Add(newStatement);
         queue.Attributes ??= [];
-        queue.Attributes["Policy"] = policy.ToJson();
+        queue.Attributes["Policy"] = policy.ToJsonString();
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.AddPermission, queue.Arn);
         return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
     }
-
-#if NET
-    [UnsafeAccessor(UnsafeAccessorKind.Constructor)]
-    private static extern SQSPaginatorFactory GetPaginatorFactory(IAmazonSQS client);
-#else
-    private static SQSPaginatorFactory GetPaginatorFactory(IAmazonSQS client)
-    {
-        var ctor = typeof(SQSPaginatorFactory)
-            .GetConstructor(
-                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
-            null,
-            [typeof(IAmazonSQS)],
-            null)
-            ?? throw new InvalidOperationException("Constructor not found on SQSPaginatorFactory");
-
-        return (SQSPaginatorFactory)ctor.Invoke([client]);
-    }
-#endif
-
-    public ISQSPaginatorFactory Paginators => _paginators.Value;
 }
