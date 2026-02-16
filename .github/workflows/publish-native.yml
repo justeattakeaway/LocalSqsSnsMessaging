@@ -115,7 +115,8 @@ jobs:
           -p:PublishAot=true `
           -p:PublishContainer=true `
           -p:ContainerRegistry=ghcr.io `
-          -p:ContainerImageTag="$version-${{ matrix.arch }}"
+          -p:ContainerImageTag="$version-${{ matrix.arch }}" `
+          /t:PublishContainer
 
   release:
     needs: build
