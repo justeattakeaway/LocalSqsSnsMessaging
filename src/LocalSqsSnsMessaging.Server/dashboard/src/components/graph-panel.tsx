@@ -26,15 +26,7 @@ export function GraphPanel({
       if (!container || !svg) return;
 
       const containerRect = container.getBoundingClientRect();
-      let svgContent = `
-        <defs>
-          <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-            <polygon points="0 0, 8 3, 0 6" fill="var(--color-sns)" opacity="0.35" />
-          </marker>
-          <marker id="arrowhead-dlq" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-            <polygon points="0 0, 8 3, 0 6" fill="var(--color-dlq)" opacity="0.5" />
-          </marker>
-        </defs>`;
+      let svgContent = "";
 
       for (const sub of state.subscriptions) {
         const topicEl = container.querySelector(
@@ -58,7 +50,10 @@ export function GraphPanel({
         const y2 = queueRect.top + queueRect.height / 2 - containerRect.top;
 
         const midX = (x1 + x2) / 2;
-        svgContent += `<path d="M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}" stroke="var(--color-sns)" stroke-width="1.5" fill="none" opacity="0.35" marker-end="url(#arrowhead)" />`;
+        const pathD = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+        // Arrow points right at endpoint (tangent is horizontal at end of this curve)
+        const arrow = `${x2 - 12},${y2 - 5} ${x2},${y2} ${x2 - 12},${y2 + 5}`;
+        svgContent += `<g class="conn-sub"><path d="${pathD}" stroke="transparent" stroke-width="16" fill="none" class="conn-hit" /><path d="${pathD}" stroke="var(--color-sns)" stroke-width="1.5" fill="none" stroke-dasharray="8 6" opacity="0.4" class="conn-line" /><polygon points="${arrow}" fill="var(--color-sns)" opacity="0.6" class="conn-arrow" /></g>`;
       }
 
       for (const queue of state.queues) {
@@ -86,7 +81,10 @@ export function GraphPanel({
         const y2 = dlqRect.top - containerRect.top;
 
         const midY = (y1 + y2) / 2;
-        svgContent += `<path d="M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}" stroke="var(--color-dlq)" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity="0.5" marker-end="url(#arrowhead-dlq)" />`;
+        const pathD = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+        // Arrow points down at endpoint (tangent is vertical at end of this curve)
+        const arrow = `${x2 - 5},${y2 - 12} ${x2},${y2} ${x2 + 5},${y2 - 12}`;
+        svgContent += `<g class="conn-dlq"><path d="${pathD}" stroke="transparent" stroke-width="16" fill="none" class="conn-hit" /><path d="${pathD}" stroke="var(--color-dlq)" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity="0.5" class="conn-line" /><polygon points="${arrow}" fill="var(--color-dlq)" opacity="0.6" class="conn-arrow" /></g>`;
       }
 
       svg.innerHTML = svgContent;
@@ -111,7 +109,7 @@ export function GraphPanel({
     <div className="flex-1 p-6 overflow-auto relative">
       <div className="relative min-h-full" ref={containerRef}>
         <svg
-          className="absolute inset-0 w-full h-full pointer-events-none z-0"
+          className="absolute inset-0 w-full h-full z-0"
           ref={svgRef}
         />
 
@@ -122,7 +120,7 @@ export function GraphPanel({
         )}
 
         {hasResources && (
-          <div className="flex gap-40 justify-center py-5 relative z-[1]">
+          <div className="flex gap-40 justify-center py-5 relative z-[1] pointer-events-none">
             {state.topics.length > 0 && (
               <div className="flex flex-col gap-4 min-w-[220px]">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-1 pb-2">

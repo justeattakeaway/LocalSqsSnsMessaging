@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { SnsIcon, SqsIcon } from "@/components/aws-icons";
 import type { BusState, QueueInfo, TopicInfo } from "@/types";
 import { getTopicSubCount, isDlqTarget } from "@/utils/resource-helpers";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ export function ResourceCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-card p-3 cursor-pointer transition-all",
+        "rounded-lg border bg-card p-3 cursor-pointer transition-all pointer-events-auto",
         "hover:bg-surface-hover hover:border-muted-foreground/30",
         selected && "border-highlight shadow-[0_0_0_1px_var(--color-highlight)]",
         !selected && "border-border",
@@ -35,15 +36,24 @@ export function ResourceCard({
       data-arn={resource.arn}
       onClick={onClick}
     >
-      <div className="text-sm font-semibold text-foreground break-all leading-snug">
-        {resource.name}
-      </div>
-      <div className="text-[11px] text-muted-foreground mt-0.5">
-        {type === "topic"
-          ? "SNS Topic"
-          : isDlq
-            ? "Dead Letter Queue"
-            : "SQS Queue"}
+      <div className="flex items-center gap-2">
+        {type === "topic" ? (
+          <SnsIcon className="size-6 shrink-0 text-sns" />
+        ) : (
+          <SqsIcon className={cn("size-6 shrink-0", isDlq ? "text-dlq" : "text-sqs")} />
+        )}
+        <div>
+          <div className="text-sm font-semibold text-foreground break-all leading-snug">
+            {resource.name}
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">
+            {type === "topic"
+              ? "SNS Topic"
+              : isDlq
+                ? "Dead Letter Queue"
+                : "SQS Queue"}
+          </div>
+        </div>
       </div>
       <div className="flex gap-1.5 mt-2 flex-wrap">
         {type === "topic" && (

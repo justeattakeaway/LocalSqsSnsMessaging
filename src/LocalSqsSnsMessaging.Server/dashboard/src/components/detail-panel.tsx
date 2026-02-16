@@ -11,7 +11,7 @@ interface DetailPanelProps {
 export function DetailPanel({ state, selected, selectedType }: DetailPanelProps) {
   if (!selected) {
     return (
-      <div className="w-[420px] min-w-[420px] bg-card border-l border-border flex items-center justify-center">
+      <div className="flex-1 min-w-0 bg-card border-l border-border flex items-center justify-center">
         <span className="text-sm text-muted-foreground">
           Select a resource to view details
         </span>
@@ -20,7 +20,7 @@ export function DetailPanel({ state, selected, selectedType }: DetailPanelProps)
   }
 
   return (
-    <div className="w-[420px] min-w-[420px] bg-card border-l border-border flex flex-col overflow-hidden">
+    <div className="flex-1 min-w-0 bg-card border-l border-border flex flex-col overflow-hidden">
       <div className="p-4 border-b border-border">
         <div className="text-sm font-semibold text-foreground break-all">
           {selected.name}
