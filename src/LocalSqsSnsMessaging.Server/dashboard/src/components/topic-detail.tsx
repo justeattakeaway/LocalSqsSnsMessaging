@@ -4,16 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { BusState, TopicInfo } from "@/types";
+import type { BusState, TopicInfo, SubscriptionInfo } from "@/types";
 import { getTopicSubscriptions } from "@/utils/resource-helpers";
 import { cn } from "@/lib/utils";
 
 interface TopicDetailProps {
   state: BusState;
   topic: TopicInfo;
+  selectSubscription: (sub: SubscriptionInfo) => void;
 }
 
-export function TopicDetail({ state, topic }: TopicDetailProps) {
+export function TopicDetail({ state, topic, selectSubscription }: TopicDetailProps) {
   const [activeTab, setActiveTab] = useState("info");
   const [message, setMessage] = useState("");
   const [subject, setSubject] = useState("");
@@ -100,6 +101,7 @@ export function TopicDetail({ state, topic }: TopicDetailProps) {
                 key={sub.subscriptionArn}
                 sub={sub}
                 nameFrom="queue"
+                onClick={() => selectSubscription(sub)}
               />
             ))}
           </>

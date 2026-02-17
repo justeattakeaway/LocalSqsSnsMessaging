@@ -1171,18 +1171,18 @@ internal sealed class InternalSqsClient
             }
         }
 
-        var approximateNumberOfMessages =
-            sourceQueue.Attributes?.GetValueOrDefault(QueueAttributeName.ApproximateNumberOfMessages) ?? "0";
+        var approximateNumberOfMessages = sourceQueue.Messages.Reader.Count;
 
+        var taskHandle = Guid.NewGuid().ToString();
         var moveTask = new SqsMoveTask
         {
-            TaskHandle = Guid.NewGuid().ToString(),
+            TaskHandle = taskHandle,
             SourceQueue = sourceQueue,
             DestinationQueue = destinationQueue,
             MaxNumberOfMessagesPerSecond = request.MaxNumberOfMessagesPerSecond,
             ApproximateNumberOfMessagesMoved = 0,
-            ApproximateNumberOfMessagesToMove = int.Parse(approximateNumberOfMessages, NumberFormatInfo.InvariantInfo),
-            MoveTaskJob = new SqsMoveTaskJob(_bus.TimeProvider, sourceQueue, destinationQueue, _bus, request.MaxNumberOfMessagesPerSecond),
+            ApproximateNumberOfMessagesToMove = approximateNumberOfMessages,
+            MoveTaskJob = new SqsMoveTaskJob(_bus.TimeProvider, sourceQueue, destinationQueue, _bus, request.MaxNumberOfMessagesPerSecond, taskHandle),
             Status = MoveTaskStatus.Running
         };
 

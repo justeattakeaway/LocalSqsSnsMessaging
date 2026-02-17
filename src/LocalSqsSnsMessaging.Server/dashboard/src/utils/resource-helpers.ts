@@ -1,4 +1,4 @@
-import type { BusState, QueueInfo, TopicInfo, SubscriptionInfo } from "@/types";
+import type { BusState, QueueInfo, TopicInfo, SubscriptionInfo, MoveTaskInfo } from "@/types";
 
 export function getTopicSubCount(state: BusState, topic: TopicInfo): number {
   return state.subscriptions.filter((s) => s.topicArn === topic.arn).length;
@@ -36,4 +36,15 @@ export function getQueueNameFromEndpoint(endpoint: string): string {
 
 export function isDlqTarget(state: BusState, queue: QueueInfo): boolean {
   return state.queues.some((q) => q.deadLetterQueueName === queue.name);
+}
+
+export function getActiveMoveTask(
+  state: BusState,
+  queue: QueueInfo
+): MoveTaskInfo | null {
+  return (
+    state.moveTasks?.find(
+      (t) => t.sourceArn === queue.arn && t.status === "RUNNING"
+    ) ?? null
+  );
 }

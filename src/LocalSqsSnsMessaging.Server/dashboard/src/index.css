@@ -95,3 +95,14 @@
   opacity: 1;
   filter: drop-shadow(0 0 6px var(--color-dlq));
 }
+
+.conn-selected .conn-line {
+  opacity: 0.9 !important;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 8px var(--color-sns));
+}
+
+.conn-selected .conn-arrow {
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 8px var(--color-sns));
+}

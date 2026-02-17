@@ -6,17 +6,20 @@ internal sealed class SqsMoveTaskJob : IDisposable
 {
     private readonly ITimer _timer;
 
-    public SqsMoveTaskJob(TimeProvider timeProvider, SqsQueueResource sourceQueue, SqsQueueResource? destinationQueue, InMemoryAwsBus bus, int? rateLimitPerSecond)
+    public SqsMoveTaskJob(TimeProvider timeProvider, SqsQueueResource sourceQueue, SqsQueueResource? destinationQueue, InMemoryAwsBus bus, int? rateLimitPerSecond, string taskHandle)
     {
-        _timer = timeProvider.CreateTimer(MoveMessages, (sourceQueue, destinationQueue, bus, rateLimitPerSecond), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        _timer = timeProvider.CreateTimer(MoveMessages, (sourceQueue, destinationQueue, bus, rateLimitPerSecond, taskHandle), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
     private static void MoveMessages(object? state)
     {
-        var (sourceQueue, destinationQueue, bus, rateLimitPerSecond) = ((SqsQueueResource, SqsQueueResource?, InMemoryAwsBus, int?))state!;
+        var (sourceQueue, destinationQueue, bus, rateLimitPerSecond, taskHandle) = ((SqsQueueResource, SqsQueueResource?, InMemoryAwsBus, int?, string))state!;
         var messagesMoveThisIteration = 0;
-        while (sourceQueue.Messages.Reader.TryRead(out var message) && messagesMoveThisIteration < rateLimitPerSecond)
+        while (sourceQueue.Messages.Reader.TryRead(out var message))
         {
+            if (rateLimitPerSecond is not null && messagesMoveThisIteration >= rateLimitPerSecond)
+                break;
+
             var newMessage = CloneNewMessage(message);
             if (destinationQueue is not null)
             {
@@ -37,12 +40,12 @@ internal sealed class SqsMoveTaskJob : IDisposable
             messagesMoveThisIteration++;
         }
 
-        if (bus.MoveTasks.TryGetValue(sourceQueue.Name, out var moveTask))
+        if (bus.MoveTasks.TryGetValue(taskHandle, out var moveTask))
         {
             moveTask.ApproximateNumberOfMessagesMoved += messagesMoveThisIteration;
             moveTask.ApproximateNumberOfMessagesToMove -= messagesMoveThisIteration;
 
-            if (moveTask.ApproximateNumberOfMessagesToMove >= 0)
+            if (moveTask.ApproximateNumberOfMessagesToMove <= 0)
             {
                 moveTask.Status = MoveTaskStatus.Completed;
                 moveTask.MoveTaskJob.Dispose();

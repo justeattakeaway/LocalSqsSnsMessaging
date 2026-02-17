@@ -52,6 +52,16 @@ app.MapPost("/_ui/api/topics/{name}/publish", (HttpContext ctx, string name) =>
     var account = ctx.Request.Query["account"].FirstOrDefault();
     return DashboardApi.PublishToTopic(registry, account, name, ctx);
 });
+app.MapPost("/_ui/api/queues/{name}/redrive", (HttpContext ctx, string name) =>
+{
+    var account = ctx.Request.Query["account"].FirstOrDefault();
+    return DashboardApi.StartRedrive(registry, account, name);
+});
+app.MapPost("/_ui/api/move-tasks/{taskHandle}/cancel", (HttpContext ctx, string taskHandle) =>
+{
+    var account = ctx.Request.Query["account"].FirstOrDefault();
+    return DashboardApi.CancelRedrive(registry, account, taskHandle);
+});
 
 // Fallback: all other requests go to the AWS bridge middleware
 var middleware = new AwsBridgeMiddleware(registry);

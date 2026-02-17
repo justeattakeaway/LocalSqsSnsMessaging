@@ -11,4 +11,5 @@ namespace LocalSqsSnsMessaging.Server;
 [JsonSerializable(typeof(QueueMessages))]
 [JsonSerializable(typeof(PublishTopicRequest))]
 [JsonSerializable(typeof(PublishTopicResponse))]
+[JsonSerializable(typeof(RedriveResponse))]
 internal sealed partial class DashboardJsonContext : JsonSerializerContext;
