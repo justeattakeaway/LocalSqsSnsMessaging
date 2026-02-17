@@ -9,4 +9,6 @@ namespace LocalSqsSnsMessaging.Server;
     WriteIndented = false)]
 [JsonSerializable(typeof(BusState))]
 [JsonSerializable(typeof(QueueMessages))]
+[JsonSerializable(typeof(PublishTopicRequest))]
+[JsonSerializable(typeof(PublishTopicResponse))]
 internal sealed partial class DashboardJsonContext : JsonSerializerContext;

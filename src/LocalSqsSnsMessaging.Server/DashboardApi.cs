@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Channels;
+using LocalSqsSnsMessaging.Sns.Model;
 using LocalSqsSnsMessaging.Sqs.Model;
 using Microsoft.AspNetCore.Http;
 
@@ -144,6 +145,108 @@ internal static class DashboardApi
         };
     }
 
+    public static IResult DeleteMessage(BusRegistry registry, string? account, string queueName, string messageId)
+    {
+        var bus = ResolveBus(registry, account);
+
+        if (!bus.Queues.TryGetValue(queueName, out var queue))
+        {
+            return Results.NotFound("Queue not found");
+        }
+
+        // Try removing from in-flight messages
+        foreach (var kvp in queue.InFlightMessages)
+        {
+            if (kvp.Value.Item1.MessageId == messageId)
+            {
+                if (queue.InFlightMessages.TryRemove(kvp.Key, out var removed))
+                {
+                    removed.Item2.Dispose();
+                    bus.RecordOperation("Dashboard", "DeleteMessage", queue.Arn);
+                    return Results.NoContent();
+                }
+            }
+        }
+
+        // Try removing from pending messages (drain and re-enqueue without the target)
+        if (RemoveFromChannel(queue.Messages, messageId))
+        {
+            bus.RecordOperation("Dashboard", "DeleteMessage", queue.Arn);
+            return Results.NoContent();
+        }
+
+        // Try removing from FIFO message groups
+        if (queue.IsFifo)
+        {
+            foreach (var group in queue.MessageGroups)
+            {
+                var original = group.Value;
+                var filtered = new ConcurrentQueue<Message>(original.Where(m => m.MessageId != messageId));
+                if (filtered.Count < original.Count)
+                {
+                    queue.MessageGroups.TryUpdate(group.Key, filtered, original);
+                    bus.RecordOperation("Dashboard", "DeleteMessage", queue.Arn);
+                    return Results.NoContent();
+                }
+            }
+        }
+
+        return Results.NotFound("Message not found");
+    }
+
+    public static async Task<IResult> PublishToTopic(BusRegistry registry, string? account, string topicName, HttpContext ctx)
+    {
+        var bus = ResolveBus(registry, account);
+
+        if (!bus.Topics.TryGetValue(topicName, out var topic))
+        {
+            return Results.NotFound("Topic not found");
+        }
+
+        var body = await ctx.Request.ReadFromJsonAsync(DashboardJsonContext.Default.PublishTopicRequest).ConfigureAwait(false);
+        if (body is null || string.IsNullOrEmpty(body.Message))
+        {
+            return Results.BadRequest("Message is required");
+        }
+
+        var snsClient = new InternalSnsClient(bus);
+        var response = await snsClient.PublishAsync(new PublishRequest
+        {
+            TopicArn = topic.Arn,
+            Message = body.Message,
+            Subject = body.Subject
+        }).ConfigureAwait(false);
+
+        return Results.Json(
+            new PublishTopicResponse { MessageId = response.MessageId! },
+            DashboardJsonContext.Default.PublishTopicResponse);
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Channel internals accessed for dashboard peek/delete")]
+    private static bool RemoveFromChannel(Channel<Message> channel, string messageId)
+    {
+        var itemsField = channel.GetType().GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        if (itemsField?.GetValue(channel) is ConcurrentQueue<Message> queue)
+        {
+            var count = queue.Count;
+            for (var i = 0; i < count; i++)
+            {
+                if (queue.TryDequeue(out var msg))
+                {
+                    if (msg.MessageId == messageId)
+                    {
+                        return true;
+                    }
+
+                    queue.Enqueue(msg);
+                }
+            }
+        }
+
+        return false;
+    }
+
     [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Peek is best-effort; returns empty on failure")]
     private static List<MessageInfo> PeekChannelMessages(Channel<Message> channel)
     {
@@ -159,9 +262,11 @@ internal static class DashboardApi
 
     private static MessageInfo ToMessageInfo(Message msg, bool inFlight, string? messageGroupId = null)
     {
+        // Assign a stable MessageId if the message doesn't have one (e.g. SNS-delivered messages)
+        msg.MessageId ??= Guid.NewGuid().ToString();
         return new MessageInfo
         {
-            MessageId = msg.MessageId ?? Guid.NewGuid().ToString(),
+            MessageId = msg.MessageId,
             Body = msg.Body!,
             InFlight = inFlight,
             MessageGroupId = messageGroupId,
@@ -240,5 +345,16 @@ internal static class DashboardApi
         public string? ResourceArn { get; init; }
         public required DateTimeOffset Timestamp { get; init; }
         public required bool Success { get; init; }
+    }
+
+    internal sealed class PublishTopicRequest
+    {
+        public required string Message { get; init; }
+        public string? Subject { get; init; }
+    }
+
+    internal sealed class PublishTopicResponse
+    {
+        public required string MessageId { get; init; }
     }
 }

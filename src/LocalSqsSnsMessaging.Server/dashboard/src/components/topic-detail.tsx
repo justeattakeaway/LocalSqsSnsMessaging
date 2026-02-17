@@ -1,5 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { SubscriptionItem } from "@/components/subscription-item";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { BusState, TopicInfo } from "@/types";
 import { getTopicSubscriptions } from "@/utils/resource-helpers";
 import { cn } from "@/lib/utils";
@@ -11,11 +15,48 @@ interface TopicDetailProps {
 
 export function TopicDetail({ state, topic }: TopicDetailProps) {
   const [activeTab, setActiveTab] = useState("info");
+  const [message, setMessage] = useState("");
+  const [subject, setSubject] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [published, setPublished] = useState(false);
+  const publishedTimer = useRef<ReturnType<typeof setTimeout>>();
+
   const subs = getTopicSubscriptions(state, topic);
+
+  const handlePublish = useCallback(async () => {
+    if (!message.trim() || publishing) return;
+    setPublishing(true);
+    try {
+      const accountParam = state.currentAccount
+        ? `?account=${encodeURIComponent(state.currentAccount)}`
+        : "";
+      const resp = await fetch(
+        `/_ui/api/topics/${encodeURIComponent(topic.name)}/publish${accountParam}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: message,
+            subject: subject || undefined,
+          }),
+        }
+      );
+      if (resp.ok) {
+        setPublished(true);
+        setMessage("");
+        setSubject("");
+        clearTimeout(publishedTimer.current);
+        publishedTimer.current = setTimeout(() => setPublished(false), 2000);
+      }
+    } finally {
+      setPublishing(false);
+    }
+  }, [message, subject, publishing, state.currentAccount, topic.name]);
 
   const tabs = [
     { id: "info", label: "Info" },
     { id: "subscriptions", label: `Subscriptions (${subs.length})` },
+    { id: "publish", label: "Publish" },
   ];
 
   return (
@@ -62,6 +103,43 @@ export function TopicDetail({ state, topic }: TopicDetailProps) {
               />
             ))}
           </>
+        )}
+
+        {activeTab === "publish" && (
+          <div className="space-y-4 max-w-lg">
+            <div className="space-y-1.5">
+              <Label htmlFor="message" className="text-xs text-muted-foreground">
+                Message body
+              </Label>
+              <Textarea
+                id="message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder='{"key": "value"}'
+                rows={10}
+                className="font-mono text-xs resize-y"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="subject" className="text-xs text-muted-foreground">
+                Subject (optional)
+              </Label>
+              <Input
+                id="subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Optional message subject"
+                className="text-xs"
+              />
+            </div>
+            <Button
+              size="sm"
+              disabled={!message.trim() || publishing}
+              onClick={handlePublish}
+            >
+              {publishing ? "Publishing..." : published ? "Published!" : "Publish"}
+            </Button>
+          </div>
         )}
       </div>
     </div>
