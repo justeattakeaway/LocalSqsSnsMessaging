@@ -7,6 +7,7 @@ const emptyState: BusState = {
   queues: [],
   topics: [],
   subscriptions: [],
+  moveTasks: [],
   recentOperations: [],
 };
 

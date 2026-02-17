@@ -7,6 +7,8 @@ using System.Threading.Channels;
 using LocalSqsSnsMessaging.Sns.Model;
 using LocalSqsSnsMessaging.Sqs.Model;
 using Microsoft.AspNetCore.Http;
+using StartMessageMoveTaskRequest = LocalSqsSnsMessaging.Sqs.Model.StartMessageMoveTaskRequest;
+using CancelMessageMoveTaskRequest = LocalSqsSnsMessaging.Sqs.Model.CancelMessageMoveTaskRequest;
 
 namespace LocalSqsSnsMessaging.Server;
 
@@ -128,6 +130,16 @@ internal static class DashboardApi
                 FilterPolicy = string.IsNullOrEmpty(s.FilterPolicy) ? null : s.FilterPolicy
             }).ToList(),
 
+            MoveTasks = bus.MoveTasks.Values.Select(t => new MoveTaskInfo
+            {
+                TaskHandle = t.TaskHandle,
+                SourceArn = t.SourceQueue.Arn,
+                DestinationArn = t.DestinationQueue?.Arn,
+                Status = t.Status,
+                ApproximateNumberOfMessagesMoved = t.ApproximateNumberOfMessagesMoved,
+                ApproximateNumberOfMessagesToMove = t.ApproximateNumberOfMessagesToMove
+            }).ToList(),
+
             RecentOperations = bus.UsageTrackingEnabled
                 ? bus.UsageTracker.Operations
                     .OrderByDescending(o => o.Timestamp)
@@ -192,6 +204,57 @@ internal static class DashboardApi
         }
 
         return Results.NotFound("Message not found");
+    }
+
+    public static async Task<IResult> StartRedrive(BusRegistry registry, string? account, string queueName)
+    {
+        var bus = ResolveBus(registry, account);
+
+        if (!bus.Queues.TryGetValue(queueName, out var queue))
+        {
+            return Results.NotFound("Queue not found");
+        }
+
+        var sqsClient = new InternalSqsClient(bus);
+        try
+        {
+            var response = await sqsClient.StartMessageMoveTaskAsync(new StartMessageMoveTaskRequest
+            {
+                SourceArn = queue.Arn
+            }).ConfigureAwait(false);
+
+            return Results.Json(
+                new RedriveResponse { TaskHandle = response.TaskHandle! },
+                DashboardJsonContext.Default.RedriveResponse);
+        }
+        catch (AwsServiceException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
+    }
+
+    public static async Task<IResult> CancelRedrive(BusRegistry registry, string? account, string taskHandle)
+    {
+        var bus = ResolveBus(registry, account);
+
+        var sqsClient = new InternalSqsClient(bus);
+        try
+        {
+            await sqsClient.CancelMessageMoveTaskAsync(new CancelMessageMoveTaskRequest
+            {
+                TaskHandle = taskHandle
+            }).ConfigureAwait(false);
+
+            return Results.NoContent();
+        }
+        catch (AwsServiceException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
     }
 
     public static async Task<IResult> PublishToTopic(BusRegistry registry, string? account, string topicName, HttpContext ctx)
@@ -288,6 +351,7 @@ internal static class DashboardApi
         public required List<QueueInfo> Queues { get; init; }
         public required List<TopicInfo> Topics { get; init; }
         public required List<SubscriptionInfo> Subscriptions { get; init; }
+        public required List<MoveTaskInfo> MoveTasks { get; init; }
         public List<OperationInfo>? RecentOperations { get; init; }
     }
 
@@ -356,5 +420,20 @@ internal static class DashboardApi
     internal sealed class PublishTopicResponse
     {
         public required string MessageId { get; init; }
+    }
+
+    internal sealed class MoveTaskInfo
+    {
+        public required string TaskHandle { get; init; }
+        public required string SourceArn { get; init; }
+        public string? DestinationArn { get; init; }
+        public required string Status { get; init; }
+        public required int ApproximateNumberOfMessagesMoved { get; init; }
+        public required int ApproximateNumberOfMessagesToMove { get; init; }
+    }
+
+    internal sealed class RedriveResponse
+    {
+        public required string TaskHandle { get; init; }
     }
 }

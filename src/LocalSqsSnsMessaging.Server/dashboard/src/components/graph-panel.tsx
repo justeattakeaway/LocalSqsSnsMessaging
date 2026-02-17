@@ -1,6 +1,6 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { ResourceCard } from "@/components/resource-card";
-import type { BusState, QueueInfo, TopicInfo } from "@/types";
+import type { BusState, QueueInfo, TopicInfo, SubscriptionInfo } from "@/types";
 import { getQueueNameFromEndpoint } from "@/utils/resource-helpers";
 
 interface GraphPanelProps {
@@ -8,6 +8,8 @@ interface GraphPanelProps {
   selected: QueueInfo | TopicInfo | null;
   selectQueue: (queue: QueueInfo) => void;
   selectTopic: (topic: TopicInfo) => void;
+  selectedSubscription: SubscriptionInfo | null;
+  selectSubscription: (sub: SubscriptionInfo) => void;
 }
 
 export function GraphPanel({
@@ -15,9 +17,24 @@ export function GraphPanel({
   selected,
   selectQueue,
   selectTopic,
+  selectedSubscription,
+  selectSubscription,
 }: GraphPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  const handleSvgClick = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      const target = e.target as SVGElement;
+      const group = target.closest("[data-sub-arn]") as SVGElement | null;
+      if (!group) return;
+      const subArn = group.getAttribute("data-sub-arn");
+      if (!subArn) return;
+      const sub = state.subscriptions.find((s) => s.subscriptionArn === subArn);
+      if (sub) selectSubscription(sub);
+    },
+    [state.subscriptions, selectSubscription]
+  );
 
   useEffect(() => {
     const draw = () => {
@@ -27,6 +44,7 @@ export function GraphPanel({
 
       const containerRect = container.getBoundingClientRect();
       let svgContent = "";
+      const selSubArn = selectedSubscription?.subscriptionArn ?? "";
 
       for (const sub of state.subscriptions) {
         const topicEl = container.querySelector(
@@ -53,7 +71,9 @@ export function GraphPanel({
         const pathD = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
         // Arrow points right at endpoint (tangent is horizontal at end of this curve)
         const arrow = `${x2 - 12},${y2 - 5} ${x2},${y2} ${x2 - 12},${y2 + 5}`;
-        svgContent += `<g class="conn-sub"><path d="${pathD}" stroke="transparent" stroke-width="16" fill="none" class="conn-hit" /><path d="${pathD}" stroke="var(--color-sns)" stroke-width="1.5" fill="none" stroke-dasharray="8 6" opacity="0.4" class="conn-line" /><polygon points="${arrow}" fill="var(--color-sns)" opacity="0.6" class="conn-arrow" /></g>`;
+        const isSelected = sub.subscriptionArn === selSubArn;
+        const groupClass = `conn-sub${isSelected ? " conn-selected" : ""}`;
+        svgContent += `<g class="${groupClass}" data-sub-arn="${sub.subscriptionArn}"><path d="${pathD}" stroke="transparent" stroke-width="16" fill="none" class="conn-hit" /><path d="${pathD}" stroke="var(--color-sns)" stroke-width="1.5" fill="none" stroke-dasharray="8 6" opacity="0.4" class="conn-line" /><polygon points="${arrow}" fill="var(--color-sns)" opacity="0.6" class="conn-arrow" /></g>`;
       }
 
       for (const queue of state.queues) {
@@ -74,16 +94,18 @@ export function GraphPanel({
         const queueRect = queueEl.getBoundingClientRect();
         const dlqRect = dlqEl.getBoundingClientRect();
 
+        const dlqBelow = dlqRect.top >= queueRect.bottom;
         const x1 =
           queueRect.left + queueRect.width / 2 - containerRect.left;
-        const y1 = queueRect.bottom - containerRect.top;
+        const y1 = (dlqBelow ? queueRect.bottom : queueRect.top) - containerRect.top;
         const x2 = dlqRect.left + dlqRect.width / 2 - containerRect.left;
-        const y2 = dlqRect.top - containerRect.top;
+        const y2 = (dlqBelow ? dlqRect.top : dlqRect.bottom) - containerRect.top;
 
         const midY = (y1 + y2) / 2;
         const pathD = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
-        // Arrow points down at endpoint (tangent is vertical at end of this curve)
-        const arrow = `${x2 - 5},${y2 - 12} ${x2},${y2} ${x2 + 5},${y2 - 12}`;
+        const arrow = dlqBelow
+          ? `${x2 - 5},${y2 - 12} ${x2},${y2} ${x2 + 5},${y2 - 12}`
+          : `${x2 - 5},${y2 + 12} ${x2},${y2} ${x2 + 5},${y2 + 12}`;
         svgContent += `<g class="conn-dlq"><path d="${pathD}" stroke="transparent" stroke-width="16" fill="none" class="conn-hit" /><path d="${pathD}" stroke="var(--color-dlq)" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity="0.5" class="conn-line" /><polygon points="${arrow}" fill="var(--color-dlq)" opacity="0.6" class="conn-arrow" /></g>`;
       }
 
@@ -111,6 +133,7 @@ export function GraphPanel({
         <svg
           className="absolute inset-0 w-full h-full z-0"
           ref={svgRef}
+          onClick={handleSvgClick}
         />
 
         {!hasResources && (

@@ -4,7 +4,17 @@ export interface BusState {
   queues: QueueInfo[];
   topics: TopicInfo[];
   subscriptions: SubscriptionInfo[];
+  moveTasks: MoveTaskInfo[];
   recentOperations: OperationInfo[] | null;
+}
+
+export interface MoveTaskInfo {
+  taskHandle: string;
+  sourceArn: string;
+  destinationArn: string | null;
+  status: string;
+  approximateNumberOfMessagesMoved: number;
+  approximateNumberOfMessagesToMove: number;
 }
 
 export interface QueueInfo {
