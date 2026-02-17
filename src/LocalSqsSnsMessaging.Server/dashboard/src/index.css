@@ -51,3 +51,47 @@
     display: contents;
   }
 }
+
+/* Connection lines */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+
+.conn-hit {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.conn-line,
+.conn-arrow {
+  pointer-events: none;
+  transition: opacity 0.2s, stroke-width 0.2s, filter 0.2s;
+}
+
+.conn-sub .conn-line {
+  animation: dash-flow 2s linear infinite;
+}
+
+.conn-sub:hover .conn-line {
+  opacity: 0.85;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px var(--color-sns));
+}
+
+.conn-sub:hover .conn-arrow {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px var(--color-sns));
+}
+
+.conn-dlq:hover .conn-line {
+  opacity: 0.8;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px var(--color-dlq));
+}
+
+.conn-dlq:hover .conn-arrow {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px var(--color-dlq));
+}

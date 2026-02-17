@@ -42,6 +42,16 @@ app.MapGet("/_ui/api/queues/{name}/messages", (HttpContext ctx, string name) =>
     var account = ctx.Request.Query["account"].FirstOrDefault();
     return DashboardApi.GetQueueMessages(registry, account, name);
 });
+app.MapDelete("/_ui/api/queues/{name}/messages/{messageId}", (HttpContext ctx, string name, string messageId) =>
+{
+    var account = ctx.Request.Query["account"].FirstOrDefault();
+    return DashboardApi.DeleteMessage(registry, account, name, messageId);
+});
+app.MapPost("/_ui/api/topics/{name}/publish", (HttpContext ctx, string name) =>
+{
+    var account = ctx.Request.Query["account"].FirstOrDefault();
+    return DashboardApi.PublishToTopic(registry, account, name, ctx);
+});
 
 // Fallback: all other requests go to the AWS bridge middleware
 var middleware = new AwsBridgeMiddleware(registry);

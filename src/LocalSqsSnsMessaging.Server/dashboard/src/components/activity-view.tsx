@@ -17,7 +17,7 @@ interface ActivityViewProps {
 }
 
 export function ActivityView({ state }: ActivityViewProps) {
-  const [filter, setFilter] = useState<"all" | "sqs" | "sns">("all");
+  const [filter, setFilter] = useState<"all" | "sqs" | "sns" | "Dashboard">("all");
 
   const ops = state.recentOperations || [];
   const filtered =
@@ -36,7 +36,7 @@ export function ActivityView({ state }: ActivityViewProps) {
             </span>
           </div>
           <div className="flex gap-1">
-            {(["all", "sqs", "sns"] as const).map((f) => (
+            {(["all", "sqs", "sns", "Dashboard"] as const).map((f) => (
               <Button
                 key={f}
                 variant={filter === f ? "outline" : "ghost"}
@@ -92,7 +92,9 @@ export function ActivityView({ state }: ActivityViewProps) {
                         className={`text-[10px] font-bold tracking-wide uppercase px-1.5 py-0 rounded ${
                           op.service === "sqs"
                             ? "border-sqs/40 bg-sqs/10 text-sqs"
-                            : "border-sns/40 bg-sns/10 text-sns"
+                            : op.service === "Dashboard"
+                              ? "border-highlight/40 bg-highlight/10 text-highlight"
+                              : "border-sns/40 bg-sns/10 text-sns"
                         }`}
                       >
                         {op.service.toUpperCase()}

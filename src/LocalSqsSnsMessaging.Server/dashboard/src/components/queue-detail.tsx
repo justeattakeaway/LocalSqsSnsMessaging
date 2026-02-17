@@ -41,6 +41,20 @@ export function QueueDetail({ state, queue }: QueueDetailProps) {
     setExpandedMsg((prev) => (prev === id ? null : id));
   }, []);
 
+  const handleDelete = useCallback(async (messageId: string) => {
+    const accountParam = state.currentAccount
+      ? `?account=${encodeURIComponent(state.currentAccount)}`
+      : "";
+    const resp = await fetch(
+      `/_ui/api/queues/${encodeURIComponent(queue.name)}/messages/${encodeURIComponent(messageId)}${accountParam}`,
+      { method: "DELETE" }
+    );
+    if (resp.ok) {
+      setExpandedMsg(null);
+      await loadMessages();
+    }
+  }, [queue.name, state.currentAccount, loadMessages]);
+
   const subs = getQueueSubscriptions(state, queue);
   const totalMessages = queue.messagesAvailable + queue.messagesInFlight;
 
@@ -116,6 +130,7 @@ export function QueueDetail({ state, queue }: QueueDetailProps) {
                       status="pending"
                       expanded={expandedMsg === msg.messageId}
                       onToggle={toggleMsg}
+                      onDelete={handleDelete}
                     />
                   ))}
                   {messages.inFlightMessages.map((msg) => (
@@ -125,6 +140,7 @@ export function QueueDetail({ state, queue }: QueueDetailProps) {
                       status="in-flight"
                       expanded={expandedMsg === msg.messageId}
                       onToggle={toggleMsg}
+                      onDelete={handleDelete}
                     />
                   ))}
                 </div>

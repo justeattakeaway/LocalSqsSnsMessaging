@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { JsonHighlight } from "@/components/json-highlight";
@@ -15,6 +15,7 @@ interface MessageItemProps {
   status: "pending" | "in-flight";
   expanded: boolean;
   onToggle: (id: string) => void;
+  onDelete?: (messageId: string) => Promise<void>;
 }
 
 function simplifyTopicArn(arn: string): string {
@@ -104,11 +105,33 @@ export function MessageItem({
   status,
   expanded,
   onToggle,
+  onDelete,
 }: MessageItemProps) {
   const [viewMode, setViewMode] = useState<"structured" | "raw">("structured");
+  const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout>>();
   const format = useMemo(() => detectMessageFormat(msg.body), [msg.body]);
   const isSns = format.type === "sns-notification";
   const previewText = useMemo(() => getPreviewText(msg.body), [msg.body]);
+
+  const handleCopy = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const text = isSns && viewMode === "structured"
+      ? (format as SnsEnvelope).innerMessage
+      : msg.body;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopied(false), 1500);
+  }, [isSns, viewMode, format, msg.body]);
+
+  const handleDelete = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onDelete || deleting) return;
+    setDeleting(true);
+    await onDelete(msg.messageId);
+  }, [onDelete, deleting, msg.messageId]);
 
   return (
     <div
@@ -187,17 +210,27 @@ export function MessageItem({
                 </div>
               )}
               {!isSns && <div />}
-              <Button
-                variant="outline"
-                size="xs"
-                className="text-[11px]"
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  navigator.clipboard.writeText(msg.body);
-                }}
-              >
-                Copy
-              </Button>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="xs"
+                  className="text-[11px]"
+                  onClick={handleCopy}
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </Button>
+                {onDelete && (
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    className="text-[11px] text-destructive hover:bg-destructive hover:text-white"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                  >
+                    {deleting ? "Deleting..." : "Delete"}
+                  </Button>
+                )}
+              </div>
             </div>
 
             {isSns && viewMode === "structured" ? (
