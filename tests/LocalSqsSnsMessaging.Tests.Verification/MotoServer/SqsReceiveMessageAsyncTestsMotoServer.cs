@@ -1,7 +1,8 @@
-namespace LocalSqsSnsMessaging.Tests.Verification.LocalStack;
+#pragma warning disable CA1711
+namespace LocalSqsSnsMessaging.Tests.Verification.MotoServer;
 
 [InheritsTests]
-public class SqsStartMessageMoveTaskAsyncAsyncLocalStackTests : SqsStartMessageMoveTaskAsyncTests
+public class SqsReceiveMessageAsyncTestsMotoServer : SqsReceiveMessageAsyncTests
 {
     [ClassDataSource<AspireFixture>(Shared = SharedType.PerTestSession)]
     public required AspireFixture AspireFixture { get; set; }
@@ -13,6 +14,6 @@ public class SqsStartMessageMoveTaskAsyncAsyncLocalStackTests : SqsStartMessageM
         AccountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
 #pragma warning restore CA5394
         Console.WriteLine($"AccountId: {AccountId}");
-        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.LocalStackPort!.Value);
+        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.MotoPort!.Value);
     }
 }

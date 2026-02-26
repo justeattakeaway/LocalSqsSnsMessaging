@@ -59,7 +59,7 @@ jobs:
       shell: pwsh
       run: ./build.ps1
 
-    - name: Run LocalStack Verification Tests
+    - name: Run Moto Server Verification Tests
       if: runner.os == 'linux'
       shell: pwsh
       run: |

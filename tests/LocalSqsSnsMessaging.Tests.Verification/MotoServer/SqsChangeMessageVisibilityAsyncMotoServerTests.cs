@@ -1,7 +1,7 @@
-namespace LocalSqsSnsMessaging.Tests.Verification.LocalStack;
+namespace LocalSqsSnsMessaging.Tests.Verification.MotoServer;
 
 [InheritsTests]
-public class SqsChangeMessageVisibilityAsyncLocalStackTests : SqsChangeMessageVisibilityAsyncTests
+public class SqsChangeMessageVisibilityAsyncMotoServerTests : SqsChangeMessageVisibilityAsyncTests
 {
     [ClassDataSource<AspireFixture>(Shared = SharedType.PerTestSession)]
     public required AspireFixture AspireFixture { get; set; }
@@ -13,6 +13,6 @@ public class SqsChangeMessageVisibilityAsyncLocalStackTests : SqsChangeMessageVi
         var accountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
 #pragma warning restore CA5394
         Console.WriteLine($"AccountId: {accountId}");
-        Sqs = ClientFactory.CreateSqsClient(accountId, AspireFixture.LocalStackPort!.Value);
+        Sqs = ClientFactory.CreateSqsClient(accountId, AspireFixture.MotoPort!.Value);
     }
 }

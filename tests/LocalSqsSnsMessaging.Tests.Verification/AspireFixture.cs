@@ -11,7 +11,7 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
 
-    public int? LocalStackPort => _app?.GetEndpoint("localstack").Port;
+    public int? MotoPort => _app?.GetEndpoint("moto").Port;
 
     public async Task InitializeAsync()
     {
@@ -20,8 +20,7 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
         _builder = DistributedApplicationTestingBuilder.Create();
 #pragma warning restore CA1849
 
-        string[] services = ["sqs", "sns"];
-        _builder.AddLocalStack(services);
+        _builder.AddMotoServer();
 
         // Disable aspire host logs as they will populate a random test output
         _builder.Services.Add(ServiceDescriptor.Singleton<ILoggerFactory>(NullLoggerFactory.Instance));
@@ -31,7 +30,7 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
 
         await _app.StartAsync();
 
-        await _app.ResourceNotifications.WaitForResourceHealthyAsync("localstack");
+        await _app.ResourceNotifications.WaitForResourceHealthyAsync("moto");
     }
 
     public async ValueTask DisposeAsync()
