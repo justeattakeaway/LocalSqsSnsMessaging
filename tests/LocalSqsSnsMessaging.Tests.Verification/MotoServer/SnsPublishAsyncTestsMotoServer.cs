@@ -34,4 +34,8 @@ public class SnsPublishAsyncTestsMotoServer : SnsPublishAsyncTests
     [Test, Skip("Moto Server does not enforce batch message size limits")]
     public new Task PublishBatchAsync_TotalMessageSizeExceedsLimit_ThrowsBatchRequestTooLongException(CancellationToken cancellationToken)
         => Task.CompletedTask;
+
+    [Test, Skip("Moto Server does not produce monotonically increasing sequence numbers for FIFO queues")]
+    public new Task PublishAsync_ToFifoTopic_ShouldDeliverMessageToFifoQueue_InOrder(CancellationToken cancellationToken)
+        => Task.CompletedTask;
 }
