@@ -5,6 +5,8 @@ namespace LocalSqsSnsMessaging.Tests.Verification.MotoServer;
 [NotInParallel(Order = 6)]
 public class SqsReceiveMessageAsyncTestsMotoServer : SqsReceiveMessageAsyncTests
 {
+    private const string MotoDefaultAccountId = "123456789012";
+
     [ClassDataSource<AspireFixture>(Shared = SharedType.PerTestSession)]
     public required AspireFixture AspireFixture { get; set; }
 
@@ -12,10 +14,32 @@ public class SqsReceiveMessageAsyncTestsMotoServer : SqsReceiveMessageAsyncTests
     public async Task BeforeEachTest()
     {
         await AspireFixture.ResetMotoStateAsync();
-#pragma warning disable CA5394
-        AccountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
-#pragma warning restore CA5394
+        AccountId = MotoDefaultAccountId;
         Console.WriteLine($"AccountId: {AccountId}");
         Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.MotoPort!.Value);
     }
+
+    [Test, Skip("Moto Server returns IAM user ID as SenderId, not the access key")]
+    public new Task ReceiveMessageAsync_MultipleMessages_CorrectAttributesReturnedForEach(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    [Test, Skip("Moto Server returns IAM user ID as SenderId, not the access key")]
+    public new Task ReceiveMessageAsync_AllMessageSystemAttributes_AllAttributesReturned(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    [Test, Skip("Moto Server returns IAM user ID as SenderId, not the access key")]
+    public new Task ReceiveMessageAsync_SpecificMessageSystemAttributes_OnlyRequestedAttributesReturned(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    [Test, Skip("Moto Server does not enforce message attribute size limits")]
+    public new Task SendMessageAsync_MessageAttributeFullSizeCalculation_ThrowsException(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    [Test, Skip("Moto Server does not enforce message attribute size limits")]
+    public new Task SendMessageAsync_CustomAttributeTypeNames_CountTowardsLimit(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    [Test, Skip("Moto Server does not enforce batch message size limits")]
+    public new Task SendMessageAsync_BatchWithAttributeSizeLimits_PartialBatchFailure(CancellationToken cancellationToken)
+        => Task.CompletedTask;
 }
