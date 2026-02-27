@@ -10,6 +10,7 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
 {
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
+    private HttpClient? _motoApiClient;
 
     public int? MotoPort => _app?.GetEndpoint("moto").Port;
 
@@ -33,8 +34,29 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
         await _app.ResourceNotifications.WaitForResourceHealthyAsync("moto");
     }
 
+    /// <summary>
+    /// Resets all Moto Server state between tests. Unlike LocalStack, Moto does not
+    /// isolate resources by AWS credentials so tests must reset state explicitly.
+    /// </summary>
+    public async Task ResetMotoStateAsync()
+    {
+        if (_motoApiClient is null)
+        {
+            _motoApiClient = new HttpClient
+            {
+                BaseAddress = new Uri($"http://localhost:{MotoPort}/")
+            };
+        }
+
+#pragma warning disable CA2234
+        using var response = await _motoApiClient.PostAsync("moto-api/reset", null);
+#pragma warning restore CA2234
+        response.EnsureSuccessStatusCode();
+    }
+
     public async ValueTask DisposeAsync()
     {
+        _motoApiClient?.Dispose();
         if (_app is not null)
         {
             await _app.DisposeAsync();
