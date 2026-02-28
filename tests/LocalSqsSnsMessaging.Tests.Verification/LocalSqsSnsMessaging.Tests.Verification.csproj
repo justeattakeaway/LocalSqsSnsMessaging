@@ -8,7 +8,7 @@
       <ImplicitUsings>enable</ImplicitUsings>
       <Nullable>enable</Nullable>
       <IsPackable>false</IsPackable>
-      <NoWarn>$(NoWarn);CA2007;ASPIRE002</NoWarn>
+      <NoWarn>$(NoWarn);CA2007;ASPIRE002;CA1707</NoWarn>
       <IsAspireHost>false</IsAspireHost>
       <IsTestProject>true</IsTestProject>
     </PropertyGroup>

@@ -9,23 +9,23 @@ public static class ClientFactory
 {
     private static readonly CompositeFormat ServiceUrlFormatString = CompositeFormat.Parse("http://localhost:{0}");
 
-    public static IAmazonSQS CreateSqsClient(string accountId, int localstackPort)
+    public static IAmazonSQS CreateSqsClient(string accountId, int motoPort)
     {
         return new AmazonSQSClient(
             new BasicAWSCredentials(accountId, "shh"),
             new AmazonSQSConfig
             {
-                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, localstackPort)
+                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, motoPort)
             });
     }
 
-    public static IAmazonSimpleNotificationService CreateSnsClient(string accountId, int localstackPort)
+    public static IAmazonSimpleNotificationService CreateSnsClient(string accountId, int motoPort)
     {
         return new AmazonSimpleNotificationServiceClient(
             new BasicAWSCredentials(accountId, "shh"),
             new AmazonSimpleNotificationServiceConfig
             {
-                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, localstackPort)
+                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, motoPort)
             });
     }
 }

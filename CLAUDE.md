@@ -59,8 +59,8 @@ dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests
 - Use absolute paths if running from different directories
 - Always rebuild after code changes: `dotnet build tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release`
 
-### Verification Tests (LocalStack)
-The project includes verification tests that run against LocalStack to ensure correctness:
+### Verification Tests (Moto Server)
+The project includes verification tests that run against Moto Server to ensure correctness:
 ```bash
 cd tests/LocalSqsSnsMessaging.Tests.Verification
 dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
@@ -231,7 +231,7 @@ tests/
   LocalSqsSnsMessaging.Tests/               # Main test suite (TUnit)
     LocalAwsMessaging/                      # Tests using SDK client mode (HTTP interceptor)
     SdkClient/                              # Smoke tests for SDK client mode
-  LocalSqsSnsMessaging.Tests.Verification/  # LocalStack verification tests
+  LocalSqsSnsMessaging.Tests.Verification/  # Moto Server verification tests
   LocalSqsSnsMessaging.Tests.Shared/        # Shared test utilities
 ```
 

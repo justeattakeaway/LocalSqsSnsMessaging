@@ -15,7 +15,7 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
 
-    // LocalStack throws a different exception when validating on publishing.
+    // Moto Server throws a different exception when validating on publishing.
     // This method allows us to deviate from this behavior until support is added to our implementation.
     protected abstract bool SupportsAttributeSizeValidation();
 
