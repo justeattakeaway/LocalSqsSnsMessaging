@@ -20,7 +20,6 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
     {
         _tracerProvider = Sdk.CreateTracerProviderBuilder()
             .AddAWSInstrumentation()
-            .AddConsoleExporter()
             .Build();
 
 #pragma warning disable CA1849
