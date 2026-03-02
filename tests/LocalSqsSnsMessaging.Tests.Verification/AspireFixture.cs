@@ -2,6 +2,8 @@ using Aspire.Hosting.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using TUnit.Core.Interfaces;
 
 namespace LocalSqsSnsMessaging.Tests.Verification;
@@ -10,11 +12,17 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
 {
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
+    private TracerProvider? _tracerProvider;
 
     public int? LocalStackPort => _app?.GetEndpoint("localstack").Port;
 
     public async Task InitializeAsync()
     {
+        _tracerProvider = Sdk.CreateTracerProviderBuilder()
+            .AddAWSInstrumentation()
+            .AddConsoleExporter()
+            .Build();
+
 #pragma warning disable CA1849
         // ReSharper disable once MethodHasAsyncOverload
         _builder = DistributedApplicationTestingBuilder.Create();
@@ -44,5 +52,6 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
         {
             await _builder.DisposeAsync();
         }
+        _tracerProvider?.Dispose();
     }
 }
