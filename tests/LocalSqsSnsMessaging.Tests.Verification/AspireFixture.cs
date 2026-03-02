@@ -19,6 +19,7 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
     public async Task InitializeAsync()
     {
         _tracerProvider = Sdk.CreateTracerProviderBuilder()
+            .AddSource("TUnit")
             .AddAWSInstrumentation()
             .Build();
 
