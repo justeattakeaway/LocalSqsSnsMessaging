@@ -1016,7 +1016,8 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         }, cancellationToken);
 
         var message = receiveResponse.Messages.ShouldHaveSingleItem();
-        message.MessageAttributes.Count.ShouldBe(2);
+        message.MessageAttributes.ShouldContainKey(new string('a', 100));
+        message.MessageAttributes.ShouldContainKey(new string('b', 20));
     }
 
     [Test]
