@@ -32,10 +32,10 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // Extract operation name from request
+        string operationName;
         try
         {
-            // Extract operation name from request
-            string operationName;
             if (_protocolType == AwsProtocolType.Json)
             {
                 // For JSON protocol (SQS), the operation is in the x-amz-target header
@@ -49,7 +49,28 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
                     : string.Empty;
                 operationName = ExtractOperationNameFromBody(request, requestBody);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+#pragma warning disable CA1031
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            return CreateErrorResponse(ex);
+        }
 
+        var servicePrefix = _protocolType == AwsProtocolType.Json ? "SQS" : "SNS";
+
+#if NET
+        using var activity = _bus.EffectiveActivitySource?.StartActivity(
+            $"{servicePrefix}.{operationName}",
+            System.Diagnostics.ActivityKind.Client);
+#endif
+
+        try
+        {
             // Route to appropriate handler based on protocol type
             HttpResponseMessage response;
             if (_protocolType == AwsProtocolType.Query)
@@ -76,6 +97,13 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         catch (Exception ex)
 #pragma warning restore CA1031
         {
+#if NET
+            if (activity is not null)
+            {
+                activity.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+                activity.SetTag("error.type", ex.GetType().FullName);
+            }
+#endif
             // Convert exceptions to AWS error responses
             return CreateErrorResponse(ex);
         }

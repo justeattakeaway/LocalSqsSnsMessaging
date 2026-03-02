@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+#if NET
+using System.Diagnostics;
+#endif
 
 namespace LocalSqsSnsMessaging;
 
@@ -7,6 +10,26 @@ namespace LocalSqsSnsMessaging;
 /// </summary>
 public sealed class InMemoryAwsBus
 {
+#if NET
+    private static readonly ActivitySource DefaultActivitySourceInstance = new("LocalSqsSnsMessaging");
+
+    /// <summary>
+    /// Gets or sets the default <see cref="ActivitySource"/> used by all <see cref="InMemoryAwsBus"/> instances
+    /// that do not have an explicit <see cref="ActivitySource"/> set.
+    /// This allows configuring tracing once (e.g. in a test session setup) for all bus instances.
+    /// </summary>
+    public static ActivitySource? DefaultActivitySource { get; set; } = DefaultActivitySourceInstance;
+
+    /// <summary>
+    /// Gets or sets the <see cref="ActivitySource"/> used for creating diagnostic activities for
+    /// in-memory AWS operations. When set, overrides <see cref="DefaultActivitySource"/> for this instance.
+    /// Set to <c>null</c> to fall back to the static default.
+    /// </summary>
+    public ActivitySource? ActivitySource { get; set; }
+
+    internal ActivitySource? EffectiveActivitySource => ActivitySource ?? DefaultActivitySource;
+#endif
+
     /// <summary>
     /// Gets or initializes the TimeProvider used for time-related operations.
     /// </summary>
