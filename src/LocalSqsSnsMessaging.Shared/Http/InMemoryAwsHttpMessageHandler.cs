@@ -64,7 +64,7 @@ internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         var servicePrefix = _protocolType == AwsProtocolType.Json ? "SQS" : "SNS";
 
 #if NET
-        using var activity = _bus.EffectiveActivitySource?.StartActivity(
+        using var activity = InMemoryAwsBus.ActivitySource.StartActivity(
             $"{servicePrefix}.{operationName}",
             System.Diagnostics.ActivityKind.Client);
 #endif
