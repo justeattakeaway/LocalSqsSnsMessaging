@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+#if NET
+using System.Diagnostics;
+#endif
 
 namespace LocalSqsSnsMessaging;
 
@@ -7,6 +10,10 @@ namespace LocalSqsSnsMessaging;
 /// </summary>
 public sealed class InMemoryAwsBus
 {
+#if NET
+    internal static readonly ActivitySource ActivitySource = new("LocalSqsSnsMessaging");
+#endif
+
     /// <summary>
     /// Gets or initializes the TimeProvider used for time-related operations.
     /// </summary>

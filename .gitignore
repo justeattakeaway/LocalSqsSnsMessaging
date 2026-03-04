@@ -485,3 +485,4 @@ $RECYCLE.BIN/
 
 .dotnetcli
 .playwright-cli/
+TestResults/

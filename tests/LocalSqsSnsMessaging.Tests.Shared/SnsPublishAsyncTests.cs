@@ -836,7 +836,7 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
         var request = new PublishRequest
         {
             TopicArn = topicArn,
-            Message = new string('x', 262144) // Exactly 256KB
+            Message = new string('x', 261_000) // Under 256KB, leaving ~1KB buffer for tracing attributes added by OTel
         };
 
         // Act

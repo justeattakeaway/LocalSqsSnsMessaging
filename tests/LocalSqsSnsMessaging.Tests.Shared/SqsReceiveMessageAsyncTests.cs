@@ -719,7 +719,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         var message2 = result.Messages.First(m => m.Body == "Message 2");
 
         // Check attributes for Message 1
-        message1.Attributes.ShouldHaveSingleItem();
+        message1.Attributes.ShouldContainKey(MessageSystemAttributeName.SenderId);
         message1.Attributes[MessageSystemAttributeName.SenderId].ShouldBe("Sender1");
 
         // Check attributes for Message 2
@@ -972,7 +972,8 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
             cancellationToken)).QueueUrl;
 
-        // Calculate sizes to reach exactly 1MB:
+        // Calculate sizes to be just under 1MB, leaving room for system attributes
+        // (e.g. AWSTraceHeader added by OpenTelemetry instrumentation):
         // - Message body: 1,000,000 bytes
         // - First attribute:
         //   * Name: 100 bytes
@@ -981,8 +982,8 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         // - Second attribute:
         //   * Name: 20 bytes
         //   * Type: "Number" (6 bytes)
-        //   * Value: 17,444 bytes
-        // Total: 1,048,576 bytes (1MB)
+        //   * Value: 17,244 bytes
+        // Total: 1,048,376 bytes
 
         var sendRequest = new SendMessageRequest
         {
@@ -998,7 +999,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
                 [new string('b', 20)] = new MessageAttributeValue
                 {
                     DataType = "Number",
-                    StringValue = new string('z', 17_444)
+                    StringValue = new string('z', 17_244)
                 }
             }
         };
@@ -1015,7 +1016,8 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         }, cancellationToken);
 
         var message = receiveResponse.Messages.ShouldHaveSingleItem();
-        message.MessageAttributes.Count.ShouldBe(2);
+        message.MessageAttributes.ShouldContainKey(new string('a', 100));
+        message.MessageAttributes.ShouldContainKey(new string('b', 20));
     }
 
     [Test]
