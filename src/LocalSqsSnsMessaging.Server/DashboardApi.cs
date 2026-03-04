@@ -285,7 +285,8 @@ internal static class DashboardApi
             DashboardJsonContext.Default.PublishTopicResponse);
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Channel internals accessed for dashboard peek/delete")]
+    [DynamicDependency("_items", "System.Threading.Channels.UnboundedChannel`1", "System.Threading.Channels")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "DynamicDependency preserves _items field")]
     private static bool RemoveFromChannel(Channel<Message> channel, string messageId)
     {
         var itemsField = channel.GetType().GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -310,7 +311,8 @@ internal static class DashboardApi
         return false;
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Peek is best-effort; returns empty on failure")]
+    [DynamicDependency("_items", "System.Threading.Channels.UnboundedChannel`1", "System.Threading.Channels")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "DynamicDependency preserves _items field")]
     private static List<MessageInfo> PeekChannelMessages(Channel<Message> channel)
     {
         var itemsField = channel.GetType().GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance);
