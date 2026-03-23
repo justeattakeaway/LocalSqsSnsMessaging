@@ -9,7 +9,7 @@ public static class LocalStackAspireExtensions
     {
         var localstackResource =
             builder
-                .AddContainer("localstack", "localstack/localstack", "stable")
+                .AddContainer("localstack", "localstack/localstack", "4.14")
                 .WithHttpEndpoint(targetPort: 4566)
                 .WithEnvironment("SERVICES", string.Join(',', services))
                 .WithEnvironment("EAGER_SERVICE_LOADING", "1")
