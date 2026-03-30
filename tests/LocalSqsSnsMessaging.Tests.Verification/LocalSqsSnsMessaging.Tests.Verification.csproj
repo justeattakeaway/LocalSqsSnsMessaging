@@ -1,22 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Sdk Name="Aspire.AppHost.Sdk" Version="13.1.2" />
-
     <PropertyGroup>
       <TargetFramework>net8.0</TargetFramework>
       <OutputType>Exe</OutputType>
       <ImplicitUsings>enable</ImplicitUsings>
       <Nullable>enable</Nullable>
       <IsPackable>false</IsPackable>
-      <NoWarn>$(NoWarn);CA2007;ASPIRE002</NoWarn>
-      <IsAspireHost>false</IsAspireHost>
+      <NoWarn>$(NoWarn);CA2007</NoWarn>
       <IsTestProject>true</IsTestProject>
     </PropertyGroup>
-
-    <ItemGroup>
-      <PackageReference Include="Aspire.Hosting.AppHost" />
-      <PackageReference Include="Aspire.Hosting.Testing" />
-    </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\..\src\LocalSqsSnsMessaging\LocalSqsSnsMessaging.csproj" />
