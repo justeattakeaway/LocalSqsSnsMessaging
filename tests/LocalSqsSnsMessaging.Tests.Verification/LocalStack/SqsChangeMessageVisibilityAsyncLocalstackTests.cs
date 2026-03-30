@@ -13,6 +13,6 @@ public class SqsChangeMessageVisibilityAsyncLocalStackTests : SqsChangeMessageVi
         var accountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
 #pragma warning restore CA5394
         Console.WriteLine($"AccountId: {accountId}");
-        Sqs = ClientFactory.CreateSqsClient(accountId, AspireFixture.LocalStackPort!.Value);
+        Sqs = ClientFactory.CreateSqsClient(accountId, AspireFixture.JetStackPort!.Value);
     }
 }

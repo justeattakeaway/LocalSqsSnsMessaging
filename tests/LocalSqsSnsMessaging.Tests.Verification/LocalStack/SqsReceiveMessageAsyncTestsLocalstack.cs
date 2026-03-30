@@ -14,6 +14,6 @@ public class SqsReceiveMessageAsyncTestsLocalStack : SqsReceiveMessageAsyncTests
         AccountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
 #pragma warning restore CA5394
         Console.WriteLine($"AccountId: {AccountId}");
-        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.LocalStackPort!.Value);
+        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.JetStackPort!.Value);
     }
 }
