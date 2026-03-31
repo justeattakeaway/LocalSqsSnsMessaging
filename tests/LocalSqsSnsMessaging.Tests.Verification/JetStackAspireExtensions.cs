@@ -1,33 +1,31 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace LocalSqsSnsMessaging.Tests.Verification;
 
-public static class LocalStackAspireExtensions
+public static class JetStackAspireExtensions
 {
-    public static IDistributedApplicationBuilder AddLocalStack(this IDistributedApplicationBuilder builder, string[] services)
+    public static IDistributedApplicationBuilder AddJetStack(this IDistributedApplicationBuilder builder)
     {
-        var localstackResource =
+        var jetStackResource =
             builder
-                .AddContainer("localstack", "localstack/localstack", "4.14")
+                .AddContainer("jet-stack", "ghcr.io/justeattakeaway/jet-stack", "latest")
                 .WithHttpEndpoint(targetPort: 4566)
-                .WithEnvironment("SERVICES", string.Join(',', services))
-                .WithEnvironment("EAGER_SERVICE_LOADING", "1")
-                .WithLocalStackHealthCheck(services);
+                .WithJetStackHealthCheck();
 
         var isRunningInCi = Environment.GetEnvironmentVariable("CI") == "true";
 
         if (!isRunningInCi)
         {
-            localstackResource
-                .WithContainerName("localsqssnsmessaging-localstack")
+            jetStackResource
+                .WithContainerName("localsqssnsmessaging-jetstack")
                 .WithLifetime(ContainerLifetime.Persistent);
         }
 
         return builder;
     }
 
-    private static IResourceBuilder<T> WithLocalStackHealthCheck<T>(this IResourceBuilder<T> builder, string[] services) where T : IResourceWithEndpoints
+    private static IResourceBuilder<T> WithJetStackHealthCheck<T>(this IResourceBuilder<T> builder) where T : IResourceWithEndpoints
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -46,7 +44,7 @@ public static class LocalStackAspireExtensions
             return Task.CompletedTask;
         });
 
-        var healthCheckKey = $"{builder.Resource.Name}_localstack_check";
+        var healthCheckKey = $"{builder.Resource.Name}_jetstack_check";
 
         builder.ApplicationBuilder.Services.AddHealthChecks().Add(new HealthCheckRegistration(healthCheckKey,
             _ =>
@@ -55,7 +53,7 @@ public static class LocalStackAspireExtensions
                 {
                     null => throw new DistributedApplicationException(
                         "The URI for the health check is not set. Ensure that the resource has been allocated before the health check is executed."),
-                    _ => new LocalStackHealthCheck(baseUri!, services)
+                    _ => new JetStackHealthCheck(baseUri!)
                 };
             }, failureStatus: null, tags: null));
 

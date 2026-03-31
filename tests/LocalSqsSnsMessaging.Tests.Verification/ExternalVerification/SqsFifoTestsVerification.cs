@@ -1,9 +1,7 @@
-using System.Globalization;
-
-namespace LocalSqsSnsMessaging.Tests.Verification.LocalStack;
+namespace LocalSqsSnsMessaging.Tests.Verification.ExternalVerification;
 
 [InheritsTests]
-public class SqsFairQueueTestsLocalstack : SqsFairQueueTests
+public class SqsFifoTestsVerification : SqsFifoTests
 {
     [ClassDataSource<AspireFixture>(Shared = SharedType.PerTestSession)]
     public required AspireFixture AspireFixture { get; set; }
@@ -15,6 +13,6 @@ public class SqsFairQueueTestsLocalstack : SqsFairQueueTests
         AccountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
 #pragma warning restore CA5394
         Console.WriteLine($"AccountId: {AccountId}");
-        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.LocalStackPort!.Value);
+        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.ServicePort!.Value);
     }
 }
