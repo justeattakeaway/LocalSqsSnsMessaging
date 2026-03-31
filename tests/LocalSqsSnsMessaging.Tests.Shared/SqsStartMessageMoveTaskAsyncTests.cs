@@ -257,6 +257,16 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
     {
         await SetupQueuesAndMessage();
 
+        // Add extra messages to the DLQ so there are enough to survive an immediate first move
+        for (int i = 0; i < 10; i++)
+        {
+            await Sqs.SendMessageAsync(new SendMessageRequest
+            {
+                QueueUrl = _errorQueueUrl,
+                MessageBody = $"Extra DLQ message {i}"
+            }, cancellationToken);
+        }
+
         // Start the message move task
         var startMoveResponse = await Sqs.StartMessageMoveTaskAsync(new StartMessageMoveTaskRequest
         {
@@ -274,8 +284,12 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         // Wait a moment to ensure the task has time to stop
         await WaitAsync(TimeSpan.FromSeconds(5));
 
-        // Check that the message is still in the source queue (DLQ)
-        var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _errorQueueUrl }, cancellationToken);
+        // Check that messages are still in the source queue (DLQ)
+        var sourceReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = _errorQueueUrl,
+            MaxNumberOfMessages = 10
+        }, cancellationToken);
         sourceReceiveResult.Messages.ShouldNotBeEmpty();
     }
 
@@ -284,12 +298,22 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
     {
         await SetupQueuesAndMessage();
 
+        // Add extra messages to ensure the task stays running long enough for the second call
+        for (int i = 0; i < 10; i++)
+        {
+            await Sqs.SendMessageAsync(new SendMessageRequest
+            {
+                QueueUrl = _errorQueueUrl,
+                MessageBody = $"Extra DLQ message {i}"
+            }, cancellationToken);
+        }
+
         // Start two message move tasks
         var task1 = await Sqs.StartMessageMoveTaskAsync(new StartMessageMoveTaskRequest
         {
             SourceArn = _errorQueueArn,
             DestinationArn = _mainQueueArn,
-            MaxNumberOfMessagesPerSecond = 10
+            MaxNumberOfMessagesPerSecond = 1
         }, cancellationToken);
 
         await Assert.ThrowsAsync<Exception>(async () =>
