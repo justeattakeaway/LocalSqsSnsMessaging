@@ -1,8 +1,8 @@
 #pragma warning disable CA1711
-namespace LocalSqsSnsMessaging.Tests.Verification.LocalStack;
+namespace LocalSqsSnsMessaging.Tests.Verification.ExternalVerification;
 
 [InheritsTests]
-public class SnsPublishAsyncTestsLocalStack : SnsPublishAsyncTests
+public class SnsPublishAsyncTestsVerification : SnsPublishAsyncTests
 {
     [ClassDataSource<AspireFixture>(Shared = SharedType.PerTestSession)]
     public required AspireFixture AspireFixture { get; init; }
@@ -14,8 +14,8 @@ public class SnsPublishAsyncTestsLocalStack : SnsPublishAsyncTests
         AccountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
 #pragma warning restore CA5394
         Console.WriteLine($"AccountId: {AccountId}");
-        Sns = ClientFactory.CreateSnsClient(AccountId, AspireFixture.JetStackPort!.Value);
-        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.JetStackPort!.Value);
+        Sns = ClientFactory.CreateSnsClient(AccountId, AspireFixture.ServicePort!.Value);
+        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.ServicePort!.Value);
     }
 
     protected override bool SupportsAttributeSizeValidation() => true;

@@ -11,7 +11,7 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
 
-    public int? JetStackPort => _app?.GetEndpoint("jet-stack").Port;
+    public int? ServicePort => _app?.GetEndpoint("jet-stack").Port;
 
     public async Task InitializeAsync()
     {
