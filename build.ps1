@@ -82,7 +82,9 @@ function DotNetTest {
 
     $additionalArgs = @(
         "--coverage"
-        "--coverage-output-format"; "xml"
+        "--coverage-output-format"; "cobertura"
+        "--coverage-output"; "coverage.cobertura.xml"
+        "--coverage-settings"; (Join-Path $solutionPath "codecoverage.runsettings")
         "--results-directory"; $projectResultsDir
         "--timeout"; "2m"
     )

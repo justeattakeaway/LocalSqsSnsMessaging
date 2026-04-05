@@ -73,6 +73,11 @@ jobs:
           cd ./tests/LocalSqsSnsMessaging.Tests.Verification
           dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 
+    - name: Clean up intermediate coverage files
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: find test-results -mindepth 2 -type d -exec rm -rf {} + 2>/dev/null || true
+
     - name: Upload coverage to Codecov
       if: ${{ !cancelled() }}
       uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
@@ -80,6 +85,7 @@ jobs:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
         flags: ${{ matrix.os-name }}
+        directory: test-results
 
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
