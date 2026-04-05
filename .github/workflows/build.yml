@@ -73,11 +73,23 @@ jobs:
           cd ./tests/LocalSqsSnsMessaging.Tests.Verification
           dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 
-    - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
-      name: Upload coverage to Codecov
+    - name: Upload coverage to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
         flags: ${{ matrix.os-name }}
-        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        report_type: test_results
+        flags: ${{ matrix.os-name }}
+        files: test-results/**/*-junit.xml
 
 #    - name: Generate SBOM
 #      uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2

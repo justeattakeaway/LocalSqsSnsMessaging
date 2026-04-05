@@ -72,18 +72,32 @@ function DotNetTest {
         [string] $Project
     )
 
+    $testResultsDir = Join-Path $solutionPath "test-results"
+    $projectName = [System.IO.Path]::GetFileNameWithoutExtension($Project)
+    $projectResultsDir = Join-Path $testResultsDir $projectName
+
+    # Enable TUnit's built-in JUnit reporter for Codecov Test Analytics
+    $env:TUNIT_ENABLE_JUNIT_REPORTER = "true"
+    $env:JUNIT_XML_OUTPUT_PATH = (Join-Path $projectResultsDir "${projectName}-junit.xml")
+
     $additionalArgs = @(
         "--coverage"
         "--coverage-output-format"; "xml"
+        "--results-directory"; $projectResultsDir
         "--timeout"; "2m"
     )
 
-    & $dotnet run --project $Project `
-        --configuration "Release" `
-        -- $additionalArgs
+    try {
+        & $dotnet run --project $Project `
+            --configuration "Release" `
+            -- $additionalArgs
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "dotnet test failed with exit code $LASTEXITCODE"
+        if ($LASTEXITCODE -ne 0) {
+            throw "dotnet test failed with exit code $LASTEXITCODE"
+        }
+    }
+    finally {
+        $env:JUNIT_XML_OUTPUT_PATH = $null
     }
 }
 
