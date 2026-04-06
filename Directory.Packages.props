@@ -2,7 +2,7 @@
   <ItemGroup>
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.2.1" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.2.1" />
-    <PackageVersion Include="AWSSDK.Core" Version="4.0.3.27" />
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.3.28" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.0.12" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.0.11" />
     <PackageVersion Include="OpenTelemetry" Version="1.15.1" />
