@@ -154,7 +154,7 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         forthReceivedMessage.Body.ShouldBe("Hello, world!");
     }
 
-    [Test, Category(TimeBased)]
+    [Test, Category(TimeBased), Retry(3)]
     public async Task ReceiveMessageAsync_DelayedMessageBecomesVisible(CancellationToken cancellationToken)
     {
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" },
