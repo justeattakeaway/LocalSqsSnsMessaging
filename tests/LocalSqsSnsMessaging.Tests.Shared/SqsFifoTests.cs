@@ -79,19 +79,21 @@ public abstract class SqsFifoTests : WaitingTestBase
             MessageDeduplicationId = "Dedup1B"
         }, cancellationToken);
 
-        // Receive messages
-        var receiveRequest = new ReceiveMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MaxNumberOfMessages = 10
-        };
+        // Receive all messages (may require multiple polls against real SQS/moto)
+        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 3, cancellationToken,
+            ["MessageGroupId"]);
 
-        var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
+        messages.Count.ShouldBe(3);
 
-        result.Messages.Count.ShouldBe(3);
-        result.Messages[0].Body.ShouldBe("Message 1 Group A");
-        result.Messages[1].Body.ShouldBe("Message 2 Group A");
-        result.Messages[2].Body.ShouldBe("Message 1 Group B");
+        // Verify within-group ordering (cross-group order is not guaranteed by SQS)
+        var groupAMessages = messages.Where(m => m.Attributes["MessageGroupId"] == "GroupA").ToList();
+        groupAMessages.Count.ShouldBe(2);
+        groupAMessages[0].Body.ShouldBe("Message 1 Group A");
+        groupAMessages[1].Body.ShouldBe("Message 2 Group A");
+
+        var groupBMessages = messages.Where(m => m.Attributes["MessageGroupId"] == "GroupB").ToList();
+        groupBMessages.Count.ShouldBe(1);
+        groupBMessages[0].Body.ShouldBe("Message 1 Group B");
     }
 
     [Test]
@@ -133,18 +135,12 @@ public abstract class SqsFifoTests : WaitingTestBase
             MessageDeduplicationId = "UniqueDedup"
         }, cancellationToken);
 
-        // Receive messages
-        var receiveRequest = new ReceiveMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MaxNumberOfMessages = 10
-        };
+        // Receive all messages (may require multiple polls against real SQS/moto)
+        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 2, cancellationToken);
 
-        var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
-
-        result.Messages.Count.ShouldBe(2);
-        result.Messages[0].Body.ShouldBe("Duplicate Message");
-        result.Messages[1].Body.ShouldBe("Unique Message");
+        messages.Count.ShouldBe(2);
+        messages[0].Body.ShouldBe("Duplicate Message");
+        messages[1].Body.ShouldBe("Unique Message");
     }
 
     [Test]
@@ -183,18 +179,12 @@ public abstract class SqsFifoTests : WaitingTestBase
             MessageGroupId = "GroupA"
         }, cancellationToken);
 
-        // Receive messages
-        var receiveRequest = new ReceiveMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MaxNumberOfMessages = 10
-        };
+        // Receive all messages (may require multiple polls against real SQS/moto)
+        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 2, cancellationToken);
 
-        var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
-
-        result.Messages.Count.ShouldBe(2);
-        result.Messages[0].Body.ShouldBe("Duplicate Content");
-        result.Messages[1].Body.ShouldBe("Unique Content");
+        messages.Count.ShouldBe(2);
+        messages[0].Body.ShouldBe("Duplicate Content");
+        messages[1].Body.ShouldBe("Unique Content");
     }
 
     [Test]
@@ -231,18 +221,12 @@ public abstract class SqsFifoTests : WaitingTestBase
             }, cancellationToken);
         }
 
-        // Receive messages
-        var receiveRequest = new ReceiveMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MaxNumberOfMessages = 10
-        };
+        // Receive all messages (may require multiple polls against real SQS/moto)
+        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 10, cancellationToken);
 
-        var result = await Sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
-
-        result.Messages.Count.ShouldBe(10);
-        // Verify that messages from both groups are interleaved
-        result.Messages.ShouldContain(m => m.Body.Contains("Group A", StringComparison.Ordinal));
-        result.Messages.ShouldContain(m => m.Body.Contains("Group B", StringComparison.Ordinal));
+        messages.Count.ShouldBe(10);
+        // Verify that messages from both groups are present
+        messages.ShouldContain(m => m.Body.Contains("Group A", StringComparison.Ordinal));
+        messages.ShouldContain(m => m.Body.Contains("Group B", StringComparison.Ordinal));
     }
 }

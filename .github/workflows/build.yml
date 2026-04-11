@@ -69,6 +69,9 @@ jobs:
     - name: Run Verification Tests
       if: runner.os == 'linux'
       shell: pwsh
+      env:
+        TUNIT_ENABLE_JUNIT_REPORTER: true
+        JUNIT_XML_OUTPUT_PATH: test-results/LocalSqsSnsMessaging.Tests.Verification/LocalSqsSnsMessaging.Tests.Verification-junit.xml
       run: |
           cd ./tests/LocalSqsSnsMessaging.Tests.Verification
           dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
