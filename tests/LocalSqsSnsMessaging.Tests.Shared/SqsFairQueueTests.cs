@@ -99,31 +99,27 @@ public abstract class SqsFairQueueTests : WaitingTestBase
             MessageDeduplicationId = "DedupB3"
         }, cancellationToken);
 
-        // Receive messages
-        var result = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MaxNumberOfMessages = 6,
-            MessageSystemAttributeNames = ["MessageGroupId"]
-        }, cancellationToken);
+        // Receive all messages (may require multiple polls against real SQS/moto)
+        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 6, cancellationToken,
+            ["MessageGroupId"]);
 
-        result.Messages.Count.ShouldBe(6);
+        messages.Count.ShouldBe(6);
 
         // Verify all messages are received
-        result.Messages.ShouldContain(m => m.Body == "A1");
-        result.Messages.ShouldContain(m => m.Body == "A2");
-        result.Messages.ShouldContain(m => m.Body == "A3");
-        result.Messages.ShouldContain(m => m.Body == "B1");
-        result.Messages.ShouldContain(m => m.Body == "B2");
-        result.Messages.ShouldContain(m => m.Body == "B3");
+        messages.ShouldContain(m => m.Body == "A1");
+        messages.ShouldContain(m => m.Body == "A2");
+        messages.ShouldContain(m => m.Body == "A3");
+        messages.ShouldContain(m => m.Body == "B1");
+        messages.ShouldContain(m => m.Body == "B2");
+        messages.ShouldContain(m => m.Body == "B3");
 
         // Verify order within each group is preserved
-        var groupAMessages = result.Messages.Where(m => m.Attributes["MessageGroupId"] == "GroupA").ToList();
+        var groupAMessages = messages.Where(m => m.Attributes["MessageGroupId"] == "GroupA").ToList();
         groupAMessages[0].Body.ShouldBe("A1");
         groupAMessages[1].Body.ShouldBe("A2");
         groupAMessages[2].Body.ShouldBe("A3");
 
-        var groupBMessages = result.Messages.Where(m => m.Attributes["MessageGroupId"] == "GroupB").ToList();
+        var groupBMessages = messages.Where(m => m.Attributes["MessageGroupId"] == "GroupB").ToList();
         groupBMessages[0].Body.ShouldBe("B1");
         groupBMessages[1].Body.ShouldBe("B2");
         groupBMessages[2].Body.ShouldBe("B3");
@@ -167,34 +163,30 @@ public abstract class SqsFairQueueTests : WaitingTestBase
             }, cancellationToken);
         }
 
-        // Receive messages
-        var result = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MaxNumberOfMessages = 7,
-            MessageSystemAttributeNames = ["MessageGroupId"]
-        }, cancellationToken);
+        // Receive all messages (may require multiple polls against real SQS/moto)
+        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 7, cancellationToken,
+            ["MessageGroupId"]);
 
-        result.Messages.Count.ShouldBe(7);
+        messages.Count.ShouldBe(7);
 
         // Verify all messages are received
-        result.Messages.ShouldContain(m => m.Body == "A1");
-        result.Messages.ShouldContain(m => m.Body == "A2");
-        result.Messages.ShouldContain(m => m.Body == "A3");
-        result.Messages.ShouldContain(m => m.Body == "A4");
-        result.Messages.ShouldContain(m => m.Body == "A5");
-        result.Messages.ShouldContain(m => m.Body == "B1");
-        result.Messages.ShouldContain(m => m.Body == "B2");
+        messages.ShouldContain(m => m.Body == "A1");
+        messages.ShouldContain(m => m.Body == "A2");
+        messages.ShouldContain(m => m.Body == "A3");
+        messages.ShouldContain(m => m.Body == "A4");
+        messages.ShouldContain(m => m.Body == "A5");
+        messages.ShouldContain(m => m.Body == "B1");
+        messages.ShouldContain(m => m.Body == "B2");
 
         // Verify order within each group is preserved
-        var groupAMessages = result.Messages.Where(m => m.Attributes["MessageGroupId"] == "GroupA").ToList();
+        var groupAMessages = messages.Where(m => m.Attributes["MessageGroupId"] == "GroupA").ToList();
         groupAMessages[0].Body.ShouldBe("A1");
         groupAMessages[1].Body.ShouldBe("A2");
         groupAMessages[2].Body.ShouldBe("A3");
         groupAMessages[3].Body.ShouldBe("A4");
         groupAMessages[4].Body.ShouldBe("A5");
 
-        var groupBMessages = result.Messages.Where(m => m.Attributes["MessageGroupId"] == "GroupB").ToList();
+        var groupBMessages = messages.Where(m => m.Attributes["MessageGroupId"] == "GroupB").ToList();
         groupBMessages[0].Body.ShouldBe("B1");
         groupBMessages[1].Body.ShouldBe("B2");
     }
@@ -228,34 +220,30 @@ public abstract class SqsFairQueueTests : WaitingTestBase
             }
         }
 
-        // Receive all messages
-        var result = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MaxNumberOfMessages = 6,
-            MessageSystemAttributeNames = ["MessageGroupId"]
-        }, cancellationToken);
+        // Receive all messages (may require multiple polls against real SQS/moto)
+        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 6, cancellationToken,
+            ["MessageGroupId"]);
 
-        result.Messages.Count.ShouldBe(6);
+        messages.Count.ShouldBe(6);
 
         // Verify all messages are received
-        result.Messages.ShouldContain(m => m.Body == "A1");
-        result.Messages.ShouldContain(m => m.Body == "A2");
-        result.Messages.ShouldContain(m => m.Body == "B1");
-        result.Messages.ShouldContain(m => m.Body == "B2");
-        result.Messages.ShouldContain(m => m.Body == "C1");
-        result.Messages.ShouldContain(m => m.Body == "C2");
+        messages.ShouldContain(m => m.Body == "A1");
+        messages.ShouldContain(m => m.Body == "A2");
+        messages.ShouldContain(m => m.Body == "B1");
+        messages.ShouldContain(m => m.Body == "B2");
+        messages.ShouldContain(m => m.Body == "C1");
+        messages.ShouldContain(m => m.Body == "C2");
 
         // Verify order within each group is preserved
-        var groupAMessages = result.Messages.Where(m => m.Attributes["MessageGroupId"] == "GroupA").ToList();
+        var groupAMessages = messages.Where(m => m.Attributes["MessageGroupId"] == "GroupA").ToList();
         groupAMessages[0].Body.ShouldBe("A1");
         groupAMessages[1].Body.ShouldBe("A2");
 
-        var groupBMessages = result.Messages.Where(m => m.Attributes["MessageGroupId"] == "GroupB").ToList();
+        var groupBMessages = messages.Where(m => m.Attributes["MessageGroupId"] == "GroupB").ToList();
         groupBMessages[0].Body.ShouldBe("B1");
         groupBMessages[1].Body.ShouldBe("B2");
 
-        var groupCMessages = result.Messages.Where(m => m.Attributes["MessageGroupId"] == "GroupC").ToList();
+        var groupCMessages = messages.Where(m => m.Attributes["MessageGroupId"] == "GroupC").ToList();
         groupCMessages[0].Body.ShouldBe("C1");
         groupCMessages[1].Body.ShouldBe("C2");
     }
@@ -331,35 +319,17 @@ public abstract class SqsFairQueueTests : WaitingTestBase
             }, cancellationToken);
         }
 
-        // Receive messages in batches
-        var firstBatch = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MaxNumberOfMessages = 2,
-            MessageSystemAttributeNames = ["MessageGroupId"]
-        }, cancellationToken);
+        // Receive all messages via polling (delete between receives to unlock the message group)
+        var allMessages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 5, cancellationToken,
+            ["MessageGroupId"]);
 
-        firstBatch.Messages.Count.ShouldBe(2);
-        firstBatch.Messages[0].Body.ShouldBe("A1");
-        firstBatch.Messages[1].Body.ShouldBe("A2");
+        allMessages.Count.ShouldBe(5);
 
-        // Delete the first batch
-        foreach (var message in firstBatch.Messages)
-        {
-            await Sqs.DeleteMessageAsync(queueUrl, message.ReceiptHandle, cancellationToken);
-        }
-
-        // Receive next batch - should continue in order
-        var secondBatch = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
-        {
-            QueueUrl = queueUrl,
-            MaxNumberOfMessages = 10,
-            MessageSystemAttributeNames = ["MessageGroupId"]
-        }, cancellationToken);
-
-        secondBatch.Messages.Count.ShouldBe(3);
-        secondBatch.Messages[0].Body.ShouldBe("A3");
-        secondBatch.Messages[1].Body.ShouldBe("A4");
-        secondBatch.Messages[2].Body.ShouldBe("A5");
+        // Verify ordering is preserved across batches
+        allMessages[0].Body.ShouldBe("A1");
+        allMessages[1].Body.ShouldBe("A2");
+        allMessages[2].Body.ShouldBe("A3");
+        allMessages[3].Body.ShouldBe("A4");
+        allMessages[4].Body.ShouldBe("A5");
     }
 }
