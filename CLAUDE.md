@@ -258,4 +258,4 @@ Both modes share the same `InMemoryAwsBus` instance but exercise different code 
 
 Uses Central Package Management (Directory.Packages.props):
 - All package versions defined centrally
-- Test projects automatically get TUnit, coverage tools, and ReportGenerator via `IsTestProject=true`
+- Test projects automatically get TUnit and coverage tools via `IsTestProject=true`
