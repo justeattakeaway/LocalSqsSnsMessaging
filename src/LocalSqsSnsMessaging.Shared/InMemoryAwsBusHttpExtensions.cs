@@ -4,6 +4,9 @@ using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using LocalSqsSnsMessaging.Http;
+#if !AWS_SDK_V3
+using LocalSqsSnsMessaging.Generic;
+#endif
 
 namespace LocalSqsSnsMessaging;
 
@@ -42,6 +45,34 @@ public static class InMemoryAwsBusHttpExtensions
 
             return new AmazonSQSClient(credentials, config);
         }
+
+#if !AWS_SDK_V3
+        /// <summary>
+        /// Creates a typed AWS SDK SQS client backed by the in-memory bus. The returned
+        /// <see cref="TypedAmazonSQSClient"/> behaves exactly like the client produced by
+        /// <see cref="CreateSqsClient"/> for the standard operations, and additionally
+        /// exposes <c>ReceiveMessageAsync&lt;T&gt;</c> for typed message receive.
+        /// </summary>
+        public TypedAmazonSQSClient CreateTypedSqsClient()
+        {
+            ArgumentNullException.ThrowIfNull(bus);
+
+            var handler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.Sqs);
+            var httpClientFactory = new InMemoryHttpClientFactory(handler);
+
+            var config = new AmazonSQSConfig
+            {
+                ServiceURL = $"https://sqs.{bus.CurrentRegion}.amazonaws.com",
+                AuthenticationRegion = bus.CurrentRegion,
+                UseHttp = false,
+                MaxErrorRetry = 0,
+                HttpClientFactory = httpClientFactory
+            };
+
+            var credentials = new AnonymousAWSCredentials();
+            return new TypedAmazonSQSClient(credentials, config);
+        }
+#endif
 
         /// <summary>
         /// Creates a real AWS SDK SNS client configured to use the in-memory bus via HTTP message handler.
