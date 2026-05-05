@@ -4,21 +4,22 @@ using Amazon.SQS;
 using Amazon.SQS.Model;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
-using LocalSqsSnsMessaging.Generic;
 
 namespace LocalSqsSnsMessaging.Benchmarks;
 
-[JsonSerializable(typeof(TypedReceiveBenchmarks.OrderEvent))]
+[JsonSerializable(typeof(RawReceiveBenchmarks.OrderEvent))]
 internal sealed partial class OrderEventJsonContext : JsonSerializerContext;
 
 /// <summary>
-/// Compares the standard receive-then-deserialize pattern against
-/// <see cref="TypedAmazonSQSClient.ReceiveMessageAsync{T}"/>, which deserializes
-/// the message body straight from the response stream.
+/// Compares the standard receive-then-deserialize pattern (string body)
+/// against <see cref="RawAmazonSQSClient.ReceiveMessageRawAsync"/> followed
+/// by user-side deserialization from <see cref="ReadOnlyMemory{Byte}"/>.
+/// Reference benchmarks isolate the deserialization-only and receive-only
+/// costs so the rest can be attributed.
 /// </summary>
 [MemoryDiagnoser]
 [SimpleJob(RuntimeMoniker.Net80, warmupCount: 3, iterationCount: 8)]
-public class TypedReceiveBenchmarks
+public class RawReceiveBenchmarks
 {
     public sealed record OrderEvent(
         int OrderId,
@@ -32,7 +33,7 @@ public class TypedReceiveBenchmarks
 
     private InMemoryAwsBus _bus = null!;
     private AmazonSQSClient _stockClient = null!;
-    private TypedAmazonSQSClient _typedClient = null!;
+    private RawAmazonSQSClient _rawClient = null!;
     private string _queueUrl = null!;
     private string _serializedPayload = null!;
     private byte[] _serializedPayloadUtf8 = null!;
@@ -54,7 +55,7 @@ public class TypedReceiveBenchmarks
     {
         _bus = new InMemoryAwsBus();
         _stockClient = _bus.CreateSqsClient();
-        _typedClient = _bus.CreateTypedSqsClient();
+        _rawClient = _bus.CreateRawSqsClient();
         _queueUrl = (await _stockClient.CreateQueueAsync("bench-queue").ConfigureAwait(false)).QueueUrl;
 
         var notes = PayloadSize switch
@@ -79,8 +80,7 @@ public class TypedReceiveBenchmarks
     public void RefillQueue()
     {
         // Drain whatever is left over from the previous iteration, then top up to
-        // exactly MessagesPerInvocation. Refill cost is paid by both benchmark
-        // methods equally, so it doesn't influence the comparison.
+        // exactly MessagesPerInvocation.
         while (true)
         {
             var resp = _stockClient.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -111,7 +111,7 @@ public class TypedReceiveBenchmarks
     public void GlobalCleanup()
     {
         _stockClient.Dispose();
-        _typedClient.Dispose();
+        _rawClient.Dispose();
     }
 
     /// <summary>
@@ -142,18 +142,18 @@ public class TypedReceiveBenchmarks
     }
 
     /// <summary>
-    /// Typed path with reflection-based metadata: ReceiveMessageAsync&lt;T&gt; via
-    /// custom unmarshaller. Body bytes flow from the response buffer straight
-    /// into <see cref="JsonSerializer"/> with no intermediate System.String.
+    /// Raw path with user-side reflection-based deserialization: bytes flow
+    /// straight from the response buffer; the caller passes them to
+    /// <c>JsonSerializer.Deserialize&lt;T&gt;(ReadOnlySpan&lt;byte&gt;, JsonSerializerOptions)</c>.
     /// </summary>
     [Benchmark(OperationsPerInvoke = MessagesPerInvocation)]
-    public async Task<OrderEvent?> Typed_ReceiveOfT()
+    public async Task<OrderEvent?> Raw_ReceiveAndDeserialize_Reflection()
     {
         OrderEvent? last = null;
         var remaining = MessagesPerInvocation;
         while (remaining > 0)
         {
-            var response = await _typedClient.ReceiveMessageAsync<OrderEvent>(new ReceiveMessageRequest
+            var response = await _rawClient.ReceiveMessageRawAsync(new ReceiveMessageRequest
             {
                 QueueUrl = _queueUrl,
                 MaxNumberOfMessages = Math.Min(10, remaining),
@@ -162,7 +162,7 @@ public class TypedReceiveBenchmarks
             if (response.Messages.Count == 0) break;
             foreach (var message in response.Messages)
             {
-                last = message.Body;
+                last = JsonSerializer.Deserialize<OrderEvent>(message.Body.Span, Options);
             }
             remaining -= response.Messages.Count;
         }
@@ -170,29 +170,28 @@ public class TypedReceiveBenchmarks
     }
 
     /// <summary>
-    /// Typed path with source-generated metadata: same fast unmarshaller, but
-    /// deserialization uses the supplied <c>JsonTypeInfo&lt;T&gt;</c> from a
-    /// generated <see cref="JsonSerializerContext"/> — trim/AOT-safe.
+    /// Raw path with user-side source-generated deserialization: bytes flow
+    /// straight from the response buffer; the caller passes them to
+    /// <c>JsonSerializer.Deserialize(ReadOnlySpan&lt;byte&gt;, JsonTypeInfo&lt;T&gt;)</c>.
+    /// Trim/AOT-safe.
     /// </summary>
     [Benchmark(OperationsPerInvoke = MessagesPerInvocation)]
-    public async Task<OrderEvent?> Typed_ReceiveOfT_SourceGen()
+    public async Task<OrderEvent?> Raw_ReceiveAndDeserialize_SourceGen()
     {
         OrderEvent? last = null;
         var remaining = MessagesPerInvocation;
         while (remaining > 0)
         {
-            var response = await _typedClient.ReceiveMessageAsync(
-                new ReceiveMessageRequest
-                {
-                    QueueUrl = _queueUrl,
-                    MaxNumberOfMessages = Math.Min(10, remaining),
-                },
-                OrderEventJsonContext.Default.OrderEvent).ConfigureAwait(false);
+            var response = await _rawClient.ReceiveMessageRawAsync(new ReceiveMessageRequest
+            {
+                QueueUrl = _queueUrl,
+                MaxNumberOfMessages = Math.Min(10, remaining),
+            }).ConfigureAwait(false);
 
             if (response.Messages.Count == 0) break;
             foreach (var message in response.Messages)
             {
-                last = message.Body;
+                last = JsonSerializer.Deserialize(message.Body.Span, OrderEventJsonContext.Default.OrderEvent);
             }
             remaining -= response.Messages.Count;
         }
@@ -220,9 +219,7 @@ public class TypedReceiveBenchmarks
     /// <summary>
     /// Reference: receive only, no deserialization. Calls the stock SDK
     /// ReceiveMessageAsync and walks the messages but never touches Body.
-    /// Isolates the AWS SDK pipeline cost (HTTP plumbing, request/response
-    /// objects, marshalling everything other than Body) from the deserialize
-    /// cost. Standard − Reference_ReceiveOnly ≈ deserialization-and-string-body cost.
+    /// Standard − Reference_ReceiveOnly ≈ string-body materialization-and-deserialize cost.
     /// </summary>
     [Benchmark(OperationsPerInvoke = MessagesPerInvocation)]
     public async Task<int> Reference_ReceiveOnly()
@@ -238,6 +235,31 @@ public class TypedReceiveBenchmarks
             }).ConfigureAwait(false);
 
             if (response.Messages is null || response.Messages.Count == 0) break;
+            count += response.Messages.Count;
+            remaining -= response.Messages.Count;
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Reference: raw receive, no deserialization. Calls
+    /// <see cref="RawAmazonSQSClient.ReceiveMessageRawAsync"/> but never touches
+    /// the body bytes. Raw_* − Reference_RawReceiveOnly ≈ user-side deser cost.
+    /// </summary>
+    [Benchmark(OperationsPerInvoke = MessagesPerInvocation)]
+    public async Task<int> Reference_RawReceiveOnly()
+    {
+        var count = 0;
+        var remaining = MessagesPerInvocation;
+        while (remaining > 0)
+        {
+            var response = await _rawClient.ReceiveMessageRawAsync(new ReceiveMessageRequest
+            {
+                QueueUrl = _queueUrl,
+                MaxNumberOfMessages = Math.Min(10, remaining),
+            }).ConfigureAwait(false);
+
+            if (response.Messages.Count == 0) break;
             count += response.Messages.Count;
             remaining -= response.Messages.Count;
         }

@@ -4,9 +4,6 @@ using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using LocalSqsSnsMessaging.Http;
-#if !AWS_SDK_V3
-using LocalSqsSnsMessaging.Generic;
-#endif
 
 namespace LocalSqsSnsMessaging;
 
@@ -48,12 +45,14 @@ public static class InMemoryAwsBusHttpExtensions
 
 #if !AWS_SDK_V3
         /// <summary>
-        /// Creates a typed AWS SDK SQS client backed by the in-memory bus. The returned
-        /// <see cref="TypedAmazonSQSClient"/> behaves exactly like the client produced by
-        /// <see cref="CreateSqsClient"/> for the standard operations, and additionally
-        /// exposes <c>ReceiveMessageAsync&lt;T&gt;</c> for typed message receive.
+        /// Creates a SQS client backed by the in-memory bus that exposes the
+        /// <see cref="RawAmazonSQSClient.ReceiveMessageRawAsync"/> overload in
+        /// addition to the standard <see cref="AmazonSQSClient"/> surface. The
+        /// raw overload returns each message body as
+        /// <see cref="ReadOnlyMemory{Byte}"/> UTF-8 bytes for caller-side
+        /// deserialization.
         /// </summary>
-        public TypedAmazonSQSClient CreateTypedSqsClient()
+        public RawAmazonSQSClient CreateRawSqsClient()
         {
             ArgumentNullException.ThrowIfNull(bus);
 
@@ -70,7 +69,7 @@ public static class InMemoryAwsBusHttpExtensions
             };
 
             var credentials = new AnonymousAWSCredentials();
-            return new TypedAmazonSQSClient(credentials, config);
+            return new RawAmazonSQSClient(credentials, config);
         }
 #endif
 
