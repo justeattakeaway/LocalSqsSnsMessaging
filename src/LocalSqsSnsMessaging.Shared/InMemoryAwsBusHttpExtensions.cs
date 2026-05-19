@@ -44,6 +44,23 @@ public static class InMemoryAwsBusHttpExtensions
         }
 
         /// <summary>
+        /// Creates an <see cref="Amazon.Runtime.HttpClientFactory"/> that routes SQS and SNS traffic
+        /// to this in-memory bus, delegating other AWS services to <paramref name="fallback"/>.
+        /// </summary>
+        /// <param name="fallback">
+        /// Optional delegate invoked for AWS clients not backed by this bus. Typically a one-liner that
+        /// defers to an <c>IHttpClientFactory</c>, e.g.
+        /// <c>cfg =&gt; httpClientFactory.CreateClient(cfg.GetType().Name)</c>. When <see langword="null"/>,
+        /// requests for unhandled services throw <see cref="NotSupportedException"/>.
+        /// </param>
+        /// <returns>A factory suitable for use in DI as the application's <c>HttpClientFactory</c>.</returns>
+        public InMemoryAwsHttpClientFactory CreateAwsHttpClientFactory(Func<IClientConfig, HttpClient>? fallback = null)
+        {
+            ArgumentNullException.ThrowIfNull(bus);
+            return new InMemoryAwsHttpClientFactory(bus, fallback);
+        }
+
+        /// <summary>
         /// Creates a real AWS SDK SNS client configured to use the in-memory bus via HTTP message handler.
         /// This allows testing code that depends on the concrete AmazonSimpleNotificationServiceClient type.
         /// </summary>

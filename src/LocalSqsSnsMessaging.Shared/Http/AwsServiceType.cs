@@ -1,9 +1,9 @@
 namespace LocalSqsSnsMessaging.Http;
 
 /// <summary>
-/// Represents the AWS service type for routing requests.
+/// Represents the AWS service type for routing requests to the in-memory bus.
 /// </summary>
-internal enum AwsServiceType
+public enum AwsServiceType
 {
     /// <summary>
     /// Amazon Simple Queue Service (SQS)

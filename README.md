@@ -99,3 +99,30 @@ Console.WriteLine(message.Body); // Hello, World!
 ```
 
 All actions in this library that depend on delays or timeouts use the `TimeProvider` to control time, so you can also take advantage of this feature with features like visibility timeouts.
+
+### Integrating with an existing `HttpClientFactory`
+
+When integration-testing an application that registers its own `Amazon.Runtime.HttpClientFactory`
+in DI (for example, one that delegates to `IHttpClientFactory` for all AWS SDK clients), use
+`InMemoryAwsHttpClientFactory` to intercept only the services backed by the in-memory bus and let
+the rest reach their real endpoints:
+
+```csharp
+using LocalSqsSnsMessaging;
+using LocalSqsSnsMessaging.Http;
+
+var bus = new InMemoryAwsBus();
+
+// In your test's DI setup, replace the application's HttpClientFactory.
+// The fallback is a one-liner — adapt it to whatever pipeline the app uses.
+services.AddSingleton<Amazon.Runtime.HttpClientFactory>(sp =>
+    bus.CreateAwsHttpClientFactory(cfg =>
+        sp.GetRequiredService<IHttpClientFactory>().CreateClient(cfg.GetType().Name)));
+```
+
+For full control you can also construct the handler directly:
+
+```csharp
+var handler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.Sqs);
+var client = new HttpClient(handler);
+```
