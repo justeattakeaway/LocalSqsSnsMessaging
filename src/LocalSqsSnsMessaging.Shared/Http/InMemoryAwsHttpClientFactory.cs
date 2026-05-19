@@ -46,6 +46,7 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
     public override HttpClient CreateHttpClient(IClientConfig clientConfig)
     {
         ArgumentNullException.ThrowIfNull(clientConfig);
+        ThrowIfDisposed();
 
         var handler = GetHandler(clientConfig);
         if (handler is not null)
@@ -70,6 +71,7 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
     public override string GetConfigUniqueString(IClientConfig clientConfig)
     {
         ArgumentNullException.ThrowIfNull(clientConfig);
+        ThrowIfDisposed();
         return GetHandler(clientConfig) is not null
             ? "InMemory"
             : base.GetConfigUniqueString(clientConfig);
@@ -79,27 +81,23 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
     public override bool DisposeHttpClientsAfterUse(IClientConfig clientConfig)
     {
         ArgumentNullException.ThrowIfNull(clientConfig);
-        if (GetHandler(clientConfig) is not null)
-        {
-            return false;
-        }
-
-        // If a fallback delegate is in use, assume it owns the HttpClient lifecycle.
-        return _fallback is null && base.DisposeHttpClientsAfterUse(clientConfig);
+        ThrowIfDisposed();
+        // Our handlers are owned by this factory and must outlive any HttpClient that wraps them.
+        // Defer to the SDK's default for everything else so the fallback's clients are disposed
+        // and cached as the SDK normally would.
+        return GetHandler(clientConfig) is null && base.DisposeHttpClientsAfterUse(clientConfig);
     }
 
     /// <inheritdoc />
     public override bool UseSDKHttpClientCaching(IClientConfig clientConfig)
     {
         ArgumentNullException.ThrowIfNull(clientConfig);
-        if (GetHandler(clientConfig) is not null)
-        {
-            return false;
-        }
-
-        // When delegating to the fallback, let it manage caching.
-        return _fallback is null && base.UseSDKHttpClientCaching(clientConfig);
+        ThrowIfDisposed();
+        return GetHandler(clientConfig) is null && base.UseSDKHttpClientCaching(clientConfig);
     }
+
+    private void ThrowIfDisposed() =>
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
     private InMemoryAwsHttpMessageHandler? GetHandler(IClientConfig clientConfig) =>
         clientConfig switch

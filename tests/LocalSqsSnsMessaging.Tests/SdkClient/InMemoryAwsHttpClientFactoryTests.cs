@@ -92,6 +92,42 @@ public sealed class InMemoryAwsHttpClientFactoryTests
     }
 
     [Test]
+    public void DelegatesLifecycleDecisionsToBaseForUnhandledServices()
+    {
+        var bus = new InMemoryAwsBus();
+        using var fallbackClient = new HttpClient();
+        using var factoryWithFallback = new InMemoryAwsHttpClientFactory(bus, _ => fallbackClient);
+        var baseline = new BaselineFactory();
+
+        var unknownConfig = DispatchProxy.Create<IClientConfig, ClientConfigProxy>();
+
+        // For non-SQS/SNS configs, the factory must match the SDK's default behavior so the
+        // fallback's HttpClients are disposed and cached as the SDK normally would.
+        factoryWithFallback.DisposeHttpClientsAfterUse(unknownConfig)
+            .ShouldBe(baseline.DisposeHttpClientsAfterUse(unknownConfig));
+        factoryWithFallback.UseSDKHttpClientCaching(unknownConfig)
+            .ShouldBe(baseline.UseSDKHttpClientCaching(unknownConfig));
+    }
+
+    private sealed class BaselineFactory : Amazon.Runtime.HttpClientFactory
+    {
+        public override HttpClient CreateHttpClient(IClientConfig clientConfig) => throw new NotSupportedException();
+    }
+
+    [Test]
+    public void ThrowsAfterDispose()
+    {
+        var bus = new InMemoryAwsBus();
+        var factory = new InMemoryAwsHttpClientFactory(bus);
+        factory.Dispose();
+
+        Should.Throw<ObjectDisposedException>(() => factory.CreateHttpClient(new AmazonSQSConfig()));
+        Should.Throw<ObjectDisposedException>(() => factory.GetConfigUniqueString(new AmazonSQSConfig()));
+        Should.Throw<ObjectDisposedException>(() => factory.DisposeHttpClientsAfterUse(new AmazonSQSConfig()));
+        Should.Throw<ObjectDisposedException>(() => factory.UseSDKHttpClientCaching(new AmazonSQSConfig()));
+    }
+
+    [Test]
     public void DelegatesUnhandledServicesToFallback()
     {
         var bus = new InMemoryAwsBus();
