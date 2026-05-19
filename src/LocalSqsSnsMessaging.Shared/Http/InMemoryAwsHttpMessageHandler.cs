@@ -7,11 +7,22 @@ namespace LocalSqsSnsMessaging.Http;
 /// <summary>
 /// HTTP message handler that intercepts AWS SDK HTTP requests and routes them to in-memory implementations.
 /// </summary>
-internal sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
+/// <remarks>
+/// Use this handler when you need to plug the in-memory bus into an existing HTTP pipeline
+/// (for example, a custom <see cref="Amazon.Runtime.HttpClientFactory"/>). For most testing
+/// scenarios, prefer the <c>CreateSqsClient</c>/<c>CreateSnsClient</c> extensions on
+/// <see cref="InMemoryAwsBus"/>, or use <see cref="InMemoryAwsHttpClientFactory"/>.
+/// </remarks>
+public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
 {
     private readonly InMemoryAwsBus _bus;
     private readonly AwsProtocolType _protocolType;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InMemoryAwsHttpMessageHandler"/> class.
+    /// </summary>
+    /// <param name="bus">The in-memory AWS bus instance that will handle the intercepted requests.</param>
+    /// <param name="serviceType">The AWS service whose protocol this handler should speak.</param>
     public InMemoryAwsHttpMessageHandler(InMemoryAwsBus bus, AwsServiceType serviceType)
     {
         ArgumentNullException.ThrowIfNull(bus);
