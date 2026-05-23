@@ -11,9 +11,10 @@ public class SqsReceiveMessageAsyncTestsVerification : SqsReceiveMessageAsyncTes
     public void BeforeEachTest()
     {
 #pragma warning disable CA5394
-        AccountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
+        var rawAccountId = Random.Shared.NextInt64(999999999999).ToString("D12", NumberFormatInfo.InvariantInfo);
 #pragma warning restore CA5394
-        Console.WriteLine($"AccountId: {AccountId}");
-        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.ServicePort!.Value);
+        AccountId = ClientFactory.EffectiveAccountId(rawAccountId);
+        Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.ServicePort);
+        SqsForTeardown = Sqs;
     }
 }

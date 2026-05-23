@@ -3,29 +3,29 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace LocalSqsSnsMessaging.Tests.Verification;
 
-public static class JetStackAspireExtensions
+public static class FlociAspireExtensions
 {
-    public static IDistributedApplicationBuilder AddJetStack(this IDistributedApplicationBuilder builder)
+    public static IDistributedApplicationBuilder AddFloci(this IDistributedApplicationBuilder builder)
     {
-        var jetStackResource =
+        var flociResource =
             builder
-                .AddContainer("jet-stack", "ghcr.io/justeattakeaway/jet-stack", "latest")
+                .AddContainer("floci", "floci/floci", "latest")
                 .WithHttpEndpoint(targetPort: 4566)
-                .WithJetStackHealthCheck();
+                .WithFlociHealthCheck();
 
         var isRunningInCi = Environment.GetEnvironmentVariable("CI") == "true";
 
         if (!isRunningInCi)
         {
-            jetStackResource
-                .WithContainerName("localsqssnsmessaging-jetstack")
+            flociResource
+                .WithContainerName("localsqssnsmessaging-floci")
                 .WithLifetime(ContainerLifetime.Persistent);
         }
 
         return builder;
     }
 
-    private static IResourceBuilder<T> WithJetStackHealthCheck<T>(this IResourceBuilder<T> builder) where T : IResourceWithEndpoints
+    private static IResourceBuilder<T> WithFlociHealthCheck<T>(this IResourceBuilder<T> builder) where T : IResourceWithEndpoints
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -44,7 +44,7 @@ public static class JetStackAspireExtensions
             return Task.CompletedTask;
         });
 
-        var healthCheckKey = $"{builder.Resource.Name}_jetstack_check";
+        var healthCheckKey = $"{builder.Resource.Name}_floci_check";
 
         builder.ApplicationBuilder.Services.AddHealthChecks().Add(new HealthCheckRegistration(healthCheckKey,
             _ =>
@@ -53,7 +53,7 @@ public static class JetStackAspireExtensions
                 {
                     null => throw new DistributedApplicationException(
                         "The URI for the health check is not set. Ensure that the resource has been allocated before the health check is executed."),
-                    _ => new JetStackHealthCheck(baseUri!)
+                    _ => new FlociHealthCheck(baseUri!)
                 };
             }, failureStatus: null, tags: null));
 

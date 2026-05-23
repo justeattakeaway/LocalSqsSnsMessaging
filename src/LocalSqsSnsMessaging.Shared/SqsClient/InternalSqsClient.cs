@@ -282,6 +282,17 @@ internal sealed class InternalSqsClient
         }
         IncrementReceiveCount(message);
 
+        // Real AWS sets ApproximateFirstReceiveTimestamp the first time a message is
+        // delivered, and leaves it stable on subsequent receives. We piggy-back on
+        // ApproximateReceiveCount: by this point IncrementReceiveCount has already
+        // bumped the counter, so a value of "1" means this is the first receive.
+        message.Attributes ??= [];
+        if (!message.Attributes.ContainsKey(MessageSystemAttributeName.ApproximateFirstReceiveTimestamp))
+        {
+            message.Attributes[MessageSystemAttributeName.ApproximateFirstReceiveTimestamp] =
+                _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
+        }
+
         var clonedMessage = CloneMessage(message);
         FilterSystemAttributes(clonedMessage, requestedSystemAttributes);
         var receiptHandle = CreateReceiptHandle(message, queue);
@@ -558,14 +569,67 @@ internal sealed class InternalSqsClient
         return Convert.ToBase64String(hashBytes);
     }
 
-    private static Message CreateMessage(string messageBody, Dictionary<string, MessageAttributeValue>? messageAttributes, Dictionary<string, MessageSystemAttributeValue>? messageSystemAttributes)
+    private Message CreateMessage(string messageBody, Dictionary<string, MessageAttributeValue>? messageAttributes, Dictionary<string, MessageSystemAttributeValue>? messageSystemAttributes)
     {
+        // Number-typed message attributes must carry a value that parses as a number.
+        // Real AWS rejects "Number" attributes whose StringValue isn't numeric with a
+        // "Can't cast the value of message (user) attribute" error; we used to store
+        // anything, letting tests round-trip non-numeric strings through a Number type.
+        if (messageAttributes is not null)
+        {
+            foreach (var (name, value) in messageAttributes)
+            {
+                if (value?.DataType is null) continue;
+                // AWS allows custom subtypes like "Number.float"; the base type before the
+                // dot determines validation.
+                var dot = value.DataType.IndexOf('.', StringComparison.Ordinal);
+                var baseType = dot < 0 ? value.DataType : value.DataType[..dot];
+                if (string.Equals(baseType, "Number", StringComparison.Ordinal)
+                    && value.StringValue is not null
+                    && !double.TryParse(value.StringValue, NumberStyles.Float | NumberStyles.AllowExponent,
+                        NumberFormatInfo.InvariantInfo, out _))
+                {
+                    throw new SqsServiceException(
+                        $"Can't cast the value of message (user) attribute '{name}' to a number.");
+                }
+            }
+        }
+
+        // Real AWS only allows AWSTraceHeader to be supplied via MessageSystemAttributes on
+        // SendMessage. Everything else (SenderId, SentTimestamp, ApproximateReceiveCount, ...)
+        // is set server-side; sending them in is rejected with a wire-level error. Mirror that
+        // here so tests can't accidentally rely on the caller "setting" a server attribute.
+        Dictionary<string, string>? attributes = null;
+        if (messageSystemAttributes is not null)
+        {
+            foreach (var (key, value) in messageSystemAttributes)
+            {
+                if (!string.Equals(key, MessageSystemAttributeName.AWSTraceHeader, StringComparison.Ordinal))
+                {
+                    throw new SqsServiceException($"Message system attribute name '{key}' is invalid.");
+                }
+
+                attributes ??= [];
+                attributes[key] = value.StringValue;
+            }
+        }
+
+        // Populate server-side system attributes that real AWS sets at SendMessage time:
+        //   - SentTimestamp: epoch milliseconds the request was accepted
+        //   - SenderId: the principal/account ID of the caller (in this in-memory model we
+        //     don't see SDK credentials, so we attribute to the bus's CurrentAccountId — the
+        //     same value that appears in queue ARNs)
+        attributes ??= [];
+        attributes[MessageSystemAttributeName.SentTimestamp] =
+            _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
+        attributes[MessageSystemAttributeName.SenderId] = _bus.CurrentAccountId;
+
         var message = new Message
         {
             MessageId = Guid.NewGuid().ToString(),
             Body = messageBody,
             MessageAttributes = messageAttributes,
-            Attributes = messageSystemAttributes?.ToDictionary(kv => kv.Key, kv => kv.Value.StringValue)
+            Attributes = attributes
         };
 
 #pragma warning disable CA5351
@@ -1207,11 +1271,16 @@ internal sealed class InternalSqsClient
 
         foreach (var tag in request.Tags ?? [])
         {
-            if (tag.Value is not null)
+            if (tag.Value is null)
             {
-                queue.Tags ??= [];
-                queue.Tags[tag.Key] = tag.Value;
+                // Real AWS rejects null tag values with this exact message; we previously
+                // silently dropped them, which masked the difference and let tests pass
+                // that wouldn't have passed against the real service.
+                throw new SqsServiceException("the parameter 'value' may not be null");
             }
+
+            queue.Tags ??= [];
+            queue.Tags[tag.Key] = tag.Value;
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.TagQueue, queue.Arn);
