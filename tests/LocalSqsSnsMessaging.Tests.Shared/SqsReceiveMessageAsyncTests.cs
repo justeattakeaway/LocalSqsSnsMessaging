@@ -973,8 +973,11 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
     [Test]
     public async Task SendMessageAsync_MultipleAttributesExactlyAtLimit_Succeeds(CancellationToken cancellationToken)
     {
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = UniqueName("test-queue") },
-            cancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-queue"),
+            Attributes = new Dictionary<string, string> { ["MaximumMessageSize"] = "1048576" }
+        }, cancellationToken)).QueueUrl;
 
         // Calculate sizes to be just under 1MB, leaving room for system attributes
         // (e.g. AWSTraceHeader added by OpenTelemetry instrumentation):
@@ -1031,8 +1034,11 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
     [Test]
     public async Task SendMessageAsync_BinaryAttributeSize_Succeeds(CancellationToken cancellationToken)
     {
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = UniqueName("test-queue") },
-            cancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-queue"),
+            Attributes = new Dictionary<string, string> { ["MaximumMessageSize"] = "1048576" }
+        }, cancellationToken)).QueueUrl;
 
         // Create a binary attribute
         byte[] binaryData = new byte[1000];
@@ -1062,8 +1068,11 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
     [Test]
     public async Task SendMessageAsync_CustomAttributeTypeNames_CountTowardsLimit(CancellationToken cancellationToken)
     {
-        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = UniqueName("test-queue") },
-            cancellationToken)).QueueUrl;
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-queue"),
+            Attributes = new Dictionary<string, string> { ["MaximumMessageSize"] = "1048576" }
+        }, cancellationToken)).QueueUrl;
 
         // Using a custom attribute type name which counts towards the limit
         var longCustomType = $"String.{new string('x', 100)}";

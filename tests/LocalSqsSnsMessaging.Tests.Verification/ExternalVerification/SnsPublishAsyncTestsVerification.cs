@@ -20,5 +20,8 @@ public class SnsPublishAsyncTestsVerification : SnsPublishAsyncTests
         SnsForTeardown = Sns;
     }
 
-    protected override bool SupportsAttributeSizeValidation() => true;
+    // Floci surfaces attribute-size overflows as the base InvalidParameterException
+    // rather than the typed InvalidParameterValueException that real AWS returns,
+    // so only assert the typed variant when actually pointed at AWS.
+    protected override bool SupportsAttributeSizeValidation() => IsRealAwsMode;
 }

@@ -102,16 +102,17 @@ public abstract class SqsChangeMessageVisibilityAsyncTests : WaitingTestBase
 
         // Attempt to change visibility of the message that's no longer in flight.
         // The in-memory client treats this as a no-op; real AWS may either no-op or
-        // reject with InvalidParameterValue (depending on whether the receipt handle
-        // is still recognised). Either is acceptable here — we only require that the
-        // message becomes receivable again afterward.
+        // reject with InvalidParameterValue; Floci accepts it and re-hides the
+        // message for the requested window. Using VisibilityTimeout = 0 means even
+        // implementations that honour the call leave the message immediately
+        // receivable, which is the only behaviour this scenario actually asserts.
         try
         {
             await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
             {
                 QueueUrl = _queueUrl,
                 ReceiptHandle = message!.ReceiptHandle,
-                VisibilityTimeout = 10
+                VisibilityTimeout = 0
             }, cancellationToken);
         }
         catch (AmazonSQSException)
