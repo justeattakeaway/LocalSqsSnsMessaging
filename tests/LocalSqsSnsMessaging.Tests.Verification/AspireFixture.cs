@@ -11,16 +11,22 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
 
-    public int? ServicePort => _app?.GetEndpoint("jet-stack").Port;
+    public int? ServicePort => _app?.GetEndpoint("floci").Port;
 
     public async Task InitializeAsync()
     {
+        if (ClientFactory.IsRealAwsMode)
+        {
+            // Tests are pointed at real AWS via USE_REAL_AWS=1; nothing to spin up locally.
+            return;
+        }
+
 #pragma warning disable CA1849
         // ReSharper disable once MethodHasAsyncOverload
         _builder = DistributedApplicationTestingBuilder.Create();
 #pragma warning restore CA1849
 
-        _builder.AddJetStack();
+        _builder.AddFloci();
 
         // Disable aspire host logs as they will populate a random test output
         _builder.Services.Add(ServiceDescriptor.Singleton<ILoggerFactory>(NullLoggerFactory.Instance));
@@ -30,7 +36,7 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
 
         await _app.StartAsync();
 
-        await _app.ResourceNotifications.WaitForResourceHealthyAsync("jet-stack");
+        await _app.ResourceNotifications.WaitForResourceHealthyAsync("floci");
     }
 
     public async ValueTask DisposeAsync()

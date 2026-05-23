@@ -11,7 +11,7 @@ public abstract class SqsChangeMessageVisibilityAsyncTests : WaitingTestBase
 
     private async Task SetupQueueAndMessage()
     {
-        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" });
+        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = UniqueName("test-queue") });
         _queueUrl = createQueueResponse.QueueUrl;
 
         await Sqs.SendMessageAsync(new SendMessageRequest
@@ -96,20 +96,32 @@ public abstract class SqsChangeMessageVisibilityAsyncTests : WaitingTestBase
         var receiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl, VisibilityTimeout = 5}, cancellationToken);
         var message = receiveResult.Messages.ShouldHaveSingleItem();
 
-        // Wait for the visibility timeout to expire
-        await WaitAsync(TimeSpan.FromSeconds(10)); // Assuming default is 30 seconds
+        // Wait for the visibility timeout to expire. Real AWS visibility transitions
+        // settle within ~10s of the timeout firing, but we leave headroom.
+        await WaitAsync(TimeSpan.FromSeconds(IsRealAwsMode ? 20 : 10));
 
-        // Attempt to change visibility of the message that's no longer in flight
-        // Should complete without throwing
-        await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
+        // Attempt to change visibility of the message that's no longer in flight.
+        // The in-memory client treats this as a no-op; real AWS may either no-op or
+        // reject with InvalidParameterValue (depending on whether the receipt handle
+        // is still recognised). Either is acceptable here — we only require that the
+        // message becomes receivable again afterward.
+        try
         {
-            QueueUrl = _queueUrl,
-            ReceiptHandle = message!.ReceiptHandle,
-            VisibilityTimeout = 10
-        }, cancellationToken);
+            await Sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
+            {
+                QueueUrl = _queueUrl,
+                ReceiptHandle = message!.ReceiptHandle,
+                VisibilityTimeout = 10
+            }, cancellationToken);
+        }
+        catch (AmazonSQSException)
+        {
+            // Stale receipt handle — fine for this scenario.
+        }
 
-        var secondReceiveResult = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = _queueUrl }, cancellationToken);
-        secondReceiveResult.Messages.ShouldHaveSingleItem();
+        var secondReceiveResult = await ReceiveAllAsync(Sqs, _queueUrl, expectedCount: 1,
+            cancellationToken: cancellationToken);
+        secondReceiveResult.ShouldHaveSingleItem();
     }
 
     [Test, Category(TimeBased)]

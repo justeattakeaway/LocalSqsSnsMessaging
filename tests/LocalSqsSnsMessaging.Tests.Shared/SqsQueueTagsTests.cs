@@ -13,7 +13,7 @@ public abstract class SqsQueueTagsTests : WaitingTestBase
     private async Task SetupQueue()
     {
         // Create a test queue
-        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "test-queue" });
+        var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = UniqueName("test-queue") });
         _queueUrl = createQueueResponse.QueueUrl;
     }
 
@@ -36,13 +36,20 @@ public abstract class SqsQueueTagsTests : WaitingTestBase
             Tags = tags
         }, cancellationToken);
 
-        // Verify tags were applied
+        // Verify tags were applied. Compare by key/value rather than dictionary
+        // equivalence — Shouldly's ShouldBeEquivalentTo treats a Dictionary as a
+        // sequence and the AWS SDK returns tags in hash order, not insertion order.
         var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
         {
             QueueUrl = _queueUrl
         }, cancellationToken);
 
-        listTagsResponse.Tags.ToDictionary().ShouldBeEquivalentTo(tags);
+        var actual = listTagsResponse.Tags.ToDictionary();
+        actual.Count.ShouldBe(tags.Count);
+        foreach (var (k, v) in tags)
+        {
+            actual[k].ShouldBe(v);
+        }
     }
 
     [Test]
@@ -58,7 +65,7 @@ public abstract class SqsQueueTagsTests : WaitingTestBase
         await Assert.ThrowsAsync<QueueDoesNotExistException>(() =>
             Sqs.TagQueueAsync(new TagQueueRequest
             {
-                QueueUrl = "https://sqs.us-east-1.amazonaws.com/invalid-queue",
+                QueueUrl = $"https://sqs.us-east-1.amazonaws.com/{AccountId}/{UniqueName("invalid-queue")}",
                 Tags = tags
             }, cancellationToken));
     }
@@ -193,7 +200,13 @@ public abstract class SqsQueueTagsTests : WaitingTestBase
         }, cancellationToken);
 
         listTagsResponse.Tags.Count.ShouldBe(50);
-        listTagsResponse.Tags.ToDictionary().ShouldBeEquivalentTo(tags);
+        // ToDictionary then compare key-by-key; see ValidTags test for why ordered
+        // sequence-equivalence doesn't work here.
+        var actual = listTagsResponse.Tags.ToDictionary();
+        foreach (var (k, v) in tags)
+        {
+            actual[k].ShouldBe(v);
+        }
     }
 
     [Test]
@@ -222,7 +235,7 @@ public abstract class SqsQueueTagsTests : WaitingTestBase
     }
 
     [Test]
-    public async Task TagQueueAsync_NullTagValue_Success(CancellationToken cancellationToken)
+    public async Task TagQueueAsync_NullTagValue_ThrowsAmazonSQSException(CancellationToken cancellationToken)
     {
         await SetupQueue();
 
@@ -231,18 +244,14 @@ public abstract class SqsQueueTagsTests : WaitingTestBase
             ["NullTag"] = null!
         };
 
-        await Sqs.TagQueueAsync(new TagQueueRequest
-        {
-            QueueUrl = _queueUrl,
-            Tags = tags
-        }, cancellationToken);
-
-        var listTagsResponse = await Sqs.ListQueueTagsAsync(new ListQueueTagsRequest
-        {
-            QueueUrl = _queueUrl
-        }, cancellationToken);
-
-        listTagsResponse.Tags.ShouldBeNullOrEmptyAwsCollection();
+        // Real AWS rejects null tag values with this exact error message.
+        var ex = await Assert.ThrowsAsync<AmazonSQSException>(() =>
+            Sqs.TagQueueAsync(new TagQueueRequest
+            {
+                QueueUrl = _queueUrl,
+                Tags = tags
+            }, cancellationToken));
+        ex!.Message.ShouldContain("may not be null");
     }
 
     [Test]

@@ -12,7 +12,7 @@ public abstract class SqsFairQueueTests : WaitingTestBase
     [Test]
     public async Task CreateFairQueue_SetsCorrectAttributes(CancellationToken cancellationToken)
     {
-        var queueName = "test-fair-queue.fifo";
+        var queueName = UniqueName("test-fair-queue.fifo");
         var createQueueResponse = await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
             QueueName = queueName,
@@ -39,7 +39,7 @@ public abstract class SqsFairQueueTests : WaitingTestBase
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
-            QueueName = "test-fair-queue.fifo",
+            QueueName = UniqueName("test-fair-queue.fifo"),
             Attributes = new Dictionary<string, string>
             {
                 [QueueAttributeName.FifoQueue] = "true",
@@ -130,7 +130,7 @@ public abstract class SqsFairQueueTests : WaitingTestBase
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
-            QueueName = "test-fair-uneven-queue.fifo",
+            QueueName = UniqueName("test-fair-uneven-queue.fifo"),
             Attributes = new Dictionary<string, string>
             {
                 [QueueAttributeName.FifoQueue] = "true",
@@ -196,7 +196,7 @@ public abstract class SqsFairQueueTests : WaitingTestBase
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
-            QueueName = "test-fair-three-groups.fifo",
+            QueueName = UniqueName("test-fair-three-groups.fifo"),
             Attributes = new Dictionary<string, string>
             {
                 [QueueAttributeName.FifoQueue] = "true",
@@ -253,7 +253,7 @@ public abstract class SqsFairQueueTests : WaitingTestBase
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
-            QueueName = "test-fair-dedup-queue.fifo",
+            QueueName = UniqueName("test-fair-dedup-queue.fifo"),
             Attributes = new Dictionary<string, string>
             {
                 [QueueAttributeName.FifoQueue] = "true",
@@ -298,7 +298,7 @@ public abstract class SqsFairQueueTests : WaitingTestBase
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
-            QueueName = "test-fair-order-queue.fifo",
+            QueueName = UniqueName("test-fair-order-queue.fifo"),
             Attributes = new Dictionary<string, string>
             {
                 [QueueAttributeName.FifoQueue] = "true",
