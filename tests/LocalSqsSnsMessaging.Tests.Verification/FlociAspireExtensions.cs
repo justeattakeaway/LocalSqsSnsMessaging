@@ -9,7 +9,7 @@ public static class FlociAspireExtensions
     {
         var flociResource =
             builder
-                .AddContainer("floci", "floci/floci", "latest")
+                .AddContainer("floci", "ghcr.io/justeattakeaway/jet-stack", "1.0.0-rc.5")
                 .WithHttpEndpoint(targetPort: 4566)
                 .WithFlociHealthCheck();
 
