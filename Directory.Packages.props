@@ -18,6 +18,7 @@
     <PackageVersion Include="TUnit" Version="1.46.0" />
     <PackageVersion Include="TUnit.Assertions" Version="1.46.0" />
     <PackageVersion Include="TUnit.Core" Version="1.46.0" />
+    <PackageVersion Include="TUnit.OpenTelemetry" Version="1.46.0" />
   </ItemGroup>
   <ItemGroup Condition=" '$(IsTestProject)' == 'true' ">
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" PrivateAssets="All" />
