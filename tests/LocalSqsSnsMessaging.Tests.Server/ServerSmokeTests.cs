@@ -29,10 +29,7 @@ public sealed class ServerSmokeTests : IAsyncDisposable
     {
         _port = GetAvailablePort();
 
-        var bus = new InMemoryAwsBus
-        {
-            ServiceUrl = new Uri($"http://localhost:{_port}")
-        };
+        var registry = new BusRegistry("000000000000", "us-east-1", new Uri($"http://localhost:{_port}"));
 
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.ConfigureKestrel(options => options.ListenLocalhost(_port));
@@ -40,7 +37,7 @@ public sealed class ServerSmokeTests : IAsyncDisposable
 
         _app = builder.Build();
 
-        var middleware = new AwsBridgeMiddleware(bus);
+        var middleware = new AwsBridgeMiddleware(registry);
         _app.Map("{**path}", middleware.InvokeAsync);
 
         await _app.StartAsync();
