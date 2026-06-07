@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
 using Amazon.SQS;
@@ -12,6 +13,14 @@ public abstract class WaitingTestBase
 {
     protected const string TimeBased = ApplyDefaultCategoryAttribute.TimeBasedCategoryName;
     protected TimeProvider TimeProvider = TimeProvider.System;
+
+    /// <summary>
+    /// Activity source for test-scaffolding spans (e.g. explicit waits). Registered with the
+    /// trace pipeline in <see cref="TracerProviderInitializer"/> so the spans surface in the
+    /// OTEL traces attached to TUnit test reports.
+    /// </summary>
+    internal const string ActivitySourceName = "LocalSqsSnsMessaging.Tests";
+    private static readonly ActivitySource ActivitySource = new(ActivitySourceName);
 
     /// <summary>
     /// True when the test run targets real AWS (the verification project sets this via
@@ -230,7 +239,7 @@ public abstract class WaitingTestBase
         return allMessages;
     }
 
-    protected Task WaitAsync(TimeSpan timeSpan)
+    protected async Task WaitAsync(TimeSpan timeSpan)
     {
         var categories = TestContext.Current?.Metadata.TestDetails.Categories;
         if (categories is null || !categories.Contains(TimeBased, StringComparer.OrdinalIgnoreCase))
@@ -238,12 +247,21 @@ public abstract class WaitingTestBase
             throw new InvalidOperationException("This method should only be called for tests marked with the 'TimeBased' category.");
         }
 
-        if (TimeProvider is FakeTimeProvider fakeTimeProvider)
+        var fake = TimeProvider as FakeTimeProvider;
+
+        // Span covers the actual wait so its duration shows up in the trace. For a
+        // FakeTimeProvider the advance is instantaneous, so the span just marks that
+        // the test logically waited; for real time it spans the elapsed delay.
+        using var activity = ActivitySource.StartActivity("WaitAsync");
+        activity?.SetTag("wait.duration_ms", timeSpan.TotalMilliseconds);
+        activity?.SetTag("wait.mode", fake is not null ? "fake-advance" : "real-delay");
+
+        if (fake is not null)
         {
-            fakeTimeProvider.Advance(timeSpan);
-            return Task.CompletedTask;
+            fake.Advance(timeSpan);
+            return;
         }
 
-        return Task.Delay(timeSpan, TimeProvider);
+        await Task.Delay(timeSpan, TimeProvider);
     }
 }
