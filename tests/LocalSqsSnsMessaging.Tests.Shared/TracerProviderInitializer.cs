@@ -15,6 +15,7 @@ internal static class TracerProviderInitializer
     {
         TracerProvider = Sdk.CreateTracerProviderBuilder()
             .AddSource("LocalSqsSnsMessaging")
+            .AddSource(WaitingTestBase.ActivitySourceName)
             .AddAWSInstrumentation()
             .Build();
     }
