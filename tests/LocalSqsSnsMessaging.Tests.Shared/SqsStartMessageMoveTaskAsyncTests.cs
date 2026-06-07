@@ -138,7 +138,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         mainMessages.Count.ShouldBeGreaterThan(0);
     }
 
-    [Test, Category(TimeBased)]
+    [Test]
     public async Task StartMessageMoveTaskAsync_NonDLQSource_ThrowsException(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -160,7 +160,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
             }, cancellationToken));
     }
 
-    [Test, Category(TimeBased)]
+    [Test]
     public async Task StartMessageMoveTaskAsync_InvalidDestinationQueue_ThrowsException(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -333,7 +333,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         sourceReceiveResult.Messages.ShouldNotBeEmpty();
     }
 
-    [Test, Category(TimeBased), Retry(3)]
+    [Test, Retry(3)]
     public async Task StartingTwoMessageMoveTasksForTheSameQueue_Throws(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();
@@ -367,7 +367,7 @@ public abstract class SqsStartMessageMoveTaskAsyncTests : WaitingTestBase
         });
     }
 
-    [Test, Category(TimeBased)]
+    [Test]
     public async Task ListMessageMoveTasks_ReturnsAllActiveTasks(CancellationToken cancellationToken)
     {
         await SetupQueuesAndMessage();

@@ -43,6 +43,14 @@ public abstract class WaitingTestBase
     private string? _uniqueSuffix;
 
     /// <summary>
+    /// Set the first time <see cref="WaitAsync"/> is called. Used by
+    /// <see cref="EnsureTimeBasedTestWaited"/> to flag <c>TimeBased</c> tests that never
+    /// actually waited, mirroring the guard in <see cref="WaitAsync"/> that stops
+    /// non-<c>TimeBased</c> tests from waiting.
+    /// </summary>
+    private bool _waitAsyncCalled;
+
+    /// <summary>
     /// Returns a namespaced version of the supplied logical name suitable for use as
     /// a queue or topic name. For in-memory and Floci runs, where each test gets a
     /// fresh bus/account, the name is returned unchanged. For real AWS the name is
@@ -97,6 +105,39 @@ public abstract class WaitingTestBase
     /// </summary>
     protected IAmazonSQS? SqsForTeardown { get; set; }
     protected IAmazonSimpleNotificationService? SnsForTeardown { get; set; }
+
+    /// <summary>
+    /// Counterpart to the guard in <see cref="WaitAsync"/>: a test marked <c>TimeBased</c>
+    /// is asserting time-dependent behaviour, so it should advance the clock via
+    /// <see cref="WaitAsync"/> at least once. If it never does, the category is misapplied
+    /// (or the wait was dropped in a refactor) and the test isn't exercising what its
+    /// category claims. Fail loudly so the mismatch gets fixed.
+    /// </summary>
+    [TUnit.Core.After(TUnit.Core.HookType.Test)]
+    public void EnsureTimeBasedTestWaited()
+    {
+        var context = TestContext.Current;
+
+        // Don't pile on: if the test already failed (or was skipped/cancelled), it may
+        // simply have thrown before reaching its WaitAsync call. Only enforce the
+        // convention on tests that otherwise passed.
+        var state = context?.Execution.Result?.State;
+        if (state is not null and not TUnit.Core.TestState.Passed)
+        {
+            return;
+        }
+
+        var categories = context?.Metadata.TestDetails.Categories;
+        var isTimeBased = categories is not null
+            && categories.Contains(TimeBased, StringComparer.OrdinalIgnoreCase);
+
+        if (isTimeBased && !_waitAsyncCalled)
+        {
+            throw new InvalidOperationException(
+                "This test is marked with the 'TimeBased' category but never called WaitAsync. " +
+                "Either call WaitAsync to exercise time-dependent behaviour, or remove the 'TimeBased' category.");
+        }
+    }
 
     [TUnit.Core.After(TUnit.Core.HookType.Test)]
     public async Task TeardownTrackedResources()
@@ -246,6 +287,8 @@ public abstract class WaitingTestBase
         {
             throw new InvalidOperationException("This method should only be called for tests marked with the 'TimeBased' category.");
         }
+
+        _waitAsyncCalled = true;
 
         var fake = TimeProvider as FakeTimeProvider;
 
