@@ -20,17 +20,17 @@ internal class AwsServiceException : Exception
 
 // SQS exceptions
 
-internal class QueueDoesNotExistException : AwsServiceException
+internal class InternalQueueDoesNotExistException : AwsServiceException
 {
-    public QueueDoesNotExistException(string message) : base(message)
+    public InternalQueueDoesNotExistException(string message) : base(message)
     {
         ErrorCode = "QueueDoesNotExist";
     }
 }
 
-internal class ReceiptHandleIsInvalidException : AwsServiceException
+internal class InternalReceiptHandleIsInvalidException : AwsServiceException
 {
-    public ReceiptHandleIsInvalidException(string message) : base(message)
+    public InternalReceiptHandleIsInvalidException(string message) : base(message)
     {
         ErrorCode = "ReceiptHandleIsInvalid";
     }
@@ -41,25 +41,25 @@ internal class SqsServiceException : AwsServiceException
     public SqsServiceException(string message) : base(message) { }
 }
 
-internal class ResourceNotFoundException : AwsServiceException
+internal class InternalResourceNotFoundException : AwsServiceException
 {
-    public ResourceNotFoundException(string message) : base(message)
+    public InternalResourceNotFoundException(string message) : base(message)
     {
         ErrorCode = "ResourceNotFoundException";
     }
 }
 
-internal class UnsupportedOperationException : AwsServiceException
+internal class InternalUnsupportedOperationException : AwsServiceException
 {
-    public UnsupportedOperationException(string message) : base(message)
+    public InternalUnsupportedOperationException(string message) : base(message)
     {
         ErrorCode = "UnsupportedOperation";
     }
 }
 
-internal class BatchRequestTooLongException : AwsServiceException
+internal class InternalBatchRequestTooLongException : AwsServiceException
 {
-    public BatchRequestTooLongException(string message) : base(message)
+    public InternalBatchRequestTooLongException(string message) : base(message)
     {
         ErrorCode = "BatchRequestTooLong";
     }
@@ -67,22 +67,22 @@ internal class BatchRequestTooLongException : AwsServiceException
 
 // SNS exceptions
 
-internal class NotFoundException : AwsServiceException
+internal class InternalNotFoundException : AwsServiceException
 {
-    public NotFoundException(string message) : base(message)
+    public InternalNotFoundException(string message) : base(message)
     {
         ErrorCode = "NotFound";
         StatusCode = HttpStatusCode.NotFound;
     }
 }
 
-internal class InvalidParameterException : AwsServiceException
+internal class InternalInvalidParameterException : AwsServiceException
 {
-    public InvalidParameterException(string message) : base(message)
+    public InternalInvalidParameterException(string message) : base(message)
     {
         ErrorCode = "InvalidParameter";
     }
 }
 
-// Alias for SNS BatchRequestTooLongException - same class works for both SQS and SNS
+// Alias for SNS InternalBatchRequestTooLongException - same class works for both SQS and SNS
 // since the SQS one above is sufficient (both use the same error pattern)

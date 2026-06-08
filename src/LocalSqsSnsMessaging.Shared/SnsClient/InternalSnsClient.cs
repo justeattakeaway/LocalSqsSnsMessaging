@@ -58,7 +58,7 @@ internal sealed class InternalSnsClient
 
         if (!_bus.Subscriptions.TryGetValue(request.SubscriptionArn, out var subscription))
         {
-            throw new NotFoundException("Subscription not found.");
+            throw new InternalNotFoundException("Subscription not found.");
         }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.GetSubscriptionAttributes, subscription.SubscriptionArn);
@@ -88,7 +88,7 @@ internal sealed class InternalSnsClient
         var topicName = GetTopicNameByArn(request.TopicArn);
         if (!_bus.Topics.TryGetValue(topicName, out var topic))
         {
-            throw new NotFoundException("Topic not found.");
+            throw new InternalNotFoundException("Topic not found.");
         }
 
         // Create a copy of the attributes dictionary to prevent mutation.
@@ -145,7 +145,7 @@ internal sealed class InternalSnsClient
         var topicName = GetTopicNameByArn(request.TopicArn);
         if (!_bus.Topics.TryGetValue(topicName, out _))
         {
-            throw new NotFoundException("Topic not found.");
+            throw new InternalNotFoundException("Topic not found.");
         }
 
         var allSubscriptions = _bus.Subscriptions.Values
@@ -186,7 +186,7 @@ internal sealed class InternalSnsClient
         var topicName = GetTopicNameByArn(request.ResourceArn);
         if (!_bus.Topics.TryGetValue(topicName, out var topic))
         {
-            throw new ResourceNotFoundException("Topic not found.");
+            throw new InternalResourceNotFoundException("Topic not found.");
         }
 
         var tags = topic.Tags.Select(t => new Tag { Key = t.Key, Value = t.Value }).ToList();
@@ -232,7 +232,7 @@ internal sealed class InternalSnsClient
         var messageSize = CalculateMessageSize(request.Message, request.Subject, request.MessageAttributes);
         if (messageSize > MaxMessageSize)
         {
-            throw new InvalidParameterException($"Message size has exceeded the limit of {MaxMessageSize} bytes.");
+            throw new InternalInvalidParameterException($"Message size has exceeded the limit of {MaxMessageSize} bytes.");
         }
 
         var topic = GetTopicByArn(request.TopicArn);
@@ -250,7 +250,7 @@ internal sealed class InternalSnsClient
             .Sum(requestEntry => CalculateMessageSize(requestEntry.Message, requestEntry.Subject, requestEntry.MessageAttributes));
         if (totalSize > MaxMessageSize)
         {
-            throw new BatchRequestTooLongException(
+            throw new InternalBatchRequestTooLongException(
                 $"Batch size ({totalSize} bytes) exceeds the maximum allowed size ({MaxMessageSize} bytes)");
         }
 
@@ -314,7 +314,7 @@ internal sealed class InternalSnsClient
 
         if (!_bus.Subscriptions.TryGetValue(request.SubscriptionArn, out var subscription))
         {
-            throw new NotFoundException($"Subscription not found: {request.SubscriptionArn}");
+            throw new InternalNotFoundException($"Subscription not found: {request.SubscriptionArn}");
         }
 
         // Update the attribute
@@ -326,7 +326,7 @@ internal sealed class InternalSnsClient
             }
             else
             {
-                throw new InvalidParameterException(
+                throw new InternalInvalidParameterException(
                     "Invalid value for RawMessageDelivery attribute. Expected true or false.");
             }
         }
@@ -336,7 +336,7 @@ internal sealed class InternalSnsClient
         }
         else
         {
-            throw new InvalidParameterException($"Unsupported attribute: {request.AttributeName}");
+            throw new InternalInvalidParameterException($"Unsupported attribute: {request.AttributeName}");
         }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetSubscriptionAttributes, subscription.SubscriptionArn);
@@ -351,7 +351,7 @@ internal sealed class InternalSnsClient
         var topicName = GetTopicNameByArn(request.TopicArn);
         if (!_bus.Topics.TryGetValue(topicName, out var topic))
         {
-            throw new NotFoundException("Topic not found.");
+            throw new InternalNotFoundException("Topic not found.");
         }
 
         topic.Attributes[request.AttributeName] = request.AttributeValue;
@@ -372,7 +372,7 @@ internal sealed class InternalSnsClient
         var queueName = request.Endpoint.Split(':').Last();
         if (!_bus.Queues.TryGetValue(queueName, out _))
         {
-            throw new NotFoundException("Queue not found.");
+            throw new InternalNotFoundException("Queue not found.");
         }
 
         var parsedRawMessageDelivery =
@@ -411,7 +411,7 @@ internal sealed class InternalSnsClient
         var topicName = GetTopicNameByArn(request.ResourceArn);
         if (!_bus.Topics.TryGetValue(topicName, out var topic))
         {
-            throw new ResourceNotFoundException("Topic not found.");
+            throw new InternalResourceNotFoundException("Topic not found.");
         }
 
         foreach (var tag in request.Tags)
@@ -430,7 +430,7 @@ internal sealed class InternalSnsClient
 
         if (!_bus.Subscriptions.TryRemove(request.SubscriptionArn, out var subscription))
         {
-            throw new NotFoundException("Subscription not found.");
+            throw new InternalNotFoundException("Subscription not found.");
         }
 
         SnsPublishActionFactory.UpdateTopicPublishAction(subscription.TopicArn, _bus);
@@ -447,7 +447,7 @@ internal sealed class InternalSnsClient
         var topicName = GetTopicNameByArn(request.ResourceArn);
         if (!_bus.Topics.TryGetValue(topicName, out var topic))
         {
-            throw new ResourceNotFoundException("Topic not found.");
+            throw new InternalResourceNotFoundException("Topic not found.");
         }
 
         foreach (var tagKey in request.TagKeys)
@@ -599,7 +599,7 @@ internal sealed class InternalSnsClient
         var topicName = GetTopicNameByArn(topicArn);
         return _bus.Topics.TryGetValue(topicName, out var topic)
             ? topic
-            : throw new NotFoundException($"Topic not found: {topicArn}");
+            : throw new InternalNotFoundException($"Topic not found: {topicArn}");
     }
 
     private static string GetTopicNameByArn(string topicArn)

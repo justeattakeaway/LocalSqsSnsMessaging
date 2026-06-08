@@ -182,7 +182,7 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
 
         var statusCode = exception switch
         {
-            NotFoundException => HttpStatusCode.NotFound,
+            InternalNotFoundException => HttpStatusCode.NotFound,
             AwsServiceException awsEx => awsEx.StatusCode,
             _ => HttpStatusCode.InternalServerError
         };

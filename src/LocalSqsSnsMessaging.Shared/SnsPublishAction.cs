@@ -75,7 +75,7 @@ internal sealed class SnsPublishAction
                     deduplicationId = GenerateMessageBodyHash(sqsMessage.Body);
                 }
 
-                sqsMessage.Attributes[MessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
+                sqsMessage.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
                 // Check if this is a fair queue with per-message-group deduplication
                 bool isFairQueue = IsFairQueue(queue);
@@ -116,9 +116,9 @@ internal sealed class SnsPublishAction
     private static bool IsFairQueue(SqsQueueResource queue)
     {
         return queue.Attributes != null &&
-               queue.Attributes.TryGetValue(QueueAttributeName.DeduplicationScope, out var dedupScope) &&
+               queue.Attributes.TryGetValue(InternalQueueAttributeName.DeduplicationScope, out var dedupScope) &&
                dedupScope == "messageGroup" &&
-               queue.Attributes.TryGetValue(QueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
+               queue.Attributes.TryGetValue(InternalQueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
                throughputLimit == "perMessageGroupId";
     }
 

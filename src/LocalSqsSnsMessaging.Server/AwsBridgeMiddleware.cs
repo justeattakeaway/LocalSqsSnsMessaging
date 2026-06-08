@@ -185,7 +185,7 @@ internal sealed class AwsBridgeMiddleware
 
         var statusCode = exception switch
         {
-            NotFoundException => 404,
+            InternalNotFoundException => 404,
             AwsServiceException awsEx => (int)awsEx.StatusCode,
             _ => 500
         };
