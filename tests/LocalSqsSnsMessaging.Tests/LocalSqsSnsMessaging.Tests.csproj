@@ -12,7 +12,10 @@
 
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+      <PackageReference Include="OpenTelemetry" />
+      <PackageReference Include="OpenTelemetry.Instrumentation.AWS" />
       <PackageReference Include="Shouldly" />
+      <PackageReference Include="System.Linq.AsyncEnumerable" />
       <PackageReference Include="TUnit.OpenTelemetry" />
     </ItemGroup>
 
@@ -22,10 +25,10 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\src\LocalSqsSnsMessaging\LocalSqsSnsMessaging.csproj" />
-      <ProjectReference Include="..\LocalSqsSnsMessaging.Tests.Shared\LocalSqsSnsMessaging.Tests.Shared.csproj" />
     </ItemGroup>
 
     <ItemGroup>
+      <Compile Include="..\LocalSqsSnsMessaging.Tests.Shared\**\*.cs" Link="%(RecursiveDir)%(Filename)%(Extension)" />
       <Compile Remove="Http\SnsQueryHandlerTests.cs" />
     </ItemGroup>
 

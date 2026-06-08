@@ -158,18 +158,20 @@ FIFO queues (.fifo suffix) have special handling:
 
 ### Exception Handling in HTTP Mode
 
-When using SDK clients (`CreateSqsClient`/`CreateSnsClient`), exceptions must include the `ErrorCode` property for the AWS SDK to deserialize them correctly:
+When using SDK clients (`CreateSqsClient`/`CreateSnsClient`), exceptions must include the `ErrorCode` property for the AWS SDK to deserialize them correctly.
+
+The library's internal exception types (in `Models/Exceptions.cs`) are deliberately prefixed with `Internal` (e.g. `InternalResourceNotFoundException`) so they do **not** collide with the identically-purposed AWS SDK types. `ErrorCode` is the AWS wire error code the SDK maps back to its own exception type — it is set explicitly and is independent of the internal class name:
 
 ```csharp
-// ✅ Correct - SDK will recognize as ResourceNotFoundException
-throw new ResourceNotFoundException("Queue not found")
+// ✅ Correct - SDK will recognize this as Amazon's ResourceNotFoundException
+throw new InternalResourceNotFoundException("Queue not found")
 {
-    ErrorCode = "ResourceNotFoundException",  // Must match exception type name
+    ErrorCode = "ResourceNotFoundException",  // AWS wire error code (not the C# class name)
     StatusCode = HttpStatusCode.BadRequest
 };
 
 // ❌ Wrong - SDK receives generic AmazonSQSException
-throw new ResourceNotFoundException("Queue not found");
+throw new InternalResourceNotFoundException("Queue not found");
 ```
 
 **Error Response Format:**

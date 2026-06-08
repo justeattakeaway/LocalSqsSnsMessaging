@@ -15,12 +15,12 @@ internal sealed class InternalSqsClient
 
     private const int MaxMessageSize = 1_048_576; // 1MB
     private static readonly string[] InternalAttributes = [
-        QueueAttributeName.ApproximateNumberOfMessages,
-        QueueAttributeName.ApproximateNumberOfMessagesDelayed,
-        QueueAttributeName.ApproximateNumberOfMessagesNotVisible,
-        QueueAttributeName.CreatedTimestamp,
-        QueueAttributeName.LastModifiedTimestamp,
-        QueueAttributeName.QueueArn
+        InternalQueueAttributeName.ApproximateNumberOfMessages,
+        InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed,
+        InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible,
+        InternalQueueAttributeName.CreatedTimestamp,
+        InternalQueueAttributeName.LastModifiedTimestamp,
+        InternalQueueAttributeName.QueueArn
     ];
 
     internal InternalSqsClient(InMemoryAwsBus bus)
@@ -36,12 +36,12 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         if (!IsReceiptHandleValid(request.ReceiptHandle!, queue.Arn))
         {
-            throw new ReceiptHandleIsInvalidException($"Receipt handle {request.ReceiptHandle} is invalid.");
+            throw new InternalReceiptHandleIsInvalidException($"Receipt handle {request.ReceiptHandle} is invalid.");
         }
 
         if (queue.InFlightMessages.TryGetValue(request.ReceiptHandle!, out var inFlightInfo))
@@ -108,7 +108,7 @@ internal sealed class InternalSqsClient
         var queueUrl = _bus.ServiceUrl is not null
             ? $"{_bus.ServiceUrl.ToString().TrimEnd('/')}/{_bus.CurrentAccountId}/{request.QueueName}"
             : $"https://sqs.{_bus.CurrentRegion}.amazonaws.com/{_bus.CurrentAccountId}/{request.QueueName}";
-        var visibilityTimeoutParsed = request.Attributes?.TryGetValue(QueueAttributeName.VisibilityTimeout, out var visibilityTimeout) == true
+        var visibilityTimeoutParsed = request.Attributes?.TryGetValue(InternalQueueAttributeName.VisibilityTimeout, out var visibilityTimeout) == true
             ? TimeSpan.FromSeconds(int.Parse(visibilityTimeout, NumberFormatInfo.InvariantInfo))
             : TimeSpan.FromSeconds(30);
 
@@ -153,7 +153,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         if (queue.InFlightMessages.TryRemove(request.ReceiptHandle!, out var inFlightInfo))
@@ -181,7 +181,7 @@ internal sealed class InternalSqsClient
             return Task.FromResult(new DeleteMessageResponse().SetCommonProperties());
         }
 
-        throw new ReceiptHandleIsInvalidException($"Receipt handle {request.ReceiptHandle} is invalid.");
+        throw new InternalReceiptHandleIsInvalidException($"Receipt handle {request.ReceiptHandle} is invalid.");
     }
 
     public Task<DeleteQueueResponse> DeleteQueueAsync(DeleteQueueRequest request,
@@ -209,7 +209,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException ($"Queue '{queueName}' does not exist.");
+            throw new InternalQueueDoesNotExistException ($"Queue '{queueName}' does not exist.");
         }
 
         var reader = queue.Messages.Reader;
@@ -276,7 +276,7 @@ internal sealed class InternalSqsClient
         if (IsAtMaxReceiveCount(message, queue) && queue.ErrorQueue is not null)
         {
             message.Attributes ??= [];
-            message.Attributes[MessageSystemAttributeName.DeadLetterQueueSourceArn] = queue.Arn;
+            message.Attributes[InternalMessageSystemAttributeName.DeadLetterQueueSourceArn] = queue.Arn;
             EnqueueMessage(queue.ErrorQueue, message);
             return;
         }
@@ -287,9 +287,9 @@ internal sealed class InternalSqsClient
         // ApproximateReceiveCount: by this point IncrementReceiveCount has already
         // bumped the counter, so a value of "1" means this is the first receive.
         message.Attributes ??= [];
-        if (!message.Attributes.ContainsKey(MessageSystemAttributeName.ApproximateFirstReceiveTimestamp))
+        if (!message.Attributes.ContainsKey(InternalMessageSystemAttributeName.ApproximateFirstReceiveTimestamp))
         {
-            message.Attributes[MessageSystemAttributeName.ApproximateFirstReceiveTimestamp] =
+            message.Attributes[InternalMessageSystemAttributeName.ApproximateFirstReceiveTimestamp] =
                 _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
         }
 
@@ -339,15 +339,15 @@ internal sealed class InternalSqsClient
     private static bool IsFairQueue(SqsQueueResource queue)
     {
         return queue.Attributes != null &&
-               queue.Attributes.TryGetValue(QueueAttributeName.DeduplicationScope, out var dedupScope) &&
+               queue.Attributes.TryGetValue(InternalQueueAttributeName.DeduplicationScope, out var dedupScope) &&
                dedupScope == "messageGroup" &&
-               queue.Attributes.TryGetValue(QueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
+               queue.Attributes.TryGetValue(InternalQueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
                throughputLimit == "perMessageGroupId";
     }
 
     private static bool IsAtMaxReceiveCount(Message message, SqsQueueResource queue)
     {
-        var receiveCount = message.Attributes?.GetValueOrDefault(MessageSystemAttributeName.ApproximateReceiveCount) ?? "0";
+        var receiveCount = message.Attributes?.GetValueOrDefault(InternalMessageSystemAttributeName.ApproximateReceiveCount) ?? "0";
         return queue.MaxReceiveCount is not null && int.Parse(receiveCount, NumberFormatInfo.InvariantInfo) >= queue.MaxReceiveCount;
     }
 
@@ -376,11 +376,11 @@ internal sealed class InternalSqsClient
 
     private static void IncrementReceiveCount(Message message)
     {
-        var receiveCount = message.Attributes?.GetValueOrDefault(MessageSystemAttributeName.ApproximateReceiveCount) ?? "0";
+        var receiveCount = message.Attributes?.GetValueOrDefault(InternalMessageSystemAttributeName.ApproximateReceiveCount) ?? "0";
 
         var newCount = (int.Parse(receiveCount, NumberFormatInfo.InvariantInfo) + 1).ToString(NumberFormatInfo.InvariantInfo);
         message.Attributes ??= [];
-        message.Attributes[MessageSystemAttributeName.ApproximateReceiveCount] = newCount;
+        message.Attributes[InternalMessageSystemAttributeName.ApproximateReceiveCount] = newCount;
     }
 
     private static void FilterSystemAttributes(Message message, List<string>? requestedSystemAttributes)
@@ -417,7 +417,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException("Queue not found");
+            throw new InternalQueueDoesNotExistException("Queue not found");
         }
 
         var message = CreateMessage(request.MessageBody!, request.MessageAttributes, request.MessageSystemAttributes);
@@ -445,7 +445,7 @@ internal sealed class InternalSqsClient
                 deduplicationId = GenerateMessageBodyHash(request.MessageBody!);
             }
 
-            message.Attributes[MessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
+            message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
             bool isFairQueue = IsFairQueue(queue);
             bool isDuplicate;
@@ -604,7 +604,7 @@ internal sealed class InternalSqsClient
         {
             foreach (var (key, value) in messageSystemAttributes)
             {
-                if (!string.Equals(key, MessageSystemAttributeName.AWSTraceHeader, StringComparison.Ordinal))
+                if (!string.Equals(key, InternalMessageSystemAttributeName.AWSTraceHeader, StringComparison.Ordinal))
                 {
                     throw new SqsServiceException($"Message system attribute name '{key}' is invalid.");
                 }
@@ -620,9 +620,9 @@ internal sealed class InternalSqsClient
         //     don't see SDK credentials, so we attribute to the bus's CurrentAccountId — the
         //     same value that appears in queue ARNs)
         attributes ??= [];
-        attributes[MessageSystemAttributeName.SentTimestamp] =
+        attributes[InternalMessageSystemAttributeName.SentTimestamp] =
             _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
-        attributes[MessageSystemAttributeName.SenderId] = _bus.CurrentAccountId;
+        attributes[InternalMessageSystemAttributeName.SenderId] = _bus.CurrentAccountId;
 
         var message = new Message
         {
@@ -655,7 +655,7 @@ internal sealed class InternalSqsClient
 
         if (!_bus.MoveTasks.TryGetValue(request.TaskHandle!, out var task))
         {
-            throw new ResourceNotFoundException("Task does not exist.");
+            throw new InternalResourceNotFoundException("Task does not exist.");
         }
 
         task.MoveTaskJob.Dispose();
@@ -677,7 +677,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         var response = new ChangeMessageVisibilityBatchResponse
@@ -737,7 +737,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         var response = new DeleteMessageBatchResponse
@@ -794,7 +794,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         var attributes = new Dictionary<string, string>();
@@ -829,7 +829,7 @@ internal sealed class InternalSqsClient
 
     private void UpdateQueueProperties(SqsQueueResource queue)
     {
-        if (queue.Attributes?.TryGetValue(QueueAttributeName.VisibilityTimeout, out var visibilityTimeout) == true)
+        if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.VisibilityTimeout, out var visibilityTimeout) == true)
         {
             queue.VisibilityTimeout = TimeSpan.FromSeconds(int.Parse(visibilityTimeout, NumberFormatInfo.InvariantInfo));
         }
@@ -839,29 +839,29 @@ internal sealed class InternalSqsClient
 
     private static bool IsComputedAttribute(string attributeName)
     {
-        return attributeName == QueueAttributeName.ApproximateNumberOfMessages
-               || attributeName == QueueAttributeName.ApproximateNumberOfMessagesNotVisible
-               || attributeName == QueueAttributeName.ApproximateNumberOfMessagesDelayed;
+        return attributeName == InternalQueueAttributeName.ApproximateNumberOfMessages
+               || attributeName == InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible
+               || attributeName == InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed;
     }
 
     private static void AddComputedAttributes(SqsQueueResource queue, Dictionary<string, string> attributes)
     {
-        attributes[QueueAttributeName.ApproximateNumberOfMessages] = queue.Messages.Reader.Count.ToString(NumberFormatInfo.InvariantInfo);
-        attributes[QueueAttributeName.ApproximateNumberOfMessagesNotVisible] = queue.InFlightMessages.Count.ToString(NumberFormatInfo.InvariantInfo);
-        attributes[QueueAttributeName.ApproximateNumberOfMessagesDelayed] = "0";
+        attributes[InternalQueueAttributeName.ApproximateNumberOfMessages] = queue.Messages.Reader.Count.ToString(NumberFormatInfo.InvariantInfo);
+        attributes[InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible] = queue.InFlightMessages.Count.ToString(NumberFormatInfo.InvariantInfo);
+        attributes[InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed] = "0";
     }
 
     private static void AddComputedAttribute(SqsQueueResource queue, string attributeName, Dictionary<string, string> attributes)
     {
-        if (attributeName == QueueAttributeName.ApproximateNumberOfMessages)
+        if (attributeName == InternalQueueAttributeName.ApproximateNumberOfMessages)
         {
             attributes[attributeName] = queue.Messages.Reader.Count.ToString(NumberFormatInfo.InvariantInfo);
         }
-        else if (attributeName == QueueAttributeName.ApproximateNumberOfMessagesNotVisible)
+        else if (attributeName == InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible)
         {
             attributes[attributeName] = queue.InFlightMessages.Count.ToString(NumberFormatInfo.InvariantInfo);
         }
-        else if (attributeName == QueueAttributeName.ApproximateNumberOfMessagesDelayed)
+        else if (attributeName == InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed)
         {
             attributes[attributeName] = "0";
         }
@@ -889,7 +889,7 @@ internal sealed class InternalSqsClient
 
         if (!_bus.Queues.TryGetValue(request.QueueName!, out var queue))
         {
-            throw new QueueDoesNotExistException($"Queue {request.QueueName} does not exist.");
+            throw new InternalQueueDoesNotExistException($"Queue {request.QueueName} does not exist.");
         }
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.GetQueueUrl, queue.Arn);
         return Task.FromResult(new GetQueueUrlResponse { QueueUrl = queue.Url }.SetCommonProperties());
@@ -993,7 +993,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException("Queue not found.");
+            throw new InternalQueueDoesNotExistException("Queue not found.");
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ListQueueTags, queue.Arn);
@@ -1011,7 +1011,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         while (queue.Messages.Reader.TryRead(out _))
@@ -1039,7 +1039,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         if (queue.Attributes?.TryGetValue("Policy", out var policyJson) != true)
@@ -1089,7 +1089,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         var response = new SendMessageBatchResponse
@@ -1102,7 +1102,7 @@ internal sealed class InternalSqsClient
 
         if (totalSize > MaxMessageSize)
         {
-            throw new BatchRequestTooLongException(
+            throw new InternalBatchRequestTooLongException(
                 $"Batch size ({totalSize} bytes) exceeds the maximum allowed size ({MaxMessageSize} bytes)");
         }
 
@@ -1141,7 +1141,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
         queue.Attributes ??= [];
@@ -1161,7 +1161,7 @@ internal sealed class InternalSqsClient
 
     private void ExtractRedrivePolicy(SqsQueueResource queue)
     {
-        if (queue.Attributes?.TryGetValue(QueueAttributeName.RedrivePolicy, out var redrivePolicy) == true)
+        if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.RedrivePolicy, out var redrivePolicy) == true)
         {
             var policy = JsonDocument.Parse(redrivePolicy);
             var deadLetterTargetArn = policy.RootElement.GetProperty("deadLetterTargetArn").GetString();
@@ -1202,13 +1202,13 @@ internal sealed class InternalSqsClient
         var sourceQueueName = GetQueueNameFromArn(request.SourceArn!);
         if (!_bus.Queues.TryGetValue(sourceQueueName, out var sourceQueue))
         {
-            throw new ResourceNotFoundException("Source queue not found.");
+            throw new InternalResourceNotFoundException("Source queue not found.");
         }
 
         if (_bus.MoveTasks.Values
                 .Any(t => t.SourceQueue.Arn.Equals(request.SourceArn, StringComparison.OrdinalIgnoreCase) && t.Status == MoveTaskStatus.Running))
         {
-            throw new UnsupportedOperationException("Move task already running for the source queue.");
+            throw new InternalUnsupportedOperationException("Move task already running for the source queue.");
         }
 
         var deadLetterQueues =
@@ -1227,7 +1227,7 @@ internal sealed class InternalSqsClient
             var destinationQueueName = GetQueueNameFromArn(request.DestinationArn);
             if (!_bus.Queues.TryGetValue(destinationQueueName, out destinationQueue))
             {
-                throw new ResourceNotFoundException("Destination queue not found.")
+                throw new InternalResourceNotFoundException("Destination queue not found.")
                 {
                     ErrorCode = "ResourceNotFoundException",
                     StatusCode = HttpStatusCode.BadRequest
@@ -1266,7 +1266,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException("Queue not found.");
+            throw new InternalQueueDoesNotExistException("Queue not found.");
         }
 
         foreach (var tag in request.Tags ?? [])
@@ -1295,7 +1295,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException("Queue not found.");
+            throw new InternalQueueDoesNotExistException("Queue not found.");
         }
 
         foreach (var tagKey in request.TagKeys ?? [])
@@ -1315,7 +1315,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new QueueDoesNotExistException("Queue not found.");
+            throw new InternalQueueDoesNotExistException("Queue not found.");
         }
 
         JsonObject policy;

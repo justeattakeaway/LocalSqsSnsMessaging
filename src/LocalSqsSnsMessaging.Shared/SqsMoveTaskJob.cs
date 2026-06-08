@@ -27,7 +27,7 @@ internal sealed class SqsMoveTaskJob : IDisposable
             }
             else
             {
-                if (message.Attributes?.TryGetValue(MessageSystemAttributeName.DeadLetterQueueSourceArn, out var deadLetterSourceArn) == true)
+                if (message.Attributes?.TryGetValue(InternalMessageSystemAttributeName.DeadLetterQueueSourceArn, out var deadLetterSourceArn) == true)
                 {
                     var deadLetterSourceQueueName = GetQueueNameFromArn(deadLetterSourceArn);
                     if (!bus.Queues.TryGetValue(deadLetterSourceQueueName, out var deadLetterSourceQueue))
@@ -65,9 +65,9 @@ internal sealed class SqsMoveTaskJob : IDisposable
             MD5OfMessageAttributes = source.MD5OfMessageAttributes
         };
 
-        newMessage.Attributes?.Remove(MessageSystemAttributeName.ApproximateFirstReceiveTimestamp);
-        newMessage.Attributes?.Remove(MessageSystemAttributeName.ApproximateReceiveCount);
-        newMessage.Attributes?.Remove(MessageSystemAttributeName.SentTimestamp);
+        newMessage.Attributes?.Remove(InternalMessageSystemAttributeName.ApproximateFirstReceiveTimestamp);
+        newMessage.Attributes?.Remove(InternalMessageSystemAttributeName.ApproximateReceiveCount);
+        newMessage.Attributes?.Remove(InternalMessageSystemAttributeName.SentTimestamp);
         return newMessage;
     }
 

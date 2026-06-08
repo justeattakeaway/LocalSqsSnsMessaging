@@ -4,7 +4,7 @@ namespace LocalSqsSnsMessaging;
 /// String constants for SQS queue attribute names.
 /// Mirrors Amazon.SQS.Model.QueueAttributeName values.
 /// </summary>
-internal static class QueueAttributeName
+internal static class InternalQueueAttributeName
 {
     public const string ApproximateNumberOfMessages = "ApproximateNumberOfMessages";
     public const string ApproximateNumberOfMessagesDelayed = "ApproximateNumberOfMessagesDelayed";
@@ -22,7 +22,7 @@ internal static class QueueAttributeName
 /// String constants for SQS message system attribute names.
 /// Mirrors Amazon.SQS.Model.MessageSystemAttributeName values.
 /// </summary>
-internal static class MessageSystemAttributeName
+internal static class InternalMessageSystemAttributeName
 {
     public const string ApproximateReceiveCount = "ApproximateReceiveCount";
     public const string ApproximateFirstReceiveTimestamp = "ApproximateFirstReceiveTimestamp";
