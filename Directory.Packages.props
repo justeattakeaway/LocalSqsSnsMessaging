@@ -10,7 +10,7 @@
     <PackageVersion Include="Meziantou.Polyfill" Version="1.0.140" />
     <PackageVersion Include="Microsoft.Bcl.TimeProvider" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.7.0" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.8.0" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="System.Linq.AsyncEnumerable" Version="10.0.9" />
     <PackageVersion Include="System.Net.Http.Json" Version="10.0.9" />
