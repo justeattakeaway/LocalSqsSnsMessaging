@@ -9,11 +9,6 @@ namespace LocalSqsSnsMessaging;
 /// </summary>
 public sealed class ApiUsageTracker
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true
-    };
-
     private ConcurrentBag<ApiOperation> _operations = [];
 
     /// <summary>
@@ -89,51 +84,42 @@ public sealed class ApiUsageTracker
     /// <returns>A JSON string representing an IAM policy document.</returns>
     public string GenerateIamPolicyJson()
     {
-        var statements = new List<object>();
+        var statements = GenerateIamStatements();
 
-        // Group by service (using ordinal comparison for grouping key)
-#pragma warning disable CA1308 // Normalize strings to uppercase - IAM service names are lowercase by convention
-        var serviceGroups = _operations
-            .GroupBy(op => op.Service.ToLowerInvariant())
-            .OrderBy(g => g.Key);
-#pragma warning restore CA1308
-
-        foreach (var serviceGroup in serviceGroups)
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
         {
-            var actions = serviceGroup
-                .Select(op => $"{op.Service}:{op.Action}")
-                .Distinct()
-                .OrderBy(a => a)
-                .ToList();
+            writer.WriteStartObject();
+            writer.WriteString("Version", "2012-10-17");
+            writer.WriteStartArray("Statement");
 
-            var resources = serviceGroup
-                .Where(op => op.ResourceArn is not null)
-                .Select(op => op.ResourceArn!)
-                .Distinct()
-                .OrderBy(r => r)
-                .ToList();
-
-            // If no specific resources, use "*"
-            if (resources.Count == 0)
+            foreach (var statement in statements)
             {
-                resources.Add("*");
+                writer.WriteStartObject();
+                writer.WriteString("Effect", statement.Effect);
+
+                writer.WriteStartArray("Action");
+                foreach (var action in statement.Actions)
+                {
+                    writer.WriteStringValue(action);
+                }
+                writer.WriteEndArray();
+
+                writer.WriteStartArray("Resource");
+                foreach (var resource in statement.Resources)
+                {
+                    writer.WriteStringValue(resource);
+                }
+                writer.WriteEndArray();
+
+                writer.WriteEndObject();
             }
 
-            statements.Add(new
-            {
-                Effect = "Allow",
-                Action = actions,
-                Resource = resources
-            });
+            writer.WriteEndArray();
+            writer.WriteEndObject();
         }
 
-        var policy = new
-        {
-            Version = "2012-10-17",
-            Statement = statements
-        };
-
-        return JsonSerializer.Serialize(policy, JsonOptions);
+        return Encoding.UTF8.GetString(stream.ToArray());
     }
 
     /// <summary>
