@@ -493,13 +493,13 @@ internal sealed class InternalSnsClient
         var principals = new JsonArray();
         foreach (var accountId in request.AWSAccountId ?? [])
         {
-            principals.Add($"arn:aws:iam::{accountId}:root");
+            principals.Add((JsonNode?)$"arn:aws:iam::{accountId}:root");
         }
 
         var actions = new JsonArray();
         foreach (var action in request.ActionName ?? [])
         {
-            actions.Add($"SNS:{action}");
+            actions.Add((JsonNode?)$"SNS:{action}");
         }
 
         var newStatement = new JsonObject
@@ -511,7 +511,7 @@ internal sealed class InternalSnsClient
             ["Resource"] = topic.Arn
         };
 
-        statements.Add(newStatement);
+        statements.Add((JsonNode)newStatement);
         topic.Attributes["Policy"] = policy.ToJsonString();
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.AddPermission, topic.Arn);

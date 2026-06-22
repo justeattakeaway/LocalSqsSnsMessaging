@@ -1346,13 +1346,13 @@ internal sealed class InternalSqsClient
         var principals = new JsonArray();
         foreach (var accountId in request.AWSAccountIds ?? [])
         {
-            principals.Add($"arn:aws:iam::{accountId}:root");
+            principals.Add((JsonNode?)$"arn:aws:iam::{accountId}:root");
         }
 
         var actions = new JsonArray();
         foreach (var action in request.Actions ?? [])
         {
-            actions.Add($"SQS:{action}");
+            actions.Add((JsonNode?)$"SQS:{action}");
         }
 
         var newStatement = new JsonObject
@@ -1364,7 +1364,7 @@ internal sealed class InternalSqsClient
             ["Resource"] = queue.Arn
         };
 
-        statements.Add(newStatement);
+        statements.Add((JsonNode)newStatement);
         queue.Attributes ??= [];
         queue.Attributes["Policy"] = policy.ToJsonString();
 
