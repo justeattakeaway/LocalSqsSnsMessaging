@@ -74,7 +74,7 @@ jobs:
         JUNIT_XML_OUTPUT_PATH: test-results/LocalSqsSnsMessaging.Tests.Verification/LocalSqsSnsMessaging.Tests.Verification-junit.xml
       run: |
           cd ./tests/LocalSqsSnsMessaging.Tests.Verification
-          dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
+          dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning --report-gh --report-gh-groups off --report-gh-step-summary off --report-gh-slow-test-notices off
 
     - name: Clean up intermediate coverage files
       if: ${{ !cancelled() }}

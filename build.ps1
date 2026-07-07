@@ -87,6 +87,13 @@ function DotNetTest {
         "--coverage-settings"; (Join-Path $solutionPath "codecoverage.runsettings")
         "--results-directory"; $projectResultsDir
         "--timeout"; "2m"
+        # GitHub Actions report: keep only failure/skip annotations (source-linked
+        # errors + warnings on the PR). Groups, job step summary and slow-test
+        # notices are silenced. No-ops unless GITHUB_ACTIONS=true is set.
+        "--report-gh"
+        "--report-gh-groups"; "off"
+        "--report-gh-step-summary"; "off"
+        "--report-gh-slow-test-notices"; "off"
     )
 
     try {
