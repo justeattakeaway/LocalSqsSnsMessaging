@@ -4,7 +4,7 @@ public static class FlociAspireExtensions
 {
     // Pinned for reproducible CI/local runs. Bump to the latest tag from
     // https://hub.docker.com/r/floci/floci/tags when refreshing.
-    private const string FlociImageTag = "1.5.25";
+    private const string FlociImageTag = "1.5.32";
 
     public static IDistributedApplicationBuilder AddFloci(this IDistributedApplicationBuilder builder)
     {
