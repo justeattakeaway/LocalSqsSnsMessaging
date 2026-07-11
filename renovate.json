@@ -6,6 +6,17 @@
   "extends": [
     "config:recommended"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^tests/LocalSqsSnsMessaging\\.Tests\\.Verification/FlociAspireExtensions\\.cs$/"
+      ],
+      "matchStrings": [
+        "//\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\r?\\n\\s*private const string FlociImageTag = \"(?<currentValue>[^\"]+)\";"
+      ]
+    }
+  ],
   "packageRules": [
     {
       "matchPackageNames": [

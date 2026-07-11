@@ -2,8 +2,9 @@ namespace LocalSqsSnsMessaging.Tests.Verification;
 
 public static class FlociAspireExtensions
 {
-    // Pinned for reproducible CI/local runs. Bump to the latest tag from
-    // https://hub.docker.com/r/floci/floci/tags when refreshing.
+    // Pinned for reproducible CI/local runs. Renovate keeps this current via the
+    // custom manager in renovate.json (see the marker comment below).
+    // renovate: datasource=docker depName=floci/floci
     private const string FlociImageTag = "1.5.32";
 
     public static IDistributedApplicationBuilder AddFloci(this IDistributedApplicationBuilder builder)
