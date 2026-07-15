@@ -1,4 +1,5 @@
 using Amazon;
+using Amazon.EventBridge;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
@@ -36,6 +37,20 @@ public static class ClientFactory
         return new AmazonSQSClient(
             new BasicAWSCredentials(accountId, "shh"),
             new AmazonSQSConfig
+            {
+                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, servicePort!.Value)
+            });
+    }
+
+    public static IAmazonEventBridge CreateEventBridgeClient(string accountId, int? servicePort)
+    {
+        if (IsRealAwsMode)
+        {
+            return new AmazonEventBridgeClient(new AmazonEventBridgeConfig { RegionEndpoint = RegionEndpoint.USEast1 });
+        }
+        return new AmazonEventBridgeClient(
+            new BasicAWSCredentials(accountId, "shh"),
+            new AmazonEventBridgeConfig
             {
                 ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, servicePort!.Value)
             });

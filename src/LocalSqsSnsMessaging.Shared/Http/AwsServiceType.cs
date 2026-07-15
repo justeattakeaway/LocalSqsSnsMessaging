@@ -13,5 +13,10 @@ public enum AwsServiceType
     /// <summary>
     /// Amazon Simple Notification Service (SNS)
     /// </summary>
-    Sns
+    Sns,
+
+    /// <summary>
+    /// Amazon EventBridge
+    /// </summary>
+    EventBridge
 }

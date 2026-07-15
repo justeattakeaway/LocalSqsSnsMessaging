@@ -41,11 +41,20 @@ internal sealed class AwsBridgeMiddleware
             {
                 context.Response.Headers["x-amzn-RequestId"] = Guid.NewGuid().ToString();
 
-                if (IsSqsRequest(context.Request))
+                // Both SQS and EventBridge use the JSON protocol with an x-amz-target header;
+                // the service is identified by the target's prefix (AmazonSQS.* vs AWSEvents.*).
+                if (TryGetJsonTarget(context.Request, out var targetService, out var jsonOperation))
                 {
-                    var operationName = ExtractSqsOperationName(context.Request);
-                    await SqsOperationHandler.HandleAsync(
-                        context, bodyBuffer, bodyLength, operationName, bus, cancellationToken).ConfigureAwait(false);
+                    if (string.Equals(targetService, "AWSEvents", StringComparison.Ordinal))
+                    {
+                        await EventBridgeOperationHandler.HandleAsync(
+                            context, bodyBuffer, bodyLength, jsonOperation, bus, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await SqsOperationHandler.HandleAsync(
+                            context, bodyBuffer, bodyLength, jsonOperation, bus, cancellationToken).ConfigureAwait(false);
+                    }
                 }
                 else
                 {
@@ -127,25 +136,27 @@ internal sealed class AwsBridgeMiddleware
         return true;
     }
 
-    private static bool IsSqsRequest(HttpRequest request)
+    private static bool TryGetJsonTarget(HttpRequest request, out string service, out string operation)
     {
-        // SQS uses JSON protocol with x-amz-target header
-        return request.Headers.ContainsKey("x-amz-target");
-    }
+        service = string.Empty;
+        operation = string.Empty;
 
-    private static string ExtractSqsOperationName(HttpRequest request)
-    {
-        var target = request.Headers["x-amz-target"].ToString();
-        if (!string.IsNullOrEmpty(target))
+        // JSON-protocol services (SQS, EventBridge) send "Service.Operation" in x-amz-target.
+        if (!request.Headers.TryGetValue("x-amz-target", out var values))
         {
-            var parts = target.Split('.');
-            if (parts.Length == 2)
-            {
-                return parts[1];
-            }
+            return false;
         }
 
-        throw new InvalidOperationException("Unable to determine SQS operation name from x-amz-target header.");
+        var target = values.ToString();
+        var parts = target.Split('.');
+        if (parts.Length != 2)
+        {
+            return false;
+        }
+
+        service = parts[0];
+        operation = parts[1];
+        return true;
     }
 
     private static string ExtractSnsOperationName(HttpRequest request, byte[] bodyBytes, int bodyLength)

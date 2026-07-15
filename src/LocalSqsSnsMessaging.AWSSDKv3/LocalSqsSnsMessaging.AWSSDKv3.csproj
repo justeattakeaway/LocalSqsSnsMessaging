@@ -15,6 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="AWSSDK.EventBridge" VersionOverride="3.7.502" />
         <PackageReference Include="AWSSDK.SQS" VersionOverride="3.7.502" />
         <PackageReference Include="AWSSDK.SimpleNotificationService" VersionOverride="3.7.502" />
         <PackageReference Include="Meziantou.Polyfill" PrivateAssets="all" />

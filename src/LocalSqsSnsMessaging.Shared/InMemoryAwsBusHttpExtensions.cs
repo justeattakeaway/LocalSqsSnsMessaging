@@ -1,5 +1,6 @@
 #if !ASPNETCORE
 using System.ComponentModel;
+using Amazon.EventBridge;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
@@ -85,6 +86,33 @@ public static class InMemoryAwsBusHttpExtensions
             var credentials = new AnonymousAWSCredentials();
 
             return new AmazonSimpleNotificationServiceClient(credentials, config);
+        }
+
+        /// <summary>
+        /// Creates a real AWS SDK EventBridge client configured to use the in-memory bus via HTTP message handler.
+        /// This allows testing code that depends on the concrete AmazonEventBridgeClient type.
+        /// </summary>
+        /// <returns>An AmazonEventBridgeClient configured with the in-memory handler.</returns>
+        public AmazonEventBridgeClient CreateEventBridgeClient()
+        {
+            ArgumentNullException.ThrowIfNull(bus);
+
+            var handler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.EventBridge);
+            var httpClientFactory = new InMemoryHttpClientFactory(handler);
+
+            var config = new AmazonEventBridgeConfig
+            {
+                ServiceURL = $"https://events.{bus.CurrentRegion}.amazonaws.com",
+                AuthenticationRegion = bus.CurrentRegion,
+                UseHttp = false,
+                MaxErrorRetry = 0, // Disable retries for in-memory testing
+                HttpClientFactory = httpClientFactory
+            };
+
+            // Use anonymous credentials since we're not actually calling AWS
+            var credentials = new AnonymousAWSCredentials();
+
+            return new AmazonEventBridgeClient(credentials, config);
         }
     }
 }
