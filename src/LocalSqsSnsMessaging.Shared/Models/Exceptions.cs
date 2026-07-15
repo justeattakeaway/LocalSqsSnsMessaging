@@ -84,5 +84,23 @@ internal class InternalInvalidParameterException : AwsServiceException
     }
 }
 
+// EventBridge exceptions
+
+internal class InternalResourceAlreadyExistsException : AwsServiceException
+{
+    public InternalResourceAlreadyExistsException(string message) : base(message)
+    {
+        ErrorCode = "ResourceAlreadyExistsException";
+    }
+}
+
+internal class InternalInvalidEventPatternException : AwsServiceException
+{
+    public InternalInvalidEventPatternException(string message) : base(message)
+    {
+        ErrorCode = "InvalidEventPatternException";
+    }
+}
+
 // Alias for SNS InternalBatchRequestTooLongException - same class works for both SQS and SNS
 // since the SQS one above is sufficient (both use the same error pattern)

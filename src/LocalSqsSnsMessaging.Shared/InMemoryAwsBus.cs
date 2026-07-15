@@ -78,6 +78,12 @@ public sealed class InMemoryAwsBus
     internal ConcurrentDictionary<string, SnsSubscription> Subscriptions { get; } = [];
 
     /// <summary>
+    /// Gets the collection of EventBridge event buses (each holding its own rules and targets).
+    /// </summary>
+    /// <value>A thread-safe dictionary of event buses, keyed by event bus name.</value>
+    internal ConcurrentDictionary<string, EventBusResource> EventBuses { get; } = [];
+
+    /// <summary>
     /// Records an API operation if usage tracking is enabled.
     /// </summary>
     /// <param name="service">The AWS service name (e.g., "sqs" or "sns").</param>

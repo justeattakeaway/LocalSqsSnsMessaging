@@ -1,4 +1,5 @@
 #if !ASPNETCORE
+using Amazon.EventBridge;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
@@ -22,6 +23,7 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
     private readonly Func<IClientConfig, HttpClient>? _fallback;
     private readonly InMemoryAwsHttpMessageHandler _sqsHandler;
     private readonly InMemoryAwsHttpMessageHandler _snsHandler;
+    private readonly InMemoryAwsHttpMessageHandler _eventBridgeHandler;
     private bool _disposed;
 
     /// <summary>
@@ -40,6 +42,7 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
         _fallback = fallback;
         _sqsHandler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.Sqs);
         _snsHandler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.Sns);
+        _eventBridgeHandler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.EventBridge);
     }
 
     /// <inheritdoc />
@@ -104,6 +107,7 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
         {
             AmazonSQSConfig => _sqsHandler,
             AmazonSimpleNotificationServiceConfig => _snsHandler,
+            AmazonEventBridgeConfig => _eventBridgeHandler,
             _ => null
         };
 
@@ -118,6 +122,7 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
         {
             _sqsHandler.Dispose();
             _snsHandler.Dispose();
+            _eventBridgeHandler.Dispose();
         }
         _disposed = true;
     }

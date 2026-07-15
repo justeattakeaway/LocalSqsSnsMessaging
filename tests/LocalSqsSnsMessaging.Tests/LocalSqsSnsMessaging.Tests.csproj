@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-      <TargetFramework>net8.0</TargetFramework>
+      <TargetFramework>net10.0</TargetFramework>
       <OutputType>Exe</OutputType>
       <ImplicitUsings>enable</ImplicitUsings>
       <Nullable>enable</Nullable>
@@ -15,7 +15,6 @@
       <PackageReference Include="OpenTelemetry" />
       <PackageReference Include="OpenTelemetry.Instrumentation.AWS" />
       <PackageReference Include="Shouldly" />
-      <PackageReference Include="System.Linq.AsyncEnumerable" />
       <PackageReference Include="TUnit.OpenTelemetry" />
     </ItemGroup>
 

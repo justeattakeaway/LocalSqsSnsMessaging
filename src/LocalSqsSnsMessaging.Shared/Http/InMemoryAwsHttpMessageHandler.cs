@@ -16,6 +16,7 @@ namespace LocalSqsSnsMessaging.Http;
 public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
 {
     private readonly InMemoryAwsBus _bus;
+    private readonly AwsServiceType _serviceType;
     private readonly AwsProtocolType _protocolType;
 
     /// <summary>
@@ -27,11 +28,13 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
     {
         ArgumentNullException.ThrowIfNull(bus);
         _bus = bus;
+        _serviceType = serviceType;
 
         // Determine protocol based on service type
         _protocolType = serviceType switch
         {
             AwsServiceType.Sqs => AwsProtocolType.Json,
+            AwsServiceType.EventBridge => AwsProtocolType.Json,
             AwsServiceType.Sns => AwsProtocolType.Query,
             _ => throw new NotSupportedException($"Service type {serviceType} is not supported.")
         };
@@ -72,7 +75,12 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
             return CreateErrorResponse(ex);
         }
 
-        var servicePrefix = _protocolType == AwsProtocolType.Json ? "SQS" : "SNS";
+        var servicePrefix = _serviceType switch
+        {
+            AwsServiceType.Sqs => "SQS",
+            AwsServiceType.EventBridge => "EventBridge",
+            _ => "SNS"
+        };
 
 #if NET
         using var activity = InMemoryAwsBus.ActivitySource.StartActivity(
@@ -82,18 +90,16 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
 
         try
         {
-            // Route to appropriate handler based on protocol type
-            HttpResponseMessage response;
-            if (_protocolType == AwsProtocolType.Query)
+            // Route to the appropriate handler based on service type.
+            HttpResponseMessage response = _serviceType switch
             {
-                response = await Handlers.SnsOperationHandler.HandleAsync(
-                    request, operationName, _bus, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                response = await Handlers.SqsOperationHandler.HandleAsync(
-                    request, operationName, _bus, cancellationToken).ConfigureAwait(false);
-            }
+                AwsServiceType.Sqs => await Handlers.SqsOperationHandler.HandleAsync(
+                    request, operationName, _bus, cancellationToken).ConfigureAwait(false),
+                AwsServiceType.EventBridge => await Handlers.EventBridgeOperationHandler.HandleAsync(
+                    request, operationName, _bus, cancellationToken).ConfigureAwait(false),
+                _ => await Handlers.SnsOperationHandler.HandleAsync(
+                    request, operationName, _bus, cancellationToken).ConfigureAwait(false)
+            };
 
             // Add AWS response headers
             response.Headers.Add("x-amzn-RequestId", Guid.NewGuid().ToString());

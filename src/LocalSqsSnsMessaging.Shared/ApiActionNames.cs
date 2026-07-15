@@ -10,6 +10,9 @@ public static class AwsServiceName
 
     /// <summary>Amazon Simple Notification Service.</summary>
     public const string Sns = "sns";
+
+    /// <summary>Amazon EventBridge.</summary>
+    public const string EventBridge = "events";
 }
 
 /// <summary>
