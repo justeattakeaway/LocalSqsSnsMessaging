@@ -129,7 +129,76 @@ public sealed class EventBridgeEventPatternTests
     {
         EventBridgeEventPattern.IsValid("not json", out _).ShouldBeFalse();
         EventBridgeEventPattern.IsValid("""["array"]""", out _).ShouldBeFalse();
+        EventBridgeEventPattern.IsValid("", out _).ShouldBeFalse();
         EventBridgeEventPattern.IsValid("""{"source":["a"]}""", out _).ShouldBeTrue();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task NumericOperators_AllVariants()
+    {
+        Match("""{"detail":{"n":[{"numeric":["!=",5]}]}}""", """{"detail":{"n":4}}""").ShouldBeTrue();
+        Match("""{"detail":{"n":[{"numeric":["!=",5]}]}}""", """{"detail":{"n":5}}""").ShouldBeFalse();
+        Match("""{"detail":{"n":[{"numeric":["<=",10]}]}}""", """{"detail":{"n":10}}""").ShouldBeTrue();
+        Match("""{"detail":{"n":[{"numeric":[">=",10]}]}}""", """{"detail":{"n":10}}""").ShouldBeTrue();
+        Match("""{"detail":{"n":[{"numeric":[">=",10]}]}}""", """{"detail":{"n":9}}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task AnythingBut_ObjectForms()
+    {
+        Match("""{"source":[{"anything-but":{"prefix":"aws."}}]}""", """{"source":"my.app"}""").ShouldBeTrue();
+        Match("""{"source":[{"anything-but":{"prefix":"aws."}}]}""", """{"source":"aws.ec2"}""").ShouldBeFalse();
+        Match("""{"source":[{"anything-but":{"suffix":".tmp"}}]}""", """{"source":"file.txt"}""").ShouldBeTrue();
+        Match("""{"source":[{"anything-but":{"wildcard":"a*z"}}]}""", """{"source":"abz"}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Prefix_EqualsIgnoreCase_Form()
+    {
+        Match("""{"source":[{"prefix":{"equals-ignore-case":"MY."}}]}""", """{"source":"my.app"}""").ShouldBeTrue();
+        Match("""{"detail":{"f":[{"suffix":{"equals-ignore-case":".PNG"}}]}}""", """{"detail":{"f":"a.png"}}""").ShouldBeTrue();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Exists_False_WhenPresent_DoesNotMatch()
+    {
+        Match("""{"detail":{"key":[{"exists":false}]}}""", """{"detail":{"key":"v"}}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Wildcard_LeadingAndTrailing()
+    {
+        Match("""{"source":[{"wildcard":"*.service"}]}""", """{"source":"my.service"}""").ShouldBeTrue();
+        Match("""{"source":[{"wildcard":"my.*"}]}""", """{"source":"my.anything"}""").ShouldBeTrue();
+        Match("""{"source":[{"wildcard":"*"}]}""", """{"source":"anything"}""").ShouldBeTrue();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Cidr_InvalidInputs_ReturnFalse()
+    {
+        Match("""{"detail":{"ip":[{"cidr":"not-a-cidr"}]}}""", """{"detail":{"ip":"10.0.0.1"}}""").ShouldBeFalse();
+        Match("""{"detail":{"ip":[{"cidr":"10.0.0.0/24"}]}}""", """{"detail":{"ip":"not-an-ip"}}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task NumberAndStringAreDistinct()
+    {
+        // A string candidate must not match a numeric field (and vice versa).
+        Match("""{"detail":{"n":["5"]}}""", """{"detail":{"n":5}}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task MissingField_WithLiteralCandidate_DoesNotMatch()
+    {
+        Match("""{"detail":{"absent":["x"]}}""", """{"detail":{"present":"y"}}""").ShouldBeFalse();
         await Task.CompletedTask;
     }
 }
