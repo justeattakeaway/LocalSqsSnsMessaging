@@ -21,7 +21,11 @@
     {
       "matchPackageNames": [
         "AWSSDK.SimpleNotificationService",
-        "AWSSDK.SQS"
+        "AWSSDK.SQS",
+        "AWSSDK.EventBridge"
+      ],
+      "matchFileNames": [
+        "src/LocalSqsSnsMessaging.AWSSDKv3/**"
       ],
       "enabled": false
     },
