@@ -26,6 +26,15 @@
       "enabled": false
     },
     {
+      "matchPackageNames": [
+        "AWSSDK.EventBridge"
+      ],
+      "matchFileNames": [
+        "src/LocalSqsSnsMessaging.AWSSDKv3/**"
+      ],
+      "enabled": false
+    },
+    {
       "groupName": "Aspire",
       "matchPackageNames": [
         "/Aspire*/"
