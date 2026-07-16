@@ -6,7 +6,7 @@
     <PackageVersion Include="AWSSDK.EventBridge" Version="4.0.100.4" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.4" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.4" />
-    <PackageVersion Include="OpenTelemetry" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AWS" Version="1.16.0" />
     <PackageVersion Include="Meziantou.Polyfill" Version="1.0.157" />
     <PackageVersion Include="Microsoft.Bcl.TimeProvider" Version="10.0.10" />
