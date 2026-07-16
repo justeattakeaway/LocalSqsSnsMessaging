@@ -1129,7 +1129,16 @@ internal sealed class InternalSqsClient
             {
                 if (string.IsNullOrEmpty(entry.MessageGroupId))
                 {
-                    throw new InvalidOperationException("MessageGroupId is required for FIFO queues");
+                    // Matching real SQS, an invalid entry is reported as a per-entry failure rather
+                    // than aborting the whole batch, so valid entries are still enqueued.
+                    response.Failed.Add(new BatchResultErrorEntry
+                    {
+                        Id = entry.Id,
+                        Code = "MissingParameter",
+                        Message = "The request must contain the parameter MessageGroupId.",
+                        SenderFault = true
+                    });
+                    continue;
                 }
 
                 // A duplicate is still reported as successful (matching real SQS), but carries the

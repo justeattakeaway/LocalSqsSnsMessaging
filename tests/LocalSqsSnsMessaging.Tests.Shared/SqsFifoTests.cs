@@ -231,16 +231,21 @@ public abstract class SqsFifoTests : WaitingTestBase
             Attributes = new Dictionary<string, string> { [QueueAttributeName.FifoQueue] = "true" }
         }, cancellationToken)).QueueUrl;
 
-        await Assert.ThrowsAsync<Exception>(async () =>
-            await Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
-            {
-                QueueUrl = queueUrl,
-                Entries =
-                [
-                    new SendMessageBatchRequestEntry { Id = "1", MessageBody = "a" }
-                    // MessageGroupId is missing
-                ]
-            }, cancellationToken));
+        // An entry missing MessageGroupId is a per-entry failure, not a whole-batch exception.
+        var sendResponse = await Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
+        {
+            QueueUrl = queueUrl,
+            Entries =
+            [
+                new SendMessageBatchRequestEntry { Id = "1", MessageBody = "a" }
+                // MessageGroupId is missing
+            ]
+        }, cancellationToken);
+
+        (sendResponse.Successful?.Count ?? 0).ShouldBe(0);
+        sendResponse.Failed.Count.ShouldBe(1);
+        sendResponse.Failed[0].Id.ShouldBe("1");
+        sendResponse.Failed[0].SenderFault.ShouldBe(true);
     }
 
     [Test]
