@@ -188,6 +188,97 @@ public abstract class SqsFifoTests : WaitingTestBase
     }
 
     [Test]
+    public async Task SendMessageBatchToFifoQueue_MessagesAreReceivable(CancellationToken cancellationToken)
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-fifo-batch-queue.fifo"),
+            Attributes = new Dictionary<string, string>
+            {
+                [QueueAttributeName.FifoQueue] = "true",
+                [QueueAttributeName.ContentBasedDeduplication] = "true"
+            }
+        }, cancellationToken)).QueueUrl;
+
+        var sendResponse = await Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
+        {
+            QueueUrl = queueUrl,
+            Entries =
+            [
+                new SendMessageBatchRequestEntry { Id = "1", MessageBody = "a", MessageGroupId = "g" },
+                new SendMessageBatchRequestEntry { Id = "2", MessageBody = "b", MessageGroupId = "g" }
+            ]
+        }, cancellationToken);
+
+        sendResponse.Successful.Count.ShouldBe(2);
+        (sendResponse.Failed?.Count ?? 0).ShouldBe(0);
+
+        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 2, cancellationToken,
+            ["MessageGroupId"]);
+
+        messages.Count.ShouldBe(2);
+        messages[0].Body.ShouldBe("a");
+        messages[1].Body.ShouldBe("b");
+        messages.ShouldAllBe(m => m.Attributes["MessageGroupId"] == "g");
+    }
+
+    [Test]
+    public async Task SendMessageBatchToFifoQueue_RequiresMessageGroupId(CancellationToken cancellationToken)
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-fifo-batch-queue.fifo"),
+            Attributes = new Dictionary<string, string> { [QueueAttributeName.FifoQueue] = "true" }
+        }, cancellationToken)).QueueUrl;
+
+        await Assert.ThrowsAsync<Exception>(async () =>
+            await Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
+            {
+                QueueUrl = queueUrl,
+                Entries =
+                [
+                    new SendMessageBatchRequestEntry { Id = "1", MessageBody = "a" }
+                    // MessageGroupId is missing
+                ]
+            }, cancellationToken));
+    }
+
+    [Test]
+    public async Task SendMessageBatchToFifoQueue_ContentBasedDeduplication(CancellationToken cancellationToken)
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-fifo-batch-dedup-queue.fifo"),
+            Attributes = new Dictionary<string, string>
+            {
+                [QueueAttributeName.FifoQueue] = "true",
+                [QueueAttributeName.ContentBasedDeduplication] = "true"
+            }
+        }, cancellationToken)).QueueUrl;
+
+        // Two identical bodies (deduplicated) plus one unique body, in a single batch.
+        var sendResponse = await Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
+        {
+            QueueUrl = queueUrl,
+            Entries =
+            [
+                new SendMessageBatchRequestEntry { Id = "1", MessageBody = "Duplicate Content", MessageGroupId = "g" },
+                new SendMessageBatchRequestEntry { Id = "2", MessageBody = "Duplicate Content", MessageGroupId = "g" },
+                new SendMessageBatchRequestEntry { Id = "3", MessageBody = "Unique Content", MessageGroupId = "g" }
+            ]
+        }, cancellationToken);
+
+        // Every entry is still reported successful (deduplication is not a failure).
+        sendResponse.Successful.Count.ShouldBe(3);
+
+        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 2, cancellationToken);
+
+        messages.Count.ShouldBe(2);
+        messages[0].Body.ShouldBe("Duplicate Content");
+        messages[1].Body.ShouldBe("Unique Content");
+    }
+
+    [Test]
     public async Task FifoQueue_HighThroughputMode(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
