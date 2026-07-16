@@ -37,7 +37,7 @@ internal sealed class SqsInflightMessageExpirationJob : IDisposable
         if (timerState.Queue.InFlightMessages.TryRemove(timerState.ReceiptHandle, out var inFlightMessage))
         {
             var (message, inFlightExpireCallback) = inFlightMessage;
-            timerState.Queue.Messages.Writer.TryWrite(message);
+            timerState.Queue.ReturnInFlightMessage(message);
             inFlightExpireCallback.Dispose();
         }
     }

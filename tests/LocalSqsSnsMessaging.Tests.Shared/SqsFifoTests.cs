@@ -246,6 +246,278 @@ public abstract class SqsFifoTests : WaitingTestBase
         sendResponse.Failed.Count.ShouldBe(1);
         sendResponse.Failed[0].Id.ShouldBe("1");
         sendResponse.Failed[0].SenderFault.ShouldBe(true);
+        sendResponse.Failed[0].Code.ShouldBe("MissingParameter");
+    }
+
+    [Test]
+    public async Task SendMessageBatchToFifoQueue_InvalidEntryDoesNotAbortValidEntries(CancellationToken cancellationToken)
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-fifo-batch-mixed-queue.fifo"),
+            Attributes = new Dictionary<string, string>
+            {
+                [QueueAttributeName.FifoQueue] = "true",
+                [QueueAttributeName.ContentBasedDeduplication] = "true"
+            }
+        }, cancellationToken)).QueueUrl;
+
+        // Real SQS validates entries independently: the invalid entry lands in Failed
+        // while the valid ones are enqueued and reported in Successful.
+        var sendResponse = await Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
+        {
+            QueueUrl = queueUrl,
+            Entries =
+            [
+                new SendMessageBatchRequestEntry { Id = "1", MessageBody = "a", MessageGroupId = "g" },
+                new SendMessageBatchRequestEntry { Id = "2", MessageBody = "b" }, // MessageGroupId is missing
+                new SendMessageBatchRequestEntry { Id = "3", MessageBody = "c", MessageGroupId = "g" }
+            ]
+        }, cancellationToken);
+
+        sendResponse.Successful.Count.ShouldBe(2);
+        sendResponse.Successful.Select(e => e.Id).ShouldBe(["1", "3"], ignoreOrder: true);
+        sendResponse.Failed.Count.ShouldBe(1);
+        sendResponse.Failed[0].Id.ShouldBe("2");
+        sendResponse.Failed[0].SenderFault.ShouldBe(true);
+
+        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 2, cancellationToken);
+
+        messages.Select(m => m.Body).ShouldBe(["a", "c"]);
+    }
+
+    [Test]
+    public async Task FifoQueue_InFlightMessageBlocksMessageGroup(CancellationToken cancellationToken)
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-fifo-inflight-queue.fifo"),
+            Attributes = new Dictionary<string, string>
+            {
+                [QueueAttributeName.FifoQueue] = "true",
+                [QueueAttributeName.ContentBasedDeduplication] = "true"
+            }
+        }, cancellationToken)).QueueUrl;
+
+        foreach (var body in new[] { "m1", "m2", "m3" })
+        {
+            await Sqs.SendMessageAsync(new SendMessageRequest
+            {
+                QueueUrl = queueUrl,
+                MessageBody = body,
+                MessageGroupId = "GroupA"
+            }, cancellationToken);
+        }
+
+        var first = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 1,
+            WaitTimeSeconds = IsRealAwsMode ? 5 : 0
+        }, cancellationToken);
+
+        first.Messages.ShouldHaveSingleItem().Body.ShouldBe("m1");
+
+        // m1 is in flight (received but not deleted), so the whole group is locked:
+        // no further messages from it until m1 is deleted or its visibility expires.
+        var whileBlocked = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 1,
+            WaitTimeSeconds = 0
+        }, cancellationToken);
+
+        (whileBlocked.Messages?.Count ?? 0).ShouldBe(0);
+
+        // Deleting m1 unlocks the group and m2 becomes deliverable.
+        await Sqs.DeleteMessageAsync(queueUrl, first.Messages[0].ReceiptHandle, cancellationToken);
+
+        var afterDelete = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 1,
+            WaitTimeSeconds = IsRealAwsMode ? 5 : 0
+        }, cancellationToken);
+
+        afterDelete.Messages.ShouldHaveSingleItem().Body.ShouldBe("m2");
+    }
+
+    [Test]
+    public async Task FifoQueue_BlockedGroupDoesNotBlockOtherGroups(CancellationToken cancellationToken)
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-fifo-groups-queue.fifo"),
+            Attributes = new Dictionary<string, string>
+            {
+                [QueueAttributeName.FifoQueue] = "true",
+                [QueueAttributeName.ContentBasedDeduplication] = "true"
+            }
+        }, cancellationToken)).QueueUrl;
+
+        await Sqs.SendMessageAsync(new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = "A1",
+            MessageGroupId = "GroupA"
+        }, cancellationToken);
+
+        await Sqs.SendMessageAsync(new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = "B1",
+            MessageGroupId = "GroupB"
+        }, cancellationToken);
+
+        // Receive one message at a time without deleting: each receive locks the
+        // delivered message's group, but the other group must remain deliverable.
+        var first = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 1,
+            MessageSystemAttributeNames = ["MessageGroupId"],
+            WaitTimeSeconds = IsRealAwsMode ? 5 : 0
+        }, cancellationToken);
+
+        var second = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 1,
+            MessageSystemAttributeNames = ["MessageGroupId"],
+            WaitTimeSeconds = IsRealAwsMode ? 5 : 0
+        }, cancellationToken);
+
+        var firstMessage = first.Messages.ShouldHaveSingleItem();
+        var secondMessage = second.Messages.ShouldHaveSingleItem();
+
+        firstMessage.Attributes["MessageGroupId"].ShouldNotBe(secondMessage.Attributes["MessageGroupId"]);
+        new[] { firstMessage.Body, secondMessage.Body }.ShouldBe(["A1", "B1"], ignoreOrder: true);
+
+        // With one message in flight per group, both groups are now locked.
+        var whileBlocked = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 10,
+            WaitTimeSeconds = 0
+        }, cancellationToken);
+
+        (whileBlocked.Messages?.Count ?? 0).ShouldBe(0);
+    }
+
+    [Test, Category(TimeBased)]
+    public async Task FifoQueue_VisibilityTimeoutExpiry_RedeliversAtHeadOfGroup(CancellationToken cancellationToken)
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-fifo-redelivery-queue.fifo"),
+            Attributes = new Dictionary<string, string>
+            {
+                [QueueAttributeName.FifoQueue] = "true",
+                [QueueAttributeName.ContentBasedDeduplication] = "true"
+            }
+        }, cancellationToken)).QueueUrl;
+
+        await Sqs.SendMessageAsync(new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = "m1",
+            MessageGroupId = "GroupA"
+        }, cancellationToken);
+
+        await Sqs.SendMessageAsync(new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = "m2",
+            MessageGroupId = "GroupA"
+        }, cancellationToken);
+
+        var first = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 1,
+            VisibilityTimeout = 3,
+            WaitTimeSeconds = IsRealAwsMode ? 5 : 0
+        }, cancellationToken);
+
+        var originalMessageId = first.Messages.ShouldHaveSingleItem().MessageId;
+        first.Messages[0].Body.ShouldBe("m1");
+
+        // Let m1's visibility timeout lapse without deleting it: it must become
+        // visible again at the head of its group, ahead of m2, preserving order.
+        await WaitAsync(TimeSpan.FromSeconds(4));
+
+        var redelivered = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 10,
+            WaitTimeSeconds = IsRealAwsMode ? 5 : 0
+        }, cancellationToken);
+
+        redelivered.Messages.Count.ShouldBe(2);
+        redelivered.Messages[0].Body.ShouldBe("m1");
+        redelivered.Messages[0].MessageId.ShouldBe(originalMessageId);
+        redelivered.Messages[1].Body.ShouldBe("m2");
+    }
+
+    [Test, Category(TimeBased)]
+    public async Task FifoQueue_ReceiveMessage_HonoursWaitTimeSeconds(CancellationToken cancellationToken)
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-fifo-longpoll-queue.fifo"),
+            Attributes = new Dictionary<string, string>
+            {
+                [QueueAttributeName.FifoQueue] = "true",
+                [QueueAttributeName.ContentBasedDeduplication] = "true"
+            }
+        }, cancellationToken)).QueueUrl;
+
+        // An empty FIFO receive with WaitTimeSeconds must long-poll rather than
+        // return immediately (which made poll loops hot-spin).
+        var receiveTask = Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            WaitTimeSeconds = 5
+        }, cancellationToken);
+
+        await WaitAsync(TimeSpan.FromSeconds(5));
+
+        var result = await receiveTask;
+
+        result.Messages.ShouldBeEmptyAwsCollection();
+    }
+
+    [Test, Category(TimeBased)]
+    public async Task FifoQueue_ReceiveMessage_LongPollReturnsWhenMessageArrives(CancellationToken cancellationToken)
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = UniqueName("test-fifo-longpoll-arrival-queue.fifo"),
+            Attributes = new Dictionary<string, string>
+            {
+                [QueueAttributeName.FifoQueue] = "true",
+                [QueueAttributeName.ContentBasedDeduplication] = "true"
+            }
+        }, cancellationToken)).QueueUrl;
+
+        var receiveTask = Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            WaitTimeSeconds = 10
+        }, cancellationToken);
+
+        await WaitAsync(TimeSpan.FromSeconds(3));
+
+        await Sqs.SendMessageAsync(new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = "Hello, world!",
+            MessageGroupId = "GroupA"
+        }, cancellationToken);
+
+        var result = await receiveTask;
+
+        result.Messages.ShouldHaveSingleItem().Body.ShouldBe("Hello, world!");
     }
 
     [Test]
