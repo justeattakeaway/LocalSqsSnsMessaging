@@ -1,7 +1,6 @@
 #pragma warning disable CS8600, CS8601, CS8602, CS8604 // Nullable reference warnings - internal POCOs use nullable properties but values are set at runtime
 
 using System.Collections.Concurrent;
-using System.Numerics;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using LocalSqsSnsMessaging.Sns.Model;
@@ -16,37 +15,6 @@ internal sealed class SnsPublishAction
 
     private readonly List<(SnsSubscription Subscription, SqsQueueResource Queue)> _subscriptionsAndQueues;
     private readonly TimeProvider _timeProvider;
-    private static BigInteger _sequenceNumber = CreateSequenceNumber();
-    private static SpinLock _sequenceSpinLock = new(false);
-
-    private static BigInteger CreateSequenceNumber()
-    {
-        var bytes = new byte[16];
-#if NET
-    RandomNumberGenerator.Fill(bytes);
-#else
-        using (var rng = RandomNumberGenerator.Create())
-        {
-            rng.GetBytes(bytes);
-        }
-#endif
-        var randomBigInt = new BigInteger(bytes);
-        return BigInteger.Abs(randomBigInt % BigInteger.Pow(10, 20));
-    }
-
-    private static BigInteger GetNextSequenceNumber()
-    {
-        var lockTaken = false;
-        try
-        {
-            _sequenceSpinLock.Enter(ref lockTaken);
-            return ++_sequenceNumber;
-        }
-        finally
-        {
-            if (lockTaken) _sequenceSpinLock.Exit();
-        }
-    }
 
     public SnsPublishAction(List<(SnsSubscription Subscription, SqsQueueResource Queue)> subscriptionsAndQueues, TimeProvider timeProvider)
     {
@@ -65,7 +33,7 @@ internal sealed class SnsPublishAction
             {
                 sqsMessage.Attributes ??= [];
                 sqsMessage.Attributes["MessageGroupId"] = request.MessageGroupId;
-                sqsMessage.Attributes["SequenceNumber"] = GetNextSequenceNumber().ToString(NumberFormatInfo.InvariantInfo);
+                sqsMessage.Attributes["SequenceNumber"] = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
                 sqsMessage.Attributes["SentTimestamp"] = _timeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
 
                 string deduplicationId = request.MessageDeduplicationId;
@@ -124,13 +92,8 @@ internal sealed class SnsPublishAction
 
     private static void EnqueueFifoMessage(SqsQueueResource queue, string messageGroupId, Message sqsMessage)
     {
-        queue.MessageGroups.AddOrUpdate(messageGroupId,
-            _ => new ConcurrentQueue<Message>([sqsMessage]),
-            (_, existingQueue) =>
-            {
-                existingQueue.Enqueue(sqsMessage);
-                return existingQueue;
-            });
+        // Takes the group lock and wakes long-polling FIFO receivers.
+        queue.EnqueueFifoMessage(messageGroupId, sqsMessage);
     }
 
     public PublishBatchResponse ExecuteBatch(PublishBatchRequest request)

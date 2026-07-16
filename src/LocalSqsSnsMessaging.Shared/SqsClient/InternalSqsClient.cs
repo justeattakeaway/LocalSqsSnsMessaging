@@ -54,7 +54,10 @@ internal sealed class InternalSqsClient
                 if (queue.InFlightMessages.TryRemove(request.ReceiptHandle!, out var removedInfo))
                 {
                     removedInfo.Item2.Dispose();
-                    EnqueueMessage(queue, message);
+                    // Same path as visibility-timeout expiry: for FIFO queues the message is
+                    // re-inserted at its original position in the group (not appended) and
+                    // the group's in-flight slot is released.
+                    queue.ReturnInFlightMessage(message);
                 }
             }
             else
@@ -159,29 +162,36 @@ internal sealed class InternalSqsClient
         if (queue.InFlightMessages.TryRemove(request.ReceiptHandle!, out var inFlightInfo))
         {
             var (message, expirationHandler) = inFlightInfo;
-            expirationHandler.Dispose();
-
-            if (queue.IsFifo)
-            {
-                if (message.Attributes!.TryGetValue("MessageGroupId", out var groupId))
-                {
-                    if (queue.MessageGroups.TryGetValue(groupId, out var groupQueue) && groupQueue.IsEmpty)
-                    {
-                        queue.MessageGroups.TryRemove(groupId, out _);
-                    }
-                }
-
-                if (message.Attributes.TryGetValue("MessageDeduplicationId", out var deduplicationId))
-                {
-                    queue.DeduplicationIds.TryRemove(deduplicationId, out _);
-                }
-            }
+            FinalizeDeletedMessage(queue, message, expirationHandler);
 
             _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.DeleteMessage, queue.Arn);
             return Task.FromResult(new DeleteMessageResponse().SetCommonProperties());
         }
 
         throw new InternalReceiptHandleIsInvalidException($"Receipt handle {request.ReceiptHandle} is invalid.");
+    }
+
+    /// <summary>
+    /// Cleanup shared by the single and batch delete paths once a message has been removed
+    /// from the in-flight set: stops the visibility-timeout timer and, for FIFO queues,
+    /// releases the message's deduplication id and its message group's in-flight slot so
+    /// the group unlocks for subsequent receives.
+    /// </summary>
+    private static void FinalizeDeletedMessage(SqsQueueResource queue, Message message, SqsInflightMessageExpirationJob expirationHandler)
+    {
+        expirationHandler.Dispose();
+
+        if (!queue.IsFifo)
+        {
+            return;
+        }
+
+        queue.ReleaseDeletedFifoMessage(message);
+
+        if (message.Attributes!.TryGetValue("MessageDeduplicationId", out var deduplicationId))
+        {
+            queue.DeduplicationIds.TryRemove(deduplicationId, out _);
+        }
     }
 
     public Task<DeleteQueueResponse> DeleteQueueAsync(DeleteQueueRequest request,
@@ -249,7 +259,46 @@ internal sealed class InternalSqsClient
         }
         else
         {
-            messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, request.MessageSystemAttributeNames, cancellationToken);
+            messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, request.MessageSystemAttributeNames);
+
+            if ((messages is null || messages.Count == 0) && waitTime > TimeSpan.Zero)
+            {
+                // FIFO long polling. FIFO messages live in per-group queues rather than the
+                // channel, so there is no reader to await; instead wait on the queue's FIFO
+                // signal, which is pulsed whenever a message may have become deliverable
+                // (enqueue, visibility expiry, or a delete unlocking a message group). The
+                // timeout is TimeProvider-driven so FakeTimeProvider-based tests still work.
+                using var receiveTimeout = _bus.TimeProvider.CreateCancellationTokenSource(waitTime);
+                using var linkedToken =
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, receiveTimeout.Token);
+                var signalReader = queue.FifoMessageAvailableSignal.Reader;
+
+                while (messages is null || messages.Count == 0)
+                {
+                    try
+                    {
+                        await signalReader.WaitToReadAsync(linkedToken.Token).ConfigureAwait(true);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Wait time elapsed or the caller cancelled; fall through to one
+                        // final check below, mirroring the standard-queue behaviour.
+                    }
+
+                    // Consume the pending pulse (every waiter re-checks the group queues,
+                    // so a lost race here just means another waiter got the message).
+                    while (signalReader.TryRead(out _))
+                    {
+                    }
+
+                    messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, request.MessageSystemAttributeNames);
+
+                    if (linkedToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                }
+            }
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ReceiveMessage, queue.Arn);
@@ -271,14 +320,18 @@ internal sealed class InternalSqsClient
         }
     }
 
-    private void ReceiveMessageImpl(Message message, ref List<Message>? messages, SqsQueueResource queue, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes)
+    /// <returns>
+    /// <see langword="true"/> when the message was delivered to the caller (and is now
+    /// in flight); <see langword="false"/> when it was routed to the dead-letter queue.
+    /// </returns>
+    private bool ReceiveMessageImpl(Message message, ref List<Message>? messages, SqsQueueResource queue, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes)
     {
         if (IsAtMaxReceiveCount(message, queue) && queue.ErrorQueue is not null)
         {
             message.Attributes ??= [];
             message.Attributes[InternalMessageSystemAttributeName.DeadLetterQueueSourceArn] = queue.Arn;
             EnqueueMessage(queue.ErrorQueue, message);
-            return;
+            return false;
         }
         IncrementReceiveCount(message);
 
@@ -302,9 +355,10 @@ internal sealed class InternalSqsClient
 
         queue.InFlightMessages[receiptHandle] = (message,
             new SqsInflightMessageExpirationJob(receiptHandle, queue, visibilityTimeout, _bus.TimeProvider));
+        return true;
     }
 
-    private List<Message>? ReceiveFifoMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes, CancellationToken cancellationToken)
+    private List<Message>? ReceiveFifoMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes)
     {
         List<Message>? messages = null;
 
@@ -316,14 +370,32 @@ internal sealed class InternalSqsClient
             }
 
             var groupId = group.Key;
-            var groupQueue = group.Value;
             var groupLock = queue.MessageGroupLocks.GetOrAdd(groupId, _ => new object());
 
             lock (groupLock)
             {
+                // A group with an in-flight (received-but-not-deleted) message is locked:
+                // real SQS FIFO delivers nothing further from the group until that message
+                // is deleted or its visibility timeout expires, preserving ordering when
+                // consumers process messages concurrently across groups.
+                if (queue.InFlightGroupCounts.TryGetValue(groupId, out var inFlightCount) && inFlightCount > 0)
+                {
+                    continue;
+                }
+
+                // Re-fetch under the lock: visibility-timeout redelivery swaps in a rebuilt
+                // queue instance, so the enumerator's snapshot may be stale.
+                if (!queue.MessageGroups.TryGetValue(groupId, out var groupQueue))
+                {
+                    continue;
+                }
+
                 while (groupQueue.TryDequeue(out var message))
                 {
-                    ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
+                    if (ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes))
+                    {
+                        queue.InFlightGroupCounts.AddOrUpdate(groupId, 1, (_, count) => count + 1);
+                    }
 
                     if (messages is not null && messages.Count >= maxMessages)
                     {
@@ -465,7 +537,8 @@ internal sealed class InternalSqsClient
         return Task.FromResult(new SendMessageResponse
         {
             MessageId = message.MessageId,
-            MD5OfMessageBody = message.MD5OfBody
+            MD5OfMessageBody = message.MD5OfBody,
+            SequenceNumber = message.Attributes?.GetValueOrDefault("SequenceNumber")
         }.SetCommonProperties());
     }
 
@@ -504,7 +577,7 @@ internal sealed class InternalSqsClient
             {
                 throw new InvalidOperationException("Message destined for a FIFO queue must have a MessageGroupId.");
             }
-            EnqueueFifoMessage(targetQueue, groupId, message);
+            targetQueue.EnqueueFifoMessage(groupId, message);
         }
         else
         {
@@ -514,7 +587,7 @@ internal sealed class InternalSqsClient
 
     /// <summary>
     /// Applies FIFO group assignment and (content-based or explicit) deduplication, enqueuing the
-    /// message via <see cref="EnqueueFifoMessage"/> when it is not a duplicate. Shared by the single
+    /// message via <see cref="SqsQueueResource.EnqueueFifoMessage"/> when it is not a duplicate. Shared by the single
     /// and batch send paths so both behave identically for FIFO queues.
     /// </summary>
     /// <returns>
@@ -556,24 +629,9 @@ internal sealed class InternalSqsClient
             }
         }
 
-        EnqueueFifoMessage(queue, messageGroupId, message);
+        queue.EnqueueFifoMessage(messageGroupId, message);
         existingMessageId = message.MessageId!;
         return true;
-    }
-
-    private static void EnqueueFifoMessage(SqsQueueResource queue, string messageGroupId, Message message)
-    {
-        var groupLock = queue.MessageGroupLocks.GetOrAdd(messageGroupId, _ => new object());
-        lock (groupLock)
-        {
-            queue.MessageGroups.AddOrUpdate(messageGroupId,
-                _ => new ConcurrentQueue<Message>([message]),
-                (_, existingQueue) =>
-                {
-                    existingQueue.Enqueue(message);
-                    return existingQueue;
-                });
-        }
     }
 
     private static string GenerateMessageBodyHash(string messageBody)
@@ -763,8 +821,11 @@ internal sealed class InternalSqsClient
         {
             try
             {
-                if (queue.InFlightMessages.TryRemove(entry.ReceiptHandle!, out _))
+                if (queue.InFlightMessages.TryRemove(entry.ReceiptHandle!, out var inFlightInfo))
                 {
+                    var (message, expirationHandler) = inFlightInfo;
+                    FinalizeDeletedMessage(queue, message, expirationHandler);
+
                     response.Successful.Add(new DeleteMessageBatchResultEntry
                     {
                         Id = entry.Id
@@ -1040,6 +1101,10 @@ internal sealed class InternalSqsClient
             expirationHandler.Dispose();
         }
 
+        // FIFO messages live in per-group queues rather than the channel.
+        queue.MessageGroups.Clear();
+        queue.InFlightGroupCounts.Clear();
+
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.PurgeQueue, queue.Arn);
         return Task.FromResult(new PurgeQueueResponse().SetCommonProperties());
     }
@@ -1167,7 +1232,8 @@ internal sealed class InternalSqsClient
             {
                 Id = entry.Id,
                 MessageId = reportedMessageId,
-                MD5OfMessageBody = message.MD5OfBody
+                MD5OfMessageBody = message.MD5OfBody,
+                SequenceNumber = message.Attributes?.GetValueOrDefault("SequenceNumber")
             });
         }
 
