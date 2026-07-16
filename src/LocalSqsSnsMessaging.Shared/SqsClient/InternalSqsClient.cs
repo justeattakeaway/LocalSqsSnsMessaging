@@ -436,51 +436,15 @@ internal sealed class InternalSqsClient
                 throw new InvalidOperationException("MessageGroupId is required for FIFO queues");
             }
 
-            message.Attributes ??= [];
-            message.Attributes["MessageGroupId"] = request.MessageGroupId;
-
-            string? deduplicationId = request.MessageDeduplicationId;
-            if (string.IsNullOrEmpty(deduplicationId))
+            if (!TryEnqueueFifoMessage(queue, message, request.MessageGroupId,
+                    request.MessageDeduplicationId, request.MessageBody!, out var existingMessageId))
             {
-                deduplicationId = GenerateMessageBodyHash(request.MessageBody!);
-            }
-
-            message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
-
-            bool isFairQueue = IsFairQueue(queue);
-            bool isDuplicate;
-
-            if (isFairQueue)
-            {
-                var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
-                    request.MessageGroupId,
-                    _ => new ConcurrentDictionary<string, string>());
-                isDuplicate = !groupDeduplicationIds.TryAdd(deduplicationId, message.MessageId!);
-
-                if (isDuplicate)
+                return Task.FromResult(new SendMessageResponse
                 {
-                    return Task.FromResult(new SendMessageResponse
-                    {
-                        MessageId = groupDeduplicationIds[deduplicationId],
-                        MD5OfMessageBody = message.MD5OfBody
-                    }.SetCommonProperties());
-                }
+                    MessageId = existingMessageId,
+                    MD5OfMessageBody = message.MD5OfBody
+                }.SetCommonProperties());
             }
-            else
-            {
-                isDuplicate = !queue.DeduplicationIds.TryAdd(deduplicationId, message.MessageId!);
-
-                if (isDuplicate)
-                {
-                    return Task.FromResult(new SendMessageResponse
-                    {
-                        MessageId = queue.DeduplicationIds[deduplicationId],
-                        MD5OfMessageBody = message.MD5OfBody
-                    }.SetCommonProperties());
-                }
-            }
-
-            EnqueueFifoMessage(queue, request.MessageGroupId, message);
         }
         else
         {
@@ -546,6 +510,55 @@ internal sealed class InternalSqsClient
         {
             targetQueue.Messages.Writer.TryWrite(message);
         }
+    }
+
+    /// <summary>
+    /// Applies FIFO group assignment and (content-based or explicit) deduplication, enqueuing the
+    /// message via <see cref="EnqueueFifoMessage"/> when it is not a duplicate. Shared by the single
+    /// and batch send paths so both behave identically for FIFO queues.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> when the message was enqueued; <see langword="false"/> when it was a
+    /// duplicate, in which case <paramref name="existingMessageId"/> is the id of the message that
+    /// originally carried the deduplication id.
+    /// </returns>
+    private static bool TryEnqueueFifoMessage(SqsQueueResource queue, Message message, string messageGroupId,
+        string? messageDeduplicationId, string messageBody, out string existingMessageId)
+    {
+        message.Attributes ??= [];
+        message.Attributes["MessageGroupId"] = messageGroupId;
+
+        var deduplicationId = messageDeduplicationId;
+        if (string.IsNullOrEmpty(deduplicationId))
+        {
+            deduplicationId = GenerateMessageBodyHash(messageBody);
+        }
+
+        message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
+
+        if (IsFairQueue(queue))
+        {
+            var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
+                messageGroupId,
+                _ => new ConcurrentDictionary<string, string>());
+            if (!groupDeduplicationIds.TryAdd(deduplicationId, message.MessageId!))
+            {
+                existingMessageId = groupDeduplicationIds[deduplicationId];
+                return false;
+            }
+        }
+        else
+        {
+            if (!queue.DeduplicationIds.TryAdd(deduplicationId, message.MessageId!))
+            {
+                existingMessageId = queue.DeduplicationIds[deduplicationId];
+                return false;
+            }
+        }
+
+        EnqueueFifoMessage(queue, messageGroupId, message);
+        existingMessageId = message.MessageId!;
+        return true;
     }
 
     private static void EnqueueFifoMessage(SqsQueueResource queue, string messageGroupId, Message message)
@@ -1110,21 +1123,50 @@ internal sealed class InternalSqsClient
         {
             var message = CreateMessage(entry.MessageBody!, entry.MessageAttributes, entry.MessageSystemAttributes);
 
-            var entryDelaySeconds = entry.DelaySeconds.GetValueOrDefault();
-            if (entryDelaySeconds > 0)
+            var reportedMessageId = message.MessageId;
+
+            if (queue.IsFifo)
             {
-                message.Attributes!["DelaySeconds"] = entryDelaySeconds.ToString(NumberFormatInfo.InvariantInfo);
-                _ = SendDelayedMessageAsync(queue, message, entryDelaySeconds);
+                if (string.IsNullOrEmpty(entry.MessageGroupId))
+                {
+                    // Matching real SQS, an invalid entry is reported as a per-entry failure rather
+                    // than aborting the whole batch, so valid entries are still enqueued.
+                    response.Failed.Add(new BatchResultErrorEntry
+                    {
+                        Id = entry.Id,
+                        Code = "MissingParameter",
+                        Message = "The request must contain the parameter MessageGroupId.",
+                        SenderFault = true
+                    });
+                    continue;
+                }
+
+                // A duplicate is still reported as successful (matching real SQS), but carries the
+                // id of the message that originally claimed the deduplication id.
+                if (!TryEnqueueFifoMessage(queue, message, entry.MessageGroupId,
+                        entry.MessageDeduplicationId, entry.MessageBody!, out var existingMessageId))
+                {
+                    reportedMessageId = existingMessageId;
+                }
             }
             else
             {
-                queue.Messages.Writer.TryWrite(message);
+                var entryDelaySeconds = entry.DelaySeconds.GetValueOrDefault();
+                if (entryDelaySeconds > 0)
+                {
+                    message.Attributes!["DelaySeconds"] = entryDelaySeconds.ToString(NumberFormatInfo.InvariantInfo);
+                    _ = SendDelayedMessageAsync(queue, message, entryDelaySeconds);
+                }
+                else
+                {
+                    queue.Messages.Writer.TryWrite(message);
+                }
             }
 
             response.Successful.Add(new SendMessageBatchResultEntry
             {
                 Id = entry.Id,
-                MessageId = message.MessageId,
+                MessageId = reportedMessageId,
                 MD5OfMessageBody = message.MD5OfBody
             });
         }
