@@ -115,6 +115,123 @@ public abstract class SqsReceiveMessageAsyncTests : WaitingTestBase
         );
     }
 
+    /// <summary>
+    /// A long poll that is beaten to a message by another waiting receive must hold its call
+    /// open for the rest of its <c>WaitTimeSeconds</c>, the way real SQS does, rather than
+    /// returning an empty response the moment it loses the race.
+    /// </summary>
+    [Test]
+    public async Task ReceiveMessageAsync_LongPollBeatenToAMessage_KeepsWaitingForTheNextOne(CancellationToken cancellationToken)
+    {
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = UniqueName("test-queue") },
+            cancellationToken)).QueueUrl;
+        TrackQueueForTeardown(queueUrl);
+
+        var first = Sqs.ReceiveMessageAsync(
+            new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 20 }, cancellationToken);
+        var second = Sqs.ReceiveMessageAsync(
+            new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 20 }, cancellationToken);
+
+        // Real delay (not WaitAsync): both receives have to actually reach the point of
+        // waiting, which advancing a FakeTimeProvider would not achieve.
+        await Task.Delay(DefaultShortWaitTime, cancellationToken);
+
+        await Sqs.SendMessageAsync(queueUrl, "first", cancellationToken);
+
+        var winner = await Task.WhenAny(first, second);
+        (await winner).Messages.ShouldHaveSingleItem().Body.ShouldBe("first");
+
+        var loser = ReferenceEquals(winner, first) ? second : first;
+
+        // Give the loser every chance to wake up and (wrongly) give up before asserting it
+        // is still waiting.
+        await Task.Delay(DefaultShortWaitTime, cancellationToken);
+        loser.IsCompleted.ShouldBeFalse();
+
+        await Sqs.SendMessageAsync(queueUrl, "second", cancellationToken);
+        (await loser).Messages.ShouldHaveSingleItem().Body.ShouldBe("second");
+    }
+
+    /// <summary>
+    /// Messages arriving one at a time while several consumers are long polling should spread
+    /// across those consumers. Real SQS picks roughly uniformly among whoever is parked; an
+    /// emulator that always hands the message to the same waiter looks functionally identical
+    /// but gives the wrong answer to anything measuring how work spreads across consumers.
+    /// </summary>
+    [Test]
+    public async Task ReceiveMessageAsync_CompetingLongPollingConsumers_ShareTheMessagesBetweenThem(CancellationToken cancellationToken)
+    {
+        const int consumerCount = 4;
+        const int messageCount = 24;
+
+        var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = UniqueName("test-queue") },
+            cancellationToken)).QueueUrl;
+        TrackQueueForTeardown(queueUrl);
+
+        var counts = new int[consumerCount];
+        using var consumed = new SemaphoreSlim(0);
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        var consumers = new Task[consumerCount];
+        for (var i = 0; i < consumerCount; i++)
+        {
+            var consumer = i;
+            consumers[i] = Task.Run(async () =>
+            {
+                while (!stop.IsCancellationRequested)
+                {
+                    ReceiveMessageResponse response;
+                    try
+                    {
+                        response = await Sqs.ReceiveMessageAsync(
+                            new ReceiveMessageRequest { QueueUrl = queueUrl, WaitTimeSeconds = 20 }, stop.Token);
+                    }
+#pragma warning disable CA1031 // Shutting the consumers down cancels their in-flight receive; how that surfaces is not what this test is about.
+                    catch (Exception) when (stop.IsCancellationRequested)
+#pragma warning restore CA1031
+                    {
+                        return;
+                    }
+
+                    if (response.Messages is null) continue;
+
+                    foreach (var message in response.Messages)
+                    {
+                        Interlocked.Increment(ref counts[consumer]);
+                        await Sqs.DeleteMessageAsync(queueUrl, message.ReceiptHandle, stop.Token);
+                        consumed.Release();
+                    }
+                }
+            }, stop.Token);
+        }
+
+        // Let every consumer park on the queue before the first message lands.
+        await Task.Delay(DefaultShortWaitTime, cancellationToken);
+
+        // One message at a time, each fully consumed before the next is sent, so every message
+        // arrives at a queue with consumers waiting on it - the sparse-traffic case where all
+        // the workers are idle.
+        for (var i = 0; i < messageCount; i++)
+        {
+            await Sqs.SendMessageAsync(queueUrl, $"message {i}", cancellationToken);
+            var received = await consumed.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
+            received.ShouldBeTrue($"message {i} was never received");
+        }
+
+        await stop.CancelAsync();
+        await Task.WhenAll(consumers);
+
+        counts.Sum().ShouldBe(messageCount);
+
+        // Deliberately loose: the assertion is about the shape of the distribution, not its
+        // uniformity. Winner-takes-all delivery fails both of these; a fair one clears them
+        // with room to spare (a single consumer taking 17 of 24 has probability ~1e-6).
+        counts.Count(count => count > 0).ShouldBeGreaterThanOrEqualTo(3,
+            $"messages should spread across consumers, but went to [{string.Join(", ", counts)}]");
+        counts.Max().ShouldBeLessThan(17,
+            $"no single consumer should take nearly everything, but counts were [{string.Join(", ", counts)}]");
+    }
+
     [Test, Category(TimeBased)]
     public async Task ReceiveMessageAsync_RespectVisibilityTimeout(CancellationToken cancellationToken)
     {

@@ -222,7 +222,6 @@ internal sealed class InternalSqsClient
             throw new InternalQueueDoesNotExistException ($"Queue '{queueName}' does not exist.");
         }
 
-        var reader = queue.Messages.Reader;
         List<Message>? messages = null;
         var waitTime = TimeSpan.FromSeconds(request.WaitTimeSeconds.GetValueOrDefault());
         var visibilityTimeout =
@@ -246,16 +245,21 @@ internal sealed class InternalSqsClient
             using var linkedToken =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, receiveTimeout.Token);
 
-            try
+            // Keep waiting until this receive is handed a message or its wait time runs out.
+            // Waking to find another consumer got there first is not the end of the poll: real
+            // SQS holds the call open for the rest of WaitTimeSeconds rather than answering
+            // early, so we go round again.
+            while (true)
             {
-                await reader.WaitToReadAsync(linkedToken.Token).ConfigureAwait(true);
-            }
-            catch (OperationCanceledException)
-            {
-                // This could be due to either the overall timeout or the cancellationToken
-            }
+                ReadAvailableMessages();
 
-            ReadAvailableMessages();
+                if (messages is { Count: > 0 } || linkedToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                await queue.Messages.WaitForMessageAsync(linkedToken.Token).ConfigureAwait(true);
+            }
         }
         else
         {
@@ -309,7 +313,7 @@ internal sealed class InternalSqsClient
 
         void ReadAvailableMessages()
         {
-            while (reader.TryRead(out var message))
+            while (queue.Messages.TryDequeue(out var message))
             {
                 ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, request.MessageSystemAttributeNames);
                 if (messages is not null && messages.Count >= (request.MaxNumberOfMessages ?? 1))
@@ -529,7 +533,7 @@ internal sealed class InternalSqsClient
             }
             else
             {
-                queue.Messages.Writer.TryWrite(message);
+                queue.Messages.Enqueue(message);
             }
         }
 
@@ -581,7 +585,7 @@ internal sealed class InternalSqsClient
         }
         else
         {
-            targetQueue.Messages.Writer.TryWrite(message);
+            targetQueue.Messages.Enqueue(message);
         }
     }
 
@@ -716,7 +720,7 @@ internal sealed class InternalSqsClient
     private async Task SendDelayedMessageAsync(SqsQueueResource queue, Message message, int delaySeconds)
     {
         await _bus.TimeProvider.Delay(TimeSpan.FromSeconds(delaySeconds)).ConfigureAwait(true);
-        queue.Messages.Writer.TryWrite(message);
+        queue.Messages.Enqueue(message);
     }
 
     public Task<CancelMessageMoveTaskResponse> CancelMessageMoveTaskAsync(CancelMessageMoveTaskRequest request,
@@ -920,7 +924,7 @@ internal sealed class InternalSqsClient
 
     private static void AddComputedAttributes(SqsQueueResource queue, Dictionary<string, string> attributes)
     {
-        attributes[InternalQueueAttributeName.ApproximateNumberOfMessages] = queue.Messages.Reader.Count.ToString(NumberFormatInfo.InvariantInfo);
+        attributes[InternalQueueAttributeName.ApproximateNumberOfMessages] = queue.Messages.Count.ToString(NumberFormatInfo.InvariantInfo);
         attributes[InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible] = queue.InFlightMessages.Count.ToString(NumberFormatInfo.InvariantInfo);
         attributes[InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed] = "0";
     }
@@ -929,7 +933,7 @@ internal sealed class InternalSqsClient
     {
         if (attributeName == InternalQueueAttributeName.ApproximateNumberOfMessages)
         {
-            attributes[attributeName] = queue.Messages.Reader.Count.ToString(NumberFormatInfo.InvariantInfo);
+            attributes[attributeName] = queue.Messages.Count.ToString(NumberFormatInfo.InvariantInfo);
         }
         else if (attributeName == InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible)
         {
@@ -1088,9 +1092,7 @@ internal sealed class InternalSqsClient
             throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
-        while (queue.Messages.Reader.TryRead(out _))
-        {
-        }
+        queue.Messages.Clear();
 
         var inflightMessageReceipts = queue.InFlightMessages.Keys.ToList();
 
@@ -1224,7 +1226,7 @@ internal sealed class InternalSqsClient
                 }
                 else
                 {
-                    queue.Messages.Writer.TryWrite(message);
+                    queue.Messages.Enqueue(message);
                 }
             }
 
@@ -1343,7 +1345,7 @@ internal sealed class InternalSqsClient
             }
         }
 
-        var approximateNumberOfMessages = sourceQueue.Messages.Reader.Count;
+        var approximateNumberOfMessages = sourceQueue.Messages.Count;
 
         var taskHandle = Guid.NewGuid().ToString();
         var moveTask = new SqsMoveTask

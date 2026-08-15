@@ -119,7 +119,7 @@ internal static class EventBridgeEventDelivery
         }
         else
         {
-            queue.Messages.Writer.TryWrite(message);
+            queue.Messages.Enqueue(message);
         }
     }
 
