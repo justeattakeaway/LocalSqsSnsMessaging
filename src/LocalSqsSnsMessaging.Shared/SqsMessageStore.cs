@@ -3,17 +3,19 @@
 // which is licensed to the .NET Foundation under the MIT license.
 //
 // The structure is the original's: a ConcurrentQueue holding the items, a lock taken on that
-// queue guarding an intrusive linked list of parked readers, and writers handing a wake-up to a
-// reader from inside that lock. What changed is who gets woken, and what they are woken to do:
+// queue guarding an intrusive linked list of parked readers, and writers handing work to a
+// reader from inside that lock. What changed is who gets woken, and what they are woken with:
 //
 //   - UnboundedChannel has two reader lists. ReadAsync parks on the blocked-reader list and a
 //     write hands the item to exactly one of them; WaitToReadAsync parks on the waiting-reader
-//     list and a write wakes every one of them to race for the item. A receive wants up to
-//     MaxNumberOfMessages messages and may reject one it pulls (routing it to a dead-letter
-//     queue instead), so it cannot use ReadAsync's take-exactly-one hand-off - it has to be on
-//     the broadcast list, where the winner of the race is decided by continuation scheduling.
-//     Over HTTP that order can settle, and one consumer takes every message. Here there is a
-//     single list, and a write wakes exactly one parked receive, chosen at random.
+//     list and a write wakes every one of them to race for the item. Racing is what this store
+//     exists to avoid - over HTTP the continuation scheduling that decides the race can settle,
+//     and one consumer takes every message - so an enqueue uses the hand-off model: the message
+//     itself is given to exactly one parked receive, chosen at random rather than in the
+//     original's strict order. The message never touches the item queue on that path, so no
+//     other consumer can take it out from under the receive it was given to. A receive that
+//     wants more than one message tops up from the item queue after its hand-off, and one that
+//     rejects its message (routing it to a dead-letter queue instead) just waits again.
 //   - Completion has no meaning for a queue that lives as long as its resource, so the
 //     _doneWriting / Completion machinery is gone, and with it the failure paths on write.
 //   - Parked receives use a TaskCompletionSource rather than the original's pooled
@@ -32,8 +34,10 @@ namespace LocalSqsSnsMessaging;
 /// rather than shared out between consumers.
 /// </summary>
 /// <remarks>
-/// Enqueuing is the only way in, and it always wakes a parked receive, so no delivery path can
-/// add a message that waiting consumers sleep through.
+/// Enqueuing is the only way in. It hands the message to a parked receive when there is one,
+/// and only otherwise adds it to the waiting messages; parking re-checks the waiting messages
+/// under the same lock. So a message is either owned by exactly one receive or visible to any,
+/// and no delivery path can add one that waiting consumers sleep through.
 /// </remarks>
 internal sealed class SqsMessageStore
 {
@@ -59,24 +63,31 @@ internal sealed class SqsMessageStore
     public int Count => _items.Count;
 
     /// <summary>
-    /// Adds a message and wakes one parked receive, chosen at random.
+    /// Hands the message to one parked receive, chosen at random; when none is parked, adds it
+    /// to the waiting messages instead.
     /// </summary>
     public void Enqueue(Message message)
     {
-        Waiter? woken;
         lock (SyncObj)
         {
+            // The hand-off is the message itself, not a bare wake-up. Waking a receive and
+            // leaving the message in _items for it to collect would let any other consumer
+            // take it first, putting the woken receive back into exactly the race this store
+            // exists to remove. TryHand fails only when the receive was cancelled just before
+            // the hand-off; it is already on its way out, so pick another.
+            //
+            // Completing the waiter inside the lock is safe: its continuation is scheduled to
+            // the pool (RunContinuationsAsynchronously), never run inline here.
+            while (TryTakeRandomWaiter() is { } waiter)
+            {
+                if (waiter.TryHand(message))
+                {
+                    return;
+                }
+            }
+
             _items.Enqueue(message);
-
-            // Taken out of the list here, under the same lock that added the message, so the
-            // wake-up belongs to this receive alone and no other consumer races it for the
-            // message. If that receive gives up before taking it, Depart hands the wake-up on.
-            woken = TryTakeRandomWaiter();
         }
-
-        // Outside the lock: waking a receive runs its continuation, which comes straight back
-        // into this store to drain the message.
-        woken?.Wake();
     }
 
     public bool TryDequeue(out Message message)
@@ -85,31 +96,34 @@ internal sealed class SqsMessageStore
     }
 
     /// <summary>
-    /// Waits until a message may be available for this receive to take, or until
-    /// <paramref name="cancellationToken"/> fires - which for a long poll means its
-    /// <c>WaitTimeSeconds</c> elapsed, or the caller gave up. Cancellation is not an error here:
-    /// the receive simply looks once more and returns whatever it has, so this returns rather
-    /// than throwing.
+    /// Waits until a message is handed to this receive - returned for it alone to deliver - or
+    /// until <paramref name="cancellationToken"/> fires, which for a long poll means its
+    /// <c>WaitTimeSeconds</c> elapsed, or the caller gave up; then this returns
+    /// <see langword="null"/>. Cancellation is not an error here: the receive simply looks once
+    /// more and returns whatever it has, so this returns rather than throwing.
     /// </summary>
     /// <remarks>
-    /// A receive that wakes to find another consumer got there first can call this again to wait
-    /// out the rest of its wait time; real SQS holds the call open rather than answering early.
+    /// A <see langword="null"/> return can also mean messages were already waiting, so parking
+    /// would have slept through them; the caller drains the queue and, beaten to those messages
+    /// by another consumer, can call this again to wait out the rest of its wait time - real
+    /// SQS holds the call open rather than answering early.
     /// </remarks>
-    public async Task WaitForMessageAsync(CancellationToken cancellationToken)
+    public async Task<Message?> WaitForMessageAsync(CancellationToken cancellationToken)
     {
         if (!_items.IsEmpty || cancellationToken.IsCancellationRequested)
         {
-            return;
+            return null;
         }
 
         Waiter waiter;
         lock (SyncObj)
         {
-            // Re-checked under the lock: a message enqueued since the check above has already
-            // handed its wake-up to someone, so parking now would be sleeping through it.
+            // Re-checked under the lock: a message enqueued since the check above went into
+            // the queue only because nobody was parked to hand it to, so parking now would be
+            // sleeping through it.
             if (!_items.IsEmpty)
             {
-                return;
+                return null;
             }
 
             waiter = new Waiter();
@@ -118,14 +132,20 @@ internal sealed class SqsMessageStore
 
         try
         {
-            using (cancellationToken.Register(static state => ((Waiter)state!).Wake(), waiter))
+            using (cancellationToken.Register(static state => ((Waiter)state!).WakeEmpty(), waiter))
             {
-                await waiter.Woken.ConfigureAwait(true);
+                return await waiter.Handed.ConfigureAwait(true);
             }
         }
         finally
         {
-            Depart(waiter);
+            lock (SyncObj)
+            {
+                // No-op when an enqueue handed this receive a message, since the hand-off
+                // already took it out of the list; this is for the receive that was cancelled
+                // while still parked.
+                Unlink(waiter);
+            }
         }
     }
 
@@ -145,7 +165,10 @@ internal sealed class SqsMessageStore
             // ConcurrentQueue has no remove, so rotate the queue: everything comes off and goes
             // back except the message being dropped. A concurrent receive can dequeue from under
             // this, which is fine - it is taking a message that was going to be delivered
-            // anyway, and a dashboard delete racing a receive has no better answer.
+            // anyway, and a dashboard delete racing a receive has no better answer. Bypassing
+            // Enqueue for the re-add is also fine: these messages were already in _items, which
+            // means nobody was parked when they arrived, and nobody can park mid-rotation
+            // because parking takes this same lock.
             var count = _items.Count;
             for (var i = 0; i < count; i++)
             {
@@ -164,9 +187,6 @@ internal sealed class SqsMessageStore
             }
         }
 
-        // The rotation put messages back without going through Enqueue, so nothing was woken for
-        // them; a receive that parked while the queue was mid-rotation needs telling.
-        WakeOneIfMessagesWaiting();
         return removed;
     }
 
@@ -179,36 +199,6 @@ internal sealed class SqsMessageStore
             {
             }
         }
-    }
-
-    /// <summary>
-    /// Called when a receive stops waiting. If it was the one a message was handed to but it
-    /// timed out (or was cancelled) before taking it, that wake-up died with it, so pass one on
-    /// to another parked receive rather than leave the message sitting behind consumers that are
-    /// still waiting.
-    /// </summary>
-    private void Depart(Waiter waiter)
-    {
-        lock (SyncObj)
-        {
-            Unlink(waiter);
-        }
-
-        WakeOneIfMessagesWaiting();
-    }
-
-    private void WakeOneIfMessagesWaiting()
-    {
-        Waiter? woken = null;
-        lock (SyncObj)
-        {
-            if (!_items.IsEmpty)
-            {
-                woken = TryTakeRandomWaiter();
-            }
-        }
-
-        woken?.Wake();
     }
 
     /// <summary>
@@ -302,17 +292,26 @@ internal sealed class SqsMessageStore
     /// <summary>
     /// One receive parked on this store. Doubles as its own list node, so parking costs no more
     /// than the waiter itself. <see cref="Next"/> and <see cref="IsLinked"/> are only touched
-    /// under <see cref="SyncObj"/>; <see cref="Wake"/> is safe to call from anywhere.
+    /// under <see cref="SyncObj"/>; completing the task is safe from anywhere, and first
+    /// completion wins - a message handed over, or <see langword="null"/> from cancellation.
     /// </summary>
     private sealed class Waiter
     {
-        private readonly TaskCompletionSource<bool> _woken = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<Message?> _handed = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Waiter? Next;
         public bool IsLinked;
 
-        public Task Woken => _woken.Task;
+        public Task<Message?> Handed => _handed.Task;
 
-        public void Wake() => _woken.TrySetResult(true);
+        /// <summary>
+        /// Gives this receive the message, which is now its alone to deliver.
+        /// <see langword="false"/> when the receive was already cancelled, in which case the
+        /// message is still the caller's to place.
+        /// </summary>
+        public bool TryHand(Message message) => _handed.TrySetResult(message);
+
+        /// <summary>Wakes this receive with nothing, on cancellation.</summary>
+        public void WakeEmpty() => _handed.TrySetResult(null);
     }
 }

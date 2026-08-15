@@ -246,9 +246,9 @@ internal sealed class InternalSqsClient
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, receiveTimeout.Token);
 
             // Keep waiting until this receive is handed a message or its wait time runs out.
-            // Waking to find another consumer got there first is not the end of the poll: real
-            // SQS holds the call open for the rest of WaitTimeSeconds rather than answering
-            // early, so we go round again.
+            // Being beaten to the waiting messages by another consumer is not the end of the
+            // poll: real SQS holds the call open for the rest of WaitTimeSeconds rather than
+            // answering early, so we go round again.
             while (true)
             {
                 ReadAvailableMessages();
@@ -258,7 +258,14 @@ internal sealed class InternalSqsClient
                     break;
                 }
 
-                await queue.Messages.WaitForMessageAsync(linkedToken.Token).ConfigureAwait(true);
+                var handedMessage = await queue.Messages.WaitForMessageAsync(linkedToken.Token).ConfigureAwait(true);
+                if (handedMessage is not null)
+                {
+                    // Handed to this receive alone; no other consumer raced us for it. If it
+                    // was due for the dead-letter queue instead of delivery, the next loop
+                    // iteration goes back to waiting.
+                    ReceiveMessageImpl(handedMessage, ref messages, queue, visibilityTimeout, request.MessageSystemAttributeNames);
+                }
             }
         }
         else
