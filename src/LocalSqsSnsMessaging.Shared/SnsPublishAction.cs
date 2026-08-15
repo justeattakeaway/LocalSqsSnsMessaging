@@ -71,7 +71,7 @@ internal sealed class SnsPublishAction
             }
             else
             {
-                queue.Messages.Writer.TryWrite(sqsMessage);
+                queue.Messages.Enqueue(sqsMessage);
             }
         }
 
@@ -139,10 +139,7 @@ internal sealed class SnsPublishAction
         {
             var sqsMessage = CreateSqsMessage(entry, topicArn, messageId, subscription);
 
-            if (!queue.Messages.Writer.TryWrite(sqsMessage))
-            {
-                throw new InvalidOperationException("Failed to write message to queue.");
-            }
+            queue.Messages.Enqueue(sqsMessage);
         }
     }
 

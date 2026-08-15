@@ -19,7 +19,7 @@ internal sealed class SqsQueueResource
     public int? MaxReceiveCount { get; set; }
     public Dictionary<string, string>? Attributes { get; set; }
     public Dictionary<string, string>? Tags { get; set; }
-    public Channel<Message> Messages { get; } = Channel.CreateUnbounded<Message>();
+    public SqsMessageStore Messages { get; } = new();
     public ConcurrentDictionary<string, (Message, SqsInflightMessageExpirationJob)> InFlightMessages { get; } = new();
     public ConcurrentDictionary<string, ConcurrentQueue<Message>> MessageGroups { get; } = new();
     public ConcurrentDictionary<string, object> MessageGroupLocks { get; } = new();
@@ -37,11 +37,12 @@ internal sealed class SqsQueueResource
 
     /// <summary>
     /// Wake-up signal for FIFO long polling. FIFO messages live in per-group queues rather
-    /// than the <see cref="Messages"/> channel, so a waiting receive has no channel reader
-    /// to await; instead it waits on this channel, which is pulsed whenever a message may
-    /// have become deliverable (enqueue, redelivery, or a delete unlocking a group).
-    /// Bounded at 1 with DropWrite: a single pending item is enough to wake all waiters,
-    /// and every waiter re-checks the actual group queues after waking.
+    /// than in <see cref="Messages"/>, so a waiting receive has nothing there to park on;
+    /// instead it waits on this channel, which is pulsed whenever a message may have become
+    /// deliverable (enqueue, redelivery, or a delete unlocking a group). Unlike a standard
+    /// queue, which hands a message to one waiting receive, this wakes every waiter: whether
+    /// a given receive can take anything depends on which groups are locked, so they all have
+    /// to re-check. Bounded at 1 with DropWrite, since one pending pulse wakes everyone.
     /// </summary>
     public Channel<bool> FifoMessageAvailableSignal { get; } = Channel.CreateBounded<bool>(
         new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
@@ -98,7 +99,7 @@ internal sealed class SqsQueueResource
 
         if (string.IsNullOrEmpty(groupId))
         {
-            Messages.Writer.TryWrite(message);
+            Messages.Enqueue(message);
             return;
         }
 

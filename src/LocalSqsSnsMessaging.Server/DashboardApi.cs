@@ -1,9 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Threading.Channels;
 using LocalSqsSnsMessaging.Sns.Model;
 using LocalSqsSnsMessaging.Sqs.Model;
 using Microsoft.AspNetCore.Http;
@@ -38,7 +36,8 @@ internal static class DashboardApi
         var result = new QueueMessages
         {
             QueueName = queue.Name,
-            PendingMessages = PeekChannelMessages(queue.Messages),
+            PendingMessages = queue.Messages.Snapshot()
+                .Select(m => ToMessageInfo(m, inFlight: false)).ToList(),
             InFlightMessages = queue.InFlightMessages.Values
                 .Select(pair => ToMessageInfo(pair.Item1, inFlight: true))
                 .ToList()
@@ -106,7 +105,7 @@ internal static class DashboardApi
                 Arn = q.Arn,
                 Url = q.Url,
                 IsFifo = q.IsFifo,
-                MessagesAvailable = q.Messages.Reader.Count,
+                MessagesAvailable = q.Messages.Count,
                 MessagesInFlight = q.InFlightMessages.Count,
                 VisibilityTimeoutSeconds = (int)q.VisibilityTimeout.TotalSeconds,
                 HasDeadLetterQueue = q.ErrorQueue is not null,
@@ -181,7 +180,7 @@ internal static class DashboardApi
         }
 
         // Try removing from pending messages (drain and re-enqueue without the target)
-        if (RemoveFromChannel(queue.Messages, messageId))
+        if (queue.Messages.TryRemove(messageId))
         {
             bus.RecordOperation("Dashboard", "DeleteMessage", queue.Arn);
             return Results.NoContent();
@@ -283,46 +282,6 @@ internal static class DashboardApi
         return Results.Json(
             new PublishTopicResponse { MessageId = response.MessageId! },
             DashboardJsonContext.Default.PublishTopicResponse);
-    }
-
-    [DynamicDependency("_items", "System.Threading.Channels.UnboundedChannel`1", "System.Threading.Channels")]
-    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "DynamicDependency preserves _items field")]
-    private static bool RemoveFromChannel(Channel<Message> channel, string messageId)
-    {
-        var itemsField = channel.GetType().GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance);
-
-        if (itemsField?.GetValue(channel) is ConcurrentQueue<Message> queue)
-        {
-            var count = queue.Count;
-            for (var i = 0; i < count; i++)
-            {
-                if (queue.TryDequeue(out var msg))
-                {
-                    if (msg.MessageId == messageId)
-                    {
-                        return true;
-                    }
-
-                    queue.Enqueue(msg);
-                }
-            }
-        }
-
-        return false;
-    }
-
-    [DynamicDependency("_items", "System.Threading.Channels.UnboundedChannel`1", "System.Threading.Channels")]
-    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "DynamicDependency preserves _items field")]
-    private static List<MessageInfo> PeekChannelMessages(Channel<Message> channel)
-    {
-        var itemsField = channel.GetType().GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance);
-
-        if (itemsField?.GetValue(channel) is ConcurrentQueue<Message> queue)
-        {
-            return queue.Select(m => ToMessageInfo(m, inFlight: false)).ToList();
-        }
-
-        return [];
     }
 
     private static MessageInfo ToMessageInfo(Message msg, bool inFlight, string? messageGroupId = null)

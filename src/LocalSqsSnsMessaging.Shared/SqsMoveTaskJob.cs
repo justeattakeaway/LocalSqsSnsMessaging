@@ -15,7 +15,7 @@ internal sealed class SqsMoveTaskJob : IDisposable
     {
         var (sourceQueue, destinationQueue, bus, rateLimitPerSecond, taskHandle) = ((SqsQueueResource, SqsQueueResource?, InMemoryAwsBus, int?, string))state!;
         var messagesMoveThisIteration = 0;
-        while (sourceQueue.Messages.Reader.TryRead(out var message))
+        while (sourceQueue.Messages.TryDequeue(out var message))
         {
             if (rateLimitPerSecond is not null && messagesMoveThisIteration >= rateLimitPerSecond)
                 break;
@@ -23,7 +23,7 @@ internal sealed class SqsMoveTaskJob : IDisposable
             var newMessage = CloneNewMessage(message);
             if (destinationQueue is not null)
             {
-                destinationQueue.Messages.Writer.TryWrite(newMessage);
+                destinationQueue.Messages.Enqueue(newMessage);
             }
             else
             {
@@ -34,7 +34,7 @@ internal sealed class SqsMoveTaskJob : IDisposable
                     {
                         continue;
                     }
-                    deadLetterSourceQueue.Messages.Writer.TryWrite(newMessage);
+                    deadLetterSourceQueue.Messages.Enqueue(newMessage);
                 }
             }
             messagesMoveThisIteration++;
