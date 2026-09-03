@@ -70,7 +70,7 @@ internal sealed class InternalSnsClient
             ["Owner"] = _bus.CurrentAccountId,
             ["ConfirmationWasAuthenticated"] = "false",
             ["IsAuthenticated"] = "false",
-            ["PendingConfirmation"] = "false",
+            ["PendingConfirmation"] = subscription.PendingConfirmation ? "true" : "false",
             ["RawMessageDelivery"] = subscription.Raw.ToString(),
             ["FilterPolicy"] = subscription.FilterPolicy
         };
@@ -127,7 +127,7 @@ internal sealed class InternalSnsClient
         var allSubscriptions = _bus.Subscriptions.Values
             .Select(s => new Subscription
             {
-                SubscriptionArn = s.SubscriptionArn,
+                SubscriptionArn = s.PendingConfirmation ? "PendingConfirmation" : s.SubscriptionArn,
                 TopicArn = s.TopicArn,
                 Protocol = s.Protocol,
                 Endpoint = s.EndPoint,
@@ -167,7 +167,7 @@ internal sealed class InternalSnsClient
             .Where(s => string.Equals(s.TopicArn, request.TopicArn, StringComparison.OrdinalIgnoreCase))
             .Select(s => new Subscription
             {
-                SubscriptionArn = s.SubscriptionArn,
+                SubscriptionArn = s.PendingConfirmation ? "PendingConfirmation" : s.SubscriptionArn,
                 TopicArn = s.TopicArn,
                 Protocol = s.Protocol,
                 Endpoint = s.EndPoint,
@@ -349,6 +349,11 @@ internal sealed class InternalSnsClient
             throw new InternalNotFoundException("Topic not found.");
         }
 
+        if (request.AttributeName.Equals("DeliveryPolicy", StringComparison.OrdinalIgnoreCase))
+        {
+            SnsDeliveryPolicy.Validate(request.AttributeValue);
+        }
+
         topic.Attributes[request.AttributeName] = request.AttributeValue;
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetTopicAttributes, topic.Arn);
         return Task.FromResult(new SetTopicAttributesResponse().SetCommonProperties());
@@ -391,7 +396,9 @@ internal sealed class InternalSnsClient
             EndPoint = request.Endpoint,
             Protocol = protocol,
             Raw = false,
-            FilterPolicy = string.Empty
+            FilterPolicy = string.Empty,
+            // HTTP/S endpoints have to confirm before they receive anything, as on AWS.
+            PendingConfirmation = protocol is "http" or "https"
         };
 
         // Apply the scope before the policy so a nested (body-scoped) policy validates correctly.
@@ -416,15 +423,16 @@ internal sealed class InternalSnsClient
 
         if (snsSubscription.IsHttp)
         {
-            // Subscriptions are confirmed immediately; the handshake message is still sent so
-            // endpoints written against real SNS see the same traffic.
             SnsHttpDelivery.SendSubscriptionConfirmation(_bus, snsSubscription);
         }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Subscribe, request.TopicArn);
         return Task.FromResult(new SubscribeResponse
         {
-            SubscriptionArn = snsSubscription.SubscriptionArn
+            // AWS only hands back the ARN of an unconfirmed subscription when asked to.
+            SubscriptionArn = snsSubscription.PendingConfirmation && request.ReturnSubscriptionArn != true
+                ? "pending confirmation"
+                : snsSubscription.SubscriptionArn
         }.SetCommonProperties());
     }
 
@@ -552,8 +560,6 @@ internal sealed class InternalSnsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        // Subscriptions are confirmed as soon as they're created, so this only has to recognise
-        // the token that was sent in the SubscriptionConfirmation message.
         var subscription = _bus.Subscriptions.Values.FirstOrDefault(s =>
             string.Equals(s.TopicArn, request.TopicArn, StringComparison.Ordinal) &&
             string.Equals(s.ConfirmationToken, request.Token, StringComparison.Ordinal));
@@ -561,6 +567,12 @@ internal sealed class InternalSnsClient
         if (subscription is null)
         {
             throw new InternalInvalidParameterException("Invalid parameter: Token");
+        }
+
+        if (subscription.PendingConfirmation)
+        {
+            subscription.PendingConfirmation = false;
+            SnsPublishActionFactory.UpdateTopicPublishAction(subscription.TopicArn, _bus);
         }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ConfirmSubscription, subscription.SubscriptionArn);

@@ -176,7 +176,7 @@ internal sealed class SnsPublishAction
                 }
             }
 
-            DeadLetter(subscription, message);
+            DeadLetter(subscription, message, body);
         }
 #pragma warning disable CA1031 // Background delivery must never surface an exception to the publisher.
         catch (Exception)
@@ -188,16 +188,18 @@ internal sealed class SnsPublishAction
 
     /// <summary>
     /// Sends a message that couldn't be delivered to the subscription's dead-letter queue, if it has one.
-    /// The DLQ receives exactly what the endpoint would have (raw body or SNS envelope).
+    /// The DLQ receives exactly what the endpoint would have: <paramref name="deliveredBody"/> is the
+    /// body that was actually attempted (so the envelope's timestamp isn't regenerated), or is built
+    /// fresh when no attempt was made.
     /// </summary>
-    private void DeadLetter(SnsSubscription subscription, OutboundMessage message)
+    private void DeadLetter(SnsSubscription subscription, OutboundMessage message, string? deliveredBody = null)
     {
         if (subscription.DeadLetterTargetArn is null || !TryGetQueue(subscription.DeadLetterTargetArn, out var deadLetterQueue))
         {
             return;
         }
 
-        Enqueue(deadLetterQueue, CreateSqsMessage(subscription, message), message);
+        Enqueue(deadLetterQueue, CreateSqsMessage(subscription, message, deliveredBody), message);
     }
 
     private bool TryGetQueue(string arn, out SqsQueueResource queue)
@@ -259,11 +261,11 @@ internal sealed class SnsPublishAction
                throughputLimit == "perMessageGroupId";
     }
 
-    private Message CreateSqsMessage(SnsSubscription subscription, OutboundMessage message)
+    private Message CreateSqsMessage(SnsSubscription subscription, OutboundMessage message, string? body = null)
     {
         var sqsMessage = subscription.Raw
-            ? CreateRawSqsMessage(message.Body, message.Attributes)
-            : CreateFormattedMessage(CreateSnsEnvelope(subscription, message), message.TopicArn);
+            ? CreateRawSqsMessage(body ?? message.Body, message.Attributes)
+            : CreateFormattedMessage(body ?? CreateSnsEnvelope(subscription, message).ToJsonString(), message.TopicArn);
 
         sqsMessage.MessageId = Guid.NewGuid().ToString();
 
@@ -330,11 +332,11 @@ internal sealed class SnsPublishAction
         return snsMessage;
     }
 
-    private static Message CreateFormattedMessage(JsonNode snsMessage, string topicArn)
+    private static Message CreateFormattedMessage(string envelope, string topicArn)
     {
         return new Message
         {
-            Body = snsMessage.ToJsonString(),
+            Body = envelope,
             MessageAttributes = new Dictionary<string, SqsMessageAttributeValue>
             {
                 ["TopicArn"] = new()

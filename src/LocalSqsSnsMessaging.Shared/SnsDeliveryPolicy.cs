@@ -45,41 +45,68 @@ internal sealed class SnsDeliveryPolicy
     }
 
     /// <summary>
-    /// Resolves the effective policy. The subscription-level policy wins; otherwise the topic-level
-    /// policy applies; otherwise the AWS defaults (3 retries, 20 seconds apart, linear).
+    /// Resolves the effective policy. Topic-level policies use the AWS topic shape
+    /// (<c>{"http": {"defaultHealthyRetryPolicy": ..., "defaultRequestPolicy": ..., "disableSubscriptionOverrides": ...}}</c>)
+    /// and set the baseline; the subscription-level policy (<c>{"healthyRetryPolicy": ..., "requestPolicy": ...}</c>)
+    /// then overrides it unless the topic disables overrides. With neither, the AWS defaults apply
+    /// (3 retries, 20 seconds apart, linear).
     /// </summary>
     public static SnsDeliveryPolicy Resolve(string? subscriptionPolicy, string? topicPolicy)
     {
-        var json = Parse(subscriptionPolicy) ?? Parse(topicPolicy);
-        if (json is null)
+        var topic = Parse(topicPolicy)?["http"] as JsonObject;
+        var subscription = Parse(subscriptionPolicy);
+        if (topic is null && subscription is null)
         {
             return Default;
         }
 
         var policy = new SnsDeliveryPolicy();
-        if (json["healthyRetryPolicy"] is JsonObject retry)
+        var overridesDisabled = false;
+        if (topic is not null)
         {
-            policy.NumRetries = Clamp(GetInt(retry, "numRetries") ?? policy.NumRetries, 0, 100);
-            policy.NumNoDelayRetries = Math.Max(0, GetInt(retry, "numNoDelayRetries") ?? 0);
-            policy.NumMinDelayRetries = Math.Max(0, GetInt(retry, "numMinDelayRetries") ?? 0);
-            policy.NumMaxDelayRetries = Math.Max(0, GetInt(retry, "numMaxDelayRetries") ?? 0);
-            policy.MinDelayTargetSeconds = Clamp(GetInt(retry, "minDelayTarget") ?? policy.MinDelayTargetSeconds, 1, 3600);
-            policy.MaxDelayTargetSeconds = Clamp(GetInt(retry, "maxDelayTarget") ?? policy.MaxDelayTargetSeconds, policy.MinDelayTargetSeconds, 3600);
-            if (retry["backoffFunction"] is JsonValue backoff && backoff.TryGetValue<string>(out var function))
-            {
-                policy.BackoffFunction = function;
-            }
+            policy.ApplyRetryPolicy(topic["defaultHealthyRetryPolicy"] as JsonObject);
+            policy.ApplyRequestPolicy(topic["defaultRequestPolicy"] as JsonObject);
+            overridesDisabled = topic["disableSubscriptionOverrides"] is JsonValue disable &&
+                                (disable.TryGetValue<bool>(out var b) ? b
+                                    : disable.TryGetValue<string>(out var s) && bool.TryParse(s, out var parsed) && parsed);
         }
 
-        if (json["requestPolicy"] is JsonObject request &&
-            request["headerContentType"] is JsonValue contentType &&
-            contentType.TryGetValue<string>(out var header) &&
-            !string.IsNullOrWhiteSpace(header))
+        if (subscription is not null && !overridesDisabled)
         {
-            policy.ContentType = header;
+            policy.ApplyRetryPolicy(subscription["healthyRetryPolicy"] as JsonObject);
+            policy.ApplyRequestPolicy(subscription["requestPolicy"] as JsonObject);
         }
 
         return policy;
+    }
+
+    private void ApplyRetryPolicy(JsonObject? retry)
+    {
+        if (retry is null)
+        {
+            return;
+        }
+
+        NumRetries = Clamp(GetInt(retry, "numRetries") ?? NumRetries, 0, 100);
+        NumNoDelayRetries = Math.Max(0, GetInt(retry, "numNoDelayRetries") ?? NumNoDelayRetries);
+        NumMinDelayRetries = Math.Max(0, GetInt(retry, "numMinDelayRetries") ?? NumMinDelayRetries);
+        NumMaxDelayRetries = Math.Max(0, GetInt(retry, "numMaxDelayRetries") ?? NumMaxDelayRetries);
+        MinDelayTargetSeconds = Clamp(GetInt(retry, "minDelayTarget") ?? MinDelayTargetSeconds, 1, 3600);
+        MaxDelayTargetSeconds = Clamp(GetInt(retry, "maxDelayTarget") ?? MaxDelayTargetSeconds, MinDelayTargetSeconds, 3600);
+        if (retry["backoffFunction"] is JsonValue backoff && backoff.TryGetValue<string>(out var function))
+        {
+            BackoffFunction = function;
+        }
+    }
+
+    private void ApplyRequestPolicy(JsonObject? request)
+    {
+        if (request?["headerContentType"] is JsonValue contentType &&
+            contentType.TryGetValue<string>(out var header) &&
+            !string.IsNullOrWhiteSpace(header))
+        {
+            ContentType = header;
+        }
     }
 
     /// <summary>

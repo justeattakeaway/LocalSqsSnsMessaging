@@ -37,6 +37,14 @@ internal sealed class AwsBridgeMiddleware
             var bodyBuffer = ms.GetBuffer();
             var bodyLength = (int)ms.Length;
 
+            // A GET with the parameters in the query string (e.g. an SNS SubscribeURL) is a valid
+            // Query-protocol request; present the query to the handler as if it were the body.
+            if (bodyLength == 0 && context.Request.QueryString.HasValue)
+            {
+                bodyBuffer = Encoding.UTF8.GetBytes(context.Request.QueryString.Value!.TrimStart('?'));
+                bodyLength = bodyBuffer.Length;
+            }
+
             try
             {
                 context.Response.Headers["x-amzn-RequestId"] = Guid.NewGuid().ToString();

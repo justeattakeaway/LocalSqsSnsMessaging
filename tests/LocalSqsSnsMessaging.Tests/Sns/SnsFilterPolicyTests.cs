@@ -27,6 +27,11 @@ public class SnsFilterPolicyTests
     [Arguments("""{"colour": [{"prefix": "bl"}]}""", "colour", "String", "blue", true)]
     [Arguments("""{"colour": [{"suffix": "ue"}]}""", "colour", "String", "blue", true)]
     [Arguments("""{"colour": [{"equals-ignore-case": "BLUE"}]}""", "colour", "String", "blue", true)]
+    [Arguments("""{"colour": [{"wildcard": "b*e"}]}""", "colour", "String", "blue", true)]
+    [Arguments("""{"colour": [{"wildcard": "b*e"}]}""", "colour", "String", "red", false)]
+    [Arguments("""{"colour": [{"anything-but": {"wildcard": "*ue"}}]}""", "colour", "String", "blue", false)]
+    [Arguments("""{"source_ip": [{"cidr": "10.0.0.0/24"}]}""", "source_ip", "String", "10.0.0.42", true)]
+    [Arguments("""{"source_ip": [{"cidr": "10.0.0.0/24"}]}""", "source_ip", "String", "10.1.0.42", false)]
     [Arguments("""{"price": [{"numeric": [">=", 100, "<", 200]}]}""", "price", "Number", "150", true)]
     [Arguments("""{"price": [{"numeric": [">=", 100, "<", 200]}]}""", "price", "Number", "200", false)]
     [Arguments("""{"price": [100]}""", "price", "Number", "100", true)]
@@ -85,11 +90,41 @@ public class SnsFilterPolicyTests
     [Arguments("""{"colour": []}""")]
     [Arguments("""{"colour": [["red"]]}""")]
     [Arguments("""{"colour": [{"prefix": "a", "suffix": "b"}]}""")]
-    [Arguments("""{"colour": [{"wildcard": "a*"}]}""")]
+    [Arguments("""{"colour": [{"regex": "a.*"}]}""")]
     [Arguments("""{"$or": {"colour": ["red"]}}""")]
+    // Malformed operands: the operator is known but its argument isn't the right shape.
+    [Arguments("""{"price": [{"numeric": [">", 100, "<"]}]}""")]
+    [Arguments("""{"price": [{"numeric": ["~", 100]}]}""")]
+    [Arguments("""{"price": [{"numeric": [">", "100"]}]}""")]
+    [Arguments("""{"price": [{"numeric": ["<", 100, ">", 200]}]}""")]
+    [Arguments("""{"price": [{"numeric": 100}]}""")]
+    [Arguments("""{"colour": [{"exists": "yes"}]}""")]
+    [Arguments("""{"colour": [{"prefix": 5}]}""")]
+    [Arguments("""{"colour": [{"suffix": ["a", "b"]}]}""")]
+    [Arguments("""{"colour": [{"equals-ignore-case": true}]}""")]
+    [Arguments("""{"colour": [{"wildcard": ["a*"]}]}""")]
+    [Arguments("""{"colour": [{"anything-but": []}]}""")]
+    [Arguments("""{"colour": [{"anything-but": {"regex": "x"}}]}""")]
+    [Arguments("""{"colour": [{"anything-but": {"prefix": 1}}]}""")]
+    [Arguments("""{"colour": [{"anything-but": [["red"]]}]}""")]
     public void Validate_RejectsMalformedPolicies(string policy)
     {
         Should.Throw<InternalInvalidParameterException>(() => SnsFilterPolicy.Validate(policy, SnsFilterPolicy.MessageAttributesScope));
+    }
+
+    [Test]
+    [Arguments("""{"colour": ["red", 1, true, null]}""")]
+    [Arguments("""{"colour": [{"prefix": "a"}, {"suffix": "b"}, {"equals-ignore-case": "c"}, {"wildcard": "a*b"}]}""")]
+    [Arguments("""{"colour": [{"prefix": {"equals-ignore-case": "a"}}]}""")]
+    [Arguments("""{"source_ip": [{"cidr": "10.0.0.0/8"}]}""")]
+    [Arguments("""{"price": [{"numeric": ["=", 100]}, {"numeric": [">=", 1, "<", 10]}]}""")]
+    [Arguments("""{"colour": [{"exists": false}]}""")]
+    [Arguments("""{"colour": [{"anything-but": "red"}, {"anything-but": 3}, {"anything-but": ["red", 2]}]}""")]
+    [Arguments("""{"colour": [{"anything-but": {"prefix": "a"}}, {"anything-but": {"suffix": ["b", "c"]}}, {"anything-but": {"wildcard": "*x"}}]}""")]
+    [Arguments("""{"$or": [{"colour": ["red"]}, {"size": ["large"]}], "shape": ["round"]}""")]
+    public void Validate_AcceptsWellFormedPolicies(string policy)
+    {
+        Should.NotThrow(() => SnsFilterPolicy.Validate(policy, SnsFilterPolicy.MessageAttributesScope));
     }
 
     [Test]

@@ -43,9 +43,13 @@ internal sealed class SnsSubscription
     public string? DeliveryPolicy { get; set; }
 
     /// <summary>
-    /// The token an HTTP/S endpoint would echo back via <c>ConfirmSubscription</c>. Subscriptions are
-    /// confirmed automatically, so this only exists to make the confirmation round-trip succeed.
+    /// True until an HTTP/S endpoint confirms the subscription via <c>ConfirmSubscription</c> (or by
+    /// visiting the <c>SubscribeURL</c>). Pending subscriptions don't take part in fan-out, so a
+    /// caller can't point the bus at an arbitrary URL and have it start posting there.
     /// </summary>
+    public bool PendingConfirmation { get; set; }
+
+    /// <summary>The token sent in the <c>SubscriptionConfirmation</c> message and expected back by <c>ConfirmSubscription</c>.</summary>
     public string ConfirmationToken { get; } = Guid.NewGuid().ToString("N");
 
     internal JsonObject? ParsedFilterPolicy { get; private set; }

@@ -14,13 +14,42 @@ public class SnsDeliveryPolicyTests
     }
 
     [Test]
-    public void SubscriptionPolicy_OverridesTopicPolicy()
+    public void TopicPolicy_UsesTheTopicShape_AndSubscriptionOverridesIt()
     {
-        const string topic = """{"healthyRetryPolicy": {"numRetries": 10}}""";
+        const string topic = """
+            {"http": {
+                "defaultHealthyRetryPolicy": {"numRetries": 10, "minDelayTarget": 3, "maxDelayTarget": 3},
+                "defaultRequestPolicy": {"headerContentType": "application/json"}
+            }}
+            """;
+        const string subscription = """{"healthyRetryPolicy": {"numRetries": 1}}""";
+
+        var topicOnly = SnsDeliveryPolicy.Resolve(null, topic);
+        topicOnly.GetRetryDelays().Count.ShouldBe(10);
+        topicOnly.GetRetryDelays()[0].ShouldBe(TimeSpan.FromSeconds(3));
+        topicOnly.ContentType.ShouldBe("application/json");
+
+        // The subscription overrides only what it specifies; the rest comes from the topic.
+        var merged = SnsDeliveryPolicy.Resolve(subscription, topic);
+        merged.GetRetryDelays().ShouldBe([TimeSpan.FromSeconds(3)]);
+        merged.ContentType.ShouldBe("application/json");
+    }
+
+    [Test]
+    public void TopicPolicy_CanDisableSubscriptionOverrides()
+    {
+        const string topic = """{"http": {"defaultHealthyRetryPolicy": {"numRetries": 10}, "disableSubscriptionOverrides": true}}""";
+        const string subscription = """{"healthyRetryPolicy": {"numRetries": 1}}""";
+
+        SnsDeliveryPolicy.Resolve(subscription, topic).GetRetryDelays().Count.ShouldBe(10);
+    }
+
+    [Test]
+    public void SubscriptionPolicyAlone_IsAppliedOverDefaults()
+    {
         const string subscription = """{"healthyRetryPolicy": {"numRetries": 1, "minDelayTarget": 2, "maxDelayTarget": 2}}""";
 
-        SnsDeliveryPolicy.Resolve(subscription, topic).GetRetryDelays().ShouldBe([TimeSpan.FromSeconds(2)]);
-        SnsDeliveryPolicy.Resolve(null, topic).GetRetryDelays().Count.ShouldBe(10);
+        SnsDeliveryPolicy.Resolve(subscription, null).GetRetryDelays().ShouldBe([TimeSpan.FromSeconds(2)]);
     }
 
     [Test]

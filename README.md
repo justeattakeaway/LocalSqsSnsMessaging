@@ -18,7 +18,7 @@ It comes in three flavours that all share the same in-memory bus:
 | Service | Supported |
 | --- | --- |
 | **SQS** | Standard and FIFO queues, long polling, visibility timeouts, delays, message attributes, batch operations, redrive policies and dead-letter queues, message move tasks (redrive from a DLQ), fair queues (per-message-group deduplication), queue tags. |
-| **SNS** | Topics (standard and FIFO), `sqs` and `http`/`https` subscriptions, raw message delivery, [filter policies](#sns-filter-policies) on message attributes or the message body, [HTTP/S delivery](#sns-httphttps-subscriptions) with retry and delivery policies, [subscription dead-letter queues](#sns-subscription-dead-letter-queues), topic attributes, permissions and tags. |
+| **SNS** | Topics (standard and FIFO), `sqs` and `http`/`https` subscriptions, raw message delivery, [filter policies](#sns-filter-policies) on message attributes or the message body, [HTTP/S delivery](#sns-httphttps-subscriptions) with the confirmation handshake, retries and delivery policies, [subscription dead-letter queues](#sns-subscription-dead-letter-queues), topic attributes, permissions and tags. |
 | **EventBridge** | Event buses, rules with [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html), targets, `PutEvents` routing to SQS targets, input transformers, `TestEventPattern`. See [EventBridge](#eventbridge). |
 
 Operations that don't make sense in memory (SMS, mobile push, platform applications, data protection policies) throw `NotSupportedException`.
@@ -118,7 +118,7 @@ All actions in this library that depend on delays or timeouts use the `TimeProvi
 
 ### SNS filter policies
 
-Subscriptions honour [filter policies](https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html) on either the message attributes (the default) or, with `FilterPolicyScope` set to `MessageBody`, the JSON message body. The full grammar is supported: exact matches, `anything-but`, `prefix`, `suffix`, `equals-ignore-case`, `numeric` ranges, `exists`, `$or`, and nested keys for body-scoped policies. Invalid policies are rejected with `InvalidParameterException`, as on AWS.
+Subscriptions honour [filter policies](https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html) on either the message attributes (the default) or, with `FilterPolicyScope` set to `MessageBody`, the JSON message body. The full grammar is supported: exact matches, `anything-but`, `prefix`, `suffix`, `equals-ignore-case`, `wildcard`, `cidr`, `numeric` ranges, `exists`, `$or`, and nested keys for body-scoped policies. Invalid policies are rejected with `InvalidParameterException`, as on AWS.
 
 ```csharp
 await sns.SubscribeAsync(new SubscribeRequest(topicArn, "sqs", queueArn)
@@ -137,9 +137,11 @@ await sns.PublishAsync(topicArn, """{"order": {"status": "placed",  "total": 250
 
 ### SNS HTTP/HTTPS subscriptions
 
-Topics can fan out to `http` and `https` endpoints. The bus POSTs the same thing real SNS does: the `x-amz-sns-message-type`, `x-amz-sns-message-id`, `x-amz-sns-topic-arn` and `x-amz-sns-subscription-arn` headers, and either the JSON `Notification` envelope or, with `RawMessageDelivery`, the bare message plus an `x-amz-sns-rawdelivery: true` header. Subscribing sends a `SubscriptionConfirmation` message to the endpoint so handlers that expect the handshake still see it; the subscription is confirmed straight away, and `ConfirmSubscription` accepts the token from that message.
+Topics can fan out to `http` and `https` endpoints. The bus POSTs the same thing real SNS does: the `x-amz-sns-message-type`, `x-amz-sns-message-id`, `x-amz-sns-topic-arn` and `x-amz-sns-subscription-arn` headers, and either the JSON `Notification` envelope or, with `RawMessageDelivery`, the bare message plus an `x-amz-sns-rawdelivery: true` header.
 
-Delivery happens in the background. Endpoints that return `5xx` or `429`, or can't be reached, are retried according to the subscription's (or topic's) `DeliveryPolicy`; the defaults are the AWS defaults of three retries twenty seconds apart. Any other error is a permanent failure. The delays use the bus's `TimeProvider`, so in tests you can advance a `FakeTimeProvider` instead of waiting.
+The confirmation handshake works as it does on AWS. Subscribing POSTs a `SubscriptionConfirmation` message to the endpoint and the subscription stays pending (and receives nothing) until it's confirmed, either by the endpoint visiting the `SubscribeURL` in that message or by calling `ConfirmSubscription` with the `Token`. `Subscribe` returns `"pending confirmation"` instead of an ARN unless you set `ReturnSubscriptionArn`. In a test that fakes the endpoint, grab the token from the captured request and confirm it yourself; against the [standalone server](#standalone-server) the `SubscribeURL` points back at the server, so an endpoint that follows it will confirm itself.
+
+Delivery happens in the background. Endpoints that return `5xx` or `429`, or can't be reached, are retried according to the subscription's `DeliveryPolicy`, falling back to the topic's `DeliveryPolicy` attribute (in its `{"http": {"defaultHealthyRetryPolicy": ...}}` shape, with `disableSubscriptionOverrides` honoured), and finally to the AWS defaults of three retries twenty seconds apart. Any other error is a permanent failure. The delays use the bus's `TimeProvider`, so in tests you can advance a `FakeTimeProvider` instead of waiting.
 
 Set `InMemoryAwsBus.HttpClient` to control where those requests go, for example an ASP.NET Core `TestServer` client or a fake `HttpMessageHandler`:
 
@@ -154,6 +156,10 @@ await sns.SubscribeAsync(new SubscribeRequest(topicArn, "https", "https://localh
         ["DeliveryPolicy"] = """{"healthyRetryPolicy": {"numRetries": 5, "minDelayTarget": 1, "maxDelayTarget": 30, "backoffFunction": "exponential"}}"""
     }
 });
+
+// The endpoint has now been sent a SubscriptionConfirmation. If it doesn't follow the
+// SubscribeURL itself, confirm on its behalf with the token from that message:
+await sns.ConfirmSubscriptionAsync(topicArn, token);
 ```
 
 ### SNS subscription dead-letter queues

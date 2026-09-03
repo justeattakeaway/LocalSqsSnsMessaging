@@ -133,6 +133,7 @@ The HTTP mode implements two different AWS protocols:
 `SnsPublishAction` fans a published message out per subscription:
 - `SnsFilterPolicy` evaluates filter policies (attribute or body scope) on top of `JsonPatternMatcher`, the same matcher EventBridge uses for event patterns
 - SQS endpoints are resolved from `bus.Queues` at publish time; a deleted queue is a delivery failure
+- HTTP/S subscriptions start `PendingConfirmation` and are excluded from fan-out until `ConfirmSubscription` (or a GET on the `SubscribeURL`) presents the token
 - HTTP/S endpoints are POSTed in the background by `SnsHttpDelivery` using `bus.HttpClient`, retried per `SnsDeliveryPolicy` with `TimeProvider`-driven delays
 - Failed deliveries go to the subscription's dead-letter queue when a `RedrivePolicy` is set
 

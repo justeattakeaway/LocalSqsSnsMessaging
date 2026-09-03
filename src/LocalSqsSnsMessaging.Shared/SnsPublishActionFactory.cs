@@ -17,7 +17,7 @@ public static class SnsPublishActionFactory
         // after subscribing is treated as a delivery failure (and dead-lettered if configured)
         // instead of silently receiving messages through a stale reference.
         var subscriptions = bus.Subscriptions.Values
-            .Where(s => s.TopicArn == topicArn)
+            .Where(s => s.TopicArn == topicArn && !s.PendingConfirmation)
             .ToList();
 
         topic.PublishAction = new SnsPublishAction(subscriptions, topic, bus);

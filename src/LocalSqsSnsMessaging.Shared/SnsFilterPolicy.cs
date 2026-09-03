@@ -121,25 +121,116 @@ internal static class SnsFilterPolicy
 
     private static void ValidateCandidate(string key, JsonNode? candidate)
     {
-        if (candidate is JsonObject op)
+        switch (candidate)
         {
-            if (op.Count != 1)
-            {
-                throw new InternalInvalidParameterException($"Invalid parameter: FilterPolicy: Only one operator is allowed per object (\"{key}\")");
-            }
-            var name = op.First().Key;
-            if (name is not ("anything-but" or "prefix" or "suffix" or "equals-ignore-case" or "numeric" or "exists"))
-            {
-                throw new InternalInvalidParameterException($"Invalid parameter: FilterPolicy: Unrecognized match type {name} (\"{key}\")");
-            }
-            return;
-        }
+            case JsonObject op:
+                if (op.Count != 1)
+                {
+                    throw Invalid($"Only one operator is allowed per object (\"{key}\")");
+                }
+                ValidateOperator(key, op.First().Key, op.First().Value);
+                break;
 
-        if (candidate is JsonArray)
-        {
-            throw new InternalInvalidParameterException($"Invalid parameter: FilterPolicy: Nested arrays are not allowed (\"{key}\")");
+            case JsonArray:
+                throw Invalid($"Nested arrays are not allowed (\"{key}\")");
         }
     }
+
+    // Each operator's operand has a fixed shape; a policy that parses but has a malformed operand
+    // would otherwise be stored and then silently match more (or less) than intended.
+    private static void ValidateOperator(string key, string name, JsonNode? operand)
+    {
+        switch (name)
+        {
+            case "exists":
+                if (!IsBool(operand))
+                {
+                    throw Invalid($"\"exists\" must be true or false (\"{key}\")");
+                }
+                break;
+
+            case "prefix":
+            case "suffix":
+                var ignoreCase = operand is JsonObject affix && affix.Count == 1 &&
+                                 affix.TryGetPropertyValue("equals-ignore-case", out var affixValue) && IsString(affixValue);
+                if (!IsString(operand) && !ignoreCase)
+                {
+                    throw Invalid($"\"{name}\" must be a string (\"{key}\")");
+                }
+                break;
+
+            case "equals-ignore-case":
+            case "wildcard":
+            case "cidr":
+                if (!IsString(operand))
+                {
+                    throw Invalid($"\"{name}\" must be a string (\"{key}\")");
+                }
+                break;
+
+            case "numeric":
+                ValidateNumeric(key, operand);
+                break;
+
+            case "anything-but":
+                ValidateAnythingBut(key, operand);
+                break;
+
+            default:
+                throw Invalid($"Unrecognized match type {name} (\"{key}\")");
+        }
+    }
+
+    private static void ValidateNumeric(string key, JsonNode? operand)
+    {
+        // Either a single comparison ["<op>", n] or a range ["> or >=", low, "< or <=", high].
+        if (operand is not JsonArray spec || (spec.Count != 2 && spec.Count != 4))
+        {
+            throw Invalid($"\"numeric\" must be an operator followed by a number, or a range of two (\"{key}\")");
+        }
+
+        for (var i = 0; i < spec.Count; i += 2)
+        {
+            if (!IsString(spec[i]) || spec[i]!.GetValue<string>() is not ("=" or "!=" or "<" or "<=" or ">" or ">=") || !IsNumber(spec[i + 1]))
+            {
+                throw Invalid($"\"numeric\" must be an operator followed by a number (\"{key}\")");
+            }
+        }
+
+        if (spec.Count == 4 &&
+            (spec[0]!.GetValue<string>() is not (">" or ">=") || spec[2]!.GetValue<string>() is not ("<" or "<=")))
+        {
+            throw Invalid($"\"numeric\" range must be a lower bound followed by an upper bound (\"{key}\")");
+        }
+    }
+
+    private static void ValidateAnythingBut(string key, JsonNode? operand)
+    {
+        switch (operand)
+        {
+            case JsonValue when IsString(operand) || IsNumber(operand):
+                return;
+
+            case JsonArray values when values.Count > 0 && values.All(v => IsString(v) || IsNumber(v)):
+                return;
+
+            case JsonObject inner when inner.Count == 1 &&
+                                       inner.First().Key is "prefix" or "suffix" or "equals-ignore-case" or "wildcard" &&
+                                       (IsString(inner.First().Value) ||
+                                        inner.First().Value is JsonArray strings && strings.Count > 0 && strings.All(IsString)):
+                return;
+
+            default:
+                throw Invalid($"\"anything-but\" must be a value, a list of values, or a prefix/suffix/equals-ignore-case/wildcard operator (\"{key}\")");
+        }
+    }
+
+    private static bool IsString(JsonNode? node) => node is JsonValue v && v.GetValueKind() == JsonValueKind.String;
+    private static bool IsNumber(JsonNode? node) => node is JsonValue v && v.GetValueKind() == JsonValueKind.Number;
+    private static bool IsBool(JsonNode? node) => node is JsonValue v && v.GetValueKind() is JsonValueKind.True or JsonValueKind.False;
+
+    private static InternalInvalidParameterException Invalid(string message) =>
+        new($"Invalid parameter: FilterPolicy: {message}");
 
     /// <summary>
     /// Returns true when the subscription should receive a message with the given body and attributes.
