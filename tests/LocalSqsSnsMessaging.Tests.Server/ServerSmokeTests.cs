@@ -110,6 +110,20 @@ public sealed class ServerSmokeTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task Sns_GetWithQueryStringParameters_ShouldBeHandledLikeAPost()
+    {
+        // An SNS SubscribeURL is a GET with the whole request in the query string; the bridge
+        // has to feed those parameters to the handler as if they were the form body.
+        var topicArn = (await _snsClient!.CreateTopicAsync("query-string-topic")).TopicArn;
+
+        using var http = new HttpClient();
+        using var response = await http.GetAsync(new Uri($"http://localhost:{_port}/?Action=ListTopics"));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync()).ShouldContain(topicArn);
+    }
+
+    [Test]
     [Repeat(50)]
     public async Task Sns_PublishToSubscribedQueue_ShouldDeliverMessage()
     {

@@ -62,6 +62,14 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
                     ? await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)
                     : string.Empty;
                 operationName = ExtractOperationNameFromBody(request, requestBody);
+
+                // A GET with the parameters in the query string (e.g. an SNS SubscribeURL) is a valid
+                // Query-protocol request; present the query to the handler as if it were the body.
+                if (string.IsNullOrWhiteSpace(requestBody) && !string.IsNullOrEmpty(request.RequestUri?.Query))
+                {
+                    request.Content = new StringContent(
+                        request.RequestUri!.Query.TrimStart('?'), Encoding.UTF8, "application/x-www-form-urlencoded");
+                }
             }
         }
         catch (OperationCanceledException)

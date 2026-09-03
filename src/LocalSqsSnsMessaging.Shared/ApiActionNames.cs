@@ -98,6 +98,9 @@ public static class SnsActionName
     /// <summary>Grants permission to add a permission to a topic.</summary>
     public const string AddPermission = "AddPermission";
 
+    /// <summary>Grants permission to confirm a subscription.</summary>
+    public const string ConfirmSubscription = "ConfirmSubscription";
+
     /// <summary>Grants permission to create a topic.</summary>
     public const string CreateTopic = "CreateTopic";
 

@@ -18,4 +18,6 @@ public class SnsPublishAsyncTestsLocalAwsMessaging : SnsPublishAsyncTests
     }
 
     protected override bool SupportsAttributeSizeValidation() => false;
+
+    protected override bool ValidatesFilterPolicies() => true;
 }

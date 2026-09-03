@@ -25,6 +25,12 @@ public static class ClientFactory
             ?? throw new InvalidOperationException(
                 "USE_REAL_AWS=1 requires AWS_ACCOUNT_ID env var to be set to the calling account."));
 
+    // Floci scopes resources to the region in the request's SigV4 credential scope. With only a
+    // ServiceURL set, the SDK takes that region from the local AWS environment (AWS_REGION,
+    // ~/.aws/config), which on a developer machine may not be us-east-1 - the region every test
+    // bakes into its ARNs. Pin it so local runs behave like CI.
+    private const string EmulatorRegion = "us-east-1";
+
     public static string EffectiveAccountId(string randomAccountId)
         => IsRealAwsMode ? RealAccountIdLazy.Value : randomAccountId;
 
@@ -38,7 +44,8 @@ public static class ClientFactory
             new BasicAWSCredentials(accountId, "shh"),
             new AmazonSQSConfig
             {
-                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, servicePort!.Value)
+                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, servicePort!.Value),
+                AuthenticationRegion = EmulatorRegion
             });
     }
 
@@ -52,7 +59,8 @@ public static class ClientFactory
             new BasicAWSCredentials(accountId, "shh"),
             new AmazonEventBridgeConfig
             {
-                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, servicePort!.Value)
+                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, servicePort!.Value),
+                AuthenticationRegion = EmulatorRegion
             });
     }
 
@@ -67,7 +75,8 @@ public static class ClientFactory
             new BasicAWSCredentials(accountId, "shh"),
             new AmazonSimpleNotificationServiceConfig
             {
-                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, servicePort!.Value)
+                ServiceURL = string.Format(CultureInfo.InvariantCulture, ServiceUrlFormatString, servicePort!.Value),
+                AuthenticationRegion = EmulatorRegion
             });
     }
 }

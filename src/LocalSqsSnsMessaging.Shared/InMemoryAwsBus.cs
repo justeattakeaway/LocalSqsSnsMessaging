@@ -39,6 +39,21 @@ public sealed class InMemoryAwsBus
     /// </summary>
     public Uri? ServiceUrl { get; set; }
 
+    private static readonly Lazy<HttpClient> DefaultHttpClient = new(() => new HttpClient());
+    private HttpClient? _httpClient;
+
+    /// <summary>
+    /// Gets or sets the <see cref="System.Net.Http.HttpClient"/> used to deliver SNS notifications to
+    /// <c>http</c>/<c>https</c> subscription endpoints. Defaults to a shared client that reaches the
+    /// network; tests can substitute one wrapping a fake <see cref="HttpMessageHandler"/> or an
+    /// ASP.NET Core test server.
+    /// </summary>
+    public HttpClient HttpClient
+    {
+        get => _httpClient ?? DefaultHttpClient.Value;
+        set => _httpClient = value;
+    }
+
     /// <summary>
     /// Gets or sets whether API usage tracking is enabled.
     /// When enabled, all API operations are recorded for later analysis.

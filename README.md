@@ -5,7 +5,23 @@
 
 ## Overview
 
-This .NET library is intended to provide a simple in-memory drop-in replacement for the AWS SDK for SQS and SNS, primarily for testing (but can be used for local development too).
+This .NET library is intended to provide a simple in-memory drop-in replacement for the AWS SDK for SQS, SNS and EventBridge, primarily for testing (but can be used for local development too).
+
+It comes in three flavours that all share the same in-memory bus:
+
+- **In-process** (`LocalSqsSnsMessaging` on NuGet) – hand the real AWS SDK clients an in-memory `HttpMessageHandler`, no network involved. This is the fastest option and the one to reach for in tests.
+- **In-process for AWS SDK v3** (`LocalSqsSnsMessaging.AWSSDKv3`) – the same library built against the `3.7.x` AWS SDK for codebases that haven't moved to v4 yet.
+- **Standalone server** – a small native binary / container that speaks the AWS wire protocols over HTTP, with a dashboard, for local development or non-.NET consumers. See [Standalone server](#standalone-server).
+
+### What's emulated
+
+| Service | Supported |
+| --- | --- |
+| **SQS** | Standard and FIFO queues, long polling, visibility timeouts, delays, message attributes, batch operations, redrive policies and dead-letter queues, message move tasks (redrive from a DLQ), fair queues (per-message-group deduplication), queue tags. |
+| **SNS** | Topics (standard and FIFO), `sqs` and `http`/`https` subscriptions, raw message delivery, [filter policies](#sns-filter-policies) on message attributes or the message body, [HTTP/S delivery](#sns-httphttps-subscriptions) with the confirmation handshake, retries and delivery policies, [subscription dead-letter queues](#sns-subscription-dead-letter-queues), topic attributes, permissions and tags. |
+| **EventBridge** | Event buses, rules with [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html), targets, `PutEvents` routing to SQS targets, input transformers, `TestEventPattern`. See [EventBridge](#eventbridge). |
+
+Operations that don't make sense in memory (SMS, mobile push, platform applications, data protection policies) throw `NotSupportedException`.
 
 ## Why?
 
@@ -100,6 +116,105 @@ Console.WriteLine(message.Body); // Hello, World!
 
 All actions in this library that depend on delays or timeouts use the `TimeProvider` to control time, so you can also take advantage of this feature with features like visibility timeouts.
 
+### SNS filter policies
+
+Subscriptions honour [filter policies](https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html) on either the message attributes (the default) or, with `FilterPolicyScope` set to `MessageBody`, the JSON message body. The full grammar is supported: exact matches, `anything-but`, `prefix`, `suffix`, `equals-ignore-case`, `wildcard`, `cidr`, `numeric` ranges, `exists`, `$or`, and nested keys for body-scoped policies. Invalid policies are rejected with `InvalidParameterException`, as on AWS.
+
+```csharp
+await sns.SubscribeAsync(new SubscribeRequest(topicArn, "sqs", queueArn)
+{
+    Attributes = new()
+    {
+        ["RawMessageDelivery"] = "true",
+        ["FilterPolicyScope"] = "MessageBody",
+        ["FilterPolicy"] = """{"order": {"status": ["shipped"], "total": [{"numeric": [">", 100]}]}}"""
+    }
+});
+
+await sns.PublishAsync(topicArn, """{"order": {"status": "shipped", "total": 250}}"""); // delivered
+await sns.PublishAsync(topicArn, """{"order": {"status": "placed",  "total": 250}}"""); // filtered out
+```
+
+### SNS HTTP/HTTPS subscriptions
+
+Topics can fan out to `http` and `https` endpoints. The bus POSTs the same thing real SNS does: the `x-amz-sns-message-type`, `x-amz-sns-message-id`, `x-amz-sns-topic-arn` and `x-amz-sns-subscription-arn` headers, and either the JSON `Notification` envelope or, with `RawMessageDelivery`, the bare message plus an `x-amz-sns-rawdelivery: true` header.
+
+The confirmation handshake works as it does on AWS. Subscribing POSTs a `SubscriptionConfirmation` message to the endpoint and the subscription stays pending (and receives nothing) until it's confirmed, either by the endpoint visiting the `SubscribeURL` in that message or by calling `ConfirmSubscription` with the `Token`. `Subscribe` returns `"pending confirmation"` instead of an ARN unless you set `ReturnSubscriptionArn`. In a test that fakes the endpoint, grab the token from the captured request and confirm it yourself; against the [standalone server](#standalone-server) the `SubscribeURL` points back at the server, so an endpoint that follows it will confirm itself.
+
+Delivery happens in the background. Endpoints that return `5xx` or `429`, or can't be reached, are retried according to the subscription's `DeliveryPolicy`, falling back to the topic's `DeliveryPolicy` attribute (in its `{"http": {"defaultHealthyRetryPolicy": ...}}` shape, with `disableSubscriptionOverrides` honoured), and finally to the AWS defaults of three retries twenty seconds apart. Any other error is a permanent failure. The delays use the bus's `TimeProvider`, so in tests you can advance a `FakeTimeProvider` instead of waiting.
+
+Set `InMemoryAwsBus.HttpClient` to control where those requests go, for example an ASP.NET Core `TestServer` client or a fake `HttpMessageHandler`:
+
+```csharp
+var bus = new InMemoryAwsBus { HttpClient = webApplicationFactory.CreateClient() };
+using var sns = bus.CreateSnsClient();
+
+await sns.SubscribeAsync(new SubscribeRequest(topicArn, "https", "https://localhost/webhooks/orders")
+{
+    Attributes = new()
+    {
+        ["DeliveryPolicy"] = """{"healthyRetryPolicy": {"numRetries": 5, "minDelayTarget": 1, "maxDelayTarget": 30, "backoffFunction": "exponential"}}"""
+    }
+});
+
+// The endpoint has now been sent a SubscriptionConfirmation. If it doesn't follow the
+// SubscribeURL itself, confirm on its behalf with the token from that message:
+await sns.ConfirmSubscriptionAsync(topicArn, token);
+```
+
+### SNS subscription dead-letter queues
+
+Attach a `RedrivePolicy` to a subscription and anything that can't be delivered lands in that SQS queue: HTTP/S endpoints that exhaust their retries or return a client error, and SQS subscriptions whose queue has since been deleted. The dead-lettered message is exactly what the endpoint would have received (the SNS envelope, or the raw body for raw subscriptions).
+
+```csharp
+await sns.SubscribeAsync(new SubscribeRequest(topicArn, "https", "https://localhost/webhooks/orders")
+{
+    Attributes = new()
+    {
+        ["RedrivePolicy"] = $$"""{"deadLetterTargetArn": "{{dlqArn}}"}"""
+    }
+});
+```
+
+### EventBridge
+
+The bus also emulates EventBridge, which is enough to test code built on [AWS.Messaging](https://github.com/awslabs/aws-dotnet-messaging) or anything else that publishes events and consumes them from SQS. Rules match on the full [event pattern grammar](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html); matched events are delivered to SQS targets (other target types are accepted but skipped), with support for `Input`, `InputPath` and `InputTransformer`.
+
+```csharp
+using Amazon.EventBridge.Model;
+
+var bus = new InMemoryAwsBus();
+using var events = bus.CreateEventBridgeClient();
+using var sqs = bus.CreateSqsClient();
+
+var queueUrl = (await sqs.CreateQueueAsync("order-events")).QueueUrl;
+var queueArn = (await sqs.GetQueueAttributesAsync(queueUrl, ["QueueArn"])).Attributes["QueueArn"];
+
+await events.PutRuleAsync(new PutRuleRequest
+{
+    Name = "orders-placed",
+    EventPattern = """{"source": ["my.orders"], "detail-type": ["OrderPlaced"]}"""
+});
+await events.PutTargetsAsync(new PutTargetsRequest
+{
+    Rule = "orders-placed",
+    Targets = [new Target { Id = "queue", Arn = queueArn }]
+});
+
+await events.PutEventsAsync(new PutEventsRequest
+{
+    Entries = [new PutEventsRequestEntry
+    {
+        Source = "my.orders",
+        DetailType = "OrderPlaced",
+        Detail = """{"orderId": 42}"""
+    }]
+});
+
+var message = (await sqs.ReceiveMessageAsync(queueUrl)).Messages.Single();
+Console.WriteLine(message.Body); // the EventBridge envelope: {"version":"0","id":...,"detail":{"orderId":42}}
+```
+
 ### Integrating with an existing `HttpClientFactory`
 
 When integration-testing an application that registers its own `Amazon.Runtime.HttpClientFactory`
@@ -126,3 +241,31 @@ For full control you can also construct the handler directly:
 var handler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.Sqs);
 var client = new HttpClient(handler);
 ```
+
+## Standalone server
+
+If you'd rather run something out of process, for example for a non-.NET service or to poke at queues by hand, the same bus is available as a small HTTP server that speaks the SQS, SNS and EventBridge wire protocols. Point any AWS SDK at it with `ServiceURL = "http://localhost:5050"` and fake credentials.
+
+Run it with Docker:
+
+```bash
+docker run --rm -p 5050:5050 ghcr.io/justeattakeaway/local-sqs-sns
+```
+
+or grab a native binary for your platform from the [GitHub releases](https://github.com/justeattakeaway/LocalSqsSnsMessaging/releases) (`local-sqs-sns-<rid>.tar.gz` / `.zip`), or run it from source:
+
+```bash
+dotnet run --project src/LocalSqsSnsMessaging.Server -- --port 5050 --region us-east-1 --account-id 000000000000
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--port` | `5050` | Port to listen on. Queue URLs are generated with this base address. |
+| `--region` | `us-east-1` | Region used in generated ARNs. |
+| `--account-id` | `000000000000` | The default account. |
+
+The server is multi-account: if the access key ID in a request's `Authorization` header is a 12-digit number, that account gets its own isolated bus, created on first use. This mirrors the LocalStack convention and lets parallel test runs share one server without seeing each other's queues.
+
+### Dashboard
+
+The server hosts a dashboard at `http://localhost:5050/_ui` that updates live as your application runs. It shows every queue, topic and subscription for the selected account with a graph of how they're wired together, lets you peek at pending and in-flight messages, delete or redrive them, publish a message to a topic, and shows a feed of recent API calls so you can see exactly which operations your code made.

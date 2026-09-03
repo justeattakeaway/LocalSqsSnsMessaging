@@ -61,22 +61,37 @@ internal sealed class InternalSnsClient
             throw new InternalNotFoundException("Subscription not found.");
         }
 
+        var attributes = new Dictionary<string, string>
+        {
+            ["SubscriptionArn"] = subscription.SubscriptionArn,
+            ["TopicArn"] = subscription.TopicArn,
+            ["Protocol"] = subscription.Protocol,
+            ["Endpoint"] = subscription.EndPoint,
+            ["Owner"] = _bus.CurrentAccountId,
+            ["ConfirmationWasAuthenticated"] = "false",
+            ["IsAuthenticated"] = "false",
+            ["PendingConfirmation"] = subscription.PendingConfirmation ? "true" : "false",
+            ["RawMessageDelivery"] = subscription.Raw.ToString(),
+            ["FilterPolicy"] = subscription.FilterPolicy
+        };
+
+        if (!string.IsNullOrEmpty(subscription.FilterPolicy))
+        {
+            attributes["FilterPolicyScope"] = subscription.FilterPolicyScope;
+        }
+        if (subscription.RedrivePolicy is not null)
+        {
+            attributes["RedrivePolicy"] = subscription.RedrivePolicy;
+        }
+        if (subscription.DeliveryPolicy is not null)
+        {
+            attributes["DeliveryPolicy"] = subscription.DeliveryPolicy;
+        }
+
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.GetSubscriptionAttributes, subscription.SubscriptionArn);
         return Task.FromResult(new GetSubscriptionAttributesResponse
         {
-            Attributes = new Dictionary<string, string>
-            {
-                ["SubscriptionArn"] = subscription.SubscriptionArn,
-                ["TopicArn"] = subscription.TopicArn,
-                ["Protocol"] = subscription.Protocol,
-                ["Endpoint"] = subscription.EndPoint,
-                ["Owner"] = _bus.CurrentAccountId,
-                ["ConfirmationWasAuthenticated"] = "false",
-                ["IsAuthenticated"] = "false",
-                ["PendingConfirmation"] = "false",
-                ["RawMessageDelivery"] = subscription.Raw.ToString(),
-                ["FilterPolicy"] = subscription.FilterPolicy
-            }
+            Attributes = attributes
         }.SetCommonProperties());
     }
 
@@ -112,7 +127,7 @@ internal sealed class InternalSnsClient
         var allSubscriptions = _bus.Subscriptions.Values
             .Select(s => new Subscription
             {
-                SubscriptionArn = s.SubscriptionArn,
+                SubscriptionArn = s.PendingConfirmation ? "PendingConfirmation" : s.SubscriptionArn,
                 TopicArn = s.TopicArn,
                 Protocol = s.Protocol,
                 Endpoint = s.EndPoint,
@@ -152,7 +167,7 @@ internal sealed class InternalSnsClient
             .Where(s => string.Equals(s.TopicArn, request.TopicArn, StringComparison.OrdinalIgnoreCase))
             .Select(s => new Subscription
             {
-                SubscriptionArn = s.SubscriptionArn,
+                SubscriptionArn = s.PendingConfirmation ? "PendingConfirmation" : s.SubscriptionArn,
                 TopicArn = s.TopicArn,
                 Protocol = s.Protocol,
                 Endpoint = s.EndPoint,
@@ -317,27 +332,7 @@ internal sealed class InternalSnsClient
             throw new InternalNotFoundException($"Subscription not found: {request.SubscriptionArn}");
         }
 
-        // Update the attribute
-        if (request.AttributeName.Equals("RawMessageDelivery", StringComparison.OrdinalIgnoreCase))
-        {
-            if (bool.TryParse(request.AttributeValue, out var isRawMessageDelivery))
-            {
-                subscription.Raw = isRawMessageDelivery;
-            }
-            else
-            {
-                throw new InternalInvalidParameterException(
-                    "Invalid value for RawMessageDelivery attribute. Expected true or false.");
-            }
-        }
-        else if (request.AttributeName.Equals("FilterPolicy", StringComparison.OrdinalIgnoreCase))
-        {
-            subscription.FilterPolicy = request.AttributeValue;
-        }
-        else
-        {
-            throw new InternalInvalidParameterException($"Unsupported attribute: {request.AttributeName}");
-        }
+        ApplySubscriptionAttribute(subscription, request.AttributeName, request.AttributeValue, strict: true);
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetSubscriptionAttributes, subscription.SubscriptionArn);
         return Task.FromResult(new SetSubscriptionAttributesResponse().SetCommonProperties());
@@ -354,6 +349,11 @@ internal sealed class InternalSnsClient
             throw new InternalNotFoundException("Topic not found.");
         }
 
+        if (request.AttributeName.Equals("DeliveryPolicy", StringComparison.OrdinalIgnoreCase))
+        {
+            SnsDeliveryPolicy.Validate(request.AttributeValue);
+        }
+
         topic.Attributes[request.AttributeName] = request.AttributeValue;
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetTopicAttributes, topic.Arn);
         return Task.FromResult(new SetTopicAttributesResponse().SetCommonProperties());
@@ -364,42 +364,75 @@ internal sealed class InternalSnsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!request.Protocol.Equals("sqs", StringComparison.OrdinalIgnoreCase))
+        var protocol = NormalizeProtocol(request.Protocol);
+        switch (protocol)
         {
-            throw new NotSupportedException("Only SQS protocol is supported.");
+            case "sqs":
+                var queueName = request.Endpoint.Split(':').Last();
+                if (!_bus.Queues.TryGetValue(queueName, out _))
+                {
+                    throw new InternalNotFoundException("Queue not found.");
+                }
+                break;
+
+            case "http":
+            case "https":
+                if (!Uri.TryCreate(request.Endpoint, UriKind.Absolute, out var endpointUri) ||
+                    !string.Equals(endpointUri.Scheme, protocol, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InternalInvalidParameterException(
+                        $"Invalid parameter: Endpoint: Endpoint must be a valid {protocol} URL");
+                }
+                break;
+
+            default:
+                throw new NotSupportedException("Only the sqs, http and https protocols are supported.");
         }
-
-        var queueName = request.Endpoint.Split(':').Last();
-        if (!_bus.Queues.TryGetValue(queueName, out _))
-        {
-            throw new InternalNotFoundException("Queue not found.");
-        }
-
-        var parsedRawMessageDelivery =
-            request.Attributes?.TryGetValue("RawMessageDelivery", out var rawMessageDelivery) == true &&
-            bool.TryParse(rawMessageDelivery, out var isRawMessageDelivery) &&
-            isRawMessageDelivery;
-
-        var parsedFilterPolicy =
-            request.Attributes?.TryGetValue("FilterPolicy", out var filterPolicy) == true ? filterPolicy : string.Empty;
 
         var snsSubscription = new SnsSubscription
         {
             SubscriptionArn = Guid.NewGuid().ToString(),
             TopicArn = request.TopicArn,
             EndPoint = request.Endpoint,
-            Protocol = request.Protocol,
-            Raw = parsedRawMessageDelivery,
-            FilterPolicy = parsedFilterPolicy
+            Protocol = protocol,
+            Raw = false,
+            FilterPolicy = string.Empty,
+            // HTTP/S endpoints have to confirm before they receive anything, as on AWS.
+            PendingConfirmation = protocol is "http" or "https"
         };
+
+        // Apply the scope before the policy so a nested (body-scoped) policy validates correctly.
+        if (request.Attributes is not null)
+        {
+            if (request.Attributes.TryGetValue("FilterPolicyScope", out var scope))
+            {
+                ApplySubscriptionAttribute(snsSubscription, "FilterPolicyScope", scope, strict: false);
+            }
+            foreach (var (name, value) in request.Attributes)
+            {
+                if (!name.Equals("FilterPolicyScope", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplySubscriptionAttribute(snsSubscription, name, value, strict: false);
+                }
+            }
+        }
+
         _bus.Subscriptions.TryAdd(snsSubscription.SubscriptionArn, snsSubscription);
 
         SnsPublishActionFactory.UpdateTopicPublishAction(snsSubscription.TopicArn, _bus);
 
+        if (snsSubscription.IsHttp)
+        {
+            SnsHttpDelivery.SendSubscriptionConfirmation(_bus, snsSubscription);
+        }
+
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Subscribe, request.TopicArn);
         return Task.FromResult(new SubscribeResponse
         {
-            SubscriptionArn = snsSubscription.SubscriptionArn
+            // AWS only hands back the ARN of an unconfirmed subscription when asked to.
+            SubscriptionArn = snsSubscription.PendingConfirmation && request.ReturnSubscriptionArn != true
+                ? "pending confirmation"
+                : snsSubscription.SubscriptionArn
         }.SetCommonProperties());
     }
 
@@ -524,7 +557,30 @@ internal sealed class InternalSnsClient
         => throw new NotSupportedException("CheckIfPhoneNumberIsOptedOut is not supported.");
 
     public Task<ConfirmSubscriptionResponse> ConfirmSubscriptionAsync(ConfirmSubscriptionRequest request, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException("ConfirmSubscription is not supported.");
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var subscription = _bus.Subscriptions.Values.FirstOrDefault(s =>
+            string.Equals(s.TopicArn, request.TopicArn, StringComparison.Ordinal) &&
+            string.Equals(s.ConfirmationToken, request.Token, StringComparison.Ordinal));
+
+        if (subscription is null)
+        {
+            throw new InternalInvalidParameterException("Invalid parameter: Token");
+        }
+
+        if (subscription.PendingConfirmation)
+        {
+            subscription.PendingConfirmation = false;
+            SnsPublishActionFactory.UpdateTopicPublishAction(subscription.TopicArn, _bus);
+        }
+
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ConfirmSubscription, subscription.SubscriptionArn);
+        return Task.FromResult(new ConfirmSubscriptionResponse
+        {
+            SubscriptionArn = subscription.SubscriptionArn
+        }.SetCommonProperties());
+    }
 
     public Task<CreatePlatformApplicationResponse> CreatePlatformApplicationAsync(CreatePlatformApplicationRequest request, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("CreatePlatformApplication is not supported.");
@@ -593,6 +649,68 @@ internal sealed class InternalSnsClient
         => throw new NotSupportedException("VerifySMSSandboxPhoneNumber is not supported.");
 
     // Helper methods
+
+    /// <summary>
+    /// Validates and applies a single subscription attribute. <paramref name="strict"/> controls
+    /// whether unknown attribute names are rejected (SetSubscriptionAttributes) or ignored (Subscribe,
+    /// where callers commonly pass through attributes we don't model).
+    /// </summary>
+    private static void ApplySubscriptionAttribute(SnsSubscription subscription, string name, string? value, bool strict)
+    {
+        value ??= string.Empty;
+
+        if (name.Equals("RawMessageDelivery", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!bool.TryParse(value, out var isRawMessageDelivery))
+            {
+                throw new InternalInvalidParameterException(
+                    "Invalid value for RawMessageDelivery attribute. Expected true or false.");
+            }
+            subscription.Raw = isRawMessageDelivery;
+        }
+        else if (name.Equals("FilterPolicy", StringComparison.OrdinalIgnoreCase))
+        {
+            SnsFilterPolicy.Validate(value, subscription.FilterPolicyScope);
+            subscription.FilterPolicy = value;
+        }
+        else if (name.Equals("FilterPolicyScope", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!SnsFilterPolicy.IsValidScope(value))
+            {
+                throw new InternalInvalidParameterException(
+                    "Invalid parameter: FilterPolicyScope: Valid values are MessageAttributes and MessageBody");
+            }
+            SnsFilterPolicy.Validate(subscription.FilterPolicy, value);
+            subscription.FilterPolicyScope = value;
+        }
+        else if (name.Equals("RedrivePolicy", StringComparison.OrdinalIgnoreCase))
+        {
+            var deadLetterTargetArn = SnsRedrivePolicy.ParseDeadLetterTargetArn(value);
+            subscription.DeadLetterTargetArn = deadLetterTargetArn;
+            subscription.RedrivePolicy = deadLetterTargetArn is null ? null : value;
+        }
+        else if (name.Equals("DeliveryPolicy", StringComparison.OrdinalIgnoreCase))
+        {
+            SnsDeliveryPolicy.Validate(value);
+            subscription.DeliveryPolicy = string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+        else if (strict)
+        {
+            throw new InternalInvalidParameterException($"Unsupported attribute: {name}");
+        }
+    }
+
+    private static string? NormalizeProtocol(string? protocol)
+    {
+        foreach (var known in new[] { "sqs", "http", "https" })
+        {
+            if (string.Equals(protocol, known, StringComparison.OrdinalIgnoreCase))
+            {
+                return known;
+            }
+        }
+        return protocol;
+    }
 
     private SnsTopicResource GetTopicByArn(string topicArn)
     {

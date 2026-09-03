@@ -6,23 +6,21 @@ public static class SnsPublishActionFactory
     {
         ArgumentNullException.ThrowIfNull(topicArn);
         ArgumentNullException.ThrowIfNull(bus);
-        
+
         var topicName = GetNameFromArn(topicArn);
         if (!bus.Topics.TryGetValue(topicName, out var topic))
         {
             throw new InvalidOperationException($"Topic not found: {topicArn}");
         }
 
-        var subscriptionsAndQueues = bus.Subscriptions.Values
-            .Where(s => s.TopicArn == topicArn)
-            .Select(subscription => (
-                Subscription: subscription,
-                Queue: bus.Queues.GetValueOrDefault(GetNameFromArn(subscription.EndPoint))
-            ))
-            .Where(x => x.Queue is not null)
+        // Endpoints are resolved at publish time rather than captured here, so a queue deleted
+        // after subscribing is treated as a delivery failure (and dead-lettered if configured)
+        // instead of silently receiving messages through a stale reference.
+        var subscriptions = bus.Subscriptions.Values
+            .Where(s => s.TopicArn == topicArn && !s.PendingConfirmation)
             .ToList();
 
-        topic.PublishAction = new SnsPublishAction(subscriptionsAndQueues!, bus.TimeProvider);
+        topic.PublishAction = new SnsPublishAction(subscriptions, topic, bus);
     }
 
     private static string GetNameFromArn(string arn) => arn.Split(':').Last();
