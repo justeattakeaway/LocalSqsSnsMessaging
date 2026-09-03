@@ -9,91 +9,54 @@ using SqsMessageAttributeValue = LocalSqsSnsMessaging.Sqs.Model.MessageAttribute
 
 namespace LocalSqsSnsMessaging;
 
+/// <summary>
+/// Fans a published message out to a topic's subscriptions: applies each subscription's filter
+/// policy, delivers to SQS queues synchronously and to HTTP/S endpoints in the background (with
+/// retries per the delivery policy), and dead-letters messages that can't be delivered when the
+/// subscription has a redrive policy.
+/// </summary>
 internal sealed class SnsPublishAction
 {
-    internal static SnsPublishAction NullInstance { get; } = new([], null!);
+    internal static SnsPublishAction NullInstance { get; } = new([], null!, null!);
 
-    private readonly List<(SnsSubscription Subscription, SqsQueueResource Queue)> _subscriptionsAndQueues;
-    private readonly TimeProvider _timeProvider;
+    private readonly List<SnsSubscription> _subscriptions;
+    private readonly SnsTopicResource _topic;
+    private readonly InMemoryAwsBus _bus;
 
-    public SnsPublishAction(List<(SnsSubscription Subscription, SqsQueueResource Queue)> subscriptionsAndQueues, TimeProvider timeProvider)
+    public SnsPublishAction(List<SnsSubscription> subscriptions, SnsTopicResource topic, InMemoryAwsBus bus)
     {
-        _subscriptionsAndQueues = subscriptionsAndQueues;
-        _timeProvider = timeProvider;
+        _subscriptions = subscriptions;
+        _topic = topic;
+        _bus = bus;
     }
+
+    /// <summary>A published message, independent of whether it came from Publish or PublishBatch.</summary>
+    private sealed record OutboundMessage(
+        string MessageId,
+        string TopicArn,
+        string? Subject,
+        string Body,
+        Dictionary<string, MessageAttributeValue>? Attributes,
+        string? MessageGroupId,
+        string? DeduplicationId);
 
     public PublishResponse Execute(PublishRequest request)
     {
         var messageId = Guid.NewGuid().ToString();
 
-        foreach (var (subscription, queue) in _subscriptionsAndQueues)
-        {
-            var sqsMessage = CreateSqsMessage(request, messageId, subscription);
-            if (queue.IsFifo)
-            {
-                sqsMessage.Attributes ??= [];
-                sqsMessage.Attributes["MessageGroupId"] = request.MessageGroupId;
-                sqsMessage.Attributes["SequenceNumber"] = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
-                sqsMessage.Attributes["SentTimestamp"] = _timeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
-
-                string deduplicationId = request.MessageDeduplicationId;
-                if (string.IsNullOrEmpty(deduplicationId))
-                {
-                    // Generate a deduplication ID based on the message body
-                    deduplicationId = GenerateMessageBodyHash(sqsMessage.Body);
-                }
-
-                sqsMessage.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
-
-                // Check if this is a fair queue with per-message-group deduplication
-                bool isFairQueue = IsFairQueue(queue);
-
-                if (isFairQueue)
-                {
-                    // Per-message-group deduplication
-                    var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
-                        request.MessageGroupId,
-                        _ => new ConcurrentDictionary<string, string>());
-
-                    if (groupDeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
-                    {
-                        EnqueueFifoMessage(queue, request.MessageGroupId, sqsMessage);
-                    }
-                }
-                else
-                {
-                    // Global deduplication (traditional FIFO)
-                    if (queue.DeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
-                    {
-                        EnqueueFifoMessage(queue, request.MessageGroupId, sqsMessage);
-                    }
-                }
-            }
-            else
-            {
-                queue.Messages.Enqueue(sqsMessage);
-            }
-        }
+        Deliver(new OutboundMessage(
+            messageId,
+            request.TopicArn,
+            request.Subject,
+            request.Message,
+            request.MessageAttributes,
+            request.MessageGroupId,
+            request.MessageDeduplicationId));
 
         return new PublishResponse
         {
             MessageId = messageId
         }.SetCommonProperties();
-    }
-
-    private static bool IsFairQueue(SqsQueueResource queue)
-    {
-        return queue.Attributes != null &&
-               queue.Attributes.TryGetValue(InternalQueueAttributeName.DeduplicationScope, out var dedupScope) &&
-               dedupScope == "messageGroup" &&
-               queue.Attributes.TryGetValue(InternalQueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
-               throughputLimit == "perMessageGroupId";
-    }
-
-    private static void EnqueueFifoMessage(SqsQueueResource queue, string messageGroupId, Message sqsMessage)
-    {
-        // Takes the group lock and wakes long-polling FIFO receivers.
-        queue.EnqueueFifoMessage(messageGroupId, sqsMessage);
     }
 
     public PublishBatchResponse ExecuteBatch(PublishBatchRequest request)
@@ -109,7 +72,15 @@ internal sealed class SnsPublishAction
             try
             {
                 var messageId = Guid.NewGuid().ToString();
-                PublishSingleMessage(entry, request.TopicArn, messageId);
+                Deliver(new OutboundMessage(
+                    messageId,
+                    request.TopicArn,
+                    entry.Subject,
+                    entry.Message,
+                    entry.MessageAttributes,
+                    entry.MessageGroupId,
+                    entry.MessageDeduplicationId));
+
                 response.Successful.Add(new PublishBatchResultEntry
                 {
                     Id = entry.Id,
@@ -133,46 +104,177 @@ internal sealed class SnsPublishAction
         return response.SetCommonProperties();
     }
 
-    private void PublishSingleMessage(PublishBatchRequestEntry entry, string topicArn, string messageId)
+    private void Deliver(OutboundMessage message)
     {
-        foreach (var (subscription, queue) in _subscriptionsAndQueues)
+        foreach (var subscription in _subscriptions)
         {
-            var sqsMessage = CreateSqsMessage(entry, topicArn, messageId, subscription);
+            if (!SnsFilterPolicy.Matches(subscription, message.Body, message.Attributes))
+            {
+                continue;
+            }
 
-            queue.Messages.Enqueue(sqsMessage);
+            if (subscription.IsSqs)
+            {
+                DeliverToSqs(subscription, message);
+            }
+            else if (subscription.IsHttp)
+            {
+                DeliverToHttp(subscription, message);
+            }
         }
     }
 
-    private Message CreateSqsMessage(PublishRequest request, string messageId, SnsSubscription subscription)
+    private void DeliverToSqs(SnsSubscription subscription, OutboundMessage message)
     {
-        var message = subscription.Raw
-            ? CreateRawSqsMessage(request.Message, request.MessageAttributes)
-            : CreateFormattedSqsMessage(request, messageId);
+        // A queue that has been deleted since subscribing is a client-side error: SNS doesn't
+        // retry those, it dead-letters (or drops) the message straight away.
+        if (!TryGetQueue(subscription.EndPoint, out var queue))
+        {
+            DeadLetter(subscription, message);
+            return;
+        }
 
-#pragma warning disable CA5351
-        var hash = MD5.HashData(Encoding.UTF8.GetBytes(message.Body));
-#pragma warning restore CA5351
-#pragma warning disable CA1308
-        message.MD5OfBody = Convert.ToHexString(hash).ToLowerInvariant();
-#pragma warning restore CA1308
-
-        return message;
+        Enqueue(queue, CreateSqsMessage(subscription, message), message);
     }
 
-    private Message CreateSqsMessage(PublishBatchRequestEntry entry, string topicArn, string messageId, SnsSubscription subscription)
+    private void DeliverToHttp(SnsSubscription subscription, OutboundMessage message)
     {
-        var message = subscription.Raw
-            ? CreateRawSqsMessage(entry.Message, entry.MessageAttributes)
-            : CreateFormattedSqsMessage(entry, topicArn, messageId);
+        var policy = SnsDeliveryPolicy.Resolve(
+            subscription.DeliveryPolicy,
+            _topic.Attributes.TryGetValue("DeliveryPolicy", out var topicPolicy) ? topicPolicy : null);
+
+        var body = subscription.Raw
+            ? message.Body
+            : CreateSnsEnvelope(subscription, message).ToJsonString();
+
+        _ = DeliverToHttpAsync(subscription, message, body, policy);
+    }
+
+    private async Task DeliverToHttpAsync(SnsSubscription subscription, OutboundMessage message, string body, SnsDeliveryPolicy policy)
+    {
+        try
+        {
+            var delays = policy.GetRetryDelays();
+            for (var attempt = 0; attempt <= delays.Count; attempt++)
+            {
+                if (attempt > 0 && delays[attempt - 1] > TimeSpan.Zero)
+                {
+                    await _bus.TimeProvider.Delay(delays[attempt - 1]).ConfigureAwait(false);
+                }
+
+                var outcome = await SnsHttpDelivery.PostAsync(
+                    _bus, subscription, "Notification", message.MessageId, body, policy.ContentType, subscription.Raw)
+                    .ConfigureAwait(false);
+
+                if (outcome == SnsHttpDelivery.Outcome.Delivered)
+                {
+                    return;
+                }
+                if (outcome == SnsHttpDelivery.Outcome.Failed)
+                {
+                    break;
+                }
+            }
+
+            DeadLetter(subscription, message);
+        }
+#pragma warning disable CA1031 // Background delivery must never surface an exception to the publisher.
+        catch (Exception)
+        {
+            // Swallowed intentionally - see pragma above.
+        }
+#pragma warning restore CA1031
+    }
+
+    /// <summary>
+    /// Sends a message that couldn't be delivered to the subscription's dead-letter queue, if it has one.
+    /// The DLQ receives exactly what the endpoint would have (raw body or SNS envelope).
+    /// </summary>
+    private void DeadLetter(SnsSubscription subscription, OutboundMessage message)
+    {
+        if (subscription.DeadLetterTargetArn is null || !TryGetQueue(subscription.DeadLetterTargetArn, out var deadLetterQueue))
+        {
+            return;
+        }
+
+        Enqueue(deadLetterQueue, CreateSqsMessage(subscription, message), message);
+    }
+
+    private bool TryGetQueue(string arn, out SqsQueueResource queue)
+    {
+        queue = null!;
+        return _bus.Queues.TryGetValue(arn.Split(':').Last(), out queue!);
+    }
+
+    private void Enqueue(SqsQueueResource queue, Message sqsMessage, OutboundMessage message)
+    {
+        if (!queue.IsFifo)
+        {
+            queue.Messages.Enqueue(sqsMessage);
+            return;
+        }
+
+        sqsMessage.Attributes ??= [];
+        sqsMessage.Attributes["MessageGroupId"] = message.MessageGroupId;
+        sqsMessage.Attributes["SequenceNumber"] = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
+        sqsMessage.Attributes["SentTimestamp"] = _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
+
+        var deduplicationId = message.DeduplicationId;
+        if (string.IsNullOrEmpty(deduplicationId))
+        {
+            // Generate a deduplication ID based on the message body
+            deduplicationId = GenerateMessageBodyHash(sqsMessage.Body);
+        }
+
+        sqsMessage.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
+
+        if (IsFairQueue(queue))
+        {
+            // Per-message-group deduplication
+            var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
+                message.MessageGroupId,
+                _ => new ConcurrentDictionary<string, string>());
+
+            if (groupDeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
+            {
+                queue.EnqueueFifoMessage(message.MessageGroupId, sqsMessage);
+            }
+        }
+        else
+        {
+            // Global deduplication (traditional FIFO)
+            if (queue.DeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
+            {
+                queue.EnqueueFifoMessage(message.MessageGroupId, sqsMessage);
+            }
+        }
+    }
+
+    private static bool IsFairQueue(SqsQueueResource queue)
+    {
+        return queue.Attributes != null &&
+               queue.Attributes.TryGetValue(InternalQueueAttributeName.DeduplicationScope, out var dedupScope) &&
+               dedupScope == "messageGroup" &&
+               queue.Attributes.TryGetValue(InternalQueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
+               throughputLimit == "perMessageGroupId";
+    }
+
+    private Message CreateSqsMessage(SnsSubscription subscription, OutboundMessage message)
+    {
+        var sqsMessage = subscription.Raw
+            ? CreateRawSqsMessage(message.Body, message.Attributes)
+            : CreateFormattedMessage(CreateSnsEnvelope(subscription, message), message.TopicArn);
+
+        sqsMessage.MessageId = Guid.NewGuid().ToString();
 
 #pragma warning disable CA5351
-        var hash = MD5.HashData(Encoding.UTF8.GetBytes(message.Body));
+        var hash = MD5.HashData(Encoding.UTF8.GetBytes(sqsMessage.Body));
 #pragma warning restore CA5351
 #pragma warning disable CA1308
-        message.MD5OfBody = Convert.ToHexString(hash).ToLowerInvariant();
+        sqsMessage.MD5OfBody = Convert.ToHexString(hash).ToLowerInvariant();
 #pragma warning restore CA1308
 
-        return message;
+        return sqsMessage;
     }
 
     private static Message CreateRawSqsMessage(string message, Dictionary<string, MessageAttributeValue>? attributes)
@@ -191,42 +293,30 @@ internal sealed class SnsPublishAction
         };
     }
 
-    private Message CreateFormattedSqsMessage(PublishRequest request, string messageId)
-    {
-        var snsMessage = CreateSnsMessage(messageId, request.TopicArn, request.Subject, request.Message, request.MessageAttributes);
-        return CreateFormattedMessage(snsMessage, request.TopicArn);
-    }
-
-    private Message CreateFormattedSqsMessage(PublishBatchRequestEntry entry, string topicArn, string messageId)
-    {
-        var snsMessage = CreateSnsMessage(messageId, topicArn, entry.Subject, entry.Message, entry.MessageAttributes);
-        return CreateFormattedMessage(snsMessage, topicArn);
-    }
-
-    private JsonObject CreateSnsMessage(string messageId, string topicArn, string? subject, string message, Dictionary<string, MessageAttributeValue>? attributes)
+    private JsonObject CreateSnsEnvelope(SnsSubscription subscription, OutboundMessage message)
     {
         var snsMessage = new JsonObject
         {
             ["Type"] = "Notification",
-            ["MessageId"] = messageId,
-            ["TopicArn"] = topicArn,
-            ["Message"] = message,
-            ["Timestamp"] = _timeProvider.GetUtcNow().ToString("yyyy-MM-ddTHH:mm:ss.fffZ", DateTimeFormatInfo.InvariantInfo),
+            ["MessageId"] = message.MessageId,
+            ["TopicArn"] = message.TopicArn,
+            ["Message"] = message.Body,
+            ["Timestamp"] = SnsHttpDelivery.Timestamp(_bus),
             ["SignatureVersion"] = "1",
             ["Signature"] = "EXAMPLE",
             ["SigningCertURL"] = "EXAMPLE",
-            ["UnsubscribeURL"] = "EXAMPLE"
+            ["UnsubscribeURL"] = SnsHttpDelivery.UnsubscribeUrl(_bus, subscription)
         };
 
-        if (subject is not null)
+        if (message.Subject is not null)
         {
-            snsMessage["Subject"] = subject;
+            snsMessage["Subject"] = message.Subject;
         }
 
-        if (attributes is not null && attributes.Count > 0)
+        if (message.Attributes is not null && message.Attributes.Count > 0)
         {
             var messageAttributes = new JsonObject();
-            foreach (var (key, value) in attributes)
+            foreach (var (key, value) in message.Attributes)
             {
                 messageAttributes[key] = new JsonObject
                 {

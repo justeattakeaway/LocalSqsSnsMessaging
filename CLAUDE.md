@@ -126,7 +126,15 @@ The HTTP mode implements two different AWS protocols:
 **Resource Models**
 - `SqsQueueResource` (src/LocalSqsSnsMessaging/SqsQueueResource.cs:7): Queue state including messages, in-flight messages, message groups for FIFO
 - `SnsTopicResource` (src/LocalSqsSnsMessaging/SnsTopicResource.cs:3): Topic state with publish actions
-- `SnsSubscription` (src/LocalSqsSnsMessaging/SnsSubscription.cs): Links topics to queues
+- `SnsSubscription` (src/LocalSqsSnsMessaging/SnsSubscription.cs): Links topics to `sqs` queues or `http`/`https` endpoints, and holds the subscription's `FilterPolicy`/`FilterPolicyScope`, `RedrivePolicy` (dead-letter queue) and `DeliveryPolicy`
+
+### SNS Delivery
+
+`SnsPublishAction` fans a published message out per subscription:
+- `SnsFilterPolicy` evaluates filter policies (attribute or body scope) on top of `JsonPatternMatcher`, the same matcher EventBridge uses for event patterns
+- SQS endpoints are resolved from `bus.Queues` at publish time; a deleted queue is a delivery failure
+- HTTP/S endpoints are POSTed in the background by `SnsHttpDelivery` using `bus.HttpClient`, retried per `SnsDeliveryPolicy` with `TimeProvider`-driven delays
+- Failed deliveries go to the subscription's dead-letter queue when a `RedrivePolicy` is set
 
 ### Time Control
 

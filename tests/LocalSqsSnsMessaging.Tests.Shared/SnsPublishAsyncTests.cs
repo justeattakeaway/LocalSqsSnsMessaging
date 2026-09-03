@@ -168,6 +168,26 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
 
     private async Task SetupTopicAndQueue(string topicArn, string queueArn, bool isRawDelivery)
     {
+        await CreateTopicAndQueue(topicArn, queueArn);
+
+        // Setup subscription — RawMessageDelivery must be lowercase "true"/"false" on the wire.
+#pragma warning disable CA1308
+        await Sns.SubscribeAsync(new SubscribeRequest
+        {
+            TopicArn = topicArn,
+            Protocol = "sqs",
+            Endpoint = queueArn,
+            Attributes = new Dictionary<string, string>
+            {
+                ["RawMessageDelivery"] = isRawDelivery.ToString().ToLowerInvariant()
+            }
+        });
+#pragma warning restore CA1308
+    }
+
+    /// <summary>Creates the topic and queue (with the SNS delivery policy real AWS needs) without subscribing.</summary>
+    private async Task CreateTopicAndQueue(string topicArn, string queueArn)
+    {
         // Setup topic
         await Sns.CreateTopicAsync(new CreateTopicRequest { Name = topicArn.Split(':').Last() });
 
@@ -199,20 +219,6 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
                 Attributes = new Dictionary<string, string> { ["Policy"] = policy }
             });
         }
-
-        // Setup subscription — RawMessageDelivery must be lowercase "true"/"false" on the wire.
-#pragma warning disable CA1308
-        await Sns.SubscribeAsync(new SubscribeRequest
-        {
-            TopicArn = topicArn,
-            Protocol = "sqs",
-            Endpoint = queueArn,
-            Attributes = new Dictionary<string, string>
-            {
-                ["RawMessageDelivery"] = isRawDelivery.ToString().ToLowerInvariant()
-            }
-        });
-#pragma warning restore CA1308
     }
 
     // Topic Attributes
@@ -343,6 +349,177 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
 
         var filterPolicy = JsonSerializer.Deserialize<JsonElement>(getAttributesResponse.Attributes["FilterPolicy"]);
         filterPolicy.GetProperty("attribute").EnumerateArray().Select(x => x.GetString()).ShouldBe(["value1", "value2"]);
+    }
+
+    [Test]
+    public async Task PublishAsync_WithAttributeFilterPolicy_ShouldOnlyDeliverMatchingMessages(CancellationToken cancellationToken)
+    {
+        // Arrange
+        var topicName = UniqueName("FilterTopic");
+        var queueName = UniqueName("FilterQueue");
+        var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
+        var queueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{queueName}";
+
+        await CreateTopicAndQueue(topicArn, queueArn);
+
+        await Sns.SubscribeAsync(new SubscribeRequest
+        {
+            TopicArn = topicArn,
+            Protocol = "sqs",
+            Endpoint = queueArn,
+            Attributes = new Dictionary<string, string>
+            {
+                ["RawMessageDelivery"] = "true",
+                ["FilterPolicy"] = """{"eventType": ["order_placed", "order_shipped"], "amount": [{"numeric": [">", 100]}]}"""
+            }
+        }, cancellationToken);
+
+        // Act
+        await Sns.PublishAsync(new PublishRequest
+        {
+            TopicArn = topicArn,
+            Message = "matches",
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                ["eventType"] = new() { DataType = "String", StringValue = "order_placed" },
+                ["amount"] = new() { DataType = "Number", StringValue = "250" }
+            }
+        }, cancellationToken);
+
+        await Sns.PublishAsync(new PublishRequest
+        {
+            TopicArn = topicArn,
+            Message = "wrong event type",
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                ["eventType"] = new() { DataType = "String", StringValue = "order_cancelled" },
+                ["amount"] = new() { DataType = "Number", StringValue = "250" }
+            }
+        }, cancellationToken);
+
+        await Sns.PublishAsync(new PublishRequest
+        {
+            TopicArn = topicArn,
+            Message = "amount too small",
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                ["eventType"] = new() { DataType = "String", StringValue = "order_shipped" },
+                ["amount"] = new() { DataType = "Number", StringValue = "10" }
+            }
+        }, cancellationToken);
+
+        await Sns.PublishAsync(new PublishRequest
+        {
+            TopicArn = topicArn,
+            Message = "no attributes"
+        }, cancellationToken);
+
+        // Assert
+        var queueUrl = (await Sqs.GetQueueUrlAsync(queueName, cancellationToken)).QueueUrl;
+        var messages = await ReceiveAllAsync(Sqs, queueUrl, expectedCount: 4, timeout: TimeSpan.FromSeconds(IsRealAwsMode ? 15 : 2),
+            cancellationToken: cancellationToken);
+
+        messages.Select(m => m.Body).ShouldBe(["matches"]);
+    }
+
+    [Test]
+    public async Task PublishAsync_WithMessageBodyFilterPolicy_ShouldOnlyDeliverMatchingMessages(CancellationToken cancellationToken)
+    {
+        // Arrange
+        var topicName = UniqueName("BodyFilterTopic");
+        var queueName = UniqueName("BodyFilterQueue");
+        var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
+        var queueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{queueName}";
+
+        await CreateTopicAndQueue(topicArn, queueArn);
+
+        var subscribeResponse = await Sns.SubscribeAsync(new SubscribeRequest
+        {
+            TopicArn = topicArn,
+            Protocol = "sqs",
+            Endpoint = queueArn,
+            Attributes = new Dictionary<string, string>
+            {
+                ["RawMessageDelivery"] = "true",
+                ["FilterPolicyScope"] = "MessageBody",
+                ["FilterPolicy"] = """{"order": {"status": ["shipped"], "region": [{"prefix": "eu-"}]}}"""
+            }
+        }, cancellationToken);
+
+        // Act
+        await Sns.PublishAsync(new PublishRequest
+        {
+            TopicArn = topicArn,
+            Message = """{"order": {"id": 1, "status": "shipped", "region": "eu-west-1"}}"""
+        }, cancellationToken);
+
+        await Sns.PublishAsync(new PublishRequest
+        {
+            TopicArn = topicArn,
+            Message = """{"order": {"id": 2, "status": "placed", "region": "eu-west-1"}}"""
+        }, cancellationToken);
+
+        await Sns.PublishAsync(new PublishRequest
+        {
+            TopicArn = topicArn,
+            Message = """{"order": {"id": 3, "status": "shipped", "region": "us-east-1"}}"""
+        }, cancellationToken);
+
+        await Sns.PublishAsync(new PublishRequest
+        {
+            TopicArn = topicArn,
+            Message = "not json at all"
+        }, cancellationToken);
+
+        // Assert
+        var attributes = await Sns.GetSubscriptionAttributesAsync(new GetSubscriptionAttributesRequest
+        {
+            SubscriptionArn = subscribeResponse.SubscriptionArn
+        }, cancellationToken);
+        attributes.Attributes.ShouldContainKeyAndValue("FilterPolicyScope", "MessageBody");
+
+        var queueUrl = (await Sqs.GetQueueUrlAsync(queueName, cancellationToken)).QueueUrl;
+        var messages = await ReceiveAllAsync(Sqs, queueUrl, expectedCount: 4, timeout: TimeSpan.FromSeconds(IsRealAwsMode ? 15 : 2),
+            cancellationToken: cancellationToken);
+
+        var message = messages.ShouldHaveSingleItem();
+        message.Body.ShouldContain("\"id\": 1");
+    }
+
+    [Test]
+    public async Task SubscribeAsync_WithInvalidFilterPolicy_ShouldThrowInvalidParameter(CancellationToken cancellationToken)
+    {
+        // Arrange
+        var topicName = UniqueName("InvalidFilterTopic");
+        var queueName = UniqueName("InvalidFilterQueue");
+        var topicArn = $"arn:aws:sns:us-east-1:{AccountId}:{topicName}";
+        var queueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{queueName}";
+
+        await CreateTopicAndQueue(topicArn, queueArn);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidParameterException>(() => Sns.SubscribeAsync(new SubscribeRequest
+        {
+            TopicArn = topicArn,
+            Protocol = "sqs",
+            Endpoint = queueArn,
+            Attributes = new Dictionary<string, string>
+            {
+                ["FilterPolicy"] = "not json"
+            }
+        }, cancellationToken));
+
+        await Assert.ThrowsAsync<InvalidParameterException>(() => Sns.SubscribeAsync(new SubscribeRequest
+        {
+            TopicArn = topicArn,
+            Protocol = "sqs",
+            Endpoint = queueArn,
+            Attributes = new Dictionary<string, string>
+            {
+                // A value that isn't an array is not a valid policy.
+                ["FilterPolicy"] = """{"eventType": "order_placed"}"""
+            }
+        }, cancellationToken));
     }
 
     [Test]
