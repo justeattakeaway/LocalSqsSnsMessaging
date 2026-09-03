@@ -19,6 +19,9 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
     // This method allows us to deviate from this behavior until support is added to our implementation.
     protected abstract bool SupportsAttributeSizeValidation();
 
+    // Floci accepts any string as a filter policy; real AWS and the in-memory bus reject malformed ones.
+    protected abstract bool ValidatesFilterPolicies();
+
     [Test]
     public async Task PublishAsync_WithRawDelivery_ShouldDeliverMessageDirectly(CancellationToken cancellationToken)
     {
@@ -496,6 +499,11 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
         var queueArn = $"arn:aws:sqs:us-east-1:{AccountId}:{queueName}";
 
         await CreateTopicAndQueue(topicArn, queueArn);
+
+        if (!ValidatesFilterPolicies())
+        {
+            return;
+        }
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidParameterException>(() => Sns.SubscribeAsync(new SubscribeRequest

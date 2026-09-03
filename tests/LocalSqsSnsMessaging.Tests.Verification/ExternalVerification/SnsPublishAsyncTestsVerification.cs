@@ -24,4 +24,7 @@ public class SnsPublishAsyncTestsVerification : SnsPublishAsyncTests
     // rather than the typed InvalidParameterValueException that real AWS returns,
     // so only assert the typed variant when actually pointed at AWS.
     protected override bool SupportsAttributeSizeValidation() => IsRealAwsMode;
+
+    // Floci stores filter policies verbatim without validating them.
+    protected override bool ValidatesFilterPolicies() => IsRealAwsMode;
 }
