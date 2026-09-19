@@ -9,7 +9,20 @@ internal sealed class InternalSnsClient
 {
     private readonly InMemoryAwsBus _bus;
 
-    private const int MaxMessageSize = 262144;
+    /// <summary>The name of the topic attribute that opts a topic in to payloads above 256 KiB.</summary>
+    private const string MaximumMessageSizeAttribute = "MaximumMessageSize";
+
+    /// <summary>The message size a topic accepts when it hasn't set <c>MaximumMessageSize</c>: 256 KiB.</summary>
+    private const int DefaultMaxMessageSize = 262144;
+
+    /// <summary>The smallest value <c>MaximumMessageSize</c> can be set to: 1 KiB.</summary>
+    private const int MinimumMaxMessageSize = 1024;
+
+    /// <summary>The largest value <c>MaximumMessageSize</c> can be set to: 1 MiB.</summary>
+    private const int LargestMaxMessageSize = 1048576;
+
+    /// <summary>A topic accepting more than 256 KiB refuses subscriptions beyond this many.</summary>
+    private const int LargeMessageSubscriptionLimit = 100;
 
     internal InternalSnsClient(InMemoryAwsBus bus)
     {
@@ -29,6 +42,23 @@ internal sealed class InternalSnsClient
             Arn = topicArn
         };
 
+        foreach (var (name, value) in request.Attributes ?? [])
+        {
+            if (name.Equals(MaximumMessageSizeAttribute, StringComparison.OrdinalIgnoreCase))
+            {
+                // A brand new topic has no subscriptions, so only the value itself needs checking.
+                ValidateMaximumMessageSize(value, "Invalid parameter: Attributes Reason: ");
+            }
+            else if (name.Equals("DeliveryPolicy", StringComparison.OrdinalIgnoreCase))
+            {
+                SnsDeliveryPolicy.Validate(value);
+            }
+
+            topic.Attributes[name] = value;
+        }
+
+        // Attributes only apply to a topic we actually create; CreateTopic on an existing topic
+        // hands back the topic as it stands, as on AWS.
         _bus.Topics.TryAdd(request.Name, topic);
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.CreateTopic, topicArn);
@@ -244,13 +274,16 @@ internal sealed class InternalSnsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // The limit is per-topic, so the topic has to be resolved before the message can be sized up.
+        var topic = GetTopicByArn(request.TopicArn);
+
+        var maxMessageSize = GetMaxMessageSize(topic);
         var messageSize = CalculateMessageSize(request.Message, request.Subject, request.MessageAttributes);
-        if (messageSize > MaxMessageSize)
+        if (messageSize > maxMessageSize)
         {
-            throw new InternalInvalidParameterException($"Message size has exceeded the limit of {MaxMessageSize} bytes.");
+            throw new InternalInvalidParameterException("Invalid parameter: Message too long");
         }
 
-        var topic = GetTopicByArn(request.TopicArn);
         var result = topic.PublishAction.Execute(request);
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Publish, request.TopicArn);
@@ -261,15 +294,20 @@ internal sealed class InternalSnsClient
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var totalSize = request.PublishBatchRequestEntries
-            .Sum(requestEntry => CalculateMessageSize(requestEntry.Message, requestEntry.Subject, requestEntry.MessageAttributes));
-        if (totalSize > MaxMessageSize)
-        {
-            throw new InternalBatchRequestTooLongException(
-                $"Batch size ({totalSize} bytes) exceeds the maximum allowed size ({MaxMessageSize} bytes)");
-        }
 
         var topic = GetTopicByArn(request.TopicArn);
+
+        // The combined size of the batch is measured against the topic's limit, the same one a
+        // single Publish is measured against.
+        var maxMessageSize = GetMaxMessageSize(topic);
+        var totalSize = request.PublishBatchRequestEntries
+            .Sum(requestEntry => CalculateMessageSize(requestEntry.Message, requestEntry.Subject, requestEntry.MessageAttributes));
+        if (totalSize > maxMessageSize)
+        {
+            throw new InternalBatchRequestTooLongException(
+                "The length of all the messages put together is more than the limit.");
+        }
+
         var result = topic.PublishAction.ExecuteBatch(request);
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.PublishBatch, request.TopicArn);
@@ -353,6 +391,14 @@ internal sealed class InternalSnsClient
         {
             SnsDeliveryPolicy.Validate(request.AttributeValue);
         }
+        else if (request.AttributeName.Equals(MaximumMessageSizeAttribute, StringComparison.OrdinalIgnoreCase))
+        {
+            var size = ValidateMaximumMessageSize(request.AttributeValue);
+            if (size > DefaultMaxMessageSize)
+            {
+                ValidateSubscriptionsSupportLargeMessages(topic);
+            }
+        }
 
         topic.Attributes[request.AttributeName] = request.AttributeValue;
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetTopicAttributes, topic.Arn);
@@ -388,6 +434,8 @@ internal sealed class InternalSnsClient
             default:
                 throw new NotSupportedException("Only the sqs, http and https protocols are supported.");
         }
+
+        ValidateSubscriptionSupportsTopicMessageSize(request.TopicArn, protocol);
 
         var snsSubscription = new SnsSubscription
         {
@@ -728,6 +776,80 @@ internal sealed class InternalSnsClient
             throw new ArgumentException("ARN malformed", nameof(topicArn));
         }
         return topicArn[(indexOfLastColon+1) ..];
+    }
+
+    /// <summary>
+    /// The topic's effective message size limit: its <c>MaximumMessageSize</c> attribute, or 256 KiB
+    /// when the topic hasn't opted in to larger payloads.
+    /// </summary>
+    private static int GetMaxMessageSize(SnsTopicResource topic) =>
+        topic.Attributes.TryGetValue(MaximumMessageSizeAttribute, out var value)
+        && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var size)
+            ? size
+            : DefaultMaxMessageSize;
+
+    /// <summary>
+    /// Checks a <c>MaximumMessageSize</c> attribute value is an integer within the range AWS accepts
+    /// (1 KiB to 1 MiB), returning the parsed value. CreateTopic reports the failure through its
+    /// attribute map, hence the caller-supplied prefix.
+    /// </summary>
+    private static int ValidateMaximumMessageSize(string? value, string errorPrefix = "Invalid parameter: ")
+    {
+        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var size)
+            || size < MinimumMaxMessageSize
+            || size > LargestMaxMessageSize)
+        {
+            throw new InternalInvalidParameterException(
+                $"{errorPrefix}{MaximumMessageSizeAttribute}: {value} is not an integer between " +
+                $"{MinimumMaxMessageSize} and {LargestMaxMessageSize} bytes");
+        }
+
+        return size;
+    }
+
+    /// <summary>
+    /// A topic that accepts more than 256 KiB only supports SQS subscriptions (AWS also allows
+    /// Firehose and Lambda, neither of which this bus supports). AWS checks only the protocols
+    /// here - raising the limit on a topic that already has more than 100 subscriptions is allowed,
+    /// and only the next <c>Subscribe</c> is turned away.
+    /// </summary>
+    private void ValidateSubscriptionsSupportLargeMessages(SnsTopicResource topic)
+    {
+        // Unconfirmed HTTP/S subscriptions count too, as on AWS.
+        var unsupported = _bus.Subscriptions.Values.FirstOrDefault(s => s.TopicArn == topic.Arn && !s.IsSqs);
+        if (unsupported is not null)
+        {
+            throw new InternalInvalidParameterException(UnsupportedProtocolMessage(unsupported.Protocol));
+        }
+    }
+
+    private static string UnsupportedProtocolMessage(string protocol) =>
+        $"Invalid parameter: {MaximumMessageSizeAttribute} greater than {DefaultMaxMessageSize} bytes " +
+        $"is not supported for the following protocol: [{protocol}]";
+
+    /// <summary>
+    /// The subscription side of the same constraint: a topic that accepts more than 256 KiB can't take
+    /// an HTTP/S subscription, or a subscription beyond its hundredth.
+    /// </summary>
+    private void ValidateSubscriptionSupportsTopicMessageSize(string topicArn, string protocol)
+    {
+        var topicName = GetTopicNameByArn(topicArn);
+        if (!_bus.Topics.TryGetValue(topicName, out var topic) || GetMaxMessageSize(topic) <= DefaultMaxMessageSize)
+        {
+            return;
+        }
+
+        if (protocol is "http" or "https")
+        {
+            throw new InternalInvalidParameterException(UnsupportedProtocolMessage(protocol));
+        }
+
+        if (_bus.Subscriptions.Values.Count(s => s.TopicArn == topicArn) >= LargeMessageSubscriptionLimit)
+        {
+            throw new InternalInvalidParameterException(
+                $"Invalid parameter: A topic with {MaximumMessageSizeAttribute} greater than {DefaultMaxMessageSize} bytes " +
+                $"supports a maximum of {LargeMessageSubscriptionLimit} subscriptions");
+        }
     }
 
     private static int CalculateMessageSize(string message, string? subject, Dictionary<string, MessageAttributeValue>? messageAttributes)

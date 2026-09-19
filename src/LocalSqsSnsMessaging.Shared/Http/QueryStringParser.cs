@@ -17,6 +17,9 @@ namespace LocalSqsSnsMessaging.Http;
 /// </summary>
 internal static class QueryStringParser
 {
+    /// <summary>Values up to this size are decoded on the stack; anything larger is pooled.</summary>
+    private const int MaxStackallocBytes = 256;
+
     /// <summary>
     /// Parse a query string from UTF-8 bytes into a dictionary of key-value pairs.
     /// </summary>
@@ -73,33 +76,46 @@ internal static class QueryStringParser
             return Encoding.UTF8.GetString(encoded);
         }
 
-        // Slow path: decode
-        Span<byte> decoded = stackalloc byte[encoded.Length]; // Max size
-        int writePos = 0;
+        // Slow path: decode. Decoding never grows a value, so the encoded length is a safe upper
+        // bound, but it can be as large as a 1 MiB SNS message - far too much to stackalloc.
+        var rented = encoded.Length > MaxStackallocBytes ? ArrayPool<byte>.Shared.Rent(encoded.Length) : null;
+        Span<byte> decoded = rented ?? stackalloc byte[MaxStackallocBytes];
 
-        for (int i = 0; i < encoded.Length; i++)
+        try
         {
-            if (encoded[i] == (byte)'%' && i + 2 < encoded.Length)
+            int writePos = 0;
+
+            for (int i = 0; i < encoded.Length; i++)
             {
-                // Decode %XX
-                var hex = encoded.Slice(i + 1, 2);
-                if (TryParseHexByte(hex, out byte decodedByte))
+                if (encoded[i] == (byte)'%' && i + 2 < encoded.Length)
                 {
-                    decoded[writePos++] = decodedByte;
-                    i += 2;
+                    // Decode %XX
+                    var hex = encoded.Slice(i + 1, 2);
+                    if (TryParseHexByte(hex, out byte decodedByte))
+                    {
+                        decoded[writePos++] = decodedByte;
+                        i += 2;
+                        continue;
+                    }
+                }
+                else if (encoded[i] == (byte)'+')
+                {
+                    decoded[writePos++] = (byte)' ';
                     continue;
                 }
-            }
-            else if (encoded[i] == (byte)'+')
-            {
-                decoded[writePos++] = (byte)' ';
-                continue;
+
+                decoded[writePos++] = encoded[i];
             }
 
-            decoded[writePos++] = encoded[i];
+            return Encoding.UTF8.GetString(decoded.Slice(0, writePos));
         }
-
-        return Encoding.UTF8.GetString(decoded.Slice(0, writePos));
+        finally
+        {
+            if (rented is not null)
+            {
+                ArrayPool<byte>.Shared.Return(rented);
+            }
+        }
     }
 
     private static bool TryParseHexByte(ReadOnlySpan<byte> hex, out byte result)
