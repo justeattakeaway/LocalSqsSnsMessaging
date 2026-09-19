@@ -12,6 +12,11 @@ internal sealed class InternalSnsClient
     /// <summary>The name of the topic attribute that opts a topic in to payloads above 256 KiB.</summary>
     private const string MaximumMessageSizeAttribute = "MaximumMessageSize";
 
+    private const string DeliveryPolicyAttribute = "DeliveryPolicy";
+
+    /// <summary>The attribute names this client acts on, in the spelling AWS expects.</summary>
+    private static readonly string[] RecognisedAttributeNames = [MaximumMessageSizeAttribute, DeliveryPolicyAttribute];
+
     /// <summary>The message size a topic accepts when it hasn't set <c>MaximumMessageSize</c>: 256 KiB.</summary>
     private const int DefaultMaxMessageSize = 262144;
 
@@ -44,12 +49,14 @@ internal sealed class InternalSnsClient
 
         foreach (var (name, value) in request.Attributes ?? [])
         {
-            if (name.Equals(MaximumMessageSizeAttribute, StringComparison.OrdinalIgnoreCase))
+            ValidateAttributeNameCasing(name, $"Invalid parameter: Attributes Reason: Unknown attribute {name}");
+
+            if (name.Equals(MaximumMessageSizeAttribute, StringComparison.Ordinal))
             {
                 // A brand new topic has no subscriptions, so only the value itself needs checking.
                 ValidateMaximumMessageSize(value, "Invalid parameter: Attributes Reason: ");
             }
-            else if (name.Equals("DeliveryPolicy", StringComparison.OrdinalIgnoreCase))
+            else if (name.Equals(DeliveryPolicyAttribute, StringComparison.Ordinal))
             {
                 SnsDeliveryPolicy.Validate(value);
             }
@@ -387,20 +394,25 @@ internal sealed class InternalSnsClient
             throw new InternalNotFoundException("Topic not found.");
         }
 
-        if (request.AttributeName.Equals("DeliveryPolicy", StringComparison.OrdinalIgnoreCase))
+        ValidateAttributeNameCasing(request.AttributeName, "Invalid parameter: AttributeName");
+
+        if (request.AttributeName.Equals(DeliveryPolicyAttribute, StringComparison.Ordinal))
         {
             SnsDeliveryPolicy.Validate(request.AttributeValue);
         }
-        else if (request.AttributeName.Equals(MaximumMessageSizeAttribute, StringComparison.OrdinalIgnoreCase))
+
+        // Checking the subscriptions and raising the limit have to happen together, or a subscription
+        // the new limit forbids can slip in between the two.
+        lock (topic.SubscriptionGate)
         {
-            var size = ValidateMaximumMessageSize(request.AttributeValue);
-            if (size > DefaultMaxMessageSize)
+            if (request.AttributeName.Equals(MaximumMessageSizeAttribute, StringComparison.Ordinal)
+                && ValidateMaximumMessageSize(request.AttributeValue) > DefaultMaxMessageSize)
             {
                 ValidateSubscriptionsSupportLargeMessages(topic);
             }
-        }
 
-        topic.Attributes[request.AttributeName] = request.AttributeValue;
+            topic.Attributes[request.AttributeName] = request.AttributeValue;
+        }
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetTopicAttributes, topic.Arn);
         return Task.FromResult(new SetTopicAttributesResponse().SetCommonProperties());
     }
@@ -435,8 +447,6 @@ internal sealed class InternalSnsClient
                 throw new NotSupportedException("Only the sqs, http and https protocols are supported.");
         }
 
-        ValidateSubscriptionSupportsTopicMessageSize(request.TopicArn, protocol);
-
         var snsSubscription = new SnsSubscription
         {
             SubscriptionArn = Guid.NewGuid().ToString(),
@@ -465,9 +475,23 @@ internal sealed class InternalSnsClient
             }
         }
 
-        _bus.Subscriptions.TryAdd(snsSubscription.SubscriptionArn, snsSubscription);
-
-        SnsPublishActionFactory.UpdateTopicPublishAction(snsSubscription.TopicArn, _bus);
+        // Checking whether the topic has room and taking that room have to happen together, or two
+        // concurrent subscribers can both see room for one more. Subscribing to a topic that doesn't
+        // exist is left alone, as AWS allows that too.
+        if (_bus.Topics.TryGetValue(GetTopicNameByArn(request.TopicArn), out var subscribedTopic))
+        {
+            lock (subscribedTopic.SubscriptionGate)
+            {
+                ValidateSubscriptionSupportsTopicMessageSize(subscribedTopic, protocol);
+                _bus.Subscriptions.TryAdd(snsSubscription.SubscriptionArn, snsSubscription);
+                SnsPublishActionFactory.UpdateTopicPublishAction(snsSubscription.TopicArn, _bus);
+            }
+        }
+        else
+        {
+            _bus.Subscriptions.TryAdd(snsSubscription.SubscriptionArn, snsSubscription);
+            SnsPublishActionFactory.UpdateTopicPublishAction(snsSubscription.TopicArn, _bus);
+        }
 
         if (snsSubscription.IsHttp)
         {
@@ -789,6 +813,22 @@ internal sealed class InternalSnsClient
             : DefaultMaxMessageSize;
 
     /// <summary>
+    /// AWS matches attribute names exactly, so a name that is only a case away from one we act on is
+    /// rejected rather than stored verbatim and quietly ignored.
+    /// </summary>
+    private static void ValidateAttributeNameCasing(string name, string message)
+    {
+        foreach (var recognised in RecognisedAttributeNames)
+        {
+            if (name.Equals(recognised, StringComparison.OrdinalIgnoreCase)
+                && !name.Equals(recognised, StringComparison.Ordinal))
+            {
+                throw new InternalInvalidParameterException(message);
+            }
+        }
+    }
+
+    /// <summary>
     /// Checks a <c>MaximumMessageSize</c> attribute value is an integer within the range AWS accepts
     /// (1 KiB to 1 MiB), returning the parsed value. CreateTopic reports the failure through its
     /// attribute map, hence the caller-supplied prefix.
@@ -831,10 +871,9 @@ internal sealed class InternalSnsClient
     /// The subscription side of the same constraint: a topic that accepts more than 256 KiB can't take
     /// an HTTP/S subscription, or a subscription beyond its hundredth.
     /// </summary>
-    private void ValidateSubscriptionSupportsTopicMessageSize(string topicArn, string protocol)
+    private void ValidateSubscriptionSupportsTopicMessageSize(SnsTopicResource topic, string protocol)
     {
-        var topicName = GetTopicNameByArn(topicArn);
-        if (!_bus.Topics.TryGetValue(topicName, out var topic) || GetMaxMessageSize(topic) <= DefaultMaxMessageSize)
+        if (GetMaxMessageSize(topic) <= DefaultMaxMessageSize)
         {
             return;
         }
@@ -844,7 +883,7 @@ internal sealed class InternalSnsClient
             throw new InternalInvalidParameterException(UnsupportedProtocolMessage(protocol));
         }
 
-        if (_bus.Subscriptions.Values.Count(s => s.TopicArn == topicArn) >= LargeMessageSubscriptionLimit)
+        if (_bus.Subscriptions.Values.Count(s => s.TopicArn == topic.Arn) >= LargeMessageSubscriptionLimit)
         {
             throw new InternalInvalidParameterException(
                 $"Invalid parameter: A topic with {MaximumMessageSizeAttribute} greater than {DefaultMaxMessageSize} bytes " +

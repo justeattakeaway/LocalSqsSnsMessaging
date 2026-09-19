@@ -351,6 +351,91 @@ public sealed class SnsMaximumMessageSizeTests : IDisposable
     }
 
     [Test]
+    public async Task SetTopicAttributes_RejectsAnAttributeNameThatIsOnlyACaseAway()
+    {
+        var topicArn = await CreateTopicAsync("miscased-attribute-topic");
+
+        // AWS matches attribute names exactly, so this must not be taken as MaximumMessageSize and
+        // quietly leave the topic on the default limit.
+        var exception = await Assert.ThrowsAsync<InvalidParameterException>(() => _sns.SetTopicAttributesAsync(new SetTopicAttributesRequest
+        {
+            TopicArn = topicArn,
+            AttributeName = "maximumMessageSize",
+            AttributeValue = OneMiB
+        }));
+
+        exception.ShouldNotBeNull().Message.ShouldBe("Invalid parameter: AttributeName");
+
+        await Assert.ThrowsAsync<InvalidParameterException>(
+            () => _sns.PublishAsync(PublishOfSize(topicArn, DefaultLimit + 1)));
+    }
+
+    [Test]
+    public async Task CreateTopic_RejectsAnAttributeNameThatIsOnlyACaseAway()
+    {
+        var exception = await Assert.ThrowsAsync<InvalidParameterException>(() => CreateTopicAsync("miscased-created-topic",
+            new Dictionary<string, string> { ["maximumMessageSize"] = OneMiB }));
+
+        exception.ShouldNotBeNull().Message.ShouldBe(
+            "Invalid parameter: Attributes Reason: Unknown attribute maximumMessageSize");
+    }
+
+    [Test]
+    public async Task Subscribe_ConcurrentCalls_DoNotOversubscribeALargeMessageTopic()
+    {
+        const int racers = 24;
+
+        // A single race only sometimes interleaves badly, so run a few rounds.
+        for (var round = 0; round < 5; round++)
+        {
+            var topicArn = await CreateTopicAsync($"concurrent-subscription-topic-{round}",
+                new Dictionary<string, string> { ["MaximumMessageSize"] = OneMiB });
+
+            // Fill to one short of the cap, so every racer competes for the last slot.
+            for (var i = 0; i < 99; i++)
+            {
+                await SubscribeQueueAsync(topicArn, $"concurrent-filler-{round}-{i}");
+            }
+
+            // Queues up front, so the raced part is only the subscribing.
+            var queueArns = new List<string>();
+            for (var i = 0; i < racers; i++)
+            {
+                queueArns.Add((await CreateQueueAsync($"concurrent-queue-{round}-{i}")).QueueArn);
+            }
+
+            // Dedicated threads released together - the SDK call completes synchronously against the
+            // in-memory bus, so Task.WhenAll over async lambdas would just run them in turn.
+            using var barrier = new Barrier(racers);
+            var accepted = await Task.WhenAll(queueArns.Select(queueArn => Task.Factory.StartNew(
+                () =>
+                {
+                    barrier.SignalAndWait();
+                    try
+                    {
+                        _sns.SubscribeAsync(new SubscribeRequest
+                        {
+                            TopicArn = topicArn,
+                            Protocol = "sqs",
+                            Endpoint = queueArn
+                        }).GetAwaiter().GetResult();
+                        return true;
+                    }
+                    catch (InvalidParameterException)
+                    {
+                        return false;
+                    }
+                },
+                CancellationToken.None,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default)));
+
+            // Checking for room and taking it happen together, so only one racer gets the last slot.
+            accepted.Count(a => a).ShouldBe(1);
+        }
+    }
+
+    [Test]
     public async Task SetTopicAttributes_DoesNotPoliceTheSubscriptionCountWhenRaisingTheLimit()
     {
         var topicArn = await CreateTopicAsync("over-capacity-topic");
