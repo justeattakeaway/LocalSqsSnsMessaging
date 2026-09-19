@@ -13,10 +13,12 @@ internal static class TracerProviderInitializer
     [ModuleInitializer]
     public static void Initialize()
     {
+        AwsSdkTracing.Install();
+
         TracerProvider = Sdk.CreateTracerProviderBuilder()
             .AddSource("LocalSqsSnsMessaging")
+            .AddSource(AwsSdkTracing.SourceNamePattern)
             .AddSource(WaitingTestBase.ActivitySourceName)
-            .AddAWSInstrumentation()
             .Build();
     }
 }
