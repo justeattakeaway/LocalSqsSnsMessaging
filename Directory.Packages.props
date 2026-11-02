@@ -2,9 +2,9 @@
   <ItemGroup>
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.6.4" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.4" />
-    <PackageVersion Include="AWSSDK.Core" Version="4.0.102.14" />
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.102.16" />
     <PackageVersion Include="AWSSDK.EventBridge" Version="4.0.101.8" />
-    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.21" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.22" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.22" />
     <PackageVersion Include="OpenTelemetry" Version="1.20.1" />
     <PackageVersion Include="Meziantou.Polyfill" Version="1.0.169" />
