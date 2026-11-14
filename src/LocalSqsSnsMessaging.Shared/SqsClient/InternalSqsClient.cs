@@ -412,19 +412,11 @@ internal sealed partial class InternalSqsClient
         }
     }
 
-    /// <summary>The queue an ARN names, if it is one of this bus's queues.</summary>
-    private SqsQueueResource? FindQueueByArn(string? arn)
-    {
-        if (arn is null)
-        {
-            return null;
-        }
-
-        var name = arn[(arn.LastIndexOf(':') + 1)..];
-        return Queues.TryGetValue(name, out var queue) && string.Equals(queue.Arn, arn, StringComparison.Ordinal)
+    /// <summary>The queue an ARN names, if it is one of this region's queues.</summary>
+    private SqsQueueResource? FindQueueByArn(string? arn) =>
+        _bus.TryGetQueueByArn(arn, out var queue) && string.Equals(queue.Region, _region, StringComparison.Ordinal)
             ? queue
             : null;
-    }
 
     /// <summary>
     /// Checks a <c>RedrivePolicy</c> being set on <paramref name="source"/>: well formed, naming an
@@ -438,7 +430,7 @@ internal sealed partial class InternalSqsClient
         }
 
         var policy = SqsQueueValidation.ParseRedrivePolicy(value);
-        if (SqsQueueValidation.ArnRegion(policy.DeadLetterTargetArn) is { } targetRegion
+        if (Arn.RegionOf(policy.DeadLetterTargetArn) is { } targetRegion
             && !string.Equals(targetRegion, source.Region, StringComparison.Ordinal))
         {
             throw SqsRequestValidation.InvalidParameterValue("RedrivePolicy", value,
@@ -837,21 +829,22 @@ internal sealed partial class InternalSqsClient
             return false;
         }
 
-        if (IsAtMaxReceiveCount(message, queue) && queue.ErrorQueue is not null
-            && SqsQueueValidation.RedriveAllowed(queue.ErrorQueue, queue.Arn))
+        // A dead-letter queue deleted since the policy was set leaves the message where it is.
+        if (IsAtMaxReceiveCount(message, queue) && _bus.TryGetQueueByArn(queue.DeadLetterTargetArn, out var deadLetterQueue)
+            && SqsQueueValidation.RedriveAllowed(deadLetterQueue, queue.Arn))
         {
             message.Attributes ??= [];
             message.Attributes[InternalMessageSystemAttributeName.DeadLetterQueueSourceArn] = queue.Arn;
-            if (queue.ErrorQueue.IsFifo)
+            if (deadLetterQueue.IsFifo)
             {
                 // In a FIFO dead-letter queue the message is deduplicated by its original id, and
                 // its retention period starts over.
                 message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = message.MessageId!;
-                queue.ErrorQueue.RestartRetention(message, _bus.TimeProvider.GetUtcNow());
+                deadLetterQueue.RestartRetention(message, _bus.TimeProvider.GetUtcNow());
             }
 
             queue.LatestReceiptHandles.TryRemove(message.MessageId!, out _);
-            EnqueueMessage(queue.ErrorQueue, message);
+            EnqueueMessage(deadLetterQueue, message);
             return false;
         }
         IncrementReceiveCount(message);
@@ -1408,7 +1401,7 @@ internal sealed partial class InternalSqsClient
         }.SetCommonProperties());
     }
 
-    private void UpdateQueueProperties(SqsQueueResource queue)
+    private static void UpdateQueueProperties(SqsQueueResource queue)
     {
         if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.VisibilityTimeout, out var visibilityTimeout) == true)
         {
@@ -1521,7 +1514,7 @@ internal sealed partial class InternalSqsClient
         Authorize(deadLetterQueue, SqsActionName.ListDeadLetterSourceQueues);
 
         var deadLetterSourceQueues = Queues.Values
-            .Where(q => q.ErrorQueue?.Arn == deadLetterQueue.Arn)
+            .Where(q => string.Equals(q.DeadLetterTargetArn, deadLetterQueue.Arn, StringComparison.Ordinal))
             .Select(q => q.Url)
             .OrderBy(url => url)
             .ToList();
@@ -1918,14 +1911,14 @@ internal sealed partial class InternalSqsClient
         }.SetCommonProperties());
     }
 
-    private void ExtractRedrivePolicy(SqsQueueResource queue)
+    private static void ExtractRedrivePolicy(SqsQueueResource queue)
     {
         if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.RedrivePolicy, out var emptyPolicy) == true
             && string.IsNullOrEmpty(emptyPolicy))
         {
             // An empty RedrivePolicy unlinks the dead-letter queue.
             queue.Attributes.Remove(InternalQueueAttributeName.RedrivePolicy);
-            queue.ErrorQueue = null;
+            queue.DeadLetterTargetArn = null;
             queue.MaxReceiveCount = null;
             return;
         }
@@ -1951,10 +1944,10 @@ internal sealed partial class InternalSqsClient
 
             if (deadLetterTargetArn != null && maxReceiveCount > 0)
             {
-                var deadLetterTargetQueueName = deadLetterTargetArn.Split(':').Last();
-                // Checked by ValidateRedrivePolicy when set; the dead-letter queue may have been
-                // deleted since, which leaves the policy in place with nowhere to redrive to.
-                queue.ErrorQueue = Queues.GetValueOrDefault(deadLetterTargetQueueName);
+                // Checked by ValidateRedrivePolicy when set. The dead-letter queue may be deleted
+                // later, which leaves the policy in place with nowhere to redrive to until a queue
+                // of the same ARN is created again.
+                queue.DeadLetterTargetArn = deadLetterTargetArn;
                 queue.MaxReceiveCount = maxReceiveCount;
 
                 // SQS stores the policy normalised: compact JSON with a numeric maxReceiveCount.
@@ -1987,7 +1980,7 @@ internal sealed partial class InternalSqsClient
 
         var deadLetterQueues =
             Queues.Values
-                .Select(q => q.ErrorQueue?.Arn)
+                .Select(q => q.DeadLetterTargetArn)
                 .Where(arn => arn is not null);
 
         if (!deadLetterQueues.Contains(sourceQueue.Arn))

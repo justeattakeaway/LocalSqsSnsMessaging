@@ -49,7 +49,7 @@ internal static class SnsHttpDelivery
     /// <summary>The SNS endpoint of the region <paramref name="topicArn"/> is in, unless the bus has a <c>ServiceUrl</c>.</summary>
     private static string BaseUrl(InMemoryAwsBus bus, string? topicArn) =>
         bus.ServiceUrl?.ToString().TrimEnd('/')
-        ?? $"https://sns.{InMemoryAwsBus.ArnRegion(topicArn) ?? bus.CurrentRegion}.amazonaws.com";
+        ?? $"https://sns.{Arn.RegionOf(topicArn) ?? bus.CurrentRegion}.amazonaws.com";
 
     /// <summary>
     /// Sends the <c>SubscriptionConfirmation</c> message real SNS posts when an HTTP/S endpoint is

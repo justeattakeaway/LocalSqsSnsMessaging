@@ -130,7 +130,12 @@ internal sealed class SqsQueueResource
     /// so a receipt handle from a deleted queue is not honoured by its successor.
     /// </summary>
     public string Incarnation { get; } = Guid.NewGuid().ToString("N");
-    public SqsQueueResource? ErrorQueue { get; set; }
+
+    /// <summary>
+    /// The ARN of the dead-letter queue the queue's <c>RedrivePolicy</c> names, resolved each time a
+    /// message is redriven, so a dead-letter queue deleted and recreated keeps receiving.
+    /// </summary>
+    public string? DeadLetterTargetArn { get; set; }
     public int? MaxReceiveCount { get; set; }
     public Dictionary<string, string>? Attributes { get; set; }
     public Dictionary<string, string>? Tags { get; set; }

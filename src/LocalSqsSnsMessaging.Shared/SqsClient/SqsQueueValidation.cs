@@ -238,13 +238,6 @@ internal static class SqsQueueValidation
             $"RedrivePolicy(maxReceiveCount={policy.MaxReceiveCount}, deadLetterTargetArn={policy.DeadLetterTargetArn})",
             "The value for the dead-letter queue's RedriveAllowPolicy attribute prevents you from completing this request.");
 
-    /// <summary>The region an ARN names, or <see langword="null"/> when the value is not an ARN with one.</summary>
-    public static string? ArnRegion(string? arn)
-    {
-        var parts = arn?.Split(':');
-        return parts is { Length: 6 } && parts[0] == "arn" && parts[3].Length > 0 ? parts[3] : null;
-    }
-
     /// <summary>
     /// A <c>RedriveAllowPolicy</c> may only list source queues in the dead-letter queue's own
     /// <paramref name="region"/>. Its format is checked by <see cref="ValidateAttributes"/> first.
@@ -260,7 +253,7 @@ internal static class SqsQueueValidation
         foreach (var sourceArn in sourceArns)
         {
             var arn = sourceArn?.GetValueKind() == JsonValueKind.String ? sourceArn.GetValue<string>() : null;
-            if (ArnRegion(arn) is { } sourceRegion && !string.Equals(sourceRegion, region, StringComparison.Ordinal))
+            if (Arn.RegionOf(arn) is { } sourceRegion && !string.Equals(sourceRegion, region, StringComparison.Ordinal))
             {
                 throw SqsRequestValidation.InvalidParameterValue("RedriveAllowPolicy", value,
                     "Amazon SQS can't create the redrive allow policy. All source queue ARNs must be in the same region as the current SQS queue.");

@@ -110,7 +110,7 @@ internal static class EventBridgeEventDelivery
 
     private static void DeliverToTarget(Delivery delivery, InMemoryAwsBus bus)
     {
-        if (!TargetArn.TryParse(delivery.Target.Arn, out var arn))
+        if (!Arn.TryParse(delivery.Target.Arn, out var arn))
         {
             return;
         }
@@ -144,7 +144,7 @@ internal static class EventBridgeEventDelivery
             case "events" when arn.Resource.StartsWith("event-bus/", StringComparison.Ordinal)
                                && string.Equals(arn.Account, bus.CurrentAccountId, StringComparison.Ordinal):
             {
-                if (ForwardToBus(delivery, arn.Region, arn.Resource["event-bus/".Length..], bus) is { } failure)
+                if (ForwardToBus(delivery, arn, bus) is { } failure)
                 {
                     DeadLetter(delivery, EventBridgeJson.Serialize(delivery.Event.Envelope), failure, bus);
                 }
@@ -215,19 +215,20 @@ internal static class EventBridgeEventDelivery
     }
 
     /// <summary>
-    /// Puts the event on the bus named <paramref name="busName"/> in <paramref name="region"/>, where
-    /// it is routed through that bus's rules. An event that was itself forwarded goes no further.
+    /// Puts the event on the bus <paramref name="busArn"/> names, where it is routed through that
+    /// bus's rules. An event that was itself forwarded goes no further.
     /// Within a region the envelope is unchanged; an event forwarded to another region keeps its
     /// origin <c>region</c> but gets a new <c>id</c>, as EventBridge assigns one on arrival.
     /// </summary>
-    private static DeliveryFailure? ForwardToBus(Delivery delivery, string region, string busName, InMemoryAwsBus bus)
+    private static DeliveryFailure? ForwardToBus(Delivery delivery, Arn busArn, InMemoryAwsBus bus)
     {
         if (delivery.Forwarded)
         {
             return null;
         }
 
-        if (!bus.Region(region).EventBuses.TryGetValue(busName, out var targetBus))
+        var busName = busArn.Resource["event-bus/".Length..];
+        if (!bus.TryGetEventBusByArn(busArn.Value, out var targetBus))
         {
             // The default bus always exists; until something touches it, it has no rules.
             return string.Equals(busName, "default", StringComparison.Ordinal)
@@ -237,7 +238,7 @@ internal static class EventBridgeEventDelivery
         }
 
         var arriving = delivery.Event;
-        if (!string.Equals(region, InMemoryAwsBus.ArnRegion(delivery.Rule.Arn) ?? bus.CurrentRegion, StringComparison.Ordinal))
+        if (!string.Equals(busArn.Region, Arn.RegionOf(delivery.Rule.Arn) ?? bus.CurrentRegion, StringComparison.Ordinal))
         {
             var envelope = (JsonObject)arriving.Envelope.DeepClone();
             envelope["id"] = Guid.NewGuid().ToString();
@@ -342,22 +343,5 @@ internal static class EventBridgeEventDelivery
             MessageAttributes = attributes,
         };
 #pragma warning restore CA5351, CA1308
-    }
-
-    /// <summary>The parts of a target ARN: <c>arn:partition:service:region:account:resource</c>.</summary>
-    private readonly record struct TargetArn(string Value, string Service, string Region, string Account, string Resource)
-    {
-        public static bool TryParse(string? arn, out TargetArn parsed)
-        {
-            var parts = arn?.Split([':'], 6);
-            if (parts is not { Length: 6 } || !string.Equals(parts[0], "arn", StringComparison.Ordinal))
-            {
-                parsed = default;
-                return false;
-            }
-
-            parsed = new TargetArn(arn!, parts[2], parts[3], parts[4], parts[5]);
-            return true;
-        }
     }
 }

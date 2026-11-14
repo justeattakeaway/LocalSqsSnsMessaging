@@ -15,7 +15,7 @@ public static class SnsPublishActionFactory
         // Endpoints are resolved at publish time rather than captured here, so a queue deleted
         // after subscribing is treated as a delivery failure (and dead-lettered if configured)
         // instead of silently receiving messages through a stale reference.
-        var subscriptions = bus.RegionOfArn(topicArn).Subscriptions.Values
+        var subscriptions = bus.Region(topic.Region).Subscriptions.Values
             .Where(s => s.TopicArn == topicArn && !s.PendingConfirmation)
             .ToList();
 
