@@ -53,7 +53,6 @@ public sealed class EventsPatternLanguageExistsTestsLeafPresenceNotTruthiness
     [Test]
     [DisplayName("events__sqs.events-pattern-language-exists-tests-leaf-presence-not-truthiness")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "An object-valued field matches exists:true and not exists:false, where AWS sees no leaf at that path, so the exists-false rule never receives the 'object' event")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

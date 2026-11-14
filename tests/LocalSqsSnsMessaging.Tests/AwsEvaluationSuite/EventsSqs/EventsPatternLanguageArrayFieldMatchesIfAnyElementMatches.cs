@@ -52,7 +52,6 @@ public sealed class EventsPatternLanguageArrayFieldMatchesIfAnyElementMatches
     [Test]
     [DisplayName("events__sqs.events-pattern-language-array-field-matches-if-any-element-matches")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "A pattern value matches an array element but not an element of a nested array: {\"xs\": [\"b\"]} never matches detail {\"xs\": [[\"b\"]]}")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

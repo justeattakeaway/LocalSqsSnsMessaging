@@ -18,7 +18,6 @@ public sealed class TestEventPatternInvalidFails
     [Test]
     [DisplayName("events.test-event-pattern-invalid-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeErrorMessages, "An unparseable pattern is refused with System.Text.Json's reason (''n' is an invalid start of a property name...') instead of AWS's Jackson message ('Unexpected character ('n' (code 110))... at [Source: ...]')")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

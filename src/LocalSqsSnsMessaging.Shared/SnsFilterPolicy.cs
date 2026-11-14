@@ -36,9 +36,9 @@ internal static partial class SnsFilterPolicy
 
         try
         {
-            return PolicyTextReader.Read(policy!) as JsonObject;
+            return EventRulerJsonReader.Read(policy!, quoteSource: false) as JsonObject;
         }
-        catch (InternalInvalidParameterException)
+        catch (EventRulerPatternException)
         {
             return null;
         }
@@ -67,13 +67,30 @@ internal static partial class SnsFilterPolicy
             return;
         }
 
-        var document = PolicyTextReader.Read(policy!);
+        JsonNode? document;
+        try
+        {
+            document = EventRulerJsonReader.Read(policy!, quoteSource: false);
+        }
+        catch (EventRulerPatternException ex)
+        {
+            throw Invalid($"failed to parse JSON. {ex.Message}");
+        }
+
         if (document is JsonObject { Count: 0 })
         {
             return;
         }
 
-        var compiled = PolicyGrammar.Compile(WriteCompact(document));
+        EventRulerRules compiled;
+        try
+        {
+            compiled = EventRulerGrammar.Compile(WriteCompact(document));
+        }
+        catch (EventRulerPatternException ex)
+        {
+            throw Invalid(ex.Message);
+        }
 
         if (compiled.IsNested && !string.Equals(scope, MessageBodyScope, StringComparison.Ordinal))
         {

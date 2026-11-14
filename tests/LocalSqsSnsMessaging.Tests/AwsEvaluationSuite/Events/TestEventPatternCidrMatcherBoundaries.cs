@@ -21,7 +21,6 @@ public sealed class TestEventPatternCidrMatcherBoundaries
     [Test]
     [DisplayName("events.test-event-pattern-cidr-matcher-boundaries")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "TestEventPattern evaluates a cidr operand with a /32 IPv4 mask (Result=False) instead of refusing it with InvalidEventPatternException 'IPv4 mask bits must be < 32'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

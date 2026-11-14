@@ -52,7 +52,6 @@ public sealed class EventsPatternLanguageNestedObjectPatternMatchesTheLeafPath
     [Test]
     [DisplayName("events__sqs.events-pattern-language-nested-object-pattern-matches-the-leaf-path")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "A pattern on detail.o.p does not match an event whose detail has a literal 'o.p' key, which AWS matches by its flattened path, so the 'mid' rule never receives 'dotted-key'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

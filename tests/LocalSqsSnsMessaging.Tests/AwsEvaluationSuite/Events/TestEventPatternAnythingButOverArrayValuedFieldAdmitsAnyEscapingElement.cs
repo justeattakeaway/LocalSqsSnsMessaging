@@ -19,7 +19,6 @@ public sealed class TestEventPatternAnythingButOverArrayValuedFieldAdmitsAnyEsca
     [Test]
     [DisplayName("events.test-event-pattern-anything-but-over-array-valued-field-admits-any-escaping-element")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "anything-but over an array field rejects [\"a\", \"blocked\"] because one element is excluded; AWS matches when any element escapes the exclusion")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

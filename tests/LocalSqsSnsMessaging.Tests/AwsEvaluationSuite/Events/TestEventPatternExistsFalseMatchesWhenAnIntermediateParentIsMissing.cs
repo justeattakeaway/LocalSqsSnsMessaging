@@ -19,7 +19,6 @@ public sealed class TestEventPatternExistsFalseMatchesWhenAnIntermediateParentIs
     [Test]
     [DisplayName("events.test-event-pattern-exists-false-matches-when-an-intermediate-parent-is-missing")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "exists:false on detail.order.customer does not match when the parent object 'order' is missing (Result=False instead of True)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

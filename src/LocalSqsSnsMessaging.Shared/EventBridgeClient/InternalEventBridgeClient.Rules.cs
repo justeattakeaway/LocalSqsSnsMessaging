@@ -24,10 +24,7 @@ internal sealed partial class InternalEventBridgeClient
             throw new InternalValidationException("Parameter ScheduleExpression is not valid.");
         }
 
-        if (!string.IsNullOrEmpty(request.EventPattern) && !EventBridgeEventPattern.IsValid(request.EventPattern, out var error))
-        {
-            throw new InternalInvalidEventPatternException($"Event pattern is not valid. Reason: {error}");
-        }
+        EventBridgeEventPattern.ValidateRulePattern(request.Name, request.EventPattern);
 
         if (hasSchedule && !string.Equals(eventBus.Name, DefaultBusName, StringComparison.Ordinal))
         {

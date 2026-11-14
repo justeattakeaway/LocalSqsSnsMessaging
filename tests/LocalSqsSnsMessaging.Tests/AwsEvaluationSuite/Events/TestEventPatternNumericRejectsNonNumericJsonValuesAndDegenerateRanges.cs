@@ -19,7 +19,6 @@ public sealed class TestEventPatternNumericRejectsNonNumericJsonValuesAndDegener
     [Test]
     [DisplayName("events.test-event-pattern-numeric-rejects-non-numeric-json-values-and-degenerate-ranges")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "TestEventPattern evaluates a reversed numeric range ([\">\", 100, \"<\", 50]) to Result=False instead of refusing it with InvalidEventPatternException 'Bottom must be less than top'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

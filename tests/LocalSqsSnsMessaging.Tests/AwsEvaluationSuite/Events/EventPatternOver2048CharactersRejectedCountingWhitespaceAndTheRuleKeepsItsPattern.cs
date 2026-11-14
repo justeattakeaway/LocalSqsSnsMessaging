@@ -20,7 +20,6 @@ public sealed class EventPatternOver2048CharactersRejectedCountingWhitespaceAndT
     [Test]
     [DisplayName("events.event-pattern-over-2048-characters-rejected-counting-whitespace-and-the-rule-keeps-its-pattern")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeValidation, "PutRule accepts a 2049-character EventPattern instead of failing with InvalidEventPatternException '... exceeds limit of 2048.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

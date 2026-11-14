@@ -19,7 +19,6 @@ public sealed class TestEventPatternAnythingButMixedStringNumberListRejected
     [Test]
     [DisplayName("events.test-event-pattern-anything-but-mixed-string-number-list-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "TestEventPattern accepts an anything-but list mixing strings and numbers; AWS refuses it with InvalidEventPatternException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

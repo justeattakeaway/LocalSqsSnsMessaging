@@ -18,7 +18,6 @@ public sealed class TestEventPatternMatchAndMismatch
     [Test]
     [DisplayName("events.test-event-pattern-match-and-mismatch")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeValidation, "TestEventPattern accepts an event envelope missing id, detail-type, account, time and region (Result=True) instead of refusing it with ValidationException 'Parameter Event is not valid.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

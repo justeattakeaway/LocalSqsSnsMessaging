@@ -66,20 +66,8 @@ internal sealed partial class InternalEventBridgeClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!EventBridgeEventPattern.IsValid(request.EventPattern, out var error))
-        {
-            throw new InternalInvalidEventPatternException($"Event pattern is not valid. Reason: {error}");
-        }
-
-        JsonNode? @event;
-        try
-        {
-            @event = JsonNode.Parse(request.Event ?? "{}");
-        }
-        catch (JsonException ex)
-        {
-            throw new InternalInvalidEventPatternException($"Event is not valid JSON. Reason: {ex.Message}");
-        }
+        EventBridgeEventPattern.ValidateTestPattern(request.EventPattern);
+        var @event = EventBridgeTestEvent.Parse(request.Event);
 
         var result = EventBridgeEventPattern.Matches(request.EventPattern, @event);
         _bus.RecordOperation(AwsServiceName.EventBridge, "TestEventPattern");

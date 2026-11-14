@@ -19,7 +19,6 @@ public sealed class TestEventPatternMalformedOperatorRejection
     [Test]
     [DisplayName("events.test-event-pattern-malformed-operator-rejection")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "TestEventPattern evaluates {\"source\": \"sim2real.orders\"} (a leaf value not wrapped in an array) to Result=False instead of refusing it with InvalidEventPatternException '\"source\" must be an object or an array'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

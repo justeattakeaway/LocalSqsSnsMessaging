@@ -19,7 +19,6 @@ public sealed class TestEventPatternExistsTreatsEveryObjectLeafAndTheEmptyArrayA
     [Test]
     [DisplayName("events.test-event-pattern-exists-treats-every-object-leaf-and-the-empty-array-as-absent")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "exists:true matches an empty-object leaf ({\"items\": {}}) instead of treating an object leaf as absent")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -18,7 +18,6 @@ public sealed class PutRuleInvalidPatternFails
     [Test]
     [DisplayName("events.put-rule-invalid-pattern-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeErrorMessages, "PutRule of malformed pattern JSON gives System.Text.Json's reason ('n' is an invalid start of a property name...) instead of Jackson's")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

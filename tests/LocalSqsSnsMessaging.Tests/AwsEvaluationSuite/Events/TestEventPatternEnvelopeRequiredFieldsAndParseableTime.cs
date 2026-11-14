@@ -20,7 +20,6 @@ public sealed class TestEventPatternEnvelopeRequiredFieldsAndParseableTime
     [Test]
     [DisplayName("events.test-event-pattern-envelope-required-fields-and-parseable-time")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeValidation, "TestEventPattern accepts an event envelope without 'id' (Result=True) instead of refusing it with ValidationException 'Parameter Event is not valid.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

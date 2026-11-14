@@ -61,7 +61,6 @@ public sealed class EventsPatternLanguageContentFilterCombinedWithASecondKeyReje
     [Test]
     [DisplayName("events__sqs.events-pattern-language-content-filter-combined-with-a-second-key-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "PutRule accepts a match expression with a second key ({\"prefix\": \"a\", \"suffix\": \"z\"}) instead of refusing it with InvalidEventPatternException 'Only one key allowed in match expression'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

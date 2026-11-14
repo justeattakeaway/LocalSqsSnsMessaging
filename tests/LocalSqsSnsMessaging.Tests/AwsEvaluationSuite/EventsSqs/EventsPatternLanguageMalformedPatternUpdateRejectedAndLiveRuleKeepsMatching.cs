@@ -132,7 +132,6 @@ public sealed class EventsPatternLanguageMalformedPatternUpdateRejectedAndLiveRu
     [Test]
     [DisplayName("events__sqs.events-pattern-language-malformed-pattern-update-rejected-and-live-rule-keeps-matching")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventPatterns, "PutRule accepts all nine malformed pattern updates (numeric '!=', a /32 cidr, an empty array, ...) instead of refusing them with InvalidEventPatternException, and the live rule takes the bad pattern")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

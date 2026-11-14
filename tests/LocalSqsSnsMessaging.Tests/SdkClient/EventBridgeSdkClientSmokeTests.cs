@@ -205,14 +205,14 @@ public sealed class EventBridgeSdkClientSmokeTests
         var match = await eb.TestEventPatternAsync(new TestEventPatternRequest
         {
             EventPattern = """{"detail":{"state":["running"]}}""",
-            Event = """{"source":"x","detail-type":"y","detail":{"state":"running"}}"""
+            Event = """{"id":"1","account":"123456789012","source":"x","detail-type":"y","time":"2024-01-01T00:00:00Z","region":"us-east-1","detail":{"state":"running"}}"""
         });
         match.Result.ShouldBe(true);
 
         var noMatch = await eb.TestEventPatternAsync(new TestEventPatternRequest
         {
             EventPattern = """{"detail":{"state":["stopped"]}}""",
-            Event = """{"source":"x","detail-type":"y","detail":{"state":"running"}}"""
+            Event = """{"id":"1","account":"123456789012","source":"x","detail-type":"y","time":"2024-01-01T00:00:00Z","region":"us-east-1","detail":{"state":"running"}}"""
         });
         noMatch.Result.ShouldBe(false);
     }
