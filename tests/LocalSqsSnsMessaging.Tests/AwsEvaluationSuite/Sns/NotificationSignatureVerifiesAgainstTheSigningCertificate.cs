@@ -137,8 +137,15 @@ public sealed class NotificationSignatureVerifiesAgainstTheSigningCertificate
                 throw new ArgumentException("truncated DER");
             }
 
-            length = (int)new BigInteger(buf.AsSpan(i, n), isUnsigned: true, isBigEndian: true);
+            // Python's ints don't overflow: a length past the buffer is "truncated DER", however large.
+            var longLength = new BigInteger(buf.AsSpan(i, n), isUnsigned: true, isBigEndian: true);
             i += n;
+            if (longLength > buf.Length - i)
+            {
+                throw new ArgumentException("truncated DER");
+            }
+
+            length = (int)longLength;
         }
 
         var end = i + length;

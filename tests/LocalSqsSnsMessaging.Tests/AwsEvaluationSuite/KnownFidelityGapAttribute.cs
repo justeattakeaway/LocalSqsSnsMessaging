@@ -12,10 +12,6 @@ public enum FidelityGap
     /// <summary>A one-off behavioral difference, kept for compatibility.</summary>
     Other,
 
-    /// <summary>SNS: PublishBatch validation and per-entry results.</summary>
-    SnsBatch,
-
-
     /// <summary>SNS topics and subscriptions are not regional yet (planned as separate work).</summary>
     SnsRegions,
 }

@@ -21,7 +21,6 @@ public sealed class PublishBatchValidationIsRequestLevel
     [Test]
     [DisplayName("sns.publish-batch-validation-is-request-level")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch accepts an entry with a malformed Number attribute instead of refusing the whole request")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -97,7 +96,7 @@ public sealed class PublishBatchValidationIsRequestLevel
         Ensure(successfulIds.SetEquals(["good-1", "good-2"]),
             $"expected both entries in Successful, got [{string.Join(", ", (resp.Successful ?? []).Select(e => $"{{'Id': '{e.Id}', 'MessageId': '{e.MessageId}'}}"))}]");
         Ensure(resp.Failed is null or { Count: 0 },
-            $"expected no Failed entries, got [{string.Join(", ", resp.Failed!.Select(f => $"{{'Id': '{f.Id}', 'Code': '{f.Code}', 'Message': '{f.Message}'}}"))}]");
+            $"expected no Failed entries, got [{string.Join(", ", (resp.Failed ?? []).Select(f => $"{{'Id': '{f.Id}', 'Code': '{f.Code}', 'Message': '{f.Message}'}}"))}]");
         var msgIds = resp.Successful!.Select(e => e.MessageId).ToHashSet();
         Ensure(msgIds.Count == 2, $"expected a distinct MessageId per entry, got {{{string.Join(", ", msgIds.Select(m => $"'{m}'"))}}}");
 

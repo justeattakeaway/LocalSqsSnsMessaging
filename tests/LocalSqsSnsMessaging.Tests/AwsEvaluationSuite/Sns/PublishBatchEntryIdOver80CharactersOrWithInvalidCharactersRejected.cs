@@ -20,7 +20,6 @@ public sealed class PublishBatchEntryIdOver80CharactersOrWithInvalidCharactersRe
     [Test]
     [DisplayName("sns.publish-batch-entry-id-over-80-characters-or-with-invalid-characters-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch accepts an entry Id over 80 characters or with invalid characters instead of refusing it with InvalidBatchEntryId")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -92,7 +91,8 @@ public sealed class PublishBatchEntryIdOver80CharactersOrWithInvalidCharactersRe
             TopicArn = topic,
             PublishBatchRequestEntries = bodies.Select(b => new PublishBatchRequestEntry { Id = b.Id, Message = b.Body }).ToList(),
         });
-        Ensure(resp.Failed is { Count: 0 } && resp.Successful.Select(s => s.Id).Order(StringComparer.Ordinal).SequenceEqual(ids.Order(StringComparer.Ordinal)),
+        // botocore reads an empty <Failed/> as []; the .NET SDK leaves an empty list null.
+        Ensure(resp.Failed is null or { Count: 0 } && resp.Successful.Select(s => s.Id).Order(StringComparer.Ordinal).SequenceEqual(ids.Order(StringComparer.Ordinal)),
             $"a batch of 80-character Ids must succeed entry for entry; Failed {FailedRepr(resp.Failed)}, " +
             $"{(resp.Successful ?? []).Count} Successful");
 
