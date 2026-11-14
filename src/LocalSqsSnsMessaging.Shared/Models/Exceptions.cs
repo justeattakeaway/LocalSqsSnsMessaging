@@ -117,5 +117,13 @@ internal class InternalInvalidEventPatternException : AwsServiceException
     }
 }
 
+internal class InternalValidationException : AwsServiceException
+{
+    public InternalValidationException(string message) : base(message)
+    {
+        ErrorCode = "ValidationException";
+    }
+}
+
 // Alias for SNS InternalBatchRequestTooLongException - same class works for both SQS and SNS
 // since the SQS one above is sufficient (both use the same error pattern)

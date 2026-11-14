@@ -20,7 +20,6 @@ public sealed class ListEventBusesPaginatesWithLimitAndNextToken
     [Test]
     [DisplayName("events.list-event-buses-paginates-with-limit-and-next-token")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeListing, "ListEventBuses ignores Limit: Limit=1 over three buses returns all three on one page")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

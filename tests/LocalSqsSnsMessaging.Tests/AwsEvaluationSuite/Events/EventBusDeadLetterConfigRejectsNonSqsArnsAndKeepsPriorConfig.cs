@@ -20,7 +20,6 @@ public sealed class EventBusDeadLetterConfigRejectsNonSqsArnsAndKeepsPriorConfig
     [Test]
     [DisplayName("events.event-bus-dead-letter-config-rejects-non-sqs-arns-and-keeps-prior-config")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventBuses, "DescribeEventBus omits the DeadLetterConfig the bus was created with")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

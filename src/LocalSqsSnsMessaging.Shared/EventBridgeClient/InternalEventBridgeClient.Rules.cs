@@ -29,7 +29,8 @@ internal sealed partial class InternalEventBridgeClient
                 ScheduleExpression = request.ScheduleExpression,
                 State = request.State ?? "ENABLED",
                 Description = request.Description,
-                RoleArn = request.RoleArn
+                RoleArn = request.RoleArn,
+                Tags = EventBridgeTagSet.From(request.Tags)
             },
             (_, existing) =>
             {

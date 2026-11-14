@@ -19,7 +19,6 @@ public sealed class EventBusTagLimitCountsTagsAlreadyOnTheBusAndOverwritesDoNotC
     [Test]
     [DisplayName("events.event-bus-tag-limit-counts-tags-already-on-the-bus-and-overwrites-do-not-count")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTags, "ListTagsForResource is not supported (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

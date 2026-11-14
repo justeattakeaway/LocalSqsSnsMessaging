@@ -20,7 +20,6 @@ public sealed class DeleteEventBusBlockedWhileARuleRemainsAndSucceedsOnceRemoved
     [Test]
     [DisplayName("events.delete-event-bus-blocked-while-a-rule-remains-and-succeeds-once-removed")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventBuses, "DeleteEventBus of a bus that still has a rule succeeds instead of failing with ValidationException 'EventBus can't be deleted since it has rules.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

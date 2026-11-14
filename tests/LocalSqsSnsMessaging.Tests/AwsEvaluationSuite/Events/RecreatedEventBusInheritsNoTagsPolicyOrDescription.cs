@@ -20,7 +20,6 @@ public sealed class RecreatedEventBusInheritsNoTagsPolicyOrDescription
     [Test]
     [DisplayName("events.recreated-event-bus-inherits-no-tags-policy-or-description")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTags, "TagResource is not supported (NotSupportedException); AWS overwrites the existing tag's value")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

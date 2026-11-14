@@ -27,7 +27,6 @@ public sealed class EventsBusPolicyExplicitDenyRejectsEntirePuteventsBatch
     [Test]
     [DisplayName("events__sqs.events-bus-policy-explicit-deny-rejects-entire-putevents-batch")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePermissions, "PutPermission is not implemented: it fails with NotSupportedException, so a bus policy Deny is never attached or enforced")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

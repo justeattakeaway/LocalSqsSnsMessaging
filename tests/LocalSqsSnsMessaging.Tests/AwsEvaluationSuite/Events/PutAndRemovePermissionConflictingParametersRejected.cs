@@ -22,7 +22,6 @@ public sealed class PutAndRemovePermissionConflictingParametersRejected
     [Test]
     [DisplayName("events.put-and-remove-permission-conflicting-parameters-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePermissions, "PutPermission is not implemented (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

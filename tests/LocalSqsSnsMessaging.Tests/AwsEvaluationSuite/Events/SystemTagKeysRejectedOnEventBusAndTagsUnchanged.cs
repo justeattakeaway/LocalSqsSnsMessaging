@@ -20,7 +20,6 @@ public sealed class SystemTagKeysRejectedOnEventBusAndTagsUnchanged
     [Test]
     [DisplayName("events.system-tag-keys-rejected-on-event-bus-and-tags-unchanged")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTags, "TagResource is not supported (NotSupportedException), so even the legal positive-control tag fails")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

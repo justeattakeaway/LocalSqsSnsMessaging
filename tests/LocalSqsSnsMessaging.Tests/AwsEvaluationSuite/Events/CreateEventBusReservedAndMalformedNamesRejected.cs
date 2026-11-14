@@ -19,7 +19,6 @@ public sealed class CreateEventBusReservedAndMalformedNamesRejected
     [Test]
     [DisplayName("events.create-event-bus-reserved-and-malformed-names-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeValidation, "CreateEventBus accepts a name starting with 'aws.' instead of failing with ValidationException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -23,7 +23,6 @@ public sealed class UpdateEventBusPolicyEnforcedOnPutEvents
     [Test]
     [DisplayName("events.update-event-bus-policy-enforced-on-put-events")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePermissions, "PutPermission is not implemented: it fails with NotSupportedException \"EventBridge operation 'PutPermission' is not supported.\"")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -20,6 +20,9 @@ internal sealed class RuleResource
 
     public bool IsEnabled => string.Equals(State, "ENABLED", StringComparison.Ordinal);
 
+    /// <summary>The rule's tags, set when the rule is created (a PutRule that updates it ignores Tags).</summary>
+    public EventBridgeTagSet Tags { get; init; } = new();
+
     /// <summary>Targets attached to this rule, in insertion order, keyed by target id.</summary>
     public List<Target> Targets { get; } = [];
 }

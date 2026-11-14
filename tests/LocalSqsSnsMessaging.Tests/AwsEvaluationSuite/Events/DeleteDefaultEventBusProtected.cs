@@ -15,7 +15,6 @@ public sealed class DeleteDefaultEventBusProtected
     [Test]
     [DisplayName("events.delete-default-event-bus-protected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventBuses, "DeleteEventBus of 'default' succeeds instead of failing with ValidationException 'Cannot delete event bus default.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -12,6 +12,7 @@ internal sealed partial class InternalEventBridgeClient
     public Task<PutEventsResponse> PutEventsAsync(PutEventsRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        AuthorizePutEvents(request.Entries);
 
         var entries = new List<PutEventsResultEntry>();
         foreach (var entry in request.Entries ?? [])

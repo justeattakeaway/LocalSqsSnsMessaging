@@ -26,7 +26,6 @@ public sealed class PutPermissionSameStatementIdReplacesAndRemoveAllClearsPolicy
     [Test]
     [DisplayName("events.put-permission-same-statement-id-replaces-and-remove-all-clears-policy")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePermissions, "PutPermission is not implemented (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

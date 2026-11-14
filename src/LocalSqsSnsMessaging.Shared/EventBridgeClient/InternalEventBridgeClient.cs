@@ -27,13 +27,8 @@ internal sealed partial class InternalEventBridgeClient
         var name = ExtractBusName(nameOrArn);
         if (string.Equals(name, DefaultBusName, StringComparison.Ordinal))
         {
-            return _bus.EventBuses.GetOrAdd(DefaultBusName, n => new EventBusResource
-            {
-                Name = n,
-                Arn = EventBusArn(n),
-                CreationTime = _bus.TimeProvider.GetUtcNow(),
-                LastModifiedTime = _bus.TimeProvider.GetUtcNow()
-            });
+            // The default bus always exists and was never created, so it has no creation time.
+            return _bus.EventBuses.GetOrAdd(DefaultBusName, n => new EventBusResource { Name = n, Arn = EventBusArn(n) });
         }
 
         if (_bus.EventBuses.TryGetValue(name, out var eventBus))

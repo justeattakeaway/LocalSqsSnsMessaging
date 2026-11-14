@@ -19,7 +19,6 @@ public sealed class PutRuleUpdateReplacesOmittedFieldsAndIgnoresTags
     [Test]
     [DisplayName("events.put-rule-update-replaces-omitted-fields-and-ignores-tags")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTags, "ListTagsForResource is not supported (NotSupportedException); AWS lists the rule's original tag")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

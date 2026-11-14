@@ -13,7 +13,6 @@ public sealed class TagListUntagRoundtrip
     [Test]
     [DisplayName("events.tag-list-untag-roundtrip")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTags, "TagResource is not supported (NotSupportedException); AWS tags the bus")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

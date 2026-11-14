@@ -17,7 +17,6 @@ public sealed class TagNonexistentResourceFails
     [Test]
     [DisplayName("events.tag-nonexistent-resource-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTags, "TagResource is not supported (NotSupportedException), so even the positive control on a live bus fails")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -17,7 +17,6 @@ public sealed class ConcurrentUpdateEventBusConflictDetected
     [Test]
     [DisplayName("events.concurrent-update-event-bus-conflict-detected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventBuses, "UpdateEventBus is not supported (NotSupportedException), so no call in the race succeeds")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

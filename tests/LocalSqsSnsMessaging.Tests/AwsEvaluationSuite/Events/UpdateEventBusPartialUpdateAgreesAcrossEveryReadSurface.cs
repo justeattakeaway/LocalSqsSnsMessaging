@@ -28,7 +28,6 @@ public sealed class UpdateEventBusPartialUpdateAgreesAcrossEveryReadSurface
     [Test]
     [DisplayName("events.update-event-bus-partial-update-agrees-across-every-read-surface")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventBuses, "DescribeEventBus does not echo the LogConfig set by CreateEventBus (LogConfig is None instead of {'IncludeDetail': 'FULL', 'Level': 'TRACE'})")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

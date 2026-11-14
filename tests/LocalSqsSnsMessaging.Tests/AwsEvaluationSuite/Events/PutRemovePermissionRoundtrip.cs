@@ -16,7 +16,6 @@ public sealed class PutRemovePermissionRoundtrip
     [Test]
     [DisplayName("events.put-remove-permission-roundtrip")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePermissions, "PutPermission is not implemented (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

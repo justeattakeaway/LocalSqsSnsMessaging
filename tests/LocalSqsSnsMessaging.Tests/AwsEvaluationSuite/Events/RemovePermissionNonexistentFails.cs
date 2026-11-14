@@ -17,7 +17,6 @@ public sealed class RemovePermissionNonexistentFails
     [Test]
     [DisplayName("events.remove-permission-nonexistent-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePermissions, "PutPermission is not supported (NotSupportedException), so the positive-control grant fails")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -17,7 +17,6 @@ public sealed class DefaultEventBusListed
     [Test]
     [DisplayName("events.default-event-bus-listed")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeEventBuses, "ListEventBuses gives the default bus a CreationTime; AWS lists it without one")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
