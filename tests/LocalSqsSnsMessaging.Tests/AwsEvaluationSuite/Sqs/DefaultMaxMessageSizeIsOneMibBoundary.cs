@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_default_max_message_size_is_one_mib_boundary.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -24,7 +23,7 @@ public sealed class DefaultMaxMessageSizeIsOneMibBoundary
     /// </summary>
     [Test]
     [DisplayName("sqs.default-max-message-size-is-one-mib-boundary")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -83,7 +82,7 @@ public sealed class DefaultMaxMessageSizeIsOneMibBoundary
     private static async Task<List<Message>> Drain(AmazonSQSClient sqs, string url, double timeoutSeconds)
     {
         var got = new List<Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [];

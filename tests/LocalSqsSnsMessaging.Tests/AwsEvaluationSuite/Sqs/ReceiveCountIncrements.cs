@@ -14,7 +14,7 @@ public sealed class ReceiveCountIncrements
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-count-increments")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

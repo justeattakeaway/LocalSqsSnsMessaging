@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_tag_operations_on_a_deleted_queue_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -25,7 +24,7 @@ public sealed class TagOperationsOnADeletedQueueRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.tag-operations-on-a-deleted-queue-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -43,7 +42,7 @@ public sealed class TagOperationsOnADeletedQueueRejected
         // Deletion is eventually consistent; poll until the URL is refused, then hold every call to
         // the exact refusal.
         AwsError? err = null;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(SettleSeconds))
         {
             err = await FidelityContext.CaptureError(() => sqs.ListQueueTagsAsync(new ListQueueTagsRequest { QueueUrl = doomed }));
@@ -52,7 +51,7 @@ public sealed class TagOperationsOnADeletedQueueRejected
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
         }
 
         Ensure((err?.Code, err?.Message) == (NoSuchQueue, NoSuchQueueMsg),

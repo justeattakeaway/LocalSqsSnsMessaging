@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_redrive_allow_policy_deny_all_rejects_dlq_association_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -25,7 +24,7 @@ public sealed class RedriveAllowPolicyDenyAllRejectsDlqAssociationRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.redrive-allow-policy-deny-all-rejects-dlq-association-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -95,7 +94,7 @@ public sealed class RedriveAllowPolicyDenyAllRejectsDlqAssociationRejected
             Attributes = new() { ["RedriveAllowPolicy"] = new JsonObject { ["redrivePermission"] = "allowAll" }.ToJsonString() },
         });
         // The allowAll change propagates eventually, so the identical call is retried within a bound.
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var err = await FidelityContext.CaptureError(() => sqs.SetQueueAttributesAsync(new SetQueueAttributesRequest
@@ -116,7 +115,7 @@ public sealed class RedriveAllowPolicyDenyAllRejectsDlqAssociationRejected
                     + "by refusing every association", err.Exception);
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         var attrsAfterAllow = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -131,7 +130,7 @@ public sealed class RedriveAllowPolicyDenyAllRejectsDlqAssociationRejected
         // --- and the association it created is functional, not merely stored --------------
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = urlSrc, MessageBody = marker });
         List<string> dlqBodies = [];
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (dlqBodies.Count == 0 && deadline.Elapsed < TimeSpan.FromSeconds(120))
         {
             // Receiving from the source without deleting is what drives the receive count past

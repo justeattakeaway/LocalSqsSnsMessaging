@@ -18,7 +18,7 @@ public sealed class ConcurrentFifoDedupRace
     /// </summary>
     [Test]
     [DisplayName("sqs.concurrent-fifo-dedup-race")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -66,7 +66,7 @@ public sealed class ConcurrentFifoDedupRace
                 return (object)exc;
             }
         })).ToList();
-        await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromSeconds(timeoutS)));
+        await Task.WhenAny(Task.WhenAll(tasks), FidelityTime.Delay(TimeSpan.FromSeconds(timeoutS)));
         return [.. tasks.Select(t => t.IsCompletedSuccessfully ? t.Result : new TimeoutException())];
     }
 

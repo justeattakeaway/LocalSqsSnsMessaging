@@ -16,7 +16,7 @@ public sealed class QueueArnStableRoundTrip
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-arn-stable-round-trip")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

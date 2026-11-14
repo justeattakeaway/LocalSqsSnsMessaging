@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_send_message_batch_shared_dedup_id_first_entry_wins.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -23,7 +22,7 @@ public sealed class FifoSendMessageBatchSharedDedupIdFirstEntryWins
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-send-message-batch-shared-dedup-id-first-entry-wins")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -107,7 +106,7 @@ public sealed class FifoSendMessageBatchSharedDedupIdFirstEntryWins
     private static async Task<List<Message>> Drain(AmazonSQSClient sqs, string url, int minCount, double timeoutS = 20.0)
     {
         List<Message> seen = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var idle = 0;
         while (deadline.Elapsed.TotalSeconds < timeoutS)
         {

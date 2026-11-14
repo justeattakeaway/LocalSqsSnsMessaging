@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_standard_queue_concurrent_producers_and_consumers_lose_no_message.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.SQS.Model;
@@ -27,7 +26,7 @@ public sealed class StandardQueueConcurrentProducersAndConsumersLoseNoMessage
     /// </summary>
     [Test]
     [DisplayName("sqs.standard-queue-concurrent-producers-and-consumers-lose-no-message")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -46,7 +45,7 @@ public sealed class StandardQueueConcurrentProducersAndConsumersLoseNoMessage
         var received = new HashSet<string>(StringComparer.Ordinal);
         var problems = new List<string>();
         using var producersDone = new ManualResetEventSlim(false);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
 
         async Task Producer(int p)
         {
@@ -137,7 +136,7 @@ public sealed class StandardQueueConcurrentProducersAndConsumersLoseNoMessage
         Ensure(phantom.Count == 0, $"consumers received bodies nobody sent: [{string.Join(", ", phantom.Order(StringComparer.Ordinal).Take(5))}]");
 
         Dictionary<string, string> counts = [];
-        var settle = Stopwatch.StartNew();
+        var settle = FidelityTime.StartNew();
         while (settle.Elapsed < TimeSpan.FromSeconds(SettleSeconds))
         {
             counts = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -150,7 +149,7 @@ public sealed class StandardQueueConcurrentProducersAndConsumersLoseNoMessage
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
         }
 
         Ensure(BothZero(counts),

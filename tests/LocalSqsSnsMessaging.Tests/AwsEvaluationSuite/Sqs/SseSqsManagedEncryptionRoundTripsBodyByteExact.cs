@@ -1,7 +1,6 @@
 // Translated from behavioral/sqs/check_sse_sqs_managed_encryption_round_trips_body_byte_exact.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
 using System.Buffers.Binary;
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.SQS.Model;
@@ -37,7 +36,7 @@ public sealed class SseSqsManagedEncryptionRoundTripsBodyByteExact
     /// </summary>
     [Test]
     [DisplayName("sqs.sse-sqs-managed-encryption-round-trips-body-byte-exact")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -103,7 +102,7 @@ public sealed class SseSqsManagedEncryptionRoundTripsBodyByteExact
             $"'{AttrMd5(MsgAttrs())}'");
 
         Message? got = null;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (got is null && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
 #pragma warning disable CS0618 // The check deliberately sends the legacy AttributeNames alongside MessageSystemAttributeNames.
@@ -152,7 +151,7 @@ public sealed class SseSqsManagedEncryptionRoundTripsBodyByteExact
             "identical body -- the digest must not depend on encryption at all: got " +
             $"'{offSent.MD5OfMessageBody}', computed '{wantBodyMd5}'");
         Message? offGot = null;
-        var offDeadline = Stopwatch.StartNew();
+        var offDeadline = FidelityTime.StartNew();
         while (offGot is null && offDeadline.Elapsed < TimeSpan.FromSeconds(60))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = urlOff, MaxNumberOfMessages = 1, WaitTimeSeconds = 5 });

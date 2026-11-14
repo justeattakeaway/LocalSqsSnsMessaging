@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_concurrent_create_queue_same_name_converges_to_one_queue.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -24,7 +23,7 @@ public sealed class ConcurrentCreateQueueSameNameConvergesToOneQueue
     /// </summary>
     [Test]
     [DisplayName("sqs.concurrent-create-queue-same-name-converges-to-one-queue")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -60,7 +59,7 @@ public sealed class ConcurrentCreateQueueSameNameConvergesToOneQueue
         Ensure(url[(url.LastIndexOf('/') + 1)..] == name, $"the URL does not end in the queue name '{name}'");
 
         List<string> listed = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(SettleS))
         {
             listed = await Listed(sqs, name);
@@ -69,7 +68,7 @@ public sealed class ConcurrentCreateQueueSameNameConvergesToOneQueue
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
         }
 
         Ensure(listed.SequenceEqual([url]), $"ListQueues showed {listed.Count} queue(s) named '{name}', expected 1");

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receive_message_visibility_timeout_override_per_call.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -15,7 +14,7 @@ public sealed class ReceiveMessageVisibilityTimeoutOverridePerCall
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-message-visibility-timeout-override-per-call")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -67,7 +66,7 @@ public sealed class ReceiveMessageVisibilityTimeoutOverridePerCall
 
     private static async Task<List<Message>> PollUntil(Func<Task<List<Message>>> probe, Func<List<Message>, bool> predicate, double timeoutS = 30.0, double intervalS = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         List<Message>? last = null;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
@@ -77,7 +76,7 @@ public sealed class ReceiveMessageVisibilityTimeoutOverridePerCall
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
         }
 
         throw Fail($"condition not met within {timeoutS}s (last={(last is null ? "None" : $"{last.Count} message(s)")})");

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_sqsbatch_delete_duplicate_receipt_handle_deleted_once.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -30,7 +29,7 @@ public sealed class SqsbatchDeleteDuplicateReceiptHandleDeletedOnce
     // timing:real-time — visibility: 5 s https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
     [Test]
     [DisplayName("sqs.sqsbatch-delete-duplicate-receipt-handle-deleted-once")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -127,7 +126,7 @@ public sealed class SqsbatchDeleteDuplicateReceiptHandleDeletedOnce
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 0.5)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -136,7 +135,7 @@ public sealed class SqsbatchDeleteDuplicateReceiptHandleDeletedOnce
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 
@@ -150,7 +149,7 @@ public sealed class SqsbatchDeleteDuplicateReceiptHandleDeletedOnce
     private static async Task<Dictionary<string, string>> ReceiveByBody(AmazonSQSClient sqs, string url, string[] want, double timeoutSeconds)
     {
         var handles = new Dictionary<string, string>(StringComparer.Ordinal);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds) && handles.Count < want.Length)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 });
@@ -172,7 +171,7 @@ public sealed class SqsbatchDeleteDuplicateReceiptHandleDeletedOnce
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var bodies = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 });

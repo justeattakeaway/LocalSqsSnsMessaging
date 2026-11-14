@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_purge_queue_removes_all_messages.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -17,7 +16,7 @@ public sealed class PurgeQueueRemovesAllMessages
     /// </summary>
     [Test]
     [DisplayName("sqs.purge-queue-removes-all-messages")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -59,13 +58,13 @@ public sealed class PurgeQueueRemovesAllMessages
 
         // PurgeQueue is asynchronous; per docs it can take up to 60 seconds. Poll for the observable
         // condition (no sent message is ever returned again) rather than sleeping a fixed duration.
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(65.0))
         {
             var leftover = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [];
             if (leftover.Any(m => sentIds.Contains(m.MessageId)))
             {
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(2));
                 continue;
             }
 
@@ -79,7 +78,7 @@ public sealed class PurgeQueueRemovesAllMessages
                 return;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         throw Fail("queue was not fully purged within 65s");
@@ -87,7 +86,7 @@ public sealed class PurgeQueueRemovesAllMessages
 
     private static async Task<T> PollUntil<T>(Func<Task<T>> probe, Func<T, bool> predicate, double timeoutSeconds = 30.0, double intervalSeconds = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         T? last = default;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
@@ -97,7 +96,7 @@ public sealed class PurgeQueueRemovesAllMessages
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
 
         throw Fail($"condition not met within {timeoutSeconds}s (last={last})");

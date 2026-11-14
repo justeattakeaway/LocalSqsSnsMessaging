@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_set_queue_attributes_roundtrip.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -15,7 +14,7 @@ public sealed class SetQueueAttributesRoundtrip
     /// </summary>
     [Test]
     [DisplayName("sqs.set-queue-attributes-roundtrip")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -35,7 +34,7 @@ public sealed class SetQueueAttributesRoundtrip
         await sqs.SetQueueAttributesAsync(new SetQueueAttributesRequest { QueueUrl = url, Attributes = new() { ["VisibilityTimeout"] = "45" } });
         // SetQueueAttributes changes can take up to 60s to propagate per AWS docs:
         // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         Dictionary<string, string> attrs = [];
         while (deadline.Elapsed < TimeSpan.FromSeconds(65.0))
         {
@@ -46,7 +45,7 @@ public sealed class SetQueueAttributesRoundtrip
                 return;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2.0));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2.0));
         }
 
         throw Fail($"VisibilityTimeout never reached 45 after SetQueueAttributes (last='{attrs.GetValueOrDefault("VisibilityTimeout")}')");

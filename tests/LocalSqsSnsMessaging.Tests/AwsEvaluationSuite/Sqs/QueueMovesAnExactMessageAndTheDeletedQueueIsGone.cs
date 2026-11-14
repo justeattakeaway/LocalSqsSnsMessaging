@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_queue_moves_an_exact_message_and_the_deleted_queue_is_gone.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.SQS;
@@ -22,7 +21,7 @@ public sealed class QueueMovesAnExactMessageAndTheDeletedQueueIsGone
 
     private static async Task<T> PollUntil<T>(Func<Task<T>> probe, Func<T, bool> predicate, double timeoutSeconds, double intervalSeconds, string description)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var last = await probe();
@@ -36,14 +35,14 @@ public sealed class QueueMovesAnExactMessageAndTheDeletedQueueIsGone
                 throw Fail($"{description} not observed within {timeoutSeconds:F0}s; last saw {last}");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
     }
 
     /// <summary>Poll fn until it fails with code; return that error response. FAILS on the deadline.</summary>
     private static async Task<AwsError> PollUntilCode(Func<Task> fn, string code, double timeoutSeconds, double intervalSeconds, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var seen = "<call succeeded>";
         while (true)
         {
@@ -66,7 +65,7 @@ public sealed class QueueMovesAnExactMessageAndTheDeletedQueueIsGone
                 throw Fail($"{what}: expected {code}, got '{seen}' after {timeoutSeconds:F0}s");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
     }
 
@@ -115,7 +114,7 @@ public sealed class QueueMovesAnExactMessageAndTheDeletedQueueIsGone
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-moves-an-exact-message-and-the-deleted-queue-is-gone")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

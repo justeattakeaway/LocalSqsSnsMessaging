@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_long_polling_returns_fast.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -18,7 +17,7 @@ public sealed class LongPollingReturnsFast
     /// </summary>
     [Test]
     [DisplayName("sqs.long-polling-returns-fast")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -44,13 +43,13 @@ public sealed class LongPollingReturnsFast
 
         async Task<(double Elapsed, List<Message> Messages)> Receive()
         {
-            var start = Stopwatch.StartNew();
+            var start = FidelityTime.StartNew();
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = waitTime });
             return (start.Elapsed.TotalSeconds, resp.Messages ?? []);
         }
 
         var future = Task.Run(Receive);
-        var signalled = await Task.WhenAny(dispatched.Task, Task.Delay(TimeSpan.FromSeconds(BudgetS(ctx, 10)))) == dispatched.Task;
+        var signalled = await Task.WhenAny(dispatched.Task, FidelityTime.Delay(TimeSpan.FromSeconds(BudgetS(ctx, 10)))) == dispatched.Task;
         Ensure(signalled, "the ReceiveMessage request was never dispatched");
         await ctx.Sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = body });
         var (elapsed, messages) = await future.WaitAsync(TimeSpan.FromSeconds(BudgetS(ctx, waitTime + 30)));

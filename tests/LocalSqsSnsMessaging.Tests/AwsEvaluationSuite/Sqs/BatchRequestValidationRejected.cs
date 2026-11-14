@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_batch_request_validation_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +20,7 @@ public sealed class BatchRequestValidationRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.batch-request-validation-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -54,7 +53,7 @@ public sealed class BatchRequestValidationRejected
             $"expected both ok-0 and ok-1 to succeed, got [{string.Join(", ", (resp.Successful ?? []).Select(e => e.Id))}]");
 
         var delivered = new Dictionary<string, string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (delivered.Count < 2 && deadline.Elapsed < TimeSpan.FromSeconds(20.0))
         {
             var r = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 3 });

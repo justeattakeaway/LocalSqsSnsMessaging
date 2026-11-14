@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_list_queues_pagination_bad_input_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -24,7 +23,7 @@ public sealed class ListQueuesPaginationBadInputRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.list-queues-pagination-bad-input-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -44,7 +43,7 @@ public sealed class ListQueuesPaginationBadInputRejected
         Ensure(code == "InvalidParameterValue", $"a forged NextToken gave code '{code}'");
         Ensure(msg == MsgToken, $"a forged NextToken gave message '{msg}'");
 
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         ListQueuesResponse resp;
         List<string> urls;
         while (true)
@@ -56,7 +55,7 @@ public sealed class ListQueuesPaginationBadInputRejected
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         Ensure(urls.SequenceEqual([url]),

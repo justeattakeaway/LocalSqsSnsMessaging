@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_start_message_move_task_self_referential_destination_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -23,7 +22,7 @@ public sealed class StartMessageMoveTaskSelfReferentialDestinationRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.start-message-move-task-self-referential-destination-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -56,7 +55,7 @@ public sealed class StartMessageMoveTaskSelfReferentialDestinationRejected
                     break;
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(2));
             }
 
             return (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -99,7 +98,7 @@ public sealed class StartMessageMoveTaskSelfReferentialDestinationRejected
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 2.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -108,7 +107,7 @@ public sealed class StartMessageMoveTaskSelfReferentialDestinationRejected
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_move_task_completes_and_drains_dlq.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -22,7 +21,7 @@ public sealed class MessageMoveTaskCompletesAndDrainsDlq
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -31,7 +30,7 @@ public sealed class MessageMoveTaskCompletesAndDrainsDlq
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 
@@ -45,7 +44,7 @@ public sealed class MessageMoveTaskCompletesAndDrainsDlq
     private static async Task<List<string>> Peek(AmazonSQSClient sqs, string url, int expect, double timeoutSeconds)
     {
         var seen = new Dictionary<string, string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (seen.Count < expect && deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 });
@@ -63,7 +62,7 @@ public sealed class MessageMoveTaskCompletesAndDrainsDlq
     private static async Task<List<string>> Drain(AmazonSQSClient sqs, string url, int expect, double timeoutSeconds)
     {
         var seen = new Dictionary<string, string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (seen.Count < expect && deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 });
@@ -93,7 +92,7 @@ public sealed class MessageMoveTaskCompletesAndDrainsDlq
     /// </summary>
     [Test]
     [DisplayName("sqs.message-move-task-completes-and-drains-dlq")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -132,7 +131,7 @@ public sealed class MessageMoveTaskCompletesAndDrainsDlq
         // Redrive fires on the receive that would take a message PAST maxReceiveCount, so one delivery
         // each is not enough; re-receive (VisibilityTimeout=0 re-exposes each) until the DLQ fills.
         var delivered = new Dictionary<string, int>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var dlqDepth = "0";
         while (deadline.Elapsed < TimeSpan.FromSeconds(150))
         {

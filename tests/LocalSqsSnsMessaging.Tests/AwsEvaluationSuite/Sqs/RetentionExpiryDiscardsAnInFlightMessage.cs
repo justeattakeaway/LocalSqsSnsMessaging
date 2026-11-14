@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_retention_expiry_discards_an_in_flight_message.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -26,14 +25,13 @@ public sealed class RetentionExpiryDiscardsAnInFlightMessage
     // timing:real-time — retention: 60 s https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html
     [Test]
     [DisplayName("sqs.retention-expiry-discards-an-in-flight-message")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);
         var sqs = ctx.Sqs;
-        var clock = Stopwatch.StartNew(); // time.monotonic()
+        var clock = FidelityTime.StartNew(); // time.monotonic()
         double Now() => clock.Elapsed.TotalSeconds;
         var token = Guid.NewGuid().ToString("N")[..8];
         var shortUrl = (await sqs.CreateQueueAsync(new CreateQueueRequest
@@ -111,7 +109,7 @@ public sealed class RetentionExpiryDiscardsAnInFlightMessage
         deadline = Now() + CounterS;
         while (counters != ("0", "0") && Now() < deadline)
         {
-            await Task.Delay(TimeSpan.FromSeconds(5));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(5));
             counters = await Counters(sqs, shortUrl);
         }
 

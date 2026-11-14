@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_per_message_delay_seconds_overrides_queue_delay_both_directions.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -25,7 +24,7 @@ public sealed class PerMessageDelaySecondsOverridesQueueDelayBothDirections
     private static async Task<HashSet<string>> Drain(AmazonSQSClient sqs, string url, HashSet<string> into, double timeoutSeconds, int waitSeconds, int emptyPolls)
     {
         var empties = 0;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (empties < emptyPolls && deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var batch = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = waitSeconds })).Messages ?? [];
@@ -54,7 +53,7 @@ public sealed class PerMessageDelaySecondsOverridesQueueDelayBothDirections
     /// </summary>
     [Test]
     [DisplayName("sqs.per-message-delay-seconds-overrides-queue-delay-both-directions")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

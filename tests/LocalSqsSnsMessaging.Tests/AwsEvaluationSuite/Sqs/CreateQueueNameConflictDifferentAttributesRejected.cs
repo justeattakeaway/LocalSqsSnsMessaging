@@ -19,7 +19,7 @@ public sealed class CreateQueueNameConflictDifferentAttributesRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.create-queue-name-conflict-different-attributes-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_sequence_number_monotonic_within_group.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
 using Amazon.SQS;
@@ -26,7 +25,7 @@ public sealed class FifoSequenceNumberMonotonicWithinGroup
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-sequence-number-monotonic-within-group")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -103,7 +102,7 @@ public sealed class FifoSequenceNumberMonotonicWithinGroup
     {
         HashSet<string> seen = [];
         List<Message> msgs = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (msgs.Count < expect && deadline.Elapsed.TotalSeconds < timeoutS)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

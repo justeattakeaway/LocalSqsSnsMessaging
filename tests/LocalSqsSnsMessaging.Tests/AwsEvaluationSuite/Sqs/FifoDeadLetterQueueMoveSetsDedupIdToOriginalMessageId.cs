@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_dead_letter_queue_move_sets_dedup_id_to_original_message_id.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -22,7 +21,7 @@ public sealed class FifoDeadLetterQueueMoveSetsDedupIdToOriginalMessageId
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-dead-letter-queue-move-sets-dedup-id-to-original-message-id")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -100,7 +99,7 @@ public sealed class FifoDeadLetterQueueMoveSetsDedupIdToOriginalMessageId
     /// <summary>Receive until the source delivers `message_id`; return it with its system attributes.</summary>
     private static async Task<Message> ReceiveFromSource(AmazonSQSClient sqs, string srcUrl, string messageId, double timeoutSeconds)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -124,7 +123,7 @@ public sealed class FifoDeadLetterQueueMoveSetsDedupIdToOriginalMessageId
     /// <summary>Drive the source's redelivery past maxReceiveCount and return the DLQ copy with its attributes.</summary>
     private static async Task<Message> AwaitDlqArrival(AmazonSQSClient sqs, string srcUrl, string dlqUrl, string token, double timeoutSeconds)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = srcUrl, MaxNumberOfMessages = 1, WaitTimeSeconds = 1 })).Messages ?? [])

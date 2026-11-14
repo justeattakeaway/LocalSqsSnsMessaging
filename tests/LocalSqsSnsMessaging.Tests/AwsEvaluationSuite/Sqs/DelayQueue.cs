@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_delay_queue.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -18,7 +17,7 @@ public sealed class DelayQueue
     /// </summary>
     [Test]
     [DisplayName("sqs.delay-queue")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -33,7 +32,7 @@ public sealed class DelayQueue
         })).QueueUrl;
         ctx.OnCleanup(() => sqs.DeleteQueueAsync(url));
         var body = $"delay-queue-{Guid.NewGuid().ToString("N")[..8]}";
-        var sendTime = Stopwatch.StartNew();
+        var sendTime = FidelityTime.StartNew();
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = body });
         // Immediate receive should be empty (message is delayed)
         var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 0 });

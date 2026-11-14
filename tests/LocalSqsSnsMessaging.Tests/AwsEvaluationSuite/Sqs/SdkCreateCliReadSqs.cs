@@ -17,7 +17,7 @@ public sealed class SdkCreateCliReadSqs
     /// </summary>
     [Test]
     [DisplayName("sqs.sdk-create-cli-read-sqs")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

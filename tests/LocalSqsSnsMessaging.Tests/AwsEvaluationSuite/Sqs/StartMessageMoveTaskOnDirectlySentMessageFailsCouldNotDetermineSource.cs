@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_start_message_move_task_on_directly_sent_message_fails_could_not_determine_source.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -26,7 +25,7 @@ public sealed class StartMessageMoveTaskOnDirectlySentMessageFailsCouldNotDeterm
     /// </summary>
     [Test]
     [DisplayName("sqs.start-message-move-task-on-directly-sent-message-fails-could-not-determine-source")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -139,7 +138,7 @@ public sealed class StartMessageMoveTaskOnDirectlySentMessageFailsCouldNotDeterm
     private static async Task<T> Poll<T>(FidelityContext ctx, Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, Func<T, string> describe, double intervalSeconds = 2.0)
     {
         var budget = BudgetSeconds(ctx, timeoutSeconds);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -148,7 +147,7 @@ public sealed class StartMessageMoveTaskOnDirectlySentMessageFailsCouldNotDeterm
                 throw new TimeoutException($"condition not met within {budget:F0}s; last value {describe(val)}");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 

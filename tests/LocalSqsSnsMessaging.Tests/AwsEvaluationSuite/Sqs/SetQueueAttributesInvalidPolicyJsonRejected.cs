@@ -18,7 +18,7 @@ public sealed class SetQueueAttributesInvalidPolicyJsonRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.set-queue-attributes-invalid-policy-json-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

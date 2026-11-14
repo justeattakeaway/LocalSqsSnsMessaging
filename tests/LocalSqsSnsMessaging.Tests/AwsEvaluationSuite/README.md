@@ -10,7 +10,7 @@ compared side by side.
   against `LocalSqsSnsMessaging.Server`.
 - **Real AWS clients:** tests use real `AmazonSQSClient`s over the in-memory HTTP handler, through
   `FidelityContext`, the C# version of the Python `ctx`.
-- **Isolation:** every test gets its own `InMemoryAwsBus` on the real clock.
+- **Isolation:** every test gets its own `InMemoryAwsBus`, on its own virtual clock.
 - **Left out:** checks that also need IAM, KMS, CloudFormation, CloudWatch, Lambda or STS role
   assumption are not ported.
 
@@ -29,14 +29,28 @@ LOCALSQSSNS_RUN_KNOWN_GAPS=1 dotnet run --project tests/LocalSqsSnsMessaging.Tes
   --treenode-filter "/*/*/QueueLevelWaitTime/*"
 ```
 
-Checks that wait out a real AWS period (for example the 60 s minimum `MessageRetentionPeriod`)
-are in the `TimeBased` category. Leave them out for a fast loop:
-`--treenode-filter "/**[Category!=TimeBased]"`.
+## Virtual time
 
-The few that wait a minute or more (retention minimums, the five-minute deduplication interval,
-the purge window) are also in the `LongWait` category. `build.ps1` leaves those out, so CI stays
-inside its two-minute limit. Run them on their own with `--treenode-filter "/**[Category=LongWait]"`
-(about five minutes, set by the deduplication interval).
+The checks wait out real SQS periods: visibility timeouts, delays, long polls, the 60-second
+minimum retention, the five-minute deduplication interval. Each runs on virtual time instead,
+so the whole suite takes seconds:
+
+- **The clock:** the bus's `TimeProvider` is a `FakeTimeProvider`. Checks wait and measure with
+  `FidelityTime.Delay`, `FidelityTime.StartNew()` and `FidelityTime.UtcNow`, the virtual
+  counterparts of `Task.Delay`, `Stopwatch.StartNew()` and `DateTimeOffset.UtcNow`.
+- **What moves it:** time stands still while a check is working, and moves only while something
+  waits on it: a `FidelityTime.Delay`, or a `ReceiveMessage` blocked in a long poll. While either
+  is pending, `FidelityContext` advances the clock 100 ms about every millisecond. Requests that
+  are merely slow never move it.
+- **Request latency:** every request costs 1 ms of virtual time, so a polling loop with no wait
+  in it still reaches its deadline.
+- **Budgets and timeouts:** the runner's per-check budgets (`ctx.time_left()`) are in virtual
+  time. Each test's `[Timeout]` is real time, and only stops a hung check.
+
+Write new waits with `FidelityTime`, never `Task.Delay` or `Stopwatch`: a real wait doesn't
+move the bus's clock, so whatever it waits for never happens.
+
+Checks whose subject is timing (`timing:real-time` upstream) are in the `TimeBased` category.
 
 When a fix makes a skipped test pass, delete its attribute. To find every test for one root cause,
 grep for its `FidelityGap` value: `grep -l "FidelityGap.Validation" Sqs/*.cs`.

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_delayed_messages_are_counted_separately_from_visible_and_in_flight.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -45,7 +44,7 @@ public sealed class DelayedMessagesAreCountedSeparatelyFromVisibleAndInFlight
     /// </summary>
     [Test]
     [DisplayName("sqs.delayed-messages-are-counted-separately-from-visible-and-in-flight")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -77,13 +76,13 @@ public sealed class DelayedMessagesAreCountedSeparatelyFromVisibleAndInFlight
             "test, so the withheld-message leg cannot distinguish 'delayed' from 'slow'");
 
         // --- the subjects: one short delay (waited out), one long delay (counted) ----------
-        var sendStart = Stopwatch.StartNew();
+        var sendStart = FidelityTime.StartNew();
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = shortBody, DelaySeconds = ShortDelaySeconds });
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = longBody, DelaySeconds = LongDelaySeconds });
 
         // Withheld: for >=3L nothing is delivered, even though an identical undelayed send on this very
         // queue was delivered in L seconds moments ago.
-        var absence = Stopwatch.StartNew();
+        var absence = FidelityTime.StartNew();
         while (absence.Elapsed.TotalSeconds < absenceWindowSeconds)
         {
             var leaked = await Receive(sqs, url);
@@ -98,12 +97,12 @@ public sealed class DelayedMessagesAreCountedSeparatelyFromVisibleAndInFlight
         // message stays delayed for _LONG_DELAY_S, far past this poll's budget.
         const double delayedWaitSeconds = 60.0;
         var delayedBudgetSeconds = BudgetSeconds(ctx, delayedWaitSeconds);
-        var delayedStart = Stopwatch.StartNew();
+        var delayedStart = FidelityTime.StartNew();
         var delayedStop = Math.Min(delayedWaitSeconds, delayedBudgetSeconds);
         var delayedNow = (await GetCounters(sqs, url))["ApproximateNumberOfMessagesDelayed"];
         while (int.Parse(delayedNow) < 1 && delayedStart.Elapsed.TotalSeconds < delayedStop)
         {
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
             delayedNow = (await GetCounters(sqs, url))["ApproximateNumberOfMessagesDelayed"];
         }
 
@@ -192,7 +191,7 @@ public sealed class DelayedMessagesAreCountedSeparatelyFromVisibleAndInFlight
     private static async Task<Dictionary<string, string>> AwaitCounters(
         AmazonSQSClient sqs, string url, Dictionary<string, string> want, double timeoutSeconds, string why)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         Dictionary<string, string>? last = null;
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
@@ -213,7 +212,7 @@ public sealed class DelayedMessagesAreCountedSeparatelyFromVisibleAndInFlight
     /// <summary>Bounded poll until `body` is delivered; return the measured latency, raise on timeout.</summary>
     private static async Task<double> AwaitBody(AmazonSQSClient sqs, string url, string body, double timeoutSeconds, string what)
     {
-        var start = Stopwatch.StartNew();
+        var start = FidelityTime.StartNew();
         while (start.Elapsed.TotalSeconds < timeoutSeconds)
         {
             foreach (var msg in await Receive(sqs, url))

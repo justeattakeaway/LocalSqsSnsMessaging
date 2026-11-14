@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receive_max_messages.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -18,7 +17,7 @@ public sealed class ReceiveMaxMessages
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-max-messages")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -38,7 +37,7 @@ public sealed class ReceiveMaxMessages
 
         Dictionary<string, string> seen = [];
         var idle = 0;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (seen.Count < bodies.Count && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 3, WaitTimeSeconds = 2 });

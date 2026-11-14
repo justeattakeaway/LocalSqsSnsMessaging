@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_conc_limits_and_fanout_in_flight_disjoint_and_cmv_zero_redelivers_exact_subset.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -24,7 +23,7 @@ public sealed class ConcLimitsAndFanoutInFlightDisjointAndCmvZeroRedeliversExact
     /// </summary>
     [Test]
     [DisplayName("sqs.conc-limits-and-fanout-in-flight-disjoint-and-cmv-zero-redelivers-exact-subset")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -59,14 +58,14 @@ public sealed class ConcLimitsAndFanoutInFlightDisjointAndCmvZeroRedeliversExact
         Ensure(sent.Count == N, $"{sent.Count} distinct MessageIds acknowledged for {N} sends");
 
         var gate = new Lock();
-        var firstReceive = new List<Stopwatch>();
+        var firstReceive = new List<FidelityStopwatch>();
 
         // Concurrent receivers until `target` distinct messages have been collected or the
         // budget ends. Returns every (receiver, MessageId, ReceiptHandle, ReceiveCount) seen.
         async Task<List<(int Receiver, string MessageId, string ReceiptHandle, int ReceiveCount)>> Drain(int target, double budgetS)
         {
             var seen = new List<(int Receiver, string MessageId, string ReceiptHandle, int ReceiveCount)>();
-            var stop = Stopwatch.StartNew();
+            var stop = FidelityTime.StartNew();
             // Every receiver starts together, and each call takes at most _BATCH, so the drain needs
             // many overlapping calls rather than one fast receiver taking the whole queue.
             var start = new AsyncBarrier(Receivers);
@@ -93,7 +92,7 @@ public sealed class ConcLimitsAndFanoutInFlightDisjointAndCmvZeroRedeliversExact
                     {
                         if (got.Count > 0 && firstReceive.Count == 0)
                         {
-                            firstReceive.Add(Stopwatch.StartNew());
+                            firstReceive.Add(FidelityTime.StartNew());
                         }
 
                         foreach (var m in got)

@@ -15,7 +15,7 @@ public sealed class CliSqsNonexistentQueueError
     /// </summary>
     [Test]
     [DisplayName("sqs.cli-sqs-nonexistent-queue-error")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

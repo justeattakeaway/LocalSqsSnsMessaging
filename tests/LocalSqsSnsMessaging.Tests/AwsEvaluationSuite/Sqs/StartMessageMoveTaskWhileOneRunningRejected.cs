@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_start_message_move_task_while_one_running_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Amazon.Runtime;
@@ -27,7 +26,7 @@ public sealed class StartMessageMoveTaskWhileOneRunningRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.start-message-move-task-while-one-running-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -131,11 +130,11 @@ public sealed class StartMessageMoveTaskWhileOneRunningRejected
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val) && deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 

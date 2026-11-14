@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_queue_policy_explicit_deny_blocks_send.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -28,8 +27,8 @@ public sealed class QueuePolicyExplicitDenyBlocksSend
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-policy-explicit-deny-blocks-send")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Other, "an explicit Deny in the queue Policy is never enforced, so the probe loop outlasts the 60s budget")]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
+    [KnownFidelityGap(FidelityGap.Other, "an explicit Deny on sqs:SendMessage in the queue Policy is never enforced: the send still succeeds after 300s and 61 attempts")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -103,7 +102,7 @@ public sealed class QueuePolicyExplicitDenyBlocksSend
         List<string> accepted = [];
         string? code = null;
         string? message = null;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var attempt = 0;
         while (true)
         {
@@ -122,7 +121,7 @@ public sealed class QueuePolicyExplicitDenyBlocksSend
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(5.0), cancellationToken);
+            await FidelityTime.Delay(TimeSpan.FromSeconds(5.0), cancellationToken);
         }
 
         Ensure(code == ErrAccessDenied,
@@ -189,7 +188,7 @@ public sealed class QueuePolicyExplicitDenyBlocksSend
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutS, double intervalS = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -198,7 +197,7 @@ public sealed class QueuePolicyExplicitDenyBlocksSend
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
             val = await fn();
         }
 
@@ -224,7 +223,7 @@ public sealed class QueuePolicyExplicitDenyBlocksSend
     /// <summary>Send <paramref name="body"/> until SendMessage accepts it; a refusal that outlasts the deadline raises.</summary>
     private static async Task<string> UntilSent(IAmazonSQS sqs, string url, string body, double timeoutS, double intervalS = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var (resp, error) = await FidelityContext.Capture(() => sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = body }));
@@ -239,14 +238,14 @@ public sealed class QueuePolicyExplicitDenyBlocksSend
                     $"SendMessage was still refused after {timeoutS}s: {error}", error.Exception);
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
         }
     }
 
     private static async Task<List<string>> Drain(IAmazonSQS sqs, string url, int expect, double timeoutS)
     {
         Dictionary<string, string> seen = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (seen.Count < expect && deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 });

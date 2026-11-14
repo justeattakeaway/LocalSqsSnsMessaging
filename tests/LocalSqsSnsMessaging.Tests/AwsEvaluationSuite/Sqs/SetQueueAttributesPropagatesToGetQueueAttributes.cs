@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_set_queue_attributes_propagates_to_get_queue_attributes.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -19,7 +18,7 @@ public sealed class SetQueueAttributesPropagatesToGetQueueAttributes
     /// </summary>
     [Test]
     [DisplayName("sqs.set-queue-attributes-propagates-to-get-queue-attributes")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -47,7 +46,7 @@ public sealed class SetQueueAttributesPropagatesToGetQueueAttributes
 
     private static async Task<string?> PollUntil(Func<Task<string>> probe, Func<string, bool> predicate, double timeoutSeconds = 30.0, double intervalSeconds = 2.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         string? last = null;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
@@ -57,7 +56,7 @@ public sealed class SetQueueAttributesPropagatesToGetQueueAttributes
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
 
         throw Fail($"condition not met within {timeoutSeconds}s (last='{last}')");

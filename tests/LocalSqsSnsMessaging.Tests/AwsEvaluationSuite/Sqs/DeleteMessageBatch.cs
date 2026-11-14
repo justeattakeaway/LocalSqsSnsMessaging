@@ -15,7 +15,7 @@ public sealed class DeleteMessageBatch
     /// </summary>
     [Test]
     [DisplayName("sqs.delete-message-batch")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

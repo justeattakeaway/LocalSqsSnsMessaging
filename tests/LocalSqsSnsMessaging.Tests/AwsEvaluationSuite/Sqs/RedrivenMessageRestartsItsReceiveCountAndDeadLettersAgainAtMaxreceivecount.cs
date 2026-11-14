@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_redriven_message_restarts_its_receive_count_and_dead_letters_again_at_maxreceivecount.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -28,7 +27,7 @@ public sealed class RedrivenMessageRestartsItsReceiveCountAndDeadLettersAgainAtM
     /// </summary>
     [Test]
     [DisplayName("sqs.redriven-message-restarts-its-receive-count-and-dead-letters-again-at-maxreceivecount")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -107,7 +106,7 @@ public sealed class RedrivenMessageRestartsItsReceiveCountAndDeadLettersAgainAtM
     /// <summary>Bounded poll until the tokened message is delivered from <paramref name="url"/>; RAISES on the deadline.</summary>
     private static async Task<Message> AwaitDelivery(IAmazonSQS sqs, string url, string token, double timeoutS, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         List<(string Body, string? Count)> last = [];
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
@@ -135,7 +134,7 @@ public sealed class RedrivenMessageRestartsItsReceiveCountAndDeadLettersAgainAtM
     /// <summary>Drive and observe the source -> DLQ move; RAISES on the deadline.</summary>
     private static async Task<Message> AwaitDlqMove(IAmazonSQS sqs, string srcUrl, string dlqUrl, string token, double timeoutS, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         List<string> last = [];
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
@@ -209,7 +208,7 @@ public sealed class RedrivenMessageRestartsItsReceiveCountAndDeadLettersAgainAtM
     private static async Task AwaitCounts(IAmazonSQS sqs, string url, int minVisible, string inFlight, double timeoutS)
     {
         List<string> names = ["ApproximateNumberOfMessages", "ApproximateNumberOfMessagesNotVisible"];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         (string? Visible, string? InFlight)? last = null;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
@@ -220,7 +219,7 @@ public sealed class RedrivenMessageRestartsItsReceiveCountAndDeadLettersAgainAtM
                 return;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         throw Fail($"counters on {url} read {last} after {timeoutS}s, expected at least {minVisible} "
@@ -233,7 +232,7 @@ public sealed class RedrivenMessageRestartsItsReceiveCountAndDeadLettersAgainAtM
     /// </summary>
     private static async Task<ListMessageMoveTasksResultEntry> AwaitTask(IAmazonSQS sqs, string dlqArn, int started, double timeoutS)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         ListMessageMoveTasksResultEntry? last = null;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
@@ -244,7 +243,7 @@ public sealed class RedrivenMessageRestartsItsReceiveCountAndDeadLettersAgainAtM
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
         }
 
         throw Fail($"the message move task did not settle within {timeoutS}s; last saw "

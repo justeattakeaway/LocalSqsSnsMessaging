@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_cli_query_jmespath_filter.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -18,7 +17,7 @@ public sealed class CliQueryJmespathFilter
     /// </summary>
     [Test]
     [DisplayName("sqs.cli-query-jmespath-filter")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -35,7 +34,7 @@ public sealed class CliQueryJmespathFilter
 
         // ListQueues can lag CreateQueue; poll briefly until all three are visible.
         List<string> allUrls = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(20.0))
         {
             allUrls = (await sqs.ListQueuesAsync(new ListQueuesRequest { QueueNamePrefix = prefix })).QueueUrls ?? [];
@@ -44,7 +43,7 @@ public sealed class CliQueryJmespathFilter
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
         }
 
         Ensure(allUrls.Count == 3, $"Expected 3 queues under prefix '{prefix}', got [{string.Join(", ", allUrls)}]");

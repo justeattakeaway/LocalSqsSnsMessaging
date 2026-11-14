@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_same_name_queues_in_two_regions_hold_separate_messages.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +21,7 @@ public sealed class SameNameQueuesInTwoRegionsHoldSeparateMessages
     /// </summary>
     [Test]
     [DisplayName("sqs.same-name-queues-in-two-regions-hold-separate-messages")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.MultiRegion, "the 'us-east-1' queue of the same name is the home queue, so it delivers the home region's messages too")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -97,7 +96,7 @@ public sealed class SameNameQueuesInTwoRegionsHoldSeparateMessages
     private static async Task<List<Message>> Drain(IAmazonSQS sqs, string url, int want, double timeoutS = 30.0)
     {
         List<Message> got = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (got.Count < want && deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             got.AddRange((await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

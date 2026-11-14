@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_list_message_move_tasks_max_results_out_of_range_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -27,7 +26,7 @@ public sealed class ListMessageMoveTasksMaxResultsOutOfRangeRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.list-message-move-tasks-max-results-out-of-range-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -53,7 +52,7 @@ public sealed class ListMessageMoveTasksMaxResultsOutOfRangeRejected
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = dlqUrl, MessageBody = "lmr-0" });
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = dlqUrl, MessageBody = "lmr-1" });
 
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         string depth;
         while (true)
         {
@@ -66,13 +65,13 @@ public sealed class ListMessageMoveTasksMaxResultsOutOfRangeRejected
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         Ensure(depth == "2", $"the DLQ shows '{depth}' messages, expected '2'");
 
         await sqs.StartMessageMoveTaskAsync(new StartMessageMoveTaskRequest { SourceArn = dlqArn, DestinationArn = srcArn });
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         List<ListMessageMoveTasksResultEntry> res;
         while (true)
         {
@@ -82,7 +81,7 @@ public sealed class ListMessageMoveTasksMaxResultsOutOfRangeRejected
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         Ensure(res.Count > 0 && res[0].Status == "COMPLETED",
@@ -120,11 +119,11 @@ public sealed class ListMessageMoveTasksMaxResultsOutOfRangeRejected
             return (results[0], results[1]);
         }
 
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         var depths = await Depths();
         while (depths != ("0", "2") && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
             depths = await Depths();
         }
 

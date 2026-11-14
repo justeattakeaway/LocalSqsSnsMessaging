@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_sender_id_and_sent_timestamp_derive_from_the_caller_and_the_live_clock.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -30,7 +29,7 @@ public sealed class SenderIdAndSentTimestampDeriveFromTheCallerAndTheLiveClock
     /// </summary>
     [Test]
     [DisplayName("sqs.sender-id-and-sent-timestamp-derive-from-the-caller-and-the-live-clock")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.Other, "SenderId is the caller's ACCOUNT id (000000000000); SQS documents it as the IAM user id or IAM role id of the sender, which is a distinct value")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -46,10 +45,10 @@ public sealed class SenderIdAndSentTimestampDeriveFromTheCallerAndTheLiveClock
         var firstBody = $"sender-first-{token}";
         var secondBody = $"sender-second-{token}";
 
-        var beforeMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var beforeMs = FidelityTime.UtcNow.ToUnixTimeMilliseconds();
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = firstBody });
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = secondBody });
-        var afterMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var afterMs = FidelityTime.UtcNow.ToUnixTimeMilliseconds();
         Ensure(afterMs >= beforeMs, "the runner's wall clock went backwards across the two sends");
 
         var first = await ReceiveOne(sqs, url, body: firstBody, timeoutSeconds: PollSeconds);
@@ -114,7 +113,7 @@ public sealed class SenderIdAndSentTimestampDeriveFromTheCallerAndTheLiveClock
     /// </summary>
     private static async Task<Message> ReceiveOne(AmazonSQSClient sqs, string url, string body, double timeoutSeconds)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var seen = new List<string>();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {

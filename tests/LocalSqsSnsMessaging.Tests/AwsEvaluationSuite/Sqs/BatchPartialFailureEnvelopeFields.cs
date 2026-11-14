@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_batch_partial_failure_envelope_fields.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -20,7 +19,7 @@ public sealed class BatchPartialFailureEnvelopeFields
     /// </summary>
     [Test]
     [DisplayName("sqs.batch-partial-failure-envelope-fields")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -90,7 +89,7 @@ public sealed class BatchPartialFailureEnvelopeFields
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutS, double intervalS = 0.5)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -99,7 +98,7 @@ public sealed class BatchPartialFailureEnvelopeFields
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
             val = await fn();
         }
 
@@ -116,7 +115,7 @@ public sealed class BatchPartialFailureEnvelopeFields
     {
         var seen = new HashSet<string>();
         var bodies = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 });

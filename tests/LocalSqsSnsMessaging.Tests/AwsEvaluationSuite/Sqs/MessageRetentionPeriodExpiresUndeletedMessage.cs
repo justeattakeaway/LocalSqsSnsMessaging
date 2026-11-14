@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_retention_period_expires_undeleted_message.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -25,7 +24,7 @@ public sealed class MessageRetentionPeriodExpiresUndeletedMessage
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 2.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -34,7 +33,7 @@ public sealed class MessageRetentionPeriodExpiresUndeletedMessage
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 
@@ -57,9 +56,8 @@ public sealed class MessageRetentionPeriodExpiresUndeletedMessage
     // timing:real-time — retention: 60 s https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html
     [Test]
     [DisplayName("sqs.message-retention-period-expires-undeleted-message")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);
@@ -101,7 +99,7 @@ public sealed class MessageRetentionPeriodExpiresUndeletedMessage
             $"the message never landed on the short-retention queue, so nothing below proves " +
             $"retention: ApproximateNumberOfMessages='{preDepth}'");
         List<Message> preMsgs = [];
-        var preDeadline = Stopwatch.StartNew();
+        var preDeadline = FidelityTime.StartNew();
         while (preMsgs.Count == 0 && preDeadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             preMsgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -121,7 +119,7 @@ public sealed class MessageRetentionPeriodExpiresUndeletedMessage
         // VisibilityTimeout=0 and a batch of 10, real SQS can return the same message ten times.
         List<string> lastBodies = [marker];
         var empties = 0;
-        var expiryDeadline = Stopwatch.StartNew();
+        var expiryDeadline = FidelityTime.StartNew();
         while (empties < EmptyPolls && expiryDeadline.Elapsed < TimeSpan.FromSeconds(ExpiryCeilingSeconds))
         {
             lastBodies = [.. ((await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_attribute_value_in_the_wrong_field_for_its_data_type_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -19,7 +18,7 @@ public sealed class MessageAttributeValueInTheWrongFieldForItsDataTypeRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.message-attribute-value-in-the-wrong-field-for-its-data-type-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -144,7 +143,7 @@ public sealed class MessageAttributeValueInTheWrongFieldForItsDataTypeRejected
     {
         var sqs = ctx.Sqs;
         var seen = new Dictionary<string, Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutS && !wanted.IsSubsetOf(seen.Keys))
         {
             var request = new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 };
@@ -171,7 +170,7 @@ public sealed class MessageAttributeValueInTheWrongFieldForItsDataTypeRejected
     {
         var sqs = ctx.Sqs;
         var seen = new Dictionary<string, Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < windowS)
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 })).Messages ?? [])

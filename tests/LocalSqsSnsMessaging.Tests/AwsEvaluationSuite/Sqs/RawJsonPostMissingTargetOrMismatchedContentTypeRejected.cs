@@ -23,7 +23,7 @@ public sealed class RawJsonPostMissingTargetOrMismatchedContentTypeRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.raw-json-post-missing-target-or-mismatched-content-type-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.Protocol, "a JSON POST missing X-Amz-Target is not refused with 400 UnknownOperationException")]
     public async Task Run(CancellationToken cancellationToken)
     {

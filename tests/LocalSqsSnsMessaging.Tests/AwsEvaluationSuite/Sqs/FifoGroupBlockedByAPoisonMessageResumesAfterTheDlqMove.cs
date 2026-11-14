@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_group_blocked_by_a_poison_message_resumes_after_the_dlq_move.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -33,7 +32,7 @@ public sealed class FifoGroupBlockedByAPoisonMessageResumesAfterTheDlqMove
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-group-blocked-by-a-poison-message-resumes-after-the-dlq-move")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -83,7 +82,7 @@ public sealed class FifoGroupBlockedByAPoisonMessageResumesAfterTheDlqMove
         var blockedWindowSeconds = Math.Max(AbsenceMultiplier * latencySeconds, 3.0);
 
         // Positive control: blocking is in effect, so a later successor delivery is due to the redrive.
-        var blocked = Stopwatch.StartNew();
+        var blocked = FidelityTime.StartNew();
         while (blocked.Elapsed.TotalSeconds < blockedWindowSeconds)
         {
             var leaked = (await Receive(sqs, srcUrl)).Where(m => m.Body == successorBody).ToList();
@@ -159,7 +158,7 @@ public sealed class FifoGroupBlockedByAPoisonMessageResumesAfterTheDlqMove
     /// </summary>
     private static async Task<(Message Message, double LatencySeconds)> AwaitBody(AmazonSQSClient sqs, string url, string body, double timeoutSeconds, string what)
     {
-        var start = Stopwatch.StartNew();
+        var start = FidelityTime.StartNew();
         while (start.Elapsed.TotalSeconds < timeoutSeconds)
         {
             Message? found = null;
@@ -196,7 +195,7 @@ public sealed class FifoGroupBlockedByAPoisonMessageResumesAfterTheDlqMove
     private static async Task<(Message Successor, int PoisonRedeliveries)> DriveSourceUntilSuccessor(
         AmazonSQSClient sqs, string srcUrl, string poisonBody, string successorBody, double timeoutSeconds)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var poisonRedeliveries = 0;
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
@@ -231,7 +230,7 @@ public sealed class FifoGroupBlockedByAPoisonMessageResumesAfterTheDlqMove
     /// <summary>Poll the DLQ until `body` arrives; raise on the deadline.</summary>
     private static async Task<Message> AwaitInDlq(AmazonSQSClient sqs, string dlqUrl, string body, double timeoutSeconds, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             Message? found = null;

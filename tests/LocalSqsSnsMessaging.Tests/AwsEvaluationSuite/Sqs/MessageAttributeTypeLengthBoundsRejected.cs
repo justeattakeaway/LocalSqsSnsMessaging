@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_attribute_type_length_bounds_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -19,7 +18,7 @@ public sealed class MessageAttributeTypeLengthBoundsRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.message-attribute-type-length-bounds-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -52,7 +51,7 @@ public sealed class MessageAttributeTypeLengthBoundsRejected
 
         var got = new Dictionary<string, MessageAttributeValue?>();
         var timeoutS = BudgetS(ctx, 30);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutS && !got.ContainsKey("sim2real-accepted"))
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

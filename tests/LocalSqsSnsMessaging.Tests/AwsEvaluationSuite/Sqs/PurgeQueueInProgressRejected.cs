@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_purge_queue_in_progress_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -19,7 +18,7 @@ public sealed class PurgeQueueInProgressRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.purge-queue-in-progress-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.Validation, "a second PurgeQueue within 60 seconds succeeded instead of being rejected with PurgeQueueInProgress")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -63,7 +62,7 @@ public sealed class PurgeQueueInProgressRejected
 
     private static async Task<T> PollUntil<T>(Func<Task<T>> probe, Func<T, bool> predicate, double timeoutSeconds = 30.0, double intervalSeconds = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         T? last = default;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
@@ -73,7 +72,7 @@ public sealed class PurgeQueueInProgressRejected
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
 
         throw Fail($"condition not met within {timeoutSeconds}s (last={last})");

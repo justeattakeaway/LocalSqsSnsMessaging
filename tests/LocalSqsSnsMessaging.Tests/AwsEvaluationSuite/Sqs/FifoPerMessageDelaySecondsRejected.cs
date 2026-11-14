@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_per_message_delay_seconds_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
@@ -24,7 +23,7 @@ public sealed class FifoPerMessageDelaySecondsRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-per-message-delay-seconds-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -70,7 +69,7 @@ public sealed class FifoPerMessageDelaySecondsRejected
             $"expected message '{DelayMessage}', got '{err.Message}'");
 
         // positive controls: no per-message delay, and an explicit DelaySeconds=0
-        var sentAt = Stopwatch.StartNew();
+        var sentAt = FidelityTime.StartNew();
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "plain", MessageGroupId = "g" });
         try
         {
@@ -96,7 +95,7 @@ public sealed class FifoPerMessageDelaySecondsRejected
             await sqs.DeleteMessageAsync(new DeleteMessageRequest { QueueUrl = url, ReceiptHandle = m.ReceiptHandle });
         }
 
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(QueueDelayS + 30) && bodies.Count < 2)
         {
             foreach (var m in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 5 })).Messages ?? [])

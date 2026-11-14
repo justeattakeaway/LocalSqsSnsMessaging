@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_visibility_extension_capped_at_twelve_hours_from_receive_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -26,7 +25,7 @@ public sealed class VisibilityExtensionCappedAtTwelveHoursFromReceiveRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.visibility-extension-capped-at-twelve-hours-from-receive-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -51,7 +50,7 @@ public sealed class VisibilityExtensionCappedAtTwelveHoursFromReceiveRejected
         string? code = null;
         string? msg = null;
         var left = ctx.TimeLeftSeconds;
-        var clock = Stopwatch.StartNew();
+        var clock = FidelityTime.StartNew();
         var capDeadline = TimeSpan.FromSeconds(Math.Min(10, left));
         var deadline = capDeadline;
         while (clock.Elapsed < deadline)
@@ -66,7 +65,7 @@ public sealed class VisibilityExtensionCappedAtTwelveHoursFromReceiveRejected
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
         }
 
         Ensure((code, msg) == ("InvalidParameterValue", CapMessage),
@@ -93,7 +92,7 @@ public sealed class VisibilityExtensionCappedAtTwelveHoursFromReceiveRejected
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
         }
 
         var ok = (resp.Successful ?? []).Select(e => e.Id).ToList();
@@ -104,7 +103,7 @@ public sealed class VisibilityExtensionCappedAtTwelveHoursFromReceiveRejected
 
         // The applied entry really re-exposed its message; the refused ones stay hidden.
         var seen = new List<string>();
-        var receiveDeadline = Stopwatch.StartNew();
+        var receiveDeadline = FidelityTime.StartNew();
         while (!seen.Contains(bodies[2]) && receiveDeadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             foreach (var m in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [])
@@ -122,7 +121,7 @@ public sealed class VisibilityExtensionCappedAtTwelveHoursFromReceiveRejected
     private static async Task<List<Message>> ReceiveAll(AmazonSQSClient sqs, string url, int n, int vt)
     {
         var got = new List<Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (got.Count < n && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             got.AddRange((await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

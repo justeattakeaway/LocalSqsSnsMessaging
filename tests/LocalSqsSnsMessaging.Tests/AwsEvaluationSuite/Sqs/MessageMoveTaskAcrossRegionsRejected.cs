@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_move_task_across_regions_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -61,7 +60,7 @@ public sealed class MessageMoveTaskAcrossRegionsRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.message-move-task-across-regions-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.MultiRegion, "StartMessageMoveTask to a destination in another region succeeded instead of being refused with ResourceNotFoundException")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -100,7 +99,7 @@ public sealed class MessageMoveTaskAcrossRegionsRejected
         })).TaskHandle;
         Ensure(!string.IsNullOrEmpty(handle), "StartMessageMoveTask to the home-region source returned no TaskHandle");
         var got = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (got.Count == 0 && deadline.Elapsed < TimeSpan.FromSeconds(MoveDeadlineSeconds))
         {
             foreach (var m in (await home.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = src, MaxNumberOfMessages = 10, WaitTimeSeconds = 5 })).Messages ?? [])
@@ -113,14 +112,14 @@ public sealed class MessageMoveTaskAcrossRegionsRejected
         Ensure(got.SequenceEqual([body]),
             $"the same-region move delivered [{string.Join(", ", got)}] to the source within {MoveDeadlineSeconds}s");
         string? status = null;
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (status != "COMPLETED" && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
             var results = (await home.ListMessageMoveTasksAsync(new ListMessageMoveTasksRequest { SourceArn = dlqArn })).Results ?? [];
             status = results.Count > 0 ? results[0].Status : null;
             if (status != "COMPLETED")
             {
-                await Task.Delay(TimeSpan.FromSeconds(3));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(3));
             }
         }
 

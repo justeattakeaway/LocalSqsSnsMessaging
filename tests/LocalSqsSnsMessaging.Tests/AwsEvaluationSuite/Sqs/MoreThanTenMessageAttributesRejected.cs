@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_more_than_ten_message_attributes_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -32,7 +31,7 @@ public sealed class MoreThanTenMessageAttributesRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.more-than-ten-message-attributes-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -66,7 +65,7 @@ public sealed class MoreThanTenMessageAttributesRejected
             $"the 11-attribute batch entry failed with {{Code: {bad.Code}, SenderFault: {bad.SenderFault}, Message: {bad.Message}}}");
 
         var got = new Dictionary<string, Dictionary<string, MessageAttributeValue>>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

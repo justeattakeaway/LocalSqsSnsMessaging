@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_sse_rejects_anonymous_sendmessage_that_an_unencrypted_queue_accepts.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Amazon.Runtime;
 using Amazon.SQS;
@@ -27,7 +26,7 @@ public sealed class SseRejectsAnonymousSendmessageThatAnUnencryptedQueueAccepts
     /// </summary>
     [Test]
     [DisplayName("sqs.sse-rejects-anonymous-sendmessage-that-an-unencrypted-queue-accepts")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.Validation, "expected an unsigned SendMessage to an SSE-KMS queue to be denied with AccessDenied, but it succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -146,7 +145,7 @@ public sealed class SseRejectsAnonymousSendmessageThatAnUnencryptedQueueAccepts
     {
         await sqs.SetQueueAttributesAsync(new SetQueueAttributesRequest { QueueUrl = queueUrl, Attributes = new() { ["Policy"] = policyDoc } });
         var wanted = Canon(JsonNode.Parse(policyDoc));
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var current = ((await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -164,7 +163,7 @@ public sealed class SseRejectsAnonymousSendmessageThatAnUnencryptedQueueAccepts
                 throw Fail($"queue policy on {queueUrl} never read back as set");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
     }
 
@@ -174,7 +173,7 @@ public sealed class SseRejectsAnonymousSendmessageThatAnUnencryptedQueueAccepts
     /// </summary>
     private static async Task<T> UntilAllowed<T>(Func<Task<T>> fn, double timeoutSeconds = 90.0, double intervalSeconds = 3.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         AwsError? last = null;
         while (true)
         {
@@ -197,7 +196,7 @@ public sealed class SseRejectsAnonymousSendmessageThatAnUnencryptedQueueAccepts
                 throw Fail($"call never became allowed within {timeoutSeconds}s (last={last})");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
     }
 
@@ -215,7 +214,7 @@ public sealed class SseRejectsAnonymousSendmessageThatAnUnencryptedQueueAccepts
 
     private static async Task<Message> ReceiveOne(AmazonSQSClient sqs, string url, double timeoutSeconds = 30.0, double intervalSeconds = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 2 })).Messages ?? [];
@@ -224,7 +223,7 @@ public sealed class SseRejectsAnonymousSendmessageThatAnUnencryptedQueueAccepts
                 return msgs[0];
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
 
         throw Fail($"no message appeared on {url} within {timeoutSeconds}s");

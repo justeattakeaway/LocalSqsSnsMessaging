@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_size_counts_attribute_name_type_and_value.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -40,7 +39,7 @@ public sealed class MessageSizeCountsAttributeNameTypeAndValue
     private static async Task<List<string>> DrainBodies(AmazonSQSClient sqs, string url, int want, double timeoutSeconds)
     {
         var got = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [];
@@ -66,7 +65,7 @@ public sealed class MessageSizeCountsAttributeNameTypeAndValue
     /// </summary>
     [Test]
     [DisplayName("sqs.message-size-counts-attribute-name-type-and-value")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_delete_and_visibility_batches_duplicate_ids_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -23,7 +22,7 @@ public sealed class DeleteAndVisibilityBatchesDuplicateIdsRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.delete-and-visibility-batches-duplicate-ids-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -137,7 +136,7 @@ public sealed class DeleteAndVisibilityBatchesDuplicateIdsRejected
     private static async Task<List<Message>> Take(AmazonSQSClient sqs, string url, int n, double timeoutSeconds = 30)
     {
         var held = new Dictionary<string, Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (held.Count < n && deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             foreach (var m in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

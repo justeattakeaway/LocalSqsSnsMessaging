@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_content_based_dedup_id_is_the_sha256_of_the_body.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.SQS.Model;
@@ -20,7 +19,7 @@ public sealed class ContentBasedDedupIdIsTheSha256OfTheBody
     /// </summary>
     [Test]
     [DisplayName("sqs.content-based-dedup-id-is-the-sha256-of-the-body")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -69,7 +68,7 @@ public sealed class ContentBasedDedupIdIsTheSha256OfTheBody
 
         var bodies = new List<string>();
         var empties = 0;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (empties < 3 && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
             var batch = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [];

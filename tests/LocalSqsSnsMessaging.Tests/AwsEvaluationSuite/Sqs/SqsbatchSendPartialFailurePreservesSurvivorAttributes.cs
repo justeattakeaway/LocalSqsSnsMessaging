@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_sqsbatch_send_partial_failure_preserves_survivor_attributes.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -24,7 +23,7 @@ public sealed class SqsbatchSendPartialFailurePreservesSurvivorAttributes
     /// </summary>
     [Test]
     [DisplayName("sqs.sqsbatch-send-partial-failure-preserves-survivor-attributes")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -141,7 +140,7 @@ public sealed class SqsbatchSendPartialFailurePreservesSurvivorAttributes
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 0.5)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -150,7 +149,7 @@ public sealed class SqsbatchSendPartialFailurePreservesSurvivorAttributes
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 
@@ -166,7 +165,7 @@ public sealed class SqsbatchSendPartialFailurePreservesSurvivorAttributes
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var output = new Dictionary<string, Dictionary<string, MessageAttributeValue>>(StringComparer.Ordinal);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_list_queues_max_results_paginates_with_next_token.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -26,7 +25,7 @@ public sealed class ListQueuesMaxResultsPaginatesWithNextToken
     /// </summary>
     [Test]
     [DisplayName("sqs.list-queues-max-results-paginates-with-next-token")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -42,7 +41,7 @@ public sealed class ListQueuesMaxResultsPaginatesWithNextToken
 
         // ListQueues is eventually consistent with CreateQueue: wait until an unpaged listing of the
         // prefix shows every queue before grading the paged walk.
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         HashSet<string> seen;
         while (true)
         {
@@ -52,7 +51,7 @@ public sealed class ListQueuesMaxResultsPaginatesWithNextToken
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         Ensure(seen.SetEquals(expected),

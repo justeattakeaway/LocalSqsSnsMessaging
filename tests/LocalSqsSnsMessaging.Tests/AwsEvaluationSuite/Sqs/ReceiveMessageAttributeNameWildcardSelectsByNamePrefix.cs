@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receive_message_attribute_name_wildcard_selects_by_name_prefix.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -30,7 +29,7 @@ public sealed class ReceiveMessageAttributeNameWildcardSelectsByNamePrefix
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-message-attribute-name-wildcard-selects-by-name-prefix")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -40,7 +39,7 @@ public sealed class ReceiveMessageAttributeNameWildcardSelectsByNamePrefix
 
         async Task<(string MessageId, List<string>? Names)> Project(List<string> names)
         {
-            var deadline = Stopwatch.StartNew();
+            var deadline = FidelityTime.StartNew();
             while (deadline.Elapsed < TimeSpan.FromSeconds(30.0))
             {
                 var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

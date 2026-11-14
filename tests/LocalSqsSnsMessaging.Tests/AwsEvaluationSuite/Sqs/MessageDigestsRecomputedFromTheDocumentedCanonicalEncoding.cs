@@ -1,7 +1,6 @@
 // Translated from behavioral/sqs/check_message_digests_recomputed_from_the_documented_canonical_encoding.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
 using System.Buffers.Binary;
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.SQS;
@@ -99,7 +98,7 @@ public sealed class MessageDigestsRecomputedFromTheDocumentedCanonicalEncoding
         AmazonSQSClient sqs, string url, string token, double timeoutSeconds,
         List<string>? messageAttributeNames = null, List<string>? messageSystemAttributeNames = null)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var seen = new List<string>();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
@@ -143,7 +142,7 @@ public sealed class MessageDigestsRecomputedFromTheDocumentedCanonicalEncoding
     /// </summary>
     [Test]
     [DisplayName("sqs.message-digests-recomputed-from-the-documented-canonical-encoding")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_send_receive_delete_lifecycle.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.SQS;
@@ -19,7 +18,7 @@ public sealed class SendReceiveDeleteLifecycle
     /// </summary>
     [Test]
     [DisplayName("sqs.send-receive-delete-lifecycle")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -41,7 +40,7 @@ public sealed class SendReceiveDeleteLifecycle
         await sqs.DeleteMessageAsync(new DeleteMessageRequest { QueueUrl = url, ReceiptHandle = msg.ReceiptHandle });
 
         // after delete, the message must never be receivable again
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(10))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 });
@@ -51,7 +50,7 @@ public sealed class SendReceiveDeleteLifecycle
 
     private static async Task<Message> PollReceiveOne(AmazonSQSClient sqs, string url, double timeoutSeconds)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 5 });

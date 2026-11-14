@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_queue_delay_change_is_retroactive_for_fifo_but_not_standard.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -32,7 +31,7 @@ public sealed class QueueDelayChangeIsRetroactiveForFifoButNotStandard
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-delay-change-is-retroactive-for-fifo-but-not-standard")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -82,7 +81,7 @@ public sealed class QueueDelayChangeIsRetroactiveForFifoButNotStandard
 
         // FIFO: the message already on the queue is released by the change.
         var fifoSeen = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (!fifoSeen.Contains(fifoOld) && deadline.Elapsed < TimeSpan.FromSeconds(ConvergeSeconds))
         {
             foreach (var m in await Receive(sqs, fifoUrl, waitSeconds: 5))
@@ -99,7 +98,7 @@ public sealed class QueueDelayChangeIsRetroactiveForFifoButNotStandard
         // Standard: new messages see the change, the old one does not.
         var stdSeen = new List<string>();
         var probes = new List<string>();
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (!probes.Any(stdSeen.Contains) && deadline.Elapsed < TimeSpan.FromSeconds(ConvergeSeconds))
         {
             var probe = $"std-after-change-{probes.Count}-{token}";
@@ -117,7 +116,7 @@ public sealed class QueueDelayChangeIsRetroactiveForFifoButNotStandard
             $"no message sent after DelaySeconds=0 on the standard queue arrived within " +
             $"{ConvergeSeconds:F0}s ({probes.Count} probes sent), so the change never took effect");
         // Give the original message the same window again after the change is proven live.
-        var settle = Stopwatch.StartNew();
+        var settle = FidelityTime.StartNew();
         while (settle.Elapsed < TimeSpan.FromSeconds(15))
         {
             foreach (var m in await Receive(sqs, stdUrl, waitSeconds: 5))

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_conc_limits_and_fanout_fifo_stale_owner_handle_rejected_after_handoff.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -23,7 +22,7 @@ public sealed class ConcLimitsAndFanoutFifoStaleOwnerHandleRejectedAfterHandoff
     /// </summary>
     [Test]
     [DisplayName("sqs.conc-limits-and-fanout-fifo-stale-owner-handle-rejected-after-handoff")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -136,7 +135,7 @@ public sealed class ConcLimitsAndFanoutFifoStaleOwnerHandleRejectedAfterHandoff
     private static async Task<Dictionary<string, Message>> ReceiveExact(AmazonSQSClient sqs, string url, int want, double budgetS = 30)
     {
         var got = new Dictionary<string, Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (got.Count < want && deadline.Elapsed < TimeSpan.FromSeconds(budgetS))
         {
             foreach (var m in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

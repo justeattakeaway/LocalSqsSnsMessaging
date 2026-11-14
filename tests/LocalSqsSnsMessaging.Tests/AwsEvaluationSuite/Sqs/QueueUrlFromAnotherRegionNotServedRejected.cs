@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_queue_url_from_another_region_not_served_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -20,7 +19,7 @@ public sealed class QueueUrlFromAnotherRegionNotServedRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-url-from-another-region-not-served-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.MultiRegion, "SendMessage from the home-region client to another region's QueueUrl succeeded instead of NonExistentQueue")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -58,7 +57,7 @@ public sealed class QueueUrlFromAnotherRegionNotServedRejected
         var ownBody = FidelityContext.UniqueName("own-");
         await alt.SendMessageAsync(new SendMessageRequest { QueueUrl = farUrl, MessageBody = ownBody });
         List<string> bodies = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (!bodies.Contains(ownBody) && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             var resp = await alt.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = farUrl, MaxNumberOfMessages = 10, WaitTimeSeconds = 3 });

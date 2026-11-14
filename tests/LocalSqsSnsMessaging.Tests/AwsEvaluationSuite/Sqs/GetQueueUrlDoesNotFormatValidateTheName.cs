@@ -21,7 +21,7 @@ public sealed class GetQueueUrlDoesNotFormatValidateTheName
     /// </summary>
     [Test]
     [DisplayName("sqs.get-queue-url-does-not-format-validate-the-name")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

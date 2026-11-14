@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receive_wait_time_zero_overrides_queue_default.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +20,7 @@ public sealed class ReceiveWaitTimeZeroOverridesQueueDefault
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-wait-time-zero-overrides-queue-default")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -66,7 +65,7 @@ public sealed class ReceiveWaitTimeZeroOverridesQueueDefault
 
         // Positive control: the message sent after the short poll is on the queue.
         List<Message> received = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var budget = BudgetS(ctx, 30);
         while (received.Count == 0 && deadline.Elapsed < TimeSpan.FromSeconds(budget))
         {
@@ -96,7 +95,7 @@ public sealed class ReceiveWaitTimeZeroOverridesQueueDefault
     /// <summary>Waits up to <paramref name="timeoutS"/> for <paramref name="task"/>; true when it completed.</summary>
     private static async Task<bool> Completes(Task task, double timeoutS)
     {
-        var winner = await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(timeoutS)));
+        var winner = await Task.WhenAny(task, FidelityTime.Delay(TimeSpan.FromSeconds(timeoutS)));
         return winner == task;
     }
 }

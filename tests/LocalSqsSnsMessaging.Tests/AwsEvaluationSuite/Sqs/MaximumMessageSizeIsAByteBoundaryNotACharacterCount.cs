@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_maximum_message_size_is_a_byte_boundary_not_a_character_count.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using Amazon.Runtime;
@@ -38,7 +37,7 @@ public sealed class MaximumMessageSizeIsAByteBoundaryNotACharacterCount
     /// </summary>
     [Test]
     [DisplayName("sqs.maximum-message-size-is-a-byte-boundary-not-a-character-count")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -118,7 +117,7 @@ public sealed class MaximumMessageSizeIsAByteBoundaryNotACharacterCount
         {
             QueueUrl = url, Attributes = new() { ["MaximumMessageSize"] = RaisedLimitBytes.ToString(CultureInfo.InvariantCulture) },
         });
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         string? lastError = null;
         var accepted = false;
         while (deadline.Elapsed.TotalSeconds < PropagateS)
@@ -132,7 +131,7 @@ public sealed class MaximumMessageSizeIsAByteBoundaryNotACharacterCount
                 // Only the pre-propagation rejection is tolerated here; the loop's deadline turns a
                 // permanent rejection into a FAILURE below rather than a silent pass.
                 lastError = exc.ErrorCode ?? throw new KeyNotFoundException("Code");
-                await Task.Delay(TimeSpan.FromSeconds(2.0));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(2.0));
                 continue;
             }
 
@@ -166,7 +165,7 @@ public sealed class MaximumMessageSizeIsAByteBoundaryNotACharacterCount
     private static async Task<HashSet<string>> DrainBodies(AmazonSQSClient sqs, string url, int expectedN, double timeoutS)
     {
         var seen = new Dictionary<string, string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutS && seen.Count < expectedN)
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [])

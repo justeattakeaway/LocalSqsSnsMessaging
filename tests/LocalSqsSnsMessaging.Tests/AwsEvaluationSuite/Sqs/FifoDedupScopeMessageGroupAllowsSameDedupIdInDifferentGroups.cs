@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_dedup_scope_message_group_allows_same_dedup_id_in_different_groups.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +21,7 @@ public sealed class FifoDedupScopeMessageGroupAllowsSameDedupIdInDifferentGroups
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-dedup-scope-message-group-allows-same-dedup-id-in-different-groups")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -116,7 +115,7 @@ public sealed class FifoDedupScopeMessageGroupAllowsSameDedupIdInDifferentGroups
     {
         var got = new List<Message>();
         var empties = 0;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (empties < emptyPolls && deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             var batch = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

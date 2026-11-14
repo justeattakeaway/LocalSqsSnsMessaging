@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_sqsbatch_send_request_level_error_preempts_entry_failures_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -32,7 +31,7 @@ public sealed class SqsbatchSendRequestLevelErrorPreemptsEntryFailuresRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.sqsbatch-send-request-level-error-preempts-entry-failures-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -128,7 +127,7 @@ public sealed class SqsbatchSendRequestLevelErrorPreemptsEntryFailuresRejected
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 0.5)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -137,7 +136,7 @@ public sealed class SqsbatchSendRequestLevelErrorPreemptsEntryFailuresRejected
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 
@@ -153,7 +152,7 @@ public sealed class SqsbatchSendRequestLevelErrorPreemptsEntryFailuresRejected
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var bodies = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 });

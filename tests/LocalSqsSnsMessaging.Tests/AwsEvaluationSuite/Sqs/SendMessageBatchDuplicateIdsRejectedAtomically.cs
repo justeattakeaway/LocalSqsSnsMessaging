@@ -15,7 +15,7 @@ public sealed class SendMessageBatchDuplicateIdsRejectedAtomically
     /// </summary>
     [Test]
     [DisplayName("sqs.send-message-batch-duplicate-ids-rejected-atomically")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receive_request_attempt_id_replay_resets_visibility_timeout.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -24,12 +23,12 @@ public sealed class ReceiveRequestAttemptIdReplayResetsVisibilityTimeout
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-request-attempt-id-replay-resets-visibility-timeout")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var sqs = ctx.Sqs;
-        var clock = Stopwatch.StartNew(); // time.monotonic()
+        var clock = FidelityTime.StartNew(); // time.monotonic()
         double Now() => clock.Elapsed.TotalSeconds;
         var token = Guid.NewGuid().ToString("N")[..8];
         Dictionary<string, string> Attrs() => new() { ["FifoQueue"] = "true", ["VisibilityTimeout"] = VtS.ToString() };
@@ -79,7 +78,7 @@ public sealed class ReceiveRequestAttemptIdReplayResetsVisibilityTimeout
 
         while (Now() < receivedAt + ReplayAtS)
         {
-            await Task.Delay(TimeSpan.FromSeconds(0.5));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(0.5));
         }
 
         var replay = await ReceiveOne(sqs, replayedUrl, receiveRequestAttemptId: attempt);

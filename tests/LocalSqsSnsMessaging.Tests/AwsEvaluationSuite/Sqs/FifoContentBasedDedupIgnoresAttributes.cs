@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_content_based_dedup_ignores_attributes.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -18,7 +17,7 @@ public sealed class FifoContentBasedDedupIgnoresAttributes
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-content-based-dedup-ignores-attributes")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -111,7 +110,7 @@ public sealed class FifoContentBasedDedupIgnoresAttributes
         names ??= ["All"];
         var seen = new HashSet<string>();
         var msgs = new List<Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (msgs.Count < expect && deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

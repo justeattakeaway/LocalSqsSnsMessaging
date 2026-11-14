@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_visibility_timeout_shorten_and_receive_override.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -28,7 +27,7 @@ public sealed class VisibilityTimeoutShortenAndReceiveOverride
     // timing:real-time — visibility: 2 s https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
     [Test]
     [DisplayName("sqs.visibility-timeout-shorten-and-receive-override")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -125,7 +124,7 @@ public sealed class VisibilityTimeoutShortenAndReceiveOverride
     /// </summary>
     private static async Task<(double Elapsed, Message? Message)> AwaitVisible(AmazonSQSClient sqs, string url, double timeoutSeconds)
     {
-        var start = Stopwatch.StartNew();
+        var start = FidelityTime.StartNew();
         while (true)
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 0 })).Messages ?? [];
@@ -139,13 +138,13 @@ public sealed class VisibilityTimeoutShortenAndReceiveOverride
                 return (start.Elapsed.TotalSeconds, null);
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(0.25));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(0.25));
         }
     }
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 0.5)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -154,7 +153,7 @@ public sealed class VisibilityTimeoutShortenAndReceiveOverride
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 

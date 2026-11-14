@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_sqsbatch_send_full_width_one_invalid_entry_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.SQS;
@@ -39,7 +38,7 @@ public sealed class SqsbatchSendFullWidthOneInvalidEntryRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.sqsbatch-send-full-width-one-invalid-entry-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -141,7 +140,7 @@ public sealed class SqsbatchSendFullWidthOneInvalidEntryRejected
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 0.5)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -150,7 +149,7 @@ public sealed class SqsbatchSendFullWidthOneInvalidEntryRejected
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 
@@ -167,7 +166,7 @@ public sealed class SqsbatchSendFullWidthOneInvalidEntryRejected
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var bodies = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 });

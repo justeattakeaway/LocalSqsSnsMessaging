@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_queue_moves_an_exact_multibyte_message_and_the_deleted_fifo_queue_is_gone.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -34,7 +33,7 @@ public sealed class FifoQueueMovesAnExactMultibyteMessageAndTheDeletedFifoQueueI
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-queue-moves-an-exact-multibyte-message-and-the-deleted-fifo-queue-is-gone")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -129,7 +128,7 @@ public sealed class FifoQueueMovesAnExactMultibyteMessageAndTheDeletedFifoQueueI
 
     private static async Task<T> PollUntil<T>(Func<Task<T>> probe, Func<T, bool> predicate, double timeoutS, double intervalS, string description, Func<T, string> repr)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var last = await probe();
@@ -143,14 +142,14 @@ public sealed class FifoQueueMovesAnExactMultibyteMessageAndTheDeletedFifoQueueI
                 throw Fail($"{description} not observed within {timeoutS:F0}s; last saw {repr(last)}");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
         }
     }
 
     /// <summary>Poll fn until it fails with code; return that error response. FAILS on the deadline.</summary>
     private static async Task<AwsError> PollUntilCode(Func<Task> fn, string code, double timeoutS, double intervalS, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var seen = "<call succeeded>";
         while (true)
         {
@@ -173,7 +172,7 @@ public sealed class FifoQueueMovesAnExactMultibyteMessageAndTheDeletedFifoQueueI
                 throw Fail($"{what}: expected {code}, got '{seen}' after {timeoutS:F0}s");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
         }
     }
 

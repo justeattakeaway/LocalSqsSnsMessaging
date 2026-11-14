@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_batch_entry_over_queue_max_message_size_fails_alone.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +21,7 @@ public sealed class BatchEntryOverQueueMaxMessageSizeFailsAlone
     /// </summary>
     [Test]
     [DisplayName("sqs.batch-entry-over-queue-max-message-size-fails-alone")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -70,7 +69,7 @@ public sealed class BatchEntryOverQueueMaxMessageSizeFailsAlone
             $"[{string.Join(", ", (whole.Successful ?? []).Select(e => e.Id))}], Failed [{string.Join(", ", (whole.Failed ?? []).Select(e => e.Id))}]");
 
         var got = new List<(string, int)>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [];

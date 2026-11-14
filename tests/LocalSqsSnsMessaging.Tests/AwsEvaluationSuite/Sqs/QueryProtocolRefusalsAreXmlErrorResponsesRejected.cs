@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_query_protocol_refusals_are_xml_error_responses_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -73,7 +72,7 @@ public sealed class QueryProtocolRefusalsAreXmlErrorResponsesRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.query-protocol-refusals-are-xml-error-responses-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.Protocol, "SQS Query-protocol (form-encoded) requests get a JSON error, not XML: not well-formed (invalid token): line 1, column 0")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -128,7 +127,7 @@ public sealed class QueryProtocolRefusalsAreXmlErrorResponsesRejected
         Ensure((status, Local(root)) == (200, "SendMessageResponse"),
             $"a valid Query SendMessage answered {status} '{Local(root)}'");
         var bodies = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (!bodies.Contains(okBody) && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             foreach (var m in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 3 })).Messages ?? [])

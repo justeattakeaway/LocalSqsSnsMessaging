@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_long_poll_blocks_on_empty.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -16,7 +15,7 @@ public sealed class LongPollBlocksOnEmpty
     /// </summary>
     [Test]
     [DisplayName("sqs.long-poll-blocks-on-empty")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -24,7 +23,7 @@ public sealed class LongPollBlocksOnEmpty
         var sqs = ctx.Sqs;
         var url = (await sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = FidelityContext.UniqueName("sim2real-behav-") })).QueueUrl;
         ctx.OnCleanup(() => sqs.DeleteQueueAsync(url));
-        var start = Stopwatch.StartNew();
+        var start = FidelityTime.StartNew();
         var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 2 });
         var elapsed = start.Elapsed.TotalSeconds;
         if (resp.Messages is { Count: > 0 })

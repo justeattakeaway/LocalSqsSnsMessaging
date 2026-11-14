@@ -18,7 +18,7 @@ public sealed class GetQueueAttributesInvalidAttributeName
     /// </summary>
     [Test]
     [DisplayName("sqs.get-queue-attributes-invalid-attribute-name")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

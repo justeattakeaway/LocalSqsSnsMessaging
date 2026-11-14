@@ -558,7 +558,12 @@ internal sealed class InternalSqsClient
                     break;
                 }
 
-                var handedMessage = await queue.Messages.WaitForMessageAsync(linkedToken.Token).ConfigureAwait(true);
+                Message? handedMessage;
+                using (_bus.EnterWaitingReceive())
+                {
+                    handedMessage = await queue.Messages.WaitForMessageAsync(linkedToken.Token).ConfigureAwait(true);
+                }
+
                 if (handedMessage is not null)
                 {
                     // Handed to this receive alone; no other consumer raced us for it. If it
@@ -594,7 +599,10 @@ internal sealed class InternalSqsClient
                 {
                     try
                     {
-                        await signalReader.WaitToReadAsync(linkedToken.Token).ConfigureAwait(true);
+                        using (_bus.EnterWaitingReceive())
+                        {
+                            await signalReader.WaitToReadAsync(linkedToken.Token).ConfigureAwait(true);
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -794,11 +802,17 @@ internal sealed class InternalSqsClient
         messages ??= [];
         messages.Add(clonedMessage);
 
-        // Register the message as in flight before its visibility timer can fire: with a zero
-        // timeout the timer runs straight away and must find the message to return it.
+        // Register the message as in flight, and take its FIFO group's in-flight slot, before its
+        // visibility timer can fire: with a zero timeout the timer can run straight away, and must
+        // find the message to return it and the slot to release.
         var expirationJob = new SqsInflightMessageExpirationJob(receiptHandle, queue, Timeout.InfiniteTimeSpan, _bus.TimeProvider);
         queue.LatestReceiptHandles[message.MessageId!] = receiptHandle;
         queue.InFlightMessages[receiptHandle] = (message, expirationJob);
+        if (queue.IsFifo && message.Attributes.TryGetValue(InternalMessageSystemAttributeName.MessageGroupId, out var groupId))
+        {
+            queue.InFlightGroupCounts.AddOrUpdate(groupId, 1, (_, count) => count + 1);
+        }
+
         expirationJob.UpdateTimeout(visibilityTimeout);
         return true;
     }
@@ -841,12 +855,16 @@ internal sealed class InternalSqsClient
 
                 while (groupQueue.TryDequeue(out var message))
                 {
-                    if (ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes, requestedMessageAttributes))
-                    {
-                        queue.InFlightGroupCounts.AddOrUpdate(groupId, 1, (_, count) => count + 1);
-                    }
+                    ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes, requestedMessageAttributes);
 
                     if (messages is not null && messages.Count >= maxMessages)
+                    {
+                        break;
+                    }
+
+                    // A zero visibility timeout can already have put the message back, in a rebuilt
+                    // group queue: stop here, so nothing behind it in the group overtakes it.
+                    if (!queue.MessageGroups.TryGetValue(groupId, out var currentQueue) || !ReferenceEquals(currentQueue, groupQueue))
                     {
                         break;
                     }

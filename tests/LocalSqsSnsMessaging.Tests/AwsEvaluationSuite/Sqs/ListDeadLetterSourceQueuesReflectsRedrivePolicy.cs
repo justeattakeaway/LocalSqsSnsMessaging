@@ -14,7 +14,7 @@ public sealed class ListDeadLetterSourceQueuesReflectsRedrivePolicy
     /// </summary>
     [Test]
     [DisplayName("sqs.list-dead-letter-source-queues-reflects-redrive-policy")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

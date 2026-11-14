@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_duplicate_batch_ids.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +20,7 @@ public sealed class DuplicateBatchIds
     /// </summary>
     [Test]
     [DisplayName("sqs.duplicate-batch-ids")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -56,7 +55,7 @@ public sealed class DuplicateBatchIds
         Ensure(resp2.Failed is null or { Count: 0 }, $"unexpected per-entry failures: {Repr(resp2.Failed)}");
 
         var delivered = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (delivered.Count < 2 && deadline.Elapsed.TotalSeconds < 20.0)
         {
             var r = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 3 });

@@ -16,7 +16,7 @@ public sealed class TagQueueRoundtrip
     /// </summary>
     [Test]
     [DisplayName("sqs.tag-queue-roundtrip")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -36,7 +36,7 @@ public sealed class TagQueueRoundtrip
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(0.5));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(0.5));
         }
 
         if (!roundTripped)
@@ -54,7 +54,7 @@ public sealed class TagQueueRoundtrip
                 return;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(0.5));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(0.5));
         }
 
         throw Fail($"untag did not remove only 'team': {Show(tags2)}");

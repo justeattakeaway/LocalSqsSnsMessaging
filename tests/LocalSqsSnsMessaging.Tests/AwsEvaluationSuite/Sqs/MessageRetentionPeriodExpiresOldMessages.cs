@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_retention_period_expires_old_messages.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -16,9 +15,8 @@ public sealed class MessageRetentionPeriodExpiresOldMessages
     // timing:real-time — retention: 60 s https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html
     [Test]
     [DisplayName("sqs.message-retention-period-expires-old-messages")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);
@@ -34,7 +32,7 @@ public sealed class MessageRetentionPeriodExpiresOldMessages
         })).QueueUrl;
         ctx.OnCleanup(() => sqs.DeleteQueueAsync(url));
 
-        var sentAt = Stopwatch.StartNew();
+        var sentAt = FidelityTime.StartNew();
         var messageId = (await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "ephemeral-message" })).MessageId;
 
         // Confirm it is initially receivable (sanity, not the assertion under test).
@@ -60,7 +58,7 @@ public sealed class MessageRetentionPeriodExpiresOldMessages
             if ((resp.Messages ?? []).Any(m => m.MessageId == messageId))
             {
                 consecutiveClean = 0;
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(2));
                 continue;
             }
 
@@ -82,7 +80,7 @@ public sealed class MessageRetentionPeriodExpiresOldMessages
                 consecutiveClean = 0;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
         }
 
         throw Fail(
@@ -92,7 +90,7 @@ public sealed class MessageRetentionPeriodExpiresOldMessages
 
     private static async Task<T> PollUntil<T>(Func<Task<T>> probe, Func<T, bool> predicate, double timeoutSeconds = 30.0, double intervalSeconds = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         T? last = default;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
@@ -102,7 +100,7 @@ public sealed class MessageRetentionPeriodExpiresOldMessages
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
 
         throw Fail($"condition not met within {timeoutSeconds}s (last={last})");

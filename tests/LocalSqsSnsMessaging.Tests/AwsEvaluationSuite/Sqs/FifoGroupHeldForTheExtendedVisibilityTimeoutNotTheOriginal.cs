@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_group_held_for_the_extended_visibility_timeout_not_the_original.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -26,7 +25,7 @@ public sealed class FifoGroupHeldForTheExtendedVisibilityTimeoutNotTheOriginal
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-group-held-for-the-extended-visibility-timeout-not-the-original")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -61,7 +60,7 @@ public sealed class FifoGroupHeldForTheExtendedVisibilityTimeoutNotTheOriginal
         });
 
         // Past the ORIGINAL timeout, but still inside the EXTENDED one: the group must stay held.
-        await Task.Delay(TimeSpan.FromSeconds(InitialVisibilityS + 2));
+        await FidelityTime.Delay(TimeSpan.FromSeconds(InitialVisibilityS + 2));
         var stillHeld = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 })).Messages ?? [];
         Ensure(stillHeld.Count == 0,
             $"group released after the ORIGINAL {InitialVisibilityS}s timeout despite the " +
@@ -75,13 +74,13 @@ public sealed class FifoGroupHeldForTheExtendedVisibilityTimeoutNotTheOriginal
         double waitS = ExtendedVisibilityS + 30;
         var left = ctx.TimeLeftSeconds;
         var deadlineSeconds = Math.Min(waitS, left);
-        var clock = Stopwatch.StartNew();
+        var clock = FidelityTime.StartNew();
         while (released.Count == 0 && clock.Elapsed.TotalSeconds < deadlineSeconds)
         {
             released = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 1 })).Messages ?? [];
             if (released.Count == 0)
             {
-                await Task.Delay(TimeSpan.FromSeconds(1));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(1));
             }
         }
 

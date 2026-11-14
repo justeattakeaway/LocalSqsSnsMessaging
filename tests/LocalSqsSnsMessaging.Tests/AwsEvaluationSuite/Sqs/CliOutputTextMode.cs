@@ -17,7 +17,7 @@ public sealed class CliOutputTextMode
     /// </summary>
     [Test]
     [DisplayName("sqs.cli-output-text-mode")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

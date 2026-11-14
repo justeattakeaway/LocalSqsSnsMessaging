@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_tag_queue_merge_preserves_existing_tags.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -17,7 +16,7 @@ public sealed class TagQueueMergePreservesExistingTags
     /// </summary>
     [Test]
     [DisplayName("sqs.tag-queue-merge-preserves-existing-tags")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -56,7 +55,7 @@ public sealed class TagQueueMergePreservesExistingTags
     /// </summary>
     private static async Task<Dictionary<string, string>> PollTags(AmazonSQSClient sqs, string url, Dictionary<string, string> want)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         Dictionary<string, string> seen = [];
         while (deadline.Elapsed < TimeSpan.FromSeconds(10))
         {
@@ -66,7 +65,7 @@ public sealed class TagQueueMergePreservesExistingTags
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(0.5));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(0.5));
         }
 
         return seen;

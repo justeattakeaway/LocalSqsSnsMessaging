@@ -17,7 +17,7 @@ public sealed class ApproxCountTracks
     /// </summary>
     [Test]
     [DisplayName("sqs.approx-count-tracks")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -47,7 +47,7 @@ public sealed class ApproxCountTracks
                 throw Fail($"ApproximateNumberOfMessages overcounted: sent 2, saw {count}");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(0.4));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(0.4));
         }
 
         throw Fail($"ApproximateNumberOfMessages never reached 2 (last={count})");

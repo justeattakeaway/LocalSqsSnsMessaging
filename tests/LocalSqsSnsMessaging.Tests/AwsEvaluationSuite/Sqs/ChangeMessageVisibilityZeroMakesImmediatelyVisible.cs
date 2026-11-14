@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_change_message_visibility_zero_makes_immediately_visible.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -17,7 +16,7 @@ public sealed class ChangeMessageVisibilityZeroMakesImmediatelyVisible
     /// </summary>
     [Test]
     [DisplayName("sqs.change-message-visibility-zero-makes-immediately-visible")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -30,7 +29,7 @@ public sealed class ChangeMessageVisibilityZeroMakesImmediatelyVisible
         ctx.OnCleanup(() => sqs.DeleteQueueAsync(url));
 
         const string body = "cvz-immediate-message";
-        var t0 = Stopwatch.StartNew();
+        var t0 = FidelityTime.StartNew();
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = body });
         var msg = await PollReceiveOne(sqs, url, timeoutS: 15.0);
         var firstReceiveLatencyS = t0.Elapsed.TotalSeconds;
@@ -54,7 +53,7 @@ public sealed class ChangeMessageVisibilityZeroMakesImmediatelyVisible
 
     private static async Task<Message?> PollReceiveOne(AmazonSQSClient sqs, string url, double timeoutS = 15.0, bool expectNone = false)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 2 });

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_client_on_the_queue_url_host_sends_and_receives_on_that_queue.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.SQS;
@@ -24,7 +23,7 @@ public sealed class ClientOnTheQueueUrlHostSendsAndReceivesOnThatQueue
     /// </summary>
     [Test]
     [DisplayName("sqs.client-on-the-queue-url-host-sends-and-receives-on-that-queue")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -94,7 +93,7 @@ public sealed class ClientOnTheQueueUrlHostSendsAndReceivesOnThatQueue
     /// <summary>The first non-empty receive within the poll budget.</summary>
     private static async Task<List<Message>> Receive(FidelityContext ctx, AmazonSQSClient sqs, string url)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var budget = TimeSpan.FromSeconds(BudgetS(ctx, 20.0));
         while (true)
         {

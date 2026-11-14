@@ -22,7 +22,7 @@ public sealed class TagQueueSystemPrefixAndLengthBoundariesRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.tag-queue-system-prefix-and-length-boundaries-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

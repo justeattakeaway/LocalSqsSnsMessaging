@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_delete_then_empty.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -24,7 +23,7 @@ public sealed class DeleteThenEmpty
     /// </summary>
     [Test]
     [DisplayName("sqs.delete-then-empty")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -35,7 +34,7 @@ public sealed class DeleteThenEmpty
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = KeepBody });
 
         var received = new Dictionary<string, Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (received.Count < 2 && deadline.Elapsed.TotalSeconds < 30.0)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -61,7 +60,7 @@ public sealed class DeleteThenEmpty
         // Hold the window well past the visibility timeout: long enough for the undeleted
         // sibling to redeliver with margin, short enough to keep the check fast.
         var seen = new HashSet<string>();
-        var windowDeadline = Stopwatch.StartNew();
+        var windowDeadline = FidelityTime.StartNew();
         while (!seen.Contains(KeepBody) && windowDeadline.Elapsed.TotalSeconds < VisibilityTimeoutSeconds * 5)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 });

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_purge_queue_resets_the_fifo_dedup_cache.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -32,7 +31,7 @@ public sealed class PurgeQueueResetsTheFifoDedupCache
         var seen = new List<(string Id, string Body)>();
         var left = ctx.TimeLeftSeconds;
         var budget = Math.Min(timeoutSeconds, left);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(budget))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [];
@@ -59,9 +58,8 @@ public sealed class PurgeQueueResetsTheFifoDedupCache
     // timing:real-time — cooldown: 60 s https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_PurgeQueue.html
     [Test]
     [DisplayName("sqs.purge-queue-resets-the-fifo-dedup-cache")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);
@@ -92,7 +90,7 @@ public sealed class PurgeQueueResetsTheFifoDedupCache
             $"'{baselineRepeatId}', expected the deduplicated id '{firstId}' -- dedup is not " +
             $"behaving as documented in this environment, so the purge comparison below proves nothing");
 
-        var purgeStart = Stopwatch.StartNew();
+        var purgeStart = FidelityTime.StartNew();
         await sqs.PurgeQueueAsync(new PurgeQueueRequest { QueueUrl = url });
 
         // The claim is specifically that this resolves BEFORE the (up to 60s) async drain completes.
@@ -109,7 +107,7 @@ public sealed class PurgeQueueResetsTheFifoDedupCache
         while (purgeStart.Elapsed < purgeEnd)
         {
             var remaining = purgeEnd - purgeStart.Elapsed;
-            await Task.Delay(remaining < TimeSpan.FromSeconds(5.0) ? (remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero) : TimeSpan.FromSeconds(5.0));
+            await FidelityTime.Delay(remaining < TimeSpan.FromSeconds(5.0) ? (remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero) : TimeSpan.FromSeconds(5.0));
         }
 
         var lateId = await Send(lateBody);

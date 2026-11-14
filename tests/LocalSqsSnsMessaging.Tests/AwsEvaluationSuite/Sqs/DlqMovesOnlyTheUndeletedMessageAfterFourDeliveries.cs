@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_dlq_moves_only_the_undeleted_message_after_four_deliveries.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -32,7 +31,7 @@ public sealed class DlqMovesOnlyTheUndeletedMessageAfterFourDeliveries
     /// </summary>
     [Test]
     [DisplayName("sqs.dlq-moves-only-the-undeleted-message-after-four-deliveries")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -74,7 +73,7 @@ public sealed class DlqMovesOnlyTheUndeletedMessageAfterFourDeliveries
         // repeats a count does not add one.
         var counts = new Dictionary<string, List<int>> { [poison] = [], [healthy] = [] };
         var healthyDeleted = false;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 40.0 && !(counts[poison].Contains(MaxReceiveCount) && healthyDeleted))
         {
             foreach (var msg in await Receive(sqs, srcUrl, waitSeconds: 1))
@@ -178,7 +177,7 @@ public sealed class DlqMovesOnlyTheUndeletedMessageAfterFourDeliveries
     /// </summary>
     private static async Task<Message> AwaitDlqMove(AmazonSQSClient sqs, string srcUrl, string dlqUrl, string token, double timeoutSeconds, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var last = new List<string>();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
@@ -207,7 +206,7 @@ public sealed class DlqMovesOnlyTheUndeletedMessageAfterFourDeliveries
     /// <summary>Bounded poll until GetQueueAttributes reports `want` for `name`; RAISES on the deadline.</summary>
     private static async Task<string> AwaitAttribute(AmazonSQSClient sqs, string url, string name, string want, double timeoutSeconds, string why)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         string? last = null;
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
@@ -217,7 +216,7 @@ public sealed class DlqMovesOnlyTheUndeletedMessageAfterFourDeliveries
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         throw Fail(

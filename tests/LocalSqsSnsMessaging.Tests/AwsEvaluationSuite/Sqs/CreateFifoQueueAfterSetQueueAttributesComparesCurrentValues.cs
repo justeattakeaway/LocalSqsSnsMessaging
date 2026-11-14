@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_create_fifo_queue_after_set_queue_attributes_compares_current_values.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +20,7 @@ public sealed class CreateFifoQueueAfterSetQueueAttributesComparesCurrentValues
     /// </summary>
     [Test]
     [DisplayName("sqs.create-fifo-queue-after-set-queue-attributes-compares-current-values")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -96,7 +95,7 @@ public sealed class CreateFifoQueueAfterSetQueueAttributesComparesCurrentValues
     /// </summary>
     private static async Task<string> PollAttribute(AmazonSQSClient sqs, string url, string attribute, string want)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var got = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest { QueueUrl = url, AttributeNames = [attribute] })).Attributes![attribute];
@@ -112,7 +111,7 @@ public sealed class CreateFifoQueueAfterSetQueueAttributesComparesCurrentValues
                     $"{attribute} still reads '{got}', expected '{want}'");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2.0));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2.0));
         }
     }
 }

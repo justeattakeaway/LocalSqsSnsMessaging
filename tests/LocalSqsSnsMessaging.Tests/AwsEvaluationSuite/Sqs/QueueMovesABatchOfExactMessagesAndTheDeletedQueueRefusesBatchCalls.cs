@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_queue_moves_a_batch_of_exact_messages_and_the_deleted_queue_refuses_batch_calls.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.SQS;
@@ -31,7 +30,7 @@ public sealed class QueueMovesABatchOfExactMessagesAndTheDeletedQueueRefusesBatc
 
     private static async Task<T> PollUntil<T>(Func<Task<T>> probe, Func<T, bool> predicate, double timeoutSeconds, double intervalSeconds, string description, Func<T, string>? show = null)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var last = await probe();
@@ -45,14 +44,14 @@ public sealed class QueueMovesABatchOfExactMessagesAndTheDeletedQueueRefusesBatc
                 throw Fail($"{description} not observed within {timeoutSeconds:F0}s; last saw {(show is null ? last?.ToString() : show(last))}");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
     }
 
     /// <summary>Poll fn until it fails with code; return that error response. FAILS on the deadline.</summary>
     private static async Task<AwsError> PollUntilCode(Func<Task> fn, string code, double timeoutSeconds, double intervalSeconds, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var seen = "<call succeeded>";
         while (true)
         {
@@ -75,7 +74,7 @@ public sealed class QueueMovesABatchOfExactMessagesAndTheDeletedQueueRefusesBatc
                 throw Fail($"{what}: expected {code}, got '{seen}' after {timeoutSeconds:F0}s");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
     }
 
@@ -141,7 +140,7 @@ public sealed class QueueMovesABatchOfExactMessagesAndTheDeletedQueueRefusesBatc
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-moves-a-batch-of-exact-messages-and-the-deleted-queue-refuses-batch-calls")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -169,7 +168,7 @@ public sealed class QueueMovesABatchOfExactMessagesAndTheDeletedQueueRefusesBatc
         var want = Bodies.Keys.ToDictionary(i => byId[i].MessageId, i => i);
 
         var got = new Dictionary<string, Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (got.Count < want.Count && deadline.Elapsed < TimeSpan.FromSeconds(ReceiveWaitSeconds))
         {
             foreach (var m in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 5 })).Messages ?? [])

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_e2e_dlq_redrive_full_cycle.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -17,7 +16,7 @@ public sealed class E2eDlqRedriveFullCycle
     /// </summary>
     [Test]
     [DisplayName("sqs.e2e-dlq-redrive-full-cycle")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -50,7 +49,7 @@ public sealed class E2eDlqRedriveFullCycle
         // next receive attempt exceeds maxReceiveCount=1, moving it to the DLQ
 
         Message? dlqMessage = null;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 40.0 && dlqMessage is null)
         {
             await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = srcUrl, MaxNumberOfMessages = 1, WaitTimeSeconds = 2 });
@@ -77,7 +76,7 @@ public sealed class E2eDlqRedriveFullCycle
 
         // The source queue must have given the message up before the move starts.
         string? srcDepth = null;
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 60.0)
         {
             srcDepth = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest { QueueUrl = srcUrl, AttributeNames = ["ApproximateNumberOfMessages"] }))
@@ -87,7 +86,7 @@ public sealed class E2eDlqRedriveFullCycle
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2.0));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2.0));
         }
 
         Ensure(srcDepth == "0",
@@ -100,7 +99,7 @@ public sealed class E2eDlqRedriveFullCycle
         // matching on TaskHandle alone never sees the terminal entry.
         string? status = null;
         ListMessageMoveTasksResultEntry? lastResult = null;
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 600.0)
         {
             var results = (await sqs.ListMessageMoveTasksAsync(new ListMessageMoveTasksRequest { SourceArn = dlqArn })).Results ?? [];
@@ -116,7 +115,7 @@ public sealed class E2eDlqRedriveFullCycle
             }
 
             // The runner's budget (the test's [Timeout]) ends this 600s wait, as it did in Python.
-            await Task.Delay(TimeSpan.FromSeconds(5.0), ctx.CancellationToken);
+            await FidelityTime.Delay(TimeSpan.FromSeconds(5.0), ctx.CancellationToken);
         }
 
         Ensure(status == "COMPLETED",
@@ -129,7 +128,7 @@ public sealed class E2eDlqRedriveFullCycle
             $"DLQ still reports {dlqDepth} message(s) after a COMPLETED move task");
 
         Message? redelivered = null;
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 40.0 && redelivered is null)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = srcUrl, MaxNumberOfMessages = 1, WaitTimeSeconds = 5 });

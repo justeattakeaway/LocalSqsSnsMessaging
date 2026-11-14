@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_attribute_name_rules_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -39,7 +38,7 @@ public sealed class MessageAttributeNameRulesRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.message-attribute-name-rules-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -80,7 +79,7 @@ public sealed class MessageAttributeNameRulesRejected
         }
 
         var got = new Dictionary<string, List<string>>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

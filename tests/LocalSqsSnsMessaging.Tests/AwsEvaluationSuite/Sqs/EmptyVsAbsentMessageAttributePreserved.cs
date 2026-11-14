@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_empty_vs_absent_message_attribute_preserved.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +20,7 @@ public sealed class EmptyVsAbsentMessageAttributePreserved
     /// </summary>
     [Test]
     [DisplayName("sqs.empty-vs-absent-message-attribute-preserved")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -75,7 +74,7 @@ public sealed class EmptyVsAbsentMessageAttributePreserved
     private static async Task<Message> PollForMessage(FidelityContext ctx, string url, double timeoutSeconds = 30.0)
     {
         var sqs = ctx.Sqs;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

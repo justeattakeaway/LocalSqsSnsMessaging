@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_short_poll_returns_immediately.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -20,14 +19,14 @@ public sealed class ShortPollReturnsImmediately
     /// </summary>
     [Test]
     [DisplayName("sqs.short-poll-returns-immediately")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var sqs = ctx.Sqs;
         var url = (await sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = FidelityContext.UniqueName("sim2real-behav-"), Tags = Tags() })).QueueUrl;
         ctx.OnCleanup(() => sqs.DeleteQueueAsync(url));
-        var start = Stopwatch.StartNew();
+        var start = FidelityTime.StartNew();
         var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 0 });
         var elapsed = start.Elapsed.TotalSeconds;
         var messages = resp.Messages ?? [];

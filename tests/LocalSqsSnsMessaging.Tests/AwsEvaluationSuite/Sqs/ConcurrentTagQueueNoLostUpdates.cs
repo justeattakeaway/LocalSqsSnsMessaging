@@ -16,7 +16,7 @@ public sealed class ConcurrentTagQueueNoLostUpdates
     /// </summary>
     [Test]
     [DisplayName("sqs.concurrent-tag-queue-no-lost-updates")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

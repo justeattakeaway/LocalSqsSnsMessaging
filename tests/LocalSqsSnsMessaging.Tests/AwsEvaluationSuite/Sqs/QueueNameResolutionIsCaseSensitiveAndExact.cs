@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_queue_name_resolution_is_case_sensitive_and_exact.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +21,7 @@ public sealed class QueueNameResolutionIsCaseSensitiveAndExact
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-name-resolution-is-case-sensitive-and-exact")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -35,7 +34,7 @@ public sealed class QueueNameResolutionIsCaseSensitiveAndExact
         // Positive control: the exact name resolves, via both operations.
         var resolved = (await sqs.GetQueueUrlAsync(new GetQueueUrlRequest { QueueName = name })).QueueUrl;
         Ensure(resolved == url, $"GetQueueUrl('{name}') returned '{resolved}', CreateQueue returned '{url}'");
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var urls = await ListUrls(sqs, name);
@@ -45,7 +44,7 @@ public sealed class QueueNameResolutionIsCaseSensitiveAndExact
             }
 
             Ensure(deadline.Elapsed < TimeSpan.FromSeconds(30), $"ListQueues(prefix='{name}') never listed '{url}'");
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
         }
 
         // A different-case spelling of the exact same name is a MISS on both operations.

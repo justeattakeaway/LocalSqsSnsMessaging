@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_start_message_move_task_destination_arn_to_third_queue_bypasses_original_source.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -22,7 +21,7 @@ public sealed class StartMessageMoveTaskDestinationArnToThirdQueueBypassesOrigin
     /// </summary>
     [Test]
     [DisplayName("sqs.start-message-move-task-destination-arn-to-third-queue-bypasses-original-source")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -58,7 +57,7 @@ public sealed class StartMessageMoveTaskDestinationArnToThirdQueueBypassesOrigin
                     break;
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(2));
             }
 
             return (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -121,7 +120,7 @@ public sealed class StartMessageMoveTaskDestinationArnToThirdQueueBypassesOrigin
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 2.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -130,7 +129,7 @@ public sealed class StartMessageMoveTaskDestinationArnToThirdQueueBypassesOrigin
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 

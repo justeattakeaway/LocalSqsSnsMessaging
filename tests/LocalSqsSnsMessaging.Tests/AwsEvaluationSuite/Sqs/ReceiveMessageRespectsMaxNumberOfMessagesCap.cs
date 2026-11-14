@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receive_message_respects_max_number_of_messages_cap.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -15,7 +14,7 @@ public sealed class ReceiveMessageRespectsMaxNumberOfMessagesCap
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-message-respects-max-number-of-messages-cap")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -36,7 +35,7 @@ public sealed class ReceiveMessageRespectsMaxNumberOfMessagesCap
         }
 
         HashSet<string> receivedIds = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var emptyPolls = 0;
         while (receivedIds.Count < total && deadline.Elapsed < TimeSpan.FromSeconds(30.0) && emptyPolls < 5)
         {

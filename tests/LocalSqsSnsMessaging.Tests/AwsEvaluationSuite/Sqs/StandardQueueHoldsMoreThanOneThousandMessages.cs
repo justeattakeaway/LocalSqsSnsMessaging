@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_standard_queue_holds_more_than_one_thousand_messages.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -23,7 +22,7 @@ public sealed class StandardQueueHoldsMoreThanOneThousandMessages
     /// </summary>
     [Test]
     [DisplayName("sqs.standard-queue-holds-more-than-one-thousand-messages")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -51,7 +50,7 @@ public sealed class StandardQueueHoldsMoreThanOneThousandMessages
         Ensure(messageIds.Count == Count, $"{Count} sends must return distinct MessageIds; got {messageIds.Count}");
 
         string? count = null;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var budget = BudgetSeconds(ctx, CounterCapSeconds);
         var reached = false;
         while (deadline.Elapsed < TimeSpan.FromSeconds(budget))
@@ -67,7 +66,7 @@ public sealed class StandardQueueHoldsMoreThanOneThousandMessages
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         if (!reached)
@@ -81,7 +80,7 @@ public sealed class StandardQueueHoldsMoreThanOneThousandMessages
         }
 
         var received = new HashSet<string>(StringComparer.Ordinal);
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         budget = BudgetSeconds(ctx, DrainCapSeconds);
         while (received.Count < Count && deadline.Elapsed < TimeSpan.FromSeconds(budget))
         {

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receive_hides.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -15,7 +14,7 @@ public sealed class ReceiveHides
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-hides")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -68,7 +67,7 @@ public sealed class ReceiveHides
         // the approximate not-visible counter must confirm the same in-flight state (direction
         // only — it is eventually consistent, so poll rather than trust a single read).
         var notvis = "0";
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(20.0))
         {
             var attrs = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -82,7 +81,7 @@ public sealed class ReceiveHides
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
         }
 
         Ensure(int.Parse(notvis) >= 1,

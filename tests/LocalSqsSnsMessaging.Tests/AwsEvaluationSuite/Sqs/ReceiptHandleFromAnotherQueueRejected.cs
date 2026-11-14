@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receipt_handle_from_another_queue_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +20,7 @@ public sealed class ReceiptHandleFromAnotherQueueRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.receipt-handle-from-another-queue-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -108,7 +107,7 @@ public sealed class ReceiptHandleFromAnotherQueueRejected
     /// <summary>The next message off <paramref name="url"/>, or None. Never deletes.</summary>
     private static async Task<Message?> ReceiveOne(IAmazonSQS sqs, string url, double timeoutS, int waitS = 2)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             var batch = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

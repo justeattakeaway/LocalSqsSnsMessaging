@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_purge_queue_discards_in_flight_messages.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -27,7 +26,7 @@ public sealed class PurgeQueueDiscardsInFlightMessages
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 2.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -36,7 +35,7 @@ public sealed class PurgeQueueDiscardsInFlightMessages
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 
@@ -57,7 +56,7 @@ public sealed class PurgeQueueDiscardsInFlightMessages
     {
         var got = new List<Message>();
         var empties = 0;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (empties < emptyPolls && deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var batch = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = waitSeconds })).Messages ?? [];
@@ -86,7 +85,7 @@ public sealed class PurgeQueueDiscardsInFlightMessages
     /// </summary>
     [Test]
     [DisplayName("sqs.purge-queue-discards-in-flight-messages")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -113,7 +112,7 @@ public sealed class PurgeQueueDiscardsInFlightMessages
 
         // Put exactly _IN_FLIGHT messages in flight and do NOT delete them.
         var inflightBodies = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (inflightBodies.Count < InFlight && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
             foreach (var m in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

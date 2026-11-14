@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_visibility_heartbeat_hides_a_message_from_concurrent_pollers.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -29,7 +28,7 @@ public sealed class VisibilityHeartbeatHidesAMessageFromConcurrentPollers
     /// </summary>
     [Test]
     [DisplayName("sqs.visibility-heartbeat-hides-a-message-from-concurrent-pollers")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -48,7 +47,7 @@ public sealed class VisibilityHeartbeatHidesAMessageFromConcurrentPollers
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = droppedBody });
 
         var handles = new Dictionary<string, string>(StringComparer.Ordinal);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (handles.Count < 2 && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             foreach (var m in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [])
@@ -68,7 +67,7 @@ public sealed class VisibilityHeartbeatHidesAMessageFromConcurrentPollers
 
         async Task Heartbeat()
         {
-            var end = Stopwatch.StartNew();
+            var end = FidelityTime.StartNew();
             while (end.Elapsed < TimeSpan.FromSeconds(HoldS))
             {
                 try
@@ -83,7 +82,7 @@ public sealed class VisibilityHeartbeatHidesAMessageFromConcurrentPollers
                     return;
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(HeartbeatEveryS));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(HeartbeatEveryS));
             }
         }
 
@@ -124,7 +123,7 @@ public sealed class VisibilityHeartbeatHidesAMessageFromConcurrentPollers
 
         await sqs.DeleteMessageAsync(new DeleteMessageRequest { QueueUrl = url, ReceiptHandle = keptHandle });
         var after = new List<string>();
-        var afterEnd = Stopwatch.StartNew();
+        var afterEnd = FidelityTime.StartNew();
         while (afterEnd.Elapsed < TimeSpan.FromSeconds(AfterS))
         {
             after.AddRange(((await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? []).Select(m => m.Body));

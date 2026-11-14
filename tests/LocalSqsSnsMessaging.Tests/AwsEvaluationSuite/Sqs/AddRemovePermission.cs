@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_add_remove_permission.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -17,7 +16,7 @@ public sealed class AddRemovePermission
     /// </summary>
     [Test]
     [DisplayName("sqs.add-remove-permission")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -52,7 +51,7 @@ public sealed class AddRemovePermission
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutS, double intervalS)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -61,7 +60,7 @@ public sealed class AddRemovePermission
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
             val = await fn();
         }
 

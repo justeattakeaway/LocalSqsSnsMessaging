@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_batch_with_a_group_less_entry_rejected_whole_and_group_stream_unchanged.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using Amazon.SQS;
@@ -27,7 +26,7 @@ public sealed class FifoBatchWithAGroupLessEntryRejectedWholeAndGroupStreamUncha
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-batch-with-a-group-less-entry-rejected-whole-and-group-stream-unchanged")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -84,7 +83,7 @@ public sealed class FifoBatchWithAGroupLessEntryRejectedWholeAndGroupStreamUncha
         await AwaitVisible(sqs, url, Total + 3);
 
         var drained = new List<(string Body, string Group)>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 40.0 && drained.Count < Total + 3)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -169,7 +168,7 @@ public sealed class FifoBatchWithAGroupLessEntryRejectedWholeAndGroupStreamUncha
     private static async Task<string> AwaitVisible(AmazonSQSClient sqs, string url, int want)
     {
         var seen = "";
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 40.0)
         {
             seen = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -182,7 +181,7 @@ public sealed class FifoBatchWithAGroupLessEntryRejectedWholeAndGroupStreamUncha
                 return seen;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         throw Fail($"queue never reported {want} visible messages; last read '{seen}'");

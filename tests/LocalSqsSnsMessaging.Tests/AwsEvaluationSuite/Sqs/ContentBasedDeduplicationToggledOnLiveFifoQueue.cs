@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_content_based_deduplication_toggled_on_live_fifo_queue.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -26,7 +25,7 @@ public sealed class ContentBasedDeduplicationToggledOnLiveFifoQueue
     /// </summary>
     [Test]
     [DisplayName("sqs.content-based-deduplication-toggled-on-live-fifo-queue")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -56,7 +55,7 @@ public sealed class ContentBasedDeduplicationToggledOnLiveFifoQueue
 
         var repeated = $"repeated-body-{token}";
         string? firstId = null;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (firstId is null && deadline.Elapsed < TimeSpan.FromSeconds(ConvergeS))
         {
             try
@@ -67,7 +66,7 @@ public sealed class ContentBasedDeduplicationToggledOnLiveFifoQueue
             {
                 Ensure(exc.ErrorCode == "InvalidParameterValue",
                     $"id-less send while the switch propagates raised ({exc.ErrorCode}, {exc.Message})");
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(2));
             }
         }
 
@@ -108,7 +107,7 @@ public sealed class ContentBasedDeduplicationToggledOnLiveFifoQueue
         await sqs.SetQueueAttributesAsync(new SetQueueAttributesRequest { QueueUrl = url, Attributes = new() { ["ContentBasedDeduplication"] = "false" } });
         var late = new List<string>();
         (string?, string?)? refused = null;
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (refused is null && deadline.Elapsed < TimeSpan.FromSeconds(ConvergeS))
         {
             var body = $"after-disable-{late.Count}-{token}";
@@ -116,7 +115,7 @@ public sealed class ContentBasedDeduplicationToggledOnLiveFifoQueue
             {
                 await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = body, MessageGroupId = "g" });
                 late.Add(body);
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(2));
             }
             catch (AmazonServiceException exc)
             {
@@ -151,7 +150,7 @@ public sealed class ContentBasedDeduplicationToggledOnLiveFifoQueue
     {
         var bodies = new List<string>();
         var empties = 0;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (empties < 3 && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
             var batch = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [];

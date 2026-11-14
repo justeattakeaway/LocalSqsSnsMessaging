@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_operations_fail_after_delete.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -45,7 +44,7 @@ public sealed class OperationsFailAfterDelete
     /// </summary>
     private static async Task<AwsError> SendUntilRejected(AmazonSQSClient sqs, string url, double timeoutSeconds, double intervalSeconds)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var err = await FidelityContext.CaptureError(() => sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "x" }));
@@ -64,7 +63,7 @@ public sealed class OperationsFailAfterDelete
                 throw Fail($"SendMessage still succeeded {timeoutSeconds}s after DeleteQueue");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
     }
 
@@ -73,7 +72,7 @@ public sealed class OperationsFailAfterDelete
     /// </summary>
     [Test]
     [DisplayName("sqs.operations-fail-after-delete")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_server_side_message_retention_auto_expunge.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -24,9 +23,8 @@ public sealed class ServerSideMessageRetentionAutoExpunge
     // timing:real-time — retention: 60 s https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SetQueueAttributes.html
     [Test]
     [DisplayName("sqs.server-side-message-retention-auto-expunge")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);
@@ -70,7 +68,7 @@ public sealed class ServerSideMessageRetentionAutoExpunge
     private static async Task PollUntilExpunged(FidelityContext ctx, string url, double timeoutSeconds = 180.0, double intervalSeconds = 5.0)
     {
         var sqs = ctx.Sqs;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var count = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -96,7 +94,7 @@ public sealed class ServerSideMessageRetentionAutoExpunge
                 }
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
 
         throw Fail($"message was not auto-expunged within {timeoutSeconds}s of a {RetentionSeconds}s MessageRetentionPeriod");

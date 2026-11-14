@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_redrive_allow_policy_denyall_blocks_automatic_redrive_on_already_wired_source.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -24,7 +23,7 @@ public sealed class RedriveAllowPolicyDenyallBlocksAutomaticRedriveOnAlreadyWire
     /// </summary>
     [Test]
     [DisplayName("sqs.redrive-allow-policy-denyall-blocks-automatic-redrive-on-already-wired-source")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -109,7 +108,7 @@ public sealed class RedriveAllowPolicyDenyallBlocksAutomaticRedriveOnAlreadyWire
     /// <summary>Poll GetQueueAttributes until <paramref name="name"/> reads back as the JSON document <paramref name="expected"/>.</summary>
     private static async Task AwaitAttribute(IAmazonSQS sqs, string url, string name, JsonNode expected, double timeoutS = 30.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var raw = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest { QueueUrl = url, AttributeNames = [name] })).Attributes!.GetValueOrDefault(name);
@@ -120,7 +119,7 @@ public sealed class RedriveAllowPolicyDenyallBlocksAutomaticRedriveOnAlreadyWire
 
             Ensure(deadline.Elapsed < TimeSpan.FromSeconds(timeoutS),
                 $"{name} on '{url}' never read back as {expected.ToJsonString()} within {timeoutS}s; last '{raw}'");
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
         }
     }
 }

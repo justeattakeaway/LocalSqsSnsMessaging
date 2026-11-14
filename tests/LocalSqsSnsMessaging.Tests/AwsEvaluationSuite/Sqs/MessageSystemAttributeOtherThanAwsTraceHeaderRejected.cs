@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_system_attribute_other_than_aws_trace_header_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -21,7 +20,7 @@ public sealed class MessageSystemAttributeOtherThanAwsTraceHeaderRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.message-system-attribute-other-than-aws-trace-header-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -112,7 +111,7 @@ public sealed class MessageSystemAttributeOtherThanAwsTraceHeaderRejected
     {
         var sqs = ctx.Sqs;
         var seen = new Dictionary<string, Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds) && !wanted.IsSubsetOf(seen.Keys))
         {
             var request = new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 };
@@ -139,7 +138,7 @@ public sealed class MessageSystemAttributeOtherThanAwsTraceHeaderRejected
     {
         var sqs = ctx.Sqs;
         var seen = new Dictionary<string, Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(windowSeconds))
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 })).Messages ?? [])

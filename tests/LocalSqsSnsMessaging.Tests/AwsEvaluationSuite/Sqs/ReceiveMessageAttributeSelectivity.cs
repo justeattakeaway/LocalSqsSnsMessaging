@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receive_message_attribute_selectivity.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +20,7 @@ public sealed class ReceiveMessageAttributeSelectivity
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-message-attribute-selectivity")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -130,7 +129,7 @@ public sealed class ReceiveMessageAttributeSelectivity
     private static async Task<Message?> Take(IAmazonSQS sqs, string url, double timeoutS,
         List<string>? messageAttributeNames = null, List<string>? messageSystemAttributeNames = null)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             var request = new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 1 };

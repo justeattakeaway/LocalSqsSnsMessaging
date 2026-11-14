@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_throughput_limit_per_message_group_requires_message_group_scope_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -33,7 +32,7 @@ public sealed class FifoThroughputLimitPerMessageGroupRequiresMessageGroupScopeR
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-throughput-limit-per-message-group-requires-message-group-scope-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -81,7 +80,7 @@ public sealed class FifoThroughputLimitPerMessageGroupRequiresMessageGroupScopeR
         stored = await HtAttrs(sqs, url);
         Ensure(DictEquals(stored, Normal), $"the accepted downgrade read back {Repr(stored)}");
         string? collapsed = null;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var n = 0;
         while (collapsed is null && deadline.Elapsed.TotalSeconds < ConvergeS)
         {
@@ -93,7 +92,7 @@ public sealed class FifoThroughputLimitPerMessageGroupRequiresMessageGroupScopeR
             }
             else
             {
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(2));
             }
         }
 
@@ -103,7 +102,7 @@ public sealed class FifoThroughputLimitPerMessageGroupRequiresMessageGroupScopeR
 
         List<string> bodies = [];
         var empties = 0;
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (empties < 3 && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
             var batch = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

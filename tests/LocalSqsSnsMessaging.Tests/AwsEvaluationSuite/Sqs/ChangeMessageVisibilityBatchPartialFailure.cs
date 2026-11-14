@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_change_message_visibility_batch_partial_failure.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -16,7 +15,7 @@ public sealed class ChangeMessageVisibilityBatchPartialFailure
     /// </summary>
     [Test]
     [DisplayName("sqs.change-message-visibility-batch-partial-failure")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -32,7 +31,7 @@ public sealed class ChangeMessageVisibilityBatchPartialFailure
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "cvt-batch-bad" });
 
         var handles = new Dictionary<string, string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (handles.Count < 2 && deadline.Elapsed < TimeSpan.FromSeconds(20.0))
         {
             var r = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 3 });
@@ -64,7 +63,7 @@ public sealed class ChangeMessageVisibilityBatchPartialFailure
 
         // Past the original 4s timeout but before the 20s extension: only "bad" (whose extension
         // failed) should reappear while "good" stays hidden.
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         var foundBad = false;
         while (deadline.Elapsed < TimeSpan.FromSeconds(15.0) && !foundBad)
         {
@@ -83,7 +82,7 @@ public sealed class ChangeMessageVisibilityBatchPartialFailure
         Ensure(foundBad, "message whose visibility-extension failed never reappeared on schedule");
 
         // The successfully extended message reappears once its 20s window elapses.
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         var goodSeen = false;
         while (deadline.Elapsed < TimeSpan.FromSeconds(25.0) && !goodSeen)
         {

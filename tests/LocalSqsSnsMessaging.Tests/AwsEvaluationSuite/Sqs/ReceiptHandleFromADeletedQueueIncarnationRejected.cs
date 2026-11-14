@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receipt_handle_from_a_deleted_queue_incarnation_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -34,7 +33,7 @@ public sealed class ReceiptHandleFromADeletedQueueIncarnationRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.receipt-handle-from-a-deleted-queue-incarnation-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.ReceiptHandles, "DeleteMessage on a recreated queue with the old incarnation's handle is not refused with NonExistentQueue")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -51,7 +50,7 @@ public sealed class ReceiptHandleFromADeletedQueueIncarnationRejected
         await sqs.DeleteQueueAsync(url);
         string? newUrl = null;
         AwsError? last = null;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (newUrl is null && deadline.Elapsed < TimeSpan.FromSeconds(RecreateDeadlineS))
         {
             var (resp, error) = await FidelityContext.Capture(() => sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = name, Tags = NewTags() }));
@@ -64,7 +63,7 @@ public sealed class ReceiptHandleFromADeletedQueueIncarnationRejected
             {
                 last = error;
                 Ensure(last.Code == Recent, $"recreating the name answered {last}");
-                await Task.Delay(TimeSpan.FromSeconds(5));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(5));
             }
         }
 
@@ -136,7 +135,7 @@ public sealed class ReceiptHandleFromADeletedQueueIncarnationRejected
 
     private static async Task<Message> ReceiveOne(IAmazonSQS sqs, string url, int visibility)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

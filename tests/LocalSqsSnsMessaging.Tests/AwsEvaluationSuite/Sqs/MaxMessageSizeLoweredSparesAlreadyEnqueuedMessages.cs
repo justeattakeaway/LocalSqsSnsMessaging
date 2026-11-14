@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_max_message_size_lowered_spares_already_enqueued_messages.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
@@ -30,7 +29,7 @@ public sealed class MaxMessageSizeLoweredSparesAlreadyEnqueuedMessages
     /// </summary>
     [Test]
     [DisplayName("sqs.max-message-size-lowered-spares-already-enqueued-messages")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -53,7 +52,7 @@ public sealed class MaxMessageSizeLoweredSparesAlreadyEnqueuedMessages
         // Wait until the new limit refuses a body the size of the stored one.
         List<string> acceptedLate = [];
         (string Code, string? Message)? refused = null;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (refused is null && deadline.Elapsed.TotalSeconds < ConvergeS)
         {
             var probeHead = $"after-change-{acceptedLate.Count}-{token}-";
@@ -62,7 +61,7 @@ public sealed class MaxMessageSizeLoweredSparesAlreadyEnqueuedMessages
             {
                 await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = probe });
                 acceptedLate.Add(probe);
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(2));
             }
             catch (AmazonServiceException exc)
             {
@@ -83,7 +82,7 @@ public sealed class MaxMessageSizeLoweredSparesAlreadyEnqueuedMessages
 
         List<string> bodies = [];
         var empties = 0;
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (empties < 3 && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
             var batch = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [];

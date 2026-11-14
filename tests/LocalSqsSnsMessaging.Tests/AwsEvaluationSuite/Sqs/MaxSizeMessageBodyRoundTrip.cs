@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_max_size_message_body_round_trip.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -19,7 +18,7 @@ public sealed class MaxSizeMessageBodyRoundTrip
     /// </summary>
     [Test]
     [DisplayName("sqs.max-size-message-body-round-trip")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -49,7 +48,7 @@ public sealed class MaxSizeMessageBodyRoundTrip
     private static async Task<Message> PollForMessage(FidelityContext ctx, string url, double timeoutS = 30.0)
     {
         var sqs = ctx.Sqs;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutS)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 5 });

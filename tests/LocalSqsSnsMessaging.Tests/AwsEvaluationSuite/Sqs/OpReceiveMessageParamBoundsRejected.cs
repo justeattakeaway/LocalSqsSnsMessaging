@@ -26,7 +26,7 @@ public sealed class OpReceiveMessageParamBoundsRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.op-receive-message-param-bounds-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

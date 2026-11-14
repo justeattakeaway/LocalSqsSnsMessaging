@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_move_task_redrives_dlq_back_to_source.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -20,9 +19,8 @@ public sealed class MessageMoveTaskRedrivesDlqBackToSource
     // The move task has to wait out the DLQ copy's 30s visibility timeout, so this check spends ~53s
     // of the runner's 60s budget; under a fully parallel test run that headroom isn't enough. It gets
     // the real-time budget instead; what it asserts is unchanged.
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);
@@ -50,7 +48,7 @@ public sealed class MessageMoveTaskRedrivesDlqBackToSource
         // actively attempt redelivery from the source queue so SQS evaluates maxReceiveCount
         // (1) and routes the message to the DLQ. Each call's WaitTimeSeconds=2 long-polls, so
         // the retry loop itself carries the wait.
-        var redeliverDeadline = Stopwatch.StartNew();
+        var redeliverDeadline = FidelityTime.StartNew();
         while (redeliverDeadline.Elapsed < TimeSpan.FromSeconds(20.0))
         {
             await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = srcUrl, MaxNumberOfMessages = 1, WaitTimeSeconds = 2 });
@@ -100,7 +98,7 @@ public sealed class MessageMoveTaskRedrivesDlqBackToSource
 
     private static async Task<Message> PollReceiveOne(AmazonSQSClient sqs, string url, double timeoutSeconds = 20.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 3 });
@@ -115,7 +113,7 @@ public sealed class MessageMoveTaskRedrivesDlqBackToSource
 
     private static async Task<T?> PollUntil<T>(Func<Task<T?>> probe, Func<T?, bool> predicate, double timeoutSeconds = 30.0, double intervalSeconds = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         T? last = default;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
@@ -125,7 +123,7 @@ public sealed class MessageMoveTaskRedrivesDlqBackToSource
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
 
         throw Fail($"condition not met within {timeoutSeconds}s (last='{last}')");

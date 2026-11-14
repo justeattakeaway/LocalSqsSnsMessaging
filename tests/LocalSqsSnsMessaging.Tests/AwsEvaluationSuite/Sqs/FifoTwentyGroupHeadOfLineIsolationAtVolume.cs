@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_twenty_group_head_of_line_isolation_at_volume.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
 using Amazon.SQS;
@@ -32,7 +31,7 @@ public sealed class FifoTwentyGroupHeadOfLineIsolationAtVolume
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-twenty-group-head-of-line-isolation-at-volume")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -221,7 +220,7 @@ public sealed class FifoTwentyGroupHeadOfLineIsolationAtVolume
     {
         List<(int Idx, string Group, int Ordinal)> seen = [];
         var gate = new Lock();
-        var clock = Stopwatch.StartNew();
+        var clock = FidelityTime.StartNew();
         var deadlineS = BudgetS(ctx, DrainDeadlineS);
         var idx = 0;
         var multiGroupCalls = 0;
@@ -229,7 +228,7 @@ public sealed class FifoTwentyGroupHeadOfLineIsolationAtVolume
 
         async Task ReceiveLoop()
         {
-            Stopwatch? idleSince = null;
+            FidelityStopwatch? idleSince = null;
             while (clock.Elapsed.TotalSeconds < deadlineS && !Volatile.Read(ref done))
             {
                 var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -242,7 +241,7 @@ public sealed class FifoTwentyGroupHeadOfLineIsolationAtVolume
                 {
                     if (idleSince is null)
                     {
-                        idleSince = Stopwatch.StartNew();
+                        idleSince = FidelityTime.StartNew();
                     }
                     else if (idleSince.Elapsed.TotalSeconds >= DrainIdleS)
                     {
@@ -351,7 +350,7 @@ public sealed class FifoTwentyGroupHeadOfLineIsolationAtVolume
     private static async Task<Dictionary<string, string>> AwaitCounters(FidelityContext ctx, AmazonSQSClient sqs, string url, int visible, int inFlight)
     {
         Dictionary<string, string> attrs = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var budget = BudgetS(ctx, 60);
         while (deadline.Elapsed.TotalSeconds < budget)
         {
@@ -366,7 +365,7 @@ public sealed class FifoTwentyGroupHeadOfLineIsolationAtVolume
                 return attrs;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
         }
 
         if (BudgetSpent(ctx))
@@ -386,7 +385,7 @@ public sealed class FifoTwentyGroupHeadOfLineIsolationAtVolume
     /// </summary>
     private static async Task<Message> HoldGroupHead(FidelityContext ctx, AmazonSQSClient sqs, string url, string group)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var budget = BudgetS(ctx, 240.0);
         for (var attempt = 0; attempt < 120; attempt++)
         {

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_move_task_redrive_assigns_new_message_id_and_sent_timestamp.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -43,7 +42,7 @@ public sealed class MessageMoveTaskRedriveAssignsNewMessageIdAndSentTimestamp
     private static async Task<T> Poll<T>(FidelityContext ctx, Func<Task<T>> fn, Func<T, bool> pred, double timeoutSeconds, double intervalSeconds = 2.0)
     {
         var budget = BudgetSeconds(ctx, timeoutSeconds);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -52,7 +51,7 @@ public sealed class MessageMoveTaskRedriveAssignsNewMessageIdAndSentTimestamp
                 throw new TimeoutException($"condition not met within {budget:F0}s; last value {Describe(val)}");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
             val = await fn();
         }
 
@@ -70,7 +69,7 @@ public sealed class MessageMoveTaskRedriveAssignsNewMessageIdAndSentTimestamp
     /// <summary>Drive the source's redelivery past maxReceiveCount and return the DLQ copy with its attributes.</summary>
     private static async Task<Message> AwaitDlqArrival(AmazonSQSClient sqs, string srcUrl, string dlqUrl, string token, double timeoutSeconds)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = srcUrl, MaxNumberOfMessages = 1, WaitTimeSeconds = 1 })).Messages ?? [])
@@ -102,7 +101,7 @@ public sealed class MessageMoveTaskRedriveAssignsNewMessageIdAndSentTimestamp
     /// </summary>
     [Test]
     [DisplayName("sqs.message-move-task-redrive-assigns-new-message-id-and-sent-timestamp")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

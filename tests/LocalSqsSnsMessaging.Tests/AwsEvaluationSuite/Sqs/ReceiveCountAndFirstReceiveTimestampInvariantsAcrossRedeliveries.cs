@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receive_count_and_first_receive_timestamp_invariants_across_redeliveries.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -20,7 +19,7 @@ public sealed class ReceiveCountAndFirstReceiveTimestampInvariantsAcrossRedelive
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-count-and-first-receive-timestamp-invariants-across-redeliveries")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -41,7 +40,7 @@ public sealed class ReceiveCountAndFirstReceiveTimestampInvariantsAcrossRedelive
 
         // The message is never deleted, so each visibility-timeout expiry redelivers it.
         List<Message> deliveries = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deliveries.Count < Deliveries && deadline.Elapsed < TimeSpan.FromSeconds(120))
         {
             var batch = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

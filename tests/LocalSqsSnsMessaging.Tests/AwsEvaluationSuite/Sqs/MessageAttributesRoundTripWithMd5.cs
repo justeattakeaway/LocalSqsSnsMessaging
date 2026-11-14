@@ -1,7 +1,6 @@
 // Translated from behavioral/sqs/check_message_attributes_round_trip_with_md5.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
 using System.Buffers.Binary;
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.SQS;
@@ -20,7 +19,7 @@ public sealed class MessageAttributesRoundTripWithMd5
     /// </summary>
     [Test]
     [DisplayName("sqs.message-attributes-round-trip-with-md5")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -104,7 +103,7 @@ public sealed class MessageAttributesRoundTripWithMd5
 
     private static async Task<Message> PollReceiveOne(AmazonSQSClient sqs, string url, double timeoutSeconds = 20.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

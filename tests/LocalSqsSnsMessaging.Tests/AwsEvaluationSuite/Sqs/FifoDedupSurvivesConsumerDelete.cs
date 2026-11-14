@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_dedup_survives_consumer_delete.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Numerics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -18,7 +17,7 @@ public sealed class FifoDedupSurvivesConsumerDelete
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-dedup-survives-consumer-delete")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -70,7 +69,7 @@ public sealed class FifoDedupSurvivesConsumerDelete
             $"after {first.SequenceNumber}");
 
         var bodies = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 20)
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [];
@@ -93,7 +92,7 @@ public sealed class FifoDedupSurvivesConsumerDelete
 
     private static async Task<Message?> ReceiveOne(AmazonSQSClient sqs, string url, double timeoutSeconds)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

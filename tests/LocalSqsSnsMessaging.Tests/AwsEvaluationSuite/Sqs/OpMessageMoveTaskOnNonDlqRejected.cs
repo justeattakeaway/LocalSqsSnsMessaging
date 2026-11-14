@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_op_message_move_task_on_non_dlq_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -32,7 +31,7 @@ public sealed class OpMessageMoveTaskOnNonDlqRejected
     /// </summary>
     private static async Task<StartMessageMoveTaskResponse> StartMoveTaskEventually(AmazonSQSClient sqs, string arn, double timeoutSeconds = 20.0, double intervalSeconds = 2.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         AwsError? lastError = null;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
@@ -48,7 +47,7 @@ public sealed class OpMessageMoveTaskOnNonDlqRejected
                 throw new FidelityAssertionException($"rejected unexpectedly: {lastError}", lastError.Exception);
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
 
         throw Fail($"still rejected after {timeoutSeconds}s: {lastError}");
@@ -60,7 +59,7 @@ public sealed class OpMessageMoveTaskOnNonDlqRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.op-message-move-task-on-non-dlq-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

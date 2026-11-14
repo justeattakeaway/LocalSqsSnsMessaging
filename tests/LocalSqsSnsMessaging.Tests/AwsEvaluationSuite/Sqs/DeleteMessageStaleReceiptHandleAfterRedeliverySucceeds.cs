@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_delete_message_stale_receipt_handle_after_redelivery_succeeds.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Net;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -22,7 +21,7 @@ public sealed class DeleteMessageStaleReceiptHandleAfterRedeliverySucceeds
     /// </summary>
     [Test]
     [DisplayName("sqs.delete-message-stale-receipt-handle-after-redelivery-succeeds")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -56,7 +55,7 @@ public sealed class DeleteMessageStaleReceiptHandleAfterRedeliverySucceeds
     /// <summary>Receive until the message `message_id` is delivered; return it.</summary>
     private static async Task<Message> PollForMessage(AmazonSQSClient sqs, string url, string messageId, double timeoutSeconds)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 2 });

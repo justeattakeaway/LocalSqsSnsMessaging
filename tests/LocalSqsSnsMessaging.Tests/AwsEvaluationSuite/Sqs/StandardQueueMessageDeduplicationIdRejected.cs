@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_standard_queue_message_deduplication_id_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -21,7 +20,7 @@ public sealed class StandardQueueMessageDeduplicationIdRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.standard-queue-message-deduplication-id-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -49,7 +48,7 @@ public sealed class StandardQueueMessageDeduplicationIdRejected
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "accepted-grouped", MessageGroupId = "tenant-a" });
 
         var bodies = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [];

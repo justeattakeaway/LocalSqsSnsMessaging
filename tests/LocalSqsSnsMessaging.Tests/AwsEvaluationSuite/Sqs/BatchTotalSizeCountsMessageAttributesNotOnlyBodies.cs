@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_batch_total_size_counts_message_attributes_not_only_bodies.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -25,7 +24,7 @@ public sealed class BatchTotalSizeCountsMessageAttributesNotOnlyBodies
     /// </summary>
     [Test]
     [DisplayName("sqs.batch-total-size-counts-message-attributes-not-only-bodies")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -121,7 +120,7 @@ public sealed class BatchTotalSizeCountsMessageAttributesNotOnlyBodies
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutS, double intervalS = 0.5)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -130,7 +129,7 @@ public sealed class BatchTotalSizeCountsMessageAttributesNotOnlyBodies
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
             val = await fn();
         }
 
@@ -141,7 +140,7 @@ public sealed class BatchTotalSizeCountsMessageAttributesNotOnlyBodies
     {
         var seen = new HashSet<string>();
         var bodies = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 })).Messages ?? [])

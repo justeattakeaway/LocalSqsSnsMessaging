@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_redrive_policy_max_receive_count_out_of_range_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Amazon.SQS;
@@ -22,7 +21,7 @@ public sealed class RedrivePolicyMaxReceiveCountOutOfRangeRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.redrive-policy-max-receive-count-out-of-range-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -68,7 +67,7 @@ public sealed class RedrivePolicyMaxReceiveCountOutOfRangeRejected
         Ensure(Str(parsed["deadLetterTargetArn"]) == dlqArn,
             "the stored policy does not name the DLQ it was given");
         // ListDeadLetterSourceQueues is eventually consistent; it can lag the policy by ~40 s.
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         List<string> sources;
         while (true)
         {
@@ -78,7 +77,7 @@ public sealed class RedrivePolicyMaxReceiveCountOutOfRangeRejected
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         Ensure(sources.SequenceEqual([srcUrl]),

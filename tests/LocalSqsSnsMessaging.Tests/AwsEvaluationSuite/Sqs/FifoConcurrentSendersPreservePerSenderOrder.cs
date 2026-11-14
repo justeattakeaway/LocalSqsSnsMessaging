@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_concurrent_senders_preserve_per_sender_order.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -18,7 +17,7 @@ public sealed class FifoConcurrentSendersPreservePerSenderOrder
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-concurrent-senders-preserve-per-sender-order")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -52,7 +51,7 @@ public sealed class FifoConcurrentSendersPreservePerSenderOrder
         await Task.WhenAll(Enumerable.Range(0, numThreads).Select(threadId => Task.Run(() => Sender(threadId))));
 
         var received = new List<Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         const int expectedTotal = numThreads * perThread;
         while (received.Count < expectedTotal && deadline.Elapsed.TotalSeconds < 60.0)
         {

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_dedup_id_reusable_after_dedup_window_elapses.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -25,9 +24,8 @@ public sealed class FifoDedupIdReusableAfterDedupWindowElapses
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-dedup-id-reusable-after-dedup-window-elapses")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);
@@ -65,7 +63,7 @@ public sealed class FifoDedupIdReusableAfterDedupWindowElapses
             "positive control failed: a resend inside the dedup window minted a new MessageId " +
             $"{second.MessageId} instead of echoing {first.MessageId}");
 
-        var clock = Stopwatch.StartNew();
+        var clock = FidelityTime.StartNew();
         var deadline = Math.Min(DedupWindowWaitSeconds, ctx.TimeLeftSeconds - 30.0);
         SendMessageResponse third;
         while (true)
@@ -82,7 +80,7 @@ public sealed class FifoDedupIdReusableAfterDedupWindowElapses
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         Ensure(third.MessageId != first.MessageId,

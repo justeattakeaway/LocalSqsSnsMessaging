@@ -21,7 +21,7 @@ public sealed class QueueLevelWaitTimeWakesOnArrival
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-level-wait-time-wakes-on-arrival")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -51,7 +51,7 @@ public sealed class QueueLevelWaitTimeWakesOnArrival
 
         // ThreadPoolExecutor(max_workers=1).submit(_receive)
         var future = Task.Run(ReceiveAsync);
-        var wasDispatched = await Task.WhenAny(dispatched.Task, Task.Delay(TimeSpan.FromSeconds(BudgetSeconds(ctx, 10)))) == dispatched.Task;
+        var wasDispatched = await Task.WhenAny(dispatched.Task, FidelityTime.Delay(TimeSpan.FromSeconds(BudgetSeconds(ctx, 10)))) == dispatched.Task;
         Ensure(wasDispatched, "the ReceiveMessage request was never dispatched");
         // A short poll on an empty queue answers at once with nothing; only the inherited long
         // poll is still open to return the message sent after the request went out.

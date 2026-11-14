@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_list_queues_prefix_matches_only_at_start.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +21,7 @@ public sealed class ListQueuesPrefixMatchesOnlyAtStart
     /// </summary>
     [Test]
     [DisplayName("sqs.list-queues-prefix-matches-only-at-start")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -39,7 +38,7 @@ public sealed class ListQueuesPrefixMatchesOnlyAtStart
         var midUrl = (await sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = midName, Tags = new(Tags) })).QueueUrl;
         ctx.OnCleanup(() => sqs.DeleteQueueAsync(midUrl));
 
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         List<string> urls;
         while (true)
         {
@@ -51,7 +50,7 @@ public sealed class ListQueuesPrefixMatchesOnlyAtStart
 
             Ensure(deadline.Elapsed < TimeSpan.FromSeconds(30),
                 $"ListQueues(prefix='{token}') never returned the prefix-matching queue '{startsUrl}'");
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
         }
 
         Ensure(!urls.Contains(midUrl),

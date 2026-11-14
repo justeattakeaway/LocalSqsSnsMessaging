@@ -20,7 +20,7 @@ public sealed class Md5OfMessageAttributes
     /// </summary>
     [Test]
     [DisplayName("sqs.md5-of-message-attributes")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

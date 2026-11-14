@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_list_dead_letter_source_queues_paginates.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -25,7 +24,7 @@ public sealed class ListDeadLetterSourceQueuesPaginates
     /// </summary>
     [Test]
     [DisplayName("sqs.list-dead-letter-source-queues-paginates")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -65,7 +64,7 @@ public sealed class ListDeadLetterSourceQueuesPaginates
         });
 
         // The source listing is eventually consistent with SetQueueAttributes(RedrivePolicy).
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         HashSet<string> seen;
         while (true)
         {
@@ -78,7 +77,7 @@ public sealed class ListDeadLetterSourceQueuesPaginates
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         Ensure(seen.SetEquals(expected),
@@ -98,10 +97,10 @@ public sealed class ListDeadLetterSourceQueuesPaginates
             $"{flat.ToHashSet().Intersect(expected).Count()} of the {N} expected sources");
 
         var other = (await sqs.ListDeadLetterSourceQueuesAsync(new ListDeadLetterSourceQueuesRequest { QueueUrl = otherDlqUrl })).QueueUrls ?? [];
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (!other.SequenceEqual([foreignUrl]) && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
             other = (await sqs.ListDeadLetterSourceQueuesAsync(new ListDeadLetterSourceQueuesRequest { QueueUrl = otherDlqUrl })).QueueUrls ?? [];
         }
 

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_send_without_dedup_id_fails.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +21,7 @@ public sealed class FifoSendWithoutDedupIdFails
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-send-without-dedup-id-fails")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -105,7 +104,7 @@ public sealed class FifoSendWithoutDedupIdFails
 
     private static async Task<Message> PollReceiveOne(AmazonSQSClient sqs, string url, double timeoutS = 15.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 3 });

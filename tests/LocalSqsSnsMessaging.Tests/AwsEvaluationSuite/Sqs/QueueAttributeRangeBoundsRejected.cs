@@ -47,7 +47,7 @@ public sealed class QueueAttributeRangeBoundsRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-attribute-range-bounds-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

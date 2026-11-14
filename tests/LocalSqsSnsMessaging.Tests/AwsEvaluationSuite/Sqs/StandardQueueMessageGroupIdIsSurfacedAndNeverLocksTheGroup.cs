@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_standard_queue_message_group_id_is_surfaced_and_never_locks_the_group.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -17,7 +16,7 @@ public sealed class StandardQueueMessageGroupIdIsSurfacedAndNeverLocksTheGroup
     /// </summary>
     [Test]
     [DisplayName("sqs.standard-queue-message-group-id-is-surfaced-and-never-locks-the-group")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -44,7 +43,7 @@ public sealed class StandardQueueMessageGroupIdIsSurfacedAndNeverLocksTheGroup
         // Receive one message per call and never delete or release: every message stays in flight
         // for the whole window, so a group lock would make the second tenant-a message unreachable.
         var seen = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(40) && seen.Count < 4)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

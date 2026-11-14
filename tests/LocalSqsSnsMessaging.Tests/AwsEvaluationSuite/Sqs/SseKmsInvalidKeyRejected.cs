@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_sse_kms_invalid_key_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -25,7 +24,7 @@ public sealed partial class SseKmsInvalidKeyRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.sse-kms-invalid-key-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.Validation, "expected SendMessage to a queue with a nonexistent KmsMasterKeyId alias to fail with KMS.NotFoundException, but it succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -86,7 +85,7 @@ public sealed partial class SseKmsInvalidKeyRejected
     private static async Task<Message> PollForMessage(FidelityContext ctx, string url, double timeoutSeconds = 30.0)
     {
         var sqs = ctx.Sqs;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 5 });

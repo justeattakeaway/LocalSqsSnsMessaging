@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_long_poll_wakes_when_delay_or_visibility_expires.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -20,7 +19,7 @@ public sealed class LongPollWakesWhenDelayOrVisibilityExpires
     /// </summary>
     [Test]
     [DisplayName("sqs.long-poll-wakes-when-delay-or-visibility-expires")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -44,7 +43,7 @@ public sealed class LongPollWakesWhenDelayOrVisibilityExpires
         // it unacknowledged, and long-poll again while it is in flight.
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "in-flight" });
         Message? first = null;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (first is null && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

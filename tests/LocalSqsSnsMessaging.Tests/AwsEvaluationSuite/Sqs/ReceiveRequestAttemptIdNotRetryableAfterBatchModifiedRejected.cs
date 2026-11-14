@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receive_request_attempt_id_not_retryable_after_batch_modified_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -18,7 +17,7 @@ public sealed class ReceiveRequestAttemptIdNotRetryableAfterBatchModifiedRejecte
     /// </summary>
     [Test]
     [DisplayName("sqs.receive-request-attempt-id-not-retryable-after-batch-modified-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -45,20 +44,20 @@ public sealed class ReceiveRequestAttemptIdNotRetryableAfterBatchModifiedRejecte
         }
 
         // Wait until all three are on the queue, so one receive can take them as one batch.
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(60) && (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
                {
                    QueueUrl = url,
                    AttributeNames = ["ApproximateNumberOfMessages"],
                })).Attributes!["ApproximateNumberOfMessages"] != "3")
         {
-            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1), cancellationToken);
         }
 
         // --- leg 1: modification by DeleteMessage ------------------------------------------
         var attemptA = $"attempt-a-{token}";
         List<Message> batch = [];
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (batch.Count == 0 && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             batch = await Receive(sqs, url, attemptA);
@@ -97,7 +96,7 @@ public sealed class ReceiveRequestAttemptIdNotRetryableAfterBatchModifiedRejecte
 
         var attemptB = $"attempt-b-{token}";
         List<Message> rest = [];
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (rest.Count == 0 && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             rest = await Receive(sqs, url, attemptB);

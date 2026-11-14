@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_receive_request_attempt_id_replays_batch.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -17,7 +16,7 @@ public sealed class FifoReceiveRequestAttemptIdReplaysBatch
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-receive-request-attempt-id-replays-batch")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -116,7 +115,7 @@ public sealed class FifoReceiveRequestAttemptIdReplaysBatch
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutS, double intervalS = 0.5)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -125,7 +124,7 @@ public sealed class FifoReceiveRequestAttemptIdReplaysBatch
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
             val = await fn();
         }
 

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_send_message_batch_delay_seconds_applies_to_each_entry_alone.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -20,13 +19,13 @@ public sealed class SendMessageBatchDelaySecondsAppliesToEachEntryAlone
     /// </summary>
     [Test]
     [DisplayName("sqs.send-message-batch-delay-seconds-applies-to-each-entry-alone")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var sqs = ctx.Sqs;
         var url = await CreateQueue(ctx);
-        var sentAt = Stopwatch.StartNew();
+        var sentAt = FidelityTime.StartNew();
         var resp = await sqs.SendMessageBatchAsync(new SendMessageBatchRequest
         {
             QueueUrl = url,
@@ -53,7 +52,7 @@ public sealed class SendMessageBatchDelaySecondsAppliesToEachEntryAlone
 
         Dictionary<string, (int Call, double At, string Slot)> arrivals = [];
         var call = 0;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(60.0) && arrivals.Count < 2)
         {
             call++;

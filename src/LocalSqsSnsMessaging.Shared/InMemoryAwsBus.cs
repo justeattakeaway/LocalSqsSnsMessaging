@@ -20,6 +20,27 @@ public sealed class InMemoryAwsBus
     /// <value>The TimeProvider instance, defaulting to TimeProvider.System.</value>
     public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 
+    private int _waitingReceiveCount;
+
+    /// <summary>
+    /// The number of <c>ReceiveMessage</c> calls currently blocked in a long poll, waiting for a
+    /// message to arrive or for their wait time to run out. Under a fake <see cref="TimeProvider"/>,
+    /// these only finish once time is advanced.
+    /// </summary>
+    internal int WaitingReceiveCount => Volatile.Read(ref _waitingReceiveCount);
+
+    /// <summary>Counts a long poll as waiting until the returned scope is disposed.</summary>
+    internal WaitingReceiveScope EnterWaitingReceive()
+    {
+        Interlocked.Increment(ref _waitingReceiveCount);
+        return new WaitingReceiveScope(this);
+    }
+
+    internal readonly struct WaitingReceiveScope(InMemoryAwsBus bus) : IDisposable
+    {
+        public void Dispose() => Interlocked.Decrement(ref bus._waitingReceiveCount);
+    }
+
     /// <summary>
     /// Gets or initializes the current AWS account ID.
     /// </summary>

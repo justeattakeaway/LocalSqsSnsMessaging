@@ -16,7 +16,7 @@ public sealed class CreateFifoQueueWithoutSuffixFails
     /// </summary>
     [Test]
     [DisplayName("sqs.create-fifo-queue-without-suffix-fails")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

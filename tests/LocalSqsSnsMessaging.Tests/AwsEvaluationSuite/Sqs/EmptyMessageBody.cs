@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_empty_message_body.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -20,7 +19,7 @@ public sealed class EmptyMessageBody
     /// </summary>
     [Test]
     [DisplayName("sqs.empty-message-body")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -78,7 +77,7 @@ public sealed class EmptyMessageBody
     private static async Task<string> AwaitVisible(AmazonSQSClient sqs, string url, int want, double timeout = 60)
     {
         var seen = "";
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeout)
         {
             seen = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest { QueueUrl = url, AttributeNames = ["ApproximateNumberOfMessages"] }))
@@ -88,7 +87,7 @@ public sealed class EmptyMessageBody
                 return seen;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         throw Fail($"queue never reported {want} visible messages; last read {seen}");

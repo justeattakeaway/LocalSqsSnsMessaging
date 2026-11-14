@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_queue_arn_carries_the_creation_region.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +20,7 @@ public sealed class QueueArnCarriesTheCreationRegion
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-arn-carries-the-creation-region")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.MultiRegion, "[alt] QueueArn must name the region the queue was created in: expected 'us-east-1', got 'us-west-2'")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -124,7 +123,7 @@ public sealed class QueueArnCarriesTheCreationRegion
     /// <summary>Wait for the queue to leave ListQueues; SQS deletion can take up to 60s to show.</summary>
     private static async Task AwaitAbsent(AmazonSQSClient sqs, string name)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var last = new HashSet<string>();
         while (deadline.Elapsed < TimeSpan.FromSeconds(SettleSeconds))
         {
@@ -134,7 +133,7 @@ public sealed class QueueArnCarriesTheCreationRegion
                 return;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3.0));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3.0));
         }
 
         throw Fail($"queue '{name}' still listed {SettleSeconds}s after delete (last=[{string.Join(", ", last)}])");

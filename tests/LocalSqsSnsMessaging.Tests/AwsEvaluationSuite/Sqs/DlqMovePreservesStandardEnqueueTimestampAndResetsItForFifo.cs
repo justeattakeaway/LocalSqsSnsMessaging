@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_dlq_move_preserves_standard_enqueue_timestamp_and_resets_it_for_fifo.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -38,9 +37,8 @@ public sealed class DlqMovePreservesStandardEnqueueTimestampAndResetsItForFifo
     /// </summary>
     [Test]
     [DisplayName("sqs.dlq-move-preserves-standard-enqueue-timestamp-and-resets-it-for-fifo")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);
@@ -175,7 +173,7 @@ public sealed class DlqMovePreservesStandardEnqueueTimestampAndResetsItForFifo
     /// </summary>
     private static async Task<Message> AwaitDelivery(AmazonSQSClient sqs, string url, string token, double timeoutSeconds, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -207,7 +205,7 @@ public sealed class DlqMovePreservesStandardEnqueueTimestampAndResetsItForFifo
     /// </summary>
     private static async Task<Message> AwaitDlqMove(AmazonSQSClient sqs, string srcUrl, string dlqUrl, string token, double timeoutSeconds, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = srcUrl, MaxNumberOfMessages = 10, WaitTimeSeconds = 1 })).Messages ?? [])
@@ -250,10 +248,10 @@ public sealed class DlqMovePreservesStandardEnqueueTimestampAndResetsItForFifo
     /// </summary>
     private static async Task HoldWithoutReceiving(double seconds)
     {
-        var start = Stopwatch.StartNew();
+        var start = FidelityTime.StartNew();
         while (start.Elapsed.TotalSeconds < seconds)
         {
-            await Task.Delay(TimeSpan.FromSeconds(Math.Max(0, Math.Min(1.0, seconds - start.Elapsed.TotalSeconds))));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(Math.Max(0, Math.Min(1.0, seconds - start.Elapsed.TotalSeconds))));
         }
     }
 
@@ -265,7 +263,7 @@ public sealed class DlqMovePreservesStandardEnqueueTimestampAndResetsItForFifo
     {
         // VisibilityTimeout=0 on the receive keeps messages visible; a follow-up ChangeMessageVisibility
         // could race the standard copy's own retention expiry.
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var stdFound = true;
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {

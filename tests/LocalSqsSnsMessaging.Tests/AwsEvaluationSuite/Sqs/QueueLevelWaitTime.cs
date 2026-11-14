@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_queue_level_wait_time.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -19,7 +18,7 @@ public sealed class QueueLevelWaitTime
     // timing:real-time — lease: 2 s https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html
     [Test]
     [DisplayName("sqs.queue-level-wait-time")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -32,7 +31,7 @@ public sealed class QueueLevelWaitTime
             Tags = new() { ["sim2real"] = "true" },
         })).QueueUrl;
         ctx.OnCleanup(() => sqs.DeleteQueueAsync(url));
-        var start = Stopwatch.StartNew();
+        var start = FidelityTime.StartNew();
         var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1 });
         var elapsed = start.Elapsed.TotalSeconds;
         if (resp.Messages is { Count: > 0 })

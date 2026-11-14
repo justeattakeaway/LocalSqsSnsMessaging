@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_visibility_timeout_out_of_range_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -15,7 +14,7 @@ public sealed class VisibilityTimeoutOutOfRangeRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.visibility-timeout-out-of-range-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -65,7 +64,7 @@ public sealed class VisibilityTimeoutOutOfRangeRejected
 
     private static async Task<string?> PollUntil(Func<Task<string>> probe, Func<string, bool> predicate, double timeoutSeconds = 30.0, double intervalSeconds = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         string? last = null;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
@@ -75,7 +74,7 @@ public sealed class VisibilityTimeoutOutOfRangeRejected
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
 
         throw Fail($"condition not met within {timeoutSeconds}s (last='{last}')");

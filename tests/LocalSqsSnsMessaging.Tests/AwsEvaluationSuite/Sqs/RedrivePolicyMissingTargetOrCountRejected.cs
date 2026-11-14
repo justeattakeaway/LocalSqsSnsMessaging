@@ -21,7 +21,7 @@ public sealed class RedrivePolicyMissingTargetOrCountRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.redrive-policy-missing-target-or-count-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

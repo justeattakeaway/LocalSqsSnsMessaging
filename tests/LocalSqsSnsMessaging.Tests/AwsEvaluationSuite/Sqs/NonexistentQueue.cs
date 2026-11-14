@@ -19,7 +19,7 @@ public sealed class NonexistentQueue
     /// </summary>
     [Test]
     [DisplayName("sqs.nonexistent-queue")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

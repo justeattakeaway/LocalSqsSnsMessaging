@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_per_group_order_preserved_under_concurrent_receivers.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
@@ -38,7 +37,7 @@ public sealed class FifoPerGroupOrderPreservedUnderConcurrentReceivers
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-per-group-order-preserved-under-concurrent-receivers")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -82,7 +81,7 @@ public sealed class FifoPerGroupOrderPreservedUnderConcurrentReceivers
         var gate = new Lock();
         List<(int Worker, string Group, int Index)> collected = [];
         List<string> errors = [];
-        var clock = Stopwatch.StartNew();
+        var clock = FidelityTime.StartNew();
         var deadline = TimeSpan.FromSeconds(DrainDeadlineS);
 
         async Task Worker(int wid)

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_concurrent_set_queue_attributes_on_distinct_attributes_lose_no_update.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -34,7 +33,7 @@ public sealed class ConcurrentSetQueueAttributesOnDistinctAttributesLoseNoUpdate
     /// </summary>
     [Test]
     [DisplayName("sqs.concurrent-set-queue-attributes-on-distinct-attributes-lose-no-update")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -69,7 +68,7 @@ public sealed class ConcurrentSetQueueAttributesOnDistinctAttributesLoseNoUpdate
     private static async Task<Dictionary<string, string>> Converge(AmazonSQSClient sqs, string url, Dictionary<string, string> want)
     {
         var got = new Dictionary<string, string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(SettleS))
         {
             got = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -81,7 +80,7 @@ public sealed class ConcurrentSetQueueAttributesOnDistinctAttributesLoseNoUpdate
                 return got;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
         }
 
         return got;

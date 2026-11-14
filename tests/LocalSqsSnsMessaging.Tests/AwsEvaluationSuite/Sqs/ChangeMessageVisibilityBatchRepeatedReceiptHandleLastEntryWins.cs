@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_change_message_visibility_batch_repeated_receipt_handle_last_entry_wins.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -20,7 +19,7 @@ public sealed class ChangeMessageVisibilityBatchRepeatedReceiptHandleLastEntryWi
     /// </summary>
     [Test]
     [DisplayName("sqs.change-message-visibility-batch-repeated-receipt-handle-last-entry-wins")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -57,7 +56,7 @@ public sealed class ChangeMessageVisibilityBatchRepeatedReceiptHandleLastEntryWi
 
     private static async Task<Message> ReceiveOne(AmazonSQSClient sqs, string url, int visibilityTimeout, double timeoutS = 20.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

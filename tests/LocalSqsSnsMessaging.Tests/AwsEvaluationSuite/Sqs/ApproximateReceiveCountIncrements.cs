@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_approximate_receive_count_increments.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -17,7 +16,7 @@ public sealed class ApproximateReceiveCountIncrements
     /// </summary>
     [Test]
     [DisplayName("sqs.approximate-receive-count-increments")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -60,7 +59,7 @@ public sealed class ApproximateReceiveCountIncrements
 
     private static async Task<T> PollUntil<T>(Func<Task<T>> probe, Func<T, bool> predicate, double timeoutS = 30.0, double intervalS = 1.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         T? last = default;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
@@ -70,7 +69,7 @@ public sealed class ApproximateReceiveCountIncrements
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
         }
 
         throw Fail($"condition not met within {timeoutS}s (last={last})");

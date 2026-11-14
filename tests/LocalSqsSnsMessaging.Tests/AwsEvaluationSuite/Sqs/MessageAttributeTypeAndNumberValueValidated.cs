@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_attribute_type_and_number_value_validated.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -70,7 +69,7 @@ public sealed class MessageAttributeTypeAndNumberValueValidated
     /// </summary>
     [Test]
     [DisplayName("sqs.message-attribute-type-and-number-value-validated")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -99,7 +98,7 @@ public sealed class MessageAttributeTypeAndNumberValueValidated
         }
 
         var got = new Dictionary<string, MessageAttributeValue?>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

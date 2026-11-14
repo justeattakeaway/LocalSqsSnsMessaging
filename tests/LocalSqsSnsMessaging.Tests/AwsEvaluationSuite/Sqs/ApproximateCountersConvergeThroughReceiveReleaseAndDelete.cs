@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_approximate_counters_converge_through_receive_release_and_delete.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -25,7 +24,7 @@ public sealed class ApproximateCountersConvergeThroughReceiveReleaseAndDelete
     /// </summary>
     [Test]
     [DisplayName("sqs.approximate-counters-converge-through-receive-release-and-delete")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -49,7 +48,7 @@ public sealed class ApproximateCountersConvergeThroughReceiveReleaseAndDelete
         await Converge(sqs, url, (5, 0, 0), "after sending five");
 
         var held = new List<Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (held.Count < 3 && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
             held.AddRange((await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -69,7 +68,7 @@ public sealed class ApproximateCountersConvergeThroughReceiveReleaseAndDelete
 
         await sqs.DeleteMessageAsync(new DeleteMessageRequest { QueueUrl = url, ReceiptHandle = held[2].ReceiptHandle });
         var seen = new HashSet<string> { held[1].Body, held[2].Body };
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (seen.Count < 5 && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
             foreach (var m in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -96,10 +95,10 @@ public sealed class ApproximateCountersConvergeThroughReceiveReleaseAndDelete
     private static async Task Converge(AmazonSQSClient sqs, string url, (int, int, int) want, string stage)
     {
         var got = await Read(sqs, url);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (got != want && deadline.Elapsed < TimeSpan.FromSeconds(ConvergeS))
         {
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
             got = await Read(sqs, url);
         }
 

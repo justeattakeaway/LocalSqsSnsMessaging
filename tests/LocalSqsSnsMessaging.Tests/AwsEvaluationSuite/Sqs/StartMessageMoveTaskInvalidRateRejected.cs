@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_start_message_move_task_invalid_rate_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
@@ -18,7 +17,7 @@ public sealed class StartMessageMoveTaskInvalidRateRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.start-message-move-task-invalid-rate-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -95,7 +94,7 @@ public sealed class StartMessageMoveTaskInvalidRateRejected
 
     private static async Task PollUntil(Func<Task<bool>> predicate, double timeoutSeconds = 60.0, double intervalSeconds = 2.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             if (await predicate())
@@ -103,7 +102,7 @@ public sealed class StartMessageMoveTaskInvalidRateRejected
                 return;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
 
         throw Fail($"condition not met within {timeoutSeconds}s");

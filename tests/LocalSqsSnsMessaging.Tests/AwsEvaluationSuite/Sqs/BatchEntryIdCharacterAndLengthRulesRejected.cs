@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_batch_entry_id_character_and_length_rules_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -23,7 +22,7 @@ public sealed class BatchEntryIdCharacterAndLengthRulesRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.batch-entry-id-character-and-length-rules-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -118,7 +117,7 @@ public sealed class BatchEntryIdCharacterAndLengthRulesRejected
     private static async Task<List<Message>> ReceiveAll(AmazonSQSClient sqs, string url, int want, int visibility = 120)
     {
         var got = new Dictionary<string, Message>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (got.Count < want && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             foreach (var m in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

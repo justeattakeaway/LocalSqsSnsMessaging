@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_concurrent_receive_no_duplicate_delivery.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
@@ -20,7 +19,7 @@ public sealed class ConcurrentReceiveNoDuplicateDelivery
     /// </summary>
     [Test]
     [DisplayName("sqs.concurrent-receive-no-duplicate-delivery")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -77,7 +76,7 @@ public sealed class ConcurrentReceiveNoDuplicateDelivery
                 return (object)exc;
             }
         })).ToList();
-        await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromSeconds(timeoutS)));
+        await Task.WhenAny(Task.WhenAll(tasks), FidelityTime.Delay(TimeSpan.FromSeconds(timeoutS)));
         return [.. tasks.Select(t => t.IsCompletedSuccessfully ? t.Result : new TimeoutException())];
     }
 
@@ -101,7 +100,7 @@ public sealed class ConcurrentReceiveNoDuplicateDelivery
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutS, double intervalS)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val))
         {
@@ -110,7 +109,7 @@ public sealed class ConcurrentReceiveNoDuplicateDelivery
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
             val = await fn();
         }
 

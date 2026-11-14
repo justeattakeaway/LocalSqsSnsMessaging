@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_long_polling_wakes_on_message_arrival.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -19,7 +18,7 @@ public sealed class LongPollingWakesOnMessageArrival
     /// </summary>
     [Test]
     [DisplayName("sqs.long-polling-wakes-on-message-arrival")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -50,13 +49,13 @@ public sealed class LongPollingWakesOnMessageArrival
 
         async Task<(double Elapsed, List<Message> Messages)> LongPoll()
         {
-            var start = Stopwatch.StartNew();
+            var start = FidelityTime.StartNew();
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = waitTime });
             return (start.Elapsed.TotalSeconds, resp.Messages ?? []);
         }
 
         var future = Task.Run(LongPoll);
-        var signalled = await Task.WhenAny(requestDispatched.Task, Task.Delay(TimeSpan.FromSeconds(BudgetS(ctx, 10)))) == requestDispatched.Task;
+        var signalled = await Task.WhenAny(requestDispatched.Task, FidelityTime.Delay(TimeSpan.FromSeconds(BudgetS(ctx, 10)))) == requestDispatched.Task;
         Ensure(signalled, "long-poll thread never dispatched its ReceiveMessage request");
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "wake-up-the-long-poller" });
         var (elapsed, messages) = await future.WaitAsync(TimeSpan.FromSeconds(BudgetS(ctx, waitTime + 30)));

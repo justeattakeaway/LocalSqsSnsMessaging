@@ -14,7 +14,7 @@ public sealed class FifoDedup
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-dedup")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

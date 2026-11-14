@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_group_natural_visibility_expiry_keeps_group_held_and_redelivers_same_head.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -27,7 +26,7 @@ public sealed class FifoGroupNaturalVisibilityExpiryKeepsGroupHeldAndRedeliversS
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-group-natural-visibility-expiry-keeps-group-held-and-redelivers-same-head")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -68,13 +67,13 @@ public sealed class FifoGroupNaturalVisibilityExpiryKeepsGroupHeldAndRedeliversS
         double waitS = VisibilityS + 30;
         var left = ctx.TimeLeftSeconds;
         var deadlineSeconds = Math.Min(waitS, left);
-        var clock = Stopwatch.StartNew();
+        var clock = FidelityTime.StartNew();
         while (afterExpiry.Count == 0 && clock.Elapsed.TotalSeconds < deadlineSeconds)
         {
             afterExpiry = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 1 })).Messages ?? [];
             if (afterExpiry.Count == 0)
             {
-                await Task.Delay(TimeSpan.FromSeconds(1));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(1));
             }
         }
 

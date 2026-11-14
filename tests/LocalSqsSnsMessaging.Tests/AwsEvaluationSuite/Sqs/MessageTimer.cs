@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_timer.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -19,7 +18,7 @@ public sealed class MessageTimer
     /// </summary>
     [Test]
     [DisplayName("sqs.message-timer")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -39,7 +38,7 @@ public sealed class MessageTimer
         // Bounded retry until the delay has elapsed — no unconditional sleep; each poll's own
         // long-poll wait is itself bounded, and the deadline covers >=3x the declared delay.
         var window = Math.Max(3 * DelaySeconds, 10);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var received = new List<Message>();
         var seen = new HashSet<string>();
         while (deadline.Elapsed < TimeSpan.FromSeconds(window) && received.Count == 0)

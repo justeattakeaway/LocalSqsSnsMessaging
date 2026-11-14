@@ -27,7 +27,7 @@ public sealed class OpDelaySecondsOutOfRangeRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.op-delay-seconds-out-of-range-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

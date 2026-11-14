@@ -23,7 +23,7 @@ public sealed class QueueNameEightyCharacterBoundaryRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-name-eighty-character-boundary-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

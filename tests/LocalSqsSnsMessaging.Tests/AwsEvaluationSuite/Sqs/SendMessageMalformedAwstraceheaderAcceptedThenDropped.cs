@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_send_message_malformed_awstraceheader_accepted_then_dropped.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -29,7 +28,7 @@ public sealed class SendMessageMalformedAwstraceheaderAcceptedThenDropped
     /// </summary>
     [Test]
     [DisplayName("sqs.send-message-malformed-awstraceheader-accepted-then-dropped")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -107,7 +106,7 @@ public sealed class SendMessageMalformedAwstraceheaderAcceptedThenDropped
     private static async Task<Dictionary<string, Message>> ReceiveAll(AmazonSQSClient sqs, string url, HashSet<string> wanted, double timeoutSeconds)
     {
         var seen = new Dictionary<string, Message>(StringComparer.Ordinal);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds) && !wanted.IsSubsetOf(seen.Keys))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

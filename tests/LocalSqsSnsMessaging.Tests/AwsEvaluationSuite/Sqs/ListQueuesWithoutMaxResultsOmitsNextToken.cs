@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_list_queues_without_max_results_omits_next_token.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -20,7 +19,7 @@ public sealed class ListQueuesWithoutMaxResultsOmitsNextToken
     /// </summary>
     [Test]
     [DisplayName("sqs.list-queues-without-max-results-omits-next-token")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -36,7 +35,7 @@ public sealed class ListQueuesWithoutMaxResultsOmitsNextToken
 
         // ListQueues can lag CreateQueue; poll the unpaged, prefix-filtered listing.
         var timeoutS = BudgetS(ctx, 60);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var resp = await sqs.ListQueuesAsync(new ListQueuesRequest { QueueNamePrefix = prefix });
         while (!urls.ToHashSet().IsSubsetOf(resp.QueueUrls ?? []))
         {
@@ -47,7 +46,7 @@ public sealed class ListQueuesWithoutMaxResultsOmitsNextToken
                     $"{timeoutS:F0}s; last answer [{string.Join(", ", resp.QueueUrls ?? [])}]");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
             resp = await sqs.ListQueuesAsync(new ListQueuesRequest { QueueNamePrefix = prefix });
         }
 

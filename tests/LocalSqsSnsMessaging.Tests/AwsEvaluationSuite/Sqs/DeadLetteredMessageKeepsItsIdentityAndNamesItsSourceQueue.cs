@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_dead_lettered_message_keeps_its_identity_and_names_its_source_queue.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +21,7 @@ public sealed class DeadLetteredMessageKeepsItsIdentityAndNamesItsSourceQueue
     /// </summary>
     [Test]
     [DisplayName("sqs.dead-lettered-message-keeps-its-identity-and-names-its-source-queue")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -63,7 +62,7 @@ public sealed class DeadLetteredMessageKeepsItsIdentityAndNamesItsSourceQueue
 
         Message? moved = null;
         var srcDeliveries = 0;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(90.0) && moved is null)
         {
             srcDeliveries += ((await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = src, WaitTimeSeconds = 2 })).Messages ?? []).Count;

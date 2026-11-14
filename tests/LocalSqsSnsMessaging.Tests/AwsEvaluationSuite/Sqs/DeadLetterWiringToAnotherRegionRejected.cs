@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_dead_letter_wiring_to_another_region_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -23,7 +22,7 @@ public sealed class DeadLetterWiringToAnotherRegionRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.dead-letter-wiring-to-another-region-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.MultiRegion, "SetQueueAttributes with a RedrivePolicy naming a DLQ in another region succeeded instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -97,7 +96,7 @@ public sealed class DeadLetterWiringToAnotherRegionRejected
         });
         string? stored = null;
         var sources = new List<string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(SettleSeconds))
         {
             stored = (await home.GetQueueAttributesAsync(new GetQueueAttributesRequest { QueueUrl = srcUrl, AttributeNames = ["RedrivePolicy"] }))
@@ -113,7 +112,7 @@ public sealed class DeadLetterWiringToAnotherRegionRejected
                 break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
         }
 
         Ensure(!string.IsNullOrEmpty(stored) && JsonDocument.Parse(stored).RootElement.GetProperty("deadLetterTargetArn").GetString() == localArn,

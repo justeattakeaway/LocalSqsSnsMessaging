@@ -29,7 +29,7 @@ public sealed class FifoMessageGroupHeldByOneConcurrentReceiverAtATime
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-message-group-held-by-one-concurrent-receiver-at-a-time")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

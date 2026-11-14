@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_dlq_move_withheld_until_the_maxreceivecount_th_delivery.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -32,7 +31,7 @@ public sealed class DlqMoveWithheldUntilTheMaxreceivecountThDelivery
     /// </summary>
     [Test]
     [DisplayName("sqs.dlq-move-withheld-until-the-maxreceivecount-th-delivery")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -151,7 +150,7 @@ public sealed class DlqMoveWithheldUntilTheMaxreceivecountThDelivery
     /// </summary>
     private static async Task<Message> AwaitDelivery(AmazonSQSClient sqs, string url, string token, double timeoutSeconds, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             foreach (var msg in await Receive(sqs, url))
@@ -176,7 +175,7 @@ public sealed class DlqMoveWithheldUntilTheMaxreceivecountThDelivery
     /// </summary>
     private static async Task<Message> AwaitDlqMove(AmazonSQSClient sqs, string srcUrl, string dlqUrl, string token, double timeoutSeconds, string what)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             foreach (var msg in await Receive(sqs, srcUrl, waitSeconds: 1))
@@ -201,7 +200,7 @@ public sealed class DlqMoveWithheldUntilTheMaxreceivecountThDelivery
     /// <summary>Bounded poll until GetQueueAttributes reports `want` for `name`; RAISES on the deadline.</summary>
     private static async Task<string> AwaitAttribute(AmazonSQSClient sqs, string url, string name, string want, double timeoutSeconds, string why)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         string? last = null;
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
@@ -211,7 +210,7 @@ public sealed class DlqMoveWithheldUntilTheMaxreceivecountThDelivery
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         throw Fail(

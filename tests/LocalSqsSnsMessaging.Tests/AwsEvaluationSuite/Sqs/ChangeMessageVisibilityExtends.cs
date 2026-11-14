@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_change_message_visibility_extends.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -19,7 +18,7 @@ public sealed class ChangeMessageVisibilityExtends
     // timing:real-time — visibility: 10 s https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
     [Test]
     [DisplayName("sqs.change-message-visibility-extends")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -37,7 +36,7 @@ public sealed class ChangeMessageVisibilityExtends
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "vis-extend-test" });
         var msg = await PollReceiveOne(sqs, url, timeoutS: 15.0);
 
-        var tExtend = Stopwatch.StartNew();
+        var tExtend = FidelityTime.StartNew();
         await sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
         {
             QueueUrl = url, ReceiptHandle = msg.ReceiptHandle, VisibilityTimeout = extendedVt,
@@ -59,7 +58,7 @@ public sealed class ChangeMessageVisibilityExtends
                     $"extending to {extendedVt}s (original VT was {originalVt}s): [{string.Join(", ", visible.Select(m => m.MessageId))}]");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(1));
         }
 
         Ensure(checkedPastOriginalVt, "hold window ended before a read landed past the original VT -- widen it");
@@ -76,7 +75,7 @@ public sealed class ChangeMessageVisibilityExtends
 
     private static async Task<Message> PollReceiveOne(AmazonSQSClient sqs, string url, double timeoutS, string? expectedMessageId = null)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 2 });

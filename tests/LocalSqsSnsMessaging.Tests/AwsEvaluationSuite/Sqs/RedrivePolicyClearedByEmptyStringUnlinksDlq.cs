@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_redrive_policy_cleared_by_empty_string_unlinks_dlq.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Amazon.SQS;
@@ -22,7 +21,7 @@ public sealed class RedrivePolicyClearedByEmptyStringUnlinksDlq
     /// </summary>
     [Test]
     [DisplayName("sqs.redrive-policy-cleared-by-empty-string-unlinks-dlq")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -84,11 +83,11 @@ public sealed class RedrivePolicyClearedByEmptyStringUnlinksDlq
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutS = 90)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         var val = await fn();
         while (!pred(val) && deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
             val = await fn();
         }
 

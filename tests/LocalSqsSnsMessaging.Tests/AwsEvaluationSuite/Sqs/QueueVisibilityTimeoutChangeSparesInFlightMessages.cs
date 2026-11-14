@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_queue_visibility_timeout_change_spares_in_flight_messages.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -28,12 +27,12 @@ public sealed class QueueVisibilityTimeoutChangeSparesInFlightMessages
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-visibility-timeout-change-spares-in-flight-messages")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var sqs = ctx.Sqs;
-        var clock = Stopwatch.StartNew(); // time.monotonic()
+        var clock = FidelityTime.StartNew(); // time.monotonic()
         double Now() => clock.Elapsed.TotalSeconds;
         var token = Guid.NewGuid().ToString("N")[..8];
         var url = (await sqs.CreateQueueAsync(new CreateQueueRequest

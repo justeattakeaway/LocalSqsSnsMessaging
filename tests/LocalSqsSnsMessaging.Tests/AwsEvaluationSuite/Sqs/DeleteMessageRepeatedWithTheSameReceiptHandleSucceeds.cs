@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_delete_message_repeated_with_the_same_receipt_handle_succeeds.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -20,7 +19,7 @@ public sealed class DeleteMessageRepeatedWithTheSameReceiptHandleSucceeds
     /// </summary>
     [Test]
     [DisplayName("sqs.delete-message-repeated-with-the-same-receipt-handle-succeeds")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -30,7 +29,7 @@ public sealed class DeleteMessageRepeatedWithTheSameReceiptHandleSucceeds
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "sim2real-keep-me" });
 
         var handles = new Dictionary<string, string>();
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 30.0 && handles.Count < 2)
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [])
@@ -56,7 +55,7 @@ public sealed class DeleteMessageRepeatedWithTheSameReceiptHandleSucceeds
             $"Successful={JsonSerializer.Serialize(batch.Successful)} Failed={JsonSerializer.Serialize(batch.Failed)}");
 
         var seen = new List<string>();
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 60.0 && !seen.Contains("sim2real-keep-me"))
         {
             foreach (var msg in (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 })).Messages ?? [])

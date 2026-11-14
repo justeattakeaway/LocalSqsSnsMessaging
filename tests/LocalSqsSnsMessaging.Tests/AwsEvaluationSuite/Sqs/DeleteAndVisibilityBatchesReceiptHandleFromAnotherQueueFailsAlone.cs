@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_delete_and_visibility_batches_receipt_handle_from_another_queue_fails_alone.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +20,7 @@ public sealed class DeleteAndVisibilityBatchesReceiptHandleFromAnotherQueueFails
     /// </summary>
     [Test]
     [DisplayName("sqs.delete-and-visibility-batches-receipt-handle-from-another-queue-fails-alone")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -112,7 +111,7 @@ public sealed class DeleteAndVisibilityBatchesReceiptHandleFromAnotherQueueFails
 
     private static async Task<Message> ReceiveOne(AmazonSQSClient sqs, string url, int visibilityTimeout, double timeoutSeconds = 20.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_delete_message_invalid_receipt_handle_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -21,7 +20,7 @@ public sealed class DeleteMessageInvalidReceiptHandleRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.delete-message-invalid-receipt-handle-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -49,7 +48,7 @@ public sealed class DeleteMessageInvalidReceiptHandleRejected
         // positive control: the untouched message can be deleted normally with a valid receipt handle.
         await sqs.DeleteMessageAsync(new DeleteMessageRequest { QueueUrl = url, ReceiptHandle = stillThere.ReceiptHandle });
 
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < 10.0)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 });
@@ -72,7 +71,7 @@ public sealed class DeleteMessageInvalidReceiptHandleRejected
 
     private static async Task<Message> PollReceiveOne(AmazonSQSClient sqs, string url, double timeoutSeconds = 15.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 3 });
@@ -88,7 +87,7 @@ public sealed class DeleteMessageInvalidReceiptHandleRejected
 
     private static async Task<Message> PollUntilMatching(AmazonSQSClient sqs, string url, string messageId, double timeoutSeconds = 15.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed.TotalSeconds < timeoutSeconds)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 3 });

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_standard_queue_message_group_id_validated.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -20,7 +19,7 @@ public sealed class StandardQueueMessageGroupIdValidated
     /// </summary>
     [Test]
     [DisplayName("sqs.standard-queue-message-group-id-validated")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -57,7 +56,7 @@ public sealed class StandardQueueMessageGroupIdValidated
         }
 
         var seen = new Dictionary<string, string?>(StringComparer.Ordinal);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             var msgs = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

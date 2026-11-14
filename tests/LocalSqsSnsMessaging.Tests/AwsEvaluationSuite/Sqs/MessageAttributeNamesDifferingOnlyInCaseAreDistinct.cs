@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_message_attribute_names_differing_only_in_case_are_distinct.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -25,7 +24,7 @@ public sealed class MessageAttributeNamesDifferingOnlyInCaseAreDistinct
     /// </summary>
     [Test]
     [DisplayName("sqs.message-attribute-names-differing-only-in-case-are-distinct")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -41,7 +40,7 @@ public sealed class MessageAttributeNamesDifferingOnlyInCaseAreDistinct
         var sent = await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "sim2real-case", MessageAttributes = Attrs() });
 
         var timeoutS = BudgetS(ctx, 30);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         Message? received = null;
         while (deadline.Elapsed.TotalSeconds < timeoutS)
         {

@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_change_message_visibility_invalid_receipt_handle.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -16,7 +15,7 @@ public sealed class ChangeMessageVisibilityInvalidReceiptHandle
     /// </summary>
     [Test]
     [DisplayName("sqs.change-message-visibility-invalid-receipt-handle")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -102,7 +101,7 @@ public sealed class ChangeMessageVisibilityInvalidReceiptHandle
 
     private static async Task<T> PollUntil<T>(Func<Task<T>> probe, Func<T, bool> predicate, double timeoutS, double intervalS = 1.0, string description = "condition")
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         T? last = default;
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
@@ -112,7 +111,7 @@ public sealed class ChangeMessageVisibilityInvalidReceiptHandle
                 return last;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
         }
 
         throw Fail($"{description} not observed within {timeoutS}s; last saw {last}");

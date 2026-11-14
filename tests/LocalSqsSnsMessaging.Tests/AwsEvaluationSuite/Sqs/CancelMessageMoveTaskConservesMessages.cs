@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_cancel_message_move_task_conserves_messages.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Amazon.SQS;
@@ -31,7 +30,7 @@ public sealed class CancelMessageMoveTaskConservesMessages
     /// </summary>
     [Test]
     [DisplayName("sqs.cancel-message-move-task-conserves-messages")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -138,7 +137,7 @@ public sealed class CancelMessageMoveTaskConservesMessages
 
     private static async Task<T> Poll<T>(Func<Task<T>> fn, Func<T, bool> pred, double timeoutS, double intervalS = 2.0, double? budgetS = null)
     {
-        var start = Stopwatch.StartNew();
+        var start = FidelityTime.StartNew();
         var stop = TimeSpan.FromSeconds(budgetS is null ? timeoutS : Math.Min(timeoutS, budgetS.Value));
         var val = await fn();
         while (!pred(val))
@@ -155,7 +154,7 @@ public sealed class CancelMessageMoveTaskConservesMessages
                 return val;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(intervalS));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(intervalS));
             val = await fn();
         }
 

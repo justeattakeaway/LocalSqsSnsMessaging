@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_fifo_group_less_send_rejected_without_consuming_its_deduplication_id.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Globalization;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -36,7 +35,7 @@ public sealed class FifoGroupLessSendRejectedWithoutConsumingItsDeduplicationId
     /// </summary>
     [Test]
     [DisplayName("sqs.fifo-group-less-send-rejected-without-consuming-its-deduplication-id")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -111,7 +110,7 @@ public sealed class FifoGroupLessSendRejectedWithoutConsumingItsDeduplicationId
 
         var total = Sends.Length + 1;
         List<(string Body, string Group)> drained = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(40.0) && drained.Count < total)
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -185,7 +184,7 @@ public sealed class FifoGroupLessSendRejectedWithoutConsumingItsDeduplicationId
     private static async Task<string> AwaitVisible(AmazonSQSClient sqs, string url, int want)
     {
         var seen = "";
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(40.0))
         {
             seen = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest
@@ -198,7 +197,7 @@ public sealed class FifoGroupLessSendRejectedWithoutConsumingItsDeduplicationId
                 return seen;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(2));
         }
 
         throw Fail($"queue never reported {want} visible messages; last read '{seen}'");

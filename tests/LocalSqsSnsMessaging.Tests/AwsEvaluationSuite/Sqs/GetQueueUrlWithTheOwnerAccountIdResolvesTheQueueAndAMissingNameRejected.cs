@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_get_queue_url_with_the_owner_account_id_resolves_the_queue_and_a_missing_name_rejected.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -21,7 +20,7 @@ public sealed class GetQueueUrlWithTheOwnerAccountIdResolvesTheQueueAndAMissingN
     /// </summary>
     [Test]
     [DisplayName("sqs.get-queue-url-with-the-owner-account-id-resolves-the-queue-and-a-missing-name-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -43,7 +42,7 @@ public sealed class GetQueueUrlWithTheOwnerAccountIdResolvesTheQueueAndAMissingN
         Ensure(message == "The specified queue does not exist.", $"unexpected message '{message}'");
 
         await sqs.DeleteQueueAsync(url);
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (true)
         {
             // a deleted queue's name stops resolving within about a minute
@@ -58,7 +57,7 @@ public sealed class GetQueueUrlWithTheOwnerAccountIdResolvesTheQueueAndAMissingN
             }
 
             Ensure(deadline.Elapsed < TimeSpan.FromSeconds(90), "the deleted queue still resolves after 90s");
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
         }
 
         Ensure(code == Gone, $"GetQueueUrl after DeleteQueue: got '{code}'");

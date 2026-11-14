@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_query_and_json_protocol_clients_share_one_queue.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -52,7 +51,7 @@ public sealed class QueryAndJsonProtocolClientsShareOneQueue
     /// </summary>
     [Test]
     [DisplayName("sqs.query-and-json-protocol-clients-share-one-queue")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.Protocol, "SQS Query-protocol (form-encoded) requests get a JSON error, not XML: not well-formed (invalid token): line 1, column 0")]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -88,7 +87,7 @@ public sealed class QueryAndJsonProtocolClientsShareOneQueue
         var qAttrMd5 = Text(result[0], "MD5OfMessageAttributes");
 
         List<Message> got = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (got.Count == 0 && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             got = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -122,7 +121,7 @@ public sealed class QueryAndJsonProtocolClientsShareOneQueue
             MessageAttributes = new() { ["proto"] = new() { DataType = "Number", StringValue = "42" } },
         });
         List<XElement> msgs = [];
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (msgs.Count == 0 && deadline.Elapsed < TimeSpan.FromSeconds(30))
         {
             (status, root) = await query(new()
@@ -168,13 +167,13 @@ public sealed class QueryAndJsonProtocolClientsShareOneQueue
         });
         Ensure(status == 200, $"Query SetQueueAttributes answered {status}");
         string? vis = null;
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (vis != "45" && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
             vis = (await sqs.GetQueueAttributesAsync(new GetQueueAttributesRequest { QueueUrl = url, AttributeNames = ["VisibilityTimeout"] })).Attributes!["VisibilityTimeout"];
             if (vis != "45")
             {
-                await Task.Delay(TimeSpan.FromSeconds(3));
+                await FidelityTime.Delay(TimeSpan.FromSeconds(3));
             }
         }
 
@@ -190,10 +189,10 @@ public sealed class QueryAndJsonProtocolClientsShareOneQueue
         static bool AllZero(Dictionary<string, string> d) => d.Values.ToHashSet().SetEquals(["0"]);
 
         var left = await Left();
-        deadline = Stopwatch.StartNew();
+        deadline = FidelityTime.StartNew();
         while (!AllZero(left) && deadline.Elapsed < TimeSpan.FromSeconds(60))
         {
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
             left = await Left();
         }
 

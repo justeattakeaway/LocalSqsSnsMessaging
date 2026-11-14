@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_change_message_visibility_extends_timeout.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -19,7 +18,7 @@ public sealed class ChangeMessageVisibilityExtendsTimeout
     // timing:real-time — visibility: 12 s https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
     [Test]
     [DisplayName("sqs.change-message-visibility-extends-timeout")]
-    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
@@ -37,7 +36,7 @@ public sealed class ChangeMessageVisibilityExtendsTimeout
         var msg = await PollReceiveOne(sqs, url, timeoutS: 15.0);
         Ensure(msg.Body == body, "assert msg[\"Body\"] == body");
 
-        var tChange = Stopwatch.StartNew();
+        var tChange = FidelityTime.StartNew();
         await sqs.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
         {
             QueueUrl = url, ReceiptHandle = msg.ReceiptHandle, VisibilityTimeout = 12,
@@ -70,7 +69,7 @@ public sealed class ChangeMessageVisibilityExtendsTimeout
 
     private static async Task<Message> PollReceiveOne(AmazonSQSClient sqs, string url, double timeoutS = 15.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 2 });

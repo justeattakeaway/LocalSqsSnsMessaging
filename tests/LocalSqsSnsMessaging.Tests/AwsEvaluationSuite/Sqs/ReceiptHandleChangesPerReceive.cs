@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_receipt_handle_changes_per_receive.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
 
@@ -19,7 +18,7 @@ public sealed class ReceiptHandleChangesPerReceive
     /// </summary>
     [Test]
     [DisplayName("sqs.receipt-handle-changes-per-receive")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -56,7 +55,7 @@ public sealed class ReceiptHandleChangesPerReceive
     private static async Task<Message> PollForMessage(FidelityContext ctx, string url, double timeoutS = 30.0)
     {
         var sqs = ctx.Sqs;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 5 });
@@ -73,7 +72,7 @@ public sealed class ReceiptHandleChangesPerReceive
     private static async Task<Message> PollForRedelivery(FidelityContext ctx, string url, string expectedMessageId, double timeoutS = 30.0)
     {
         var sqs = ctx.Sqs;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 5 });
@@ -85,7 +84,7 @@ public sealed class ReceiptHandleChangesPerReceive
                 }
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(0.5));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(0.5));
         }
 
         throw Fail("message was never redelivered after visibility timeout expiry");
@@ -98,7 +97,7 @@ public sealed class ReceiptHandleChangesPerReceive
     private static async Task<List<Message>> Drain(FidelityContext ctx, string url, double timeoutS)
     {
         var sqs = ctx.Sqs;
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         List<Message> seen = [];
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutS))
         {

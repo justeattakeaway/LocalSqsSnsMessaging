@@ -16,7 +16,7 @@ public sealed class E2eWorkQueuePattern
     /// </summary>
     [Test]
     [DisplayName("sqs.e2e-work-queue-pattern")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

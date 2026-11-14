@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_dead_letter_queue_redrive_after_max_receive_count.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -19,7 +18,7 @@ public sealed class DeadLetterQueueRedriveAfterMaxReceiveCount
     /// </summary>
     [Test]
     [DisplayName("sqs.dead-letter-queue-redrive-after-max-receive-count")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -101,7 +100,7 @@ public sealed class DeadLetterQueueRedriveAfterMaxReceiveCount
         FidelityContext ctx, AmazonSQSClient sqs, string queueUrl, Dictionary<string, string> expected, double capSeconds = 90.0)
     {
         var budgetSeconds = BudgetSeconds(ctx, capSeconds);
-        var start = Stopwatch.StartNew();
+        var start = FidelityTime.StartNew();
         var stop = Math.Min(capSeconds, budgetSeconds);
         while (true)
         {
@@ -125,13 +124,13 @@ public sealed class DeadLetterQueueRedriveAfterMaxReceiveCount
                 throw Fail($"queue counters never reached {JsonSerializer.Serialize(expected)}; last observed {observedText}");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await FidelityTime.Delay(TimeSpan.FromSeconds(3));
         }
     }
 
     private static async Task<Message> PollReceiveOne(AmazonSQSClient sqs, string url, double timeoutSeconds = 20.0)
     {
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (deadline.Elapsed < TimeSpan.FromSeconds(timeoutSeconds))
         {
             var resp = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 1, WaitTimeSeconds = 3 });

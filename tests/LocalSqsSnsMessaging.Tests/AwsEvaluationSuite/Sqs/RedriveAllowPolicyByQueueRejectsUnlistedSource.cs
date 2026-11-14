@@ -1,6 +1,5 @@
 // Translated from behavioral/sqs/check_redrive_allow_policy_by_queue_rejects_unlisted_source.py
 // (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Amazon.SQS.Model;
 using static LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -24,7 +23,7 @@ public sealed class RedriveAllowPolicyByQueueRejectsUnlistedSource
     /// </summary>
     [Test]
     [DisplayName("sqs.redrive-allow-policy-by-queue-rejects-unlisted-source")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -133,7 +132,7 @@ public sealed class RedriveAllowPolicyByQueueRejectsUnlistedSource
 
         await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = urlAllowed, MessageBody = marker });
         List<string> dlqBodies = [];
-        var deadline = Stopwatch.StartNew();
+        var deadline = FidelityTime.StartNew();
         while (dlqBodies.Count == 0 && deadline.Elapsed < TimeSpan.FromSeconds(120))
         {
             // Receiving from the source without deleting drives the receive count past

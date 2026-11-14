@@ -25,7 +25,7 @@ public sealed class OpQueueNameValidationRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.op-queue-name-validation-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

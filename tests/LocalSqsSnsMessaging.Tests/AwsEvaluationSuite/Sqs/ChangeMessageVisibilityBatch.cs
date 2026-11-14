@@ -15,7 +15,7 @@ public sealed class ChangeMessageVisibilityBatch
     /// </summary>
     [Test]
     [DisplayName("sqs.change-message-visibility-batch")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

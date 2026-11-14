@@ -35,7 +35,7 @@ public sealed class QueueDeletedRecentlyOnFastRecreateRejected
     /// </summary>
     [Test]
     [DisplayName("sqs.queue-deleted-recently-on-fast-recreate-rejected")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
+    [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [KnownFidelityGap(FidelityGap.Validation, "CreateQueue with the name of a queue deleted moments earlier succeeded instead of QueueDeletedRecently")]
     public async Task Run(CancellationToken cancellationToken)
     {
