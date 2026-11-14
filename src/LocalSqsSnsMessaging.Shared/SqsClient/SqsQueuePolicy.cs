@@ -9,7 +9,7 @@ namespace LocalSqsSnsMessaging;
 /// A queue's <c>Policy</c> attribute: how SQS stores it, and the parts of IAM policy evaluation the
 /// library enforces. For callers, only explicit <c>Deny</c> statements are enforced; <c>Allow</c>
 /// statements are never needed, because every caller acts for the account that owns the queues.
-/// Deliveries by AWS services are evaluated by <see cref="AdmitsServiceDelivery"/>.
+/// Deliveries by AWS services are evaluated by <see cref="EvaluateServiceDelivery"/>.
 /// EventBridge evaluates event bus policies the same way (<see cref="RequestContext.ActionPrefix"/>).
 /// </summary>
 /// <remarks>

@@ -271,7 +271,7 @@ internal sealed class SqsQueueResource
 
     /// <summary>
     /// Accepts a sent message: one a caller sends with <c>SendMessage</c>, or a service delivery
-    /// (SNS for a subscription, EventBridge for a rule's target). It is stamped with its <c>SentTimestamp</c>, from
+    /// (<see cref="SqsServiceDelivery"/>). It is stamped with its <c>SentTimestamp</c>, from
     /// which the queue's retention period counts.
     /// </summary>
     /// <remarks>

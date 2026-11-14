@@ -1,9 +1,6 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json.Nodes;
 using LocalSqsSnsMessaging.EventBridge.Model;
 using SnsPublishRequest = LocalSqsSnsMessaging.Sns.Model.PublishRequest;
-using SqsMessage = LocalSqsSnsMessaging.Sqs.Model.Message;
 using SqsMessageAttributeValue = LocalSqsSnsMessaging.Sqs.Model.MessageAttributeValue;
 
 namespace LocalSqsSnsMessaging;
@@ -25,7 +22,7 @@ namespace LocalSqsSnsMessaging;
 /// service errors, which the in-memory services never return.
 /// </para>
 /// <para>
-/// Resource policies are evaluated as for SNS deliveries (<see cref="SqsQueuePolicy.AdmitsServiceDelivery"/>):
+/// Resource policies are evaluated as for SNS deliveries (<see cref="SqsQueuePolicy.EvaluateServiceDelivery"/>):
 /// EventBridge delivers as <c>events.amazonaws.com</c>, with the rule as <c>aws:SourceArn</c>. A
 /// policy that denies it, or that grants EventBridge deliveries without admitting this rule,
 /// refuses the delivery. A queue with no policy, or a policy that says nothing about EventBridge,
@@ -38,9 +35,6 @@ namespace LocalSqsSnsMessaging;
 /// </remarks>
 internal static class EventBridgeEventDelivery
 {
-    /// <summary>The service principal EventBridge delivers to targets as.</summary>
-    private const string EventsServicePrincipal = "events.amazonaws.com";
-
     /// <summary>
     /// Routes an event put on <paramref name="eventBus"/> through its rules and delivers it to the
     /// matched rules' targets. Its trace header, if well formed, reaches SQS targets as the
@@ -157,22 +151,30 @@ internal static class EventBridgeEventDelivery
     /// <summary>Sends <paramref name="body"/> to the queue <paramref name="queueArn"/> names.</summary>
     private static DeliveryFailure? DeliverToQueue(Delivery delivery, string queueArn, string body, InMemoryAwsBus bus)
     {
+        var request = QueueDelivery(delivery, queueArn, body) with { TraceHeader = delivery.Event.TraceHeader };
+
         // SQS answers a sender its policy refuses as if the queue did not exist.
-        if (!bus.TryGetQueueByArn(queueArn, out var queue) || !AdmitsDelivery(queue, delivery.Rule))
-        {
-            return new DeliveryFailure("NO_RESOURCE", ServiceErrorMessage(
+        return SqsServiceDelivery.Deliver(bus, request) is SqsServiceDelivery.Outcome.Delivered or SqsServiceDelivery.Outcome.Duplicate
+            ? null
+            : new DeliveryFailure("NO_RESOURCE", ServiceErrorMessage(
                 "The specified queue does not exist or you do not have access to it.",
                 "AmazonSQS", 400, "AWS.SimpleQueueService.NonExistentQueue"));
-        }
+    }
 
-        var message = CreateSqsMessage(body, attributes: null);
-        if (delivery.Event.TraceHeader is not null)
+    /// <summary>
+    /// What EventBridge sends to the queue <paramref name="queueArn"/> for <paramref name="delivery"/>:
+    /// on a FIFO queue, in the target's message group, deduplicated by the event id.
+    /// </summary>
+    private static SqsServiceDelivery.Request QueueDelivery(Delivery delivery, string queueArn, string body)
+    {
+        var fifo = queueArn.EndsWith(".fifo", StringComparison.OrdinalIgnoreCase);
+        return new SqsServiceDelivery.Request(queueArn, SqsServiceDelivery.EventsPrincipal, delivery.Rule.Arn, body)
         {
-            message.Attributes = new() { [InternalMessageSystemAttributeName.AWSTraceHeader] = delivery.Event.TraceHeader };
-        }
-
-        Enqueue(queue, message, delivery, bus);
-        return null;
+            MessageGroupId = fifo
+                ? EventBridgeTargetInput.ResolveMessageGroupId(delivery.Target, delivery.Event.Envelope) ?? delivery.Target.Id ?? "eventbridge"
+                : null,
+            DeduplicationId = fifo ? delivery.EventId : null,
+        };
     }
 
     /// <summary>
@@ -194,14 +196,17 @@ internal static class EventBridgeEventDelivery
             policy = topic.Attributes.GetValueOrDefault(SnsTopicAttributes.Policy);
         }
 
-        var request = ServiceRequest("Publish", topic.Arn, delivery.Rule) with { ActionPrefix = "sns" };
-        if (!string.IsNullOrEmpty(policy) && !SqsQueuePolicy.AdmitsServiceDelivery(policy!, request))
+        var request = SqsQueuePolicy.ServiceRequest("Publish", topic.Arn, SqsServiceDelivery.EventsPrincipal, delivery.Rule.Arn) with { ActionPrefix = "sns" };
+        var reason = SqsQueuePolicy.EvaluateServiceDelivery(policy, request) switch
         {
-            var reason = SqsQueuePolicy.DeniesExplicitly(policy!, request)
-                ? "with an explicit deny in a resource-based policy"
-                : "because no resource-based policy allows the SNS:Publish action";
+            SqsQueuePolicy.ServiceDeliveryVerdict.ExplicitlyDenied => "with an explicit deny in a resource-based policy",
+            SqsQueuePolicy.ServiceDeliveryVerdict.NotAllowed => "because no resource-based policy allows the SNS:Publish action",
+            _ => null,
+        };
+        if (reason is not null)
+        {
             return new DeliveryFailure("NO_PERMISSIONS", ServiceErrorMessage(
-                $"User: {EventsServicePrincipal} is not authorized to perform: SNS:Publish on resource: {topic.Arn} {reason}",
+                $"User: {SqsServiceDelivery.EventsPrincipal} is not authorized to perform: SNS:Publish on resource: {topic.Arn} {reason}",
                 "AmazonSNS", 403, "AuthorizationError"));
         }
 
@@ -257,55 +262,22 @@ internal static class EventBridgeEventDelivery
     /// </summary>
     private static void DeadLetter(Delivery delivery, string body, DeliveryFailure failure, InMemoryAwsBus bus)
     {
-        if (delivery.Target.DeadLetterConfig?.Arn is not { } deadLetterArn
-            || !bus.TryGetQueueByArn(deadLetterArn, out var deadLetterQueue)
-            || !AdmitsDelivery(deadLetterQueue, delivery.Rule))
+        if (delivery.Target.DeadLetterConfig?.Arn is not { } deadLetterArn)
         {
             return;
         }
 
-        var message = CreateSqsMessage(body, new Dictionary<string, SqsMessageAttributeValue>(StringComparer.Ordinal)
+        SqsServiceDelivery.Deliver(bus, QueueDelivery(delivery, deadLetterArn, body) with
         {
-            ["ERROR_CODE"] = StringAttribute(failure.ErrorCode),
-            ["ERROR_MESSAGE"] = StringAttribute(failure.ErrorMessage),
-            ["RULE_ARN"] = StringAttribute(delivery.Rule.Arn),
-            ["TARGET_ARN"] = StringAttribute(delivery.Target.Arn ?? string.Empty),
+            MessageAttributes = new Dictionary<string, SqsMessageAttributeValue>(StringComparer.Ordinal)
+            {
+                ["ERROR_CODE"] = StringAttribute(failure.ErrorCode),
+                ["ERROR_MESSAGE"] = StringAttribute(failure.ErrorMessage),
+                ["RULE_ARN"] = StringAttribute(delivery.Rule.Arn),
+                ["TARGET_ARN"] = StringAttribute(delivery.Target.Arn ?? string.Empty),
+            },
         });
-        Enqueue(deadLetterQueue, message, delivery, bus);
     }
-
-    /// <summary>
-    /// Enqueues <paramref name="message"/> as a <c>SendMessage</c> would, after the queue's
-    /// <c>DelaySeconds</c>. On a FIFO queue it joins the target's message group, deduplicated by
-    /// the event id.
-    /// </summary>
-    private static void Enqueue(SqsQueueResource queue, SqsMessage message, Delivery delivery, InMemoryAwsBus bus)
-    {
-        string? groupId = null;
-        string? deduplicationId = null;
-        if (queue.IsFifo)
-        {
-            groupId = EventBridgeTargetInput.ResolveMessageGroupId(delivery.Target, delivery.Event.Envelope) ?? delivery.Target.Id ?? "eventbridge";
-            deduplicationId = delivery.EventId;
-        }
-
-        queue.AcceptSent(message, groupId, deduplicationId, delaySeconds: null, bus.TimeProvider, out _);
-    }
-
-    /// <summary>Whether <paramref name="queue"/>'s policy lets <paramref name="rule"/> send to it.</summary>
-    private static bool AdmitsDelivery(SqsQueueResource queue, RuleResource rule) =>
-        queue.Attributes?.TryGetValue(InternalQueueAttributeName.Policy, out var policy) != true
-        || string.IsNullOrEmpty(policy)
-        || SqsQueuePolicy.AdmitsServiceDelivery(policy!, ServiceRequest(SqsActionName.SendMessage, queue.Arn, rule));
-
-    /// <summary>A request by EventBridge, on <paramref name="rule"/>'s behalf, to act on a target resource.</summary>
-    private static SqsQueuePolicy.RequestContext ServiceRequest(string action, string resource, RuleResource rule) =>
-        new(action, resource, PrincipalAccount: null, PrincipalArn: null, SourceIp: null, SecureTransport: true)
-        {
-            Service = EventsServicePrincipal,
-            SourceArn = rule.Arn,
-            SourceAccount = rule.Arn.Split(':')[4],
-        };
 
     /// <summary>A target service's error as the AWS SDK for Java words it, which is how EventBridge records it.</summary>
     private static string ServiceErrorMessage(string message, string service, int statusCode, string errorCode) =>
@@ -313,17 +285,4 @@ internal static class EventBridgeEventDelivery
 
     private static SqsMessageAttributeValue StringAttribute(string value) =>
         new() { DataType = "String", StringValue = value };
-
-    private static SqsMessage CreateSqsMessage(string body, Dictionary<string, SqsMessageAttributeValue>? attributes)
-    {
-#pragma warning disable CA5351, CA1308 // SQS's MD5 digest is lowercase hex
-        return new SqsMessage
-        {
-            MessageId = Guid.NewGuid().ToString(),
-            Body = body,
-            MD5OfBody = Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(body))).ToLowerInvariant(),
-            MessageAttributes = attributes,
-        };
-#pragma warning restore CA5351, CA1308
-    }
 }
