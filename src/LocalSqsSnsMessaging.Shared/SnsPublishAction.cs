@@ -204,8 +204,9 @@ internal sealed class SnsPublishAction
 
     private bool TryGetQueue(string arn, out SqsQueueResource queue)
     {
-        queue = null!;
-        return _bus.Queues.TryGetValue(arn.Split(':').Last(), out queue!);
+        var found = _bus.TryGetQueueByArn(arn, out var match);
+        queue = match!;
+        return found;
     }
 
     private void Enqueue(SqsQueueResource queue, Message sqsMessage, OutboundMessage message)

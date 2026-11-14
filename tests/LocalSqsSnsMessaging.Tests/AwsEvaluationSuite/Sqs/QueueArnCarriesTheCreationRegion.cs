@@ -21,7 +21,6 @@ public sealed class QueueArnCarriesTheCreationRegion
     [Test]
     [DisplayName("sqs.queue-arn-carries-the-creation-region")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MultiRegion, "[alt] QueueArn must name the region the queue was created in: expected 'us-east-1', got 'us-west-2'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

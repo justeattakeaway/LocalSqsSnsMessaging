@@ -88,8 +88,7 @@ internal static class EventBridgeEventDelivery
             return;
         }
 
-        var queueName = arn.Split(':')[^1];
-        if (!bus.Queues.TryGetValue(queueName, out var queue))
+        if (!bus.TryGetQueueByArn(arn, out var queue))
         {
             return;
         }

@@ -120,7 +120,10 @@ static void GenerateJsonHandler(string serviceName, string modelNamespace, JsonE
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
-    code.AppendLine($"        var client = new Internal{serviceName}Client(bus);");
+    // SQS queues are regional: serve the request from the queues of the region it was made in.
+    code.AppendLine(serviceName == "Sqs"
+        ? "        var client = new InternalSqsClient(bus, AwsRequestRegion.FromRequest(request));"
+        : $"        var client = new Internal{serviceName}Client(bus);");
     code.AppendLine();
     code.AppendLine("        return operationName switch");
     code.AppendLine("        {");

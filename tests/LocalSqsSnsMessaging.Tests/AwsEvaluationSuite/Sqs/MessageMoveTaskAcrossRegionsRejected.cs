@@ -61,7 +61,6 @@ public sealed class MessageMoveTaskAcrossRegionsRejected
     [Test]
     [DisplayName("sqs.message-move-task-across-regions-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MultiRegion, "StartMessageMoveTask to a destination in another region succeeded instead of being refused with ResourceNotFoundException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

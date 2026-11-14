@@ -13,12 +13,24 @@ internal sealed class InternalSqsClient
 {
     private readonly InMemoryAwsBus _bus;
 
+    /// <summary>The region this client serves: it sees, creates and wires only this region's queues.</summary>
+    private readonly string _region;
+
     private const int MaxMessageSize = 1_048_576; // 1MB
 
-    internal InternalSqsClient(InMemoryAwsBus bus)
+    /// <param name="bus">The bus holding the queues.</param>
+    /// <param name="region">
+    /// The region the request was made in; <see langword="null"/> for the bus's
+    /// <see cref="InMemoryAwsBus.CurrentRegion"/>.
+    /// </param>
+    internal InternalSqsClient(InMemoryAwsBus bus, string? region = null)
     {
         _bus = bus;
+        _region = string.IsNullOrEmpty(region) ? bus.CurrentRegion : region!;
     }
+
+    /// <summary>The queues in this client's region, keyed by name (empty when none was ever created there).</summary>
+    private ConcurrentDictionary<string, SqsQueueResource> Queues => _bus.FindQueuesInRegion(_region) ?? [];
 
     public Task<ChangeMessageVisibilityResponse> ChangeMessageVisibilityAsync(ChangeMessageVisibilityRequest request,
         CancellationToken cancellationToken = default)
@@ -26,7 +38,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -275,6 +287,7 @@ internal sealed class InternalSqsClient
         SqsQueueValidation.ValidateQueueName(request.QueueName, fifo);
         var requestedAttributes = request.Attributes ?? [];
         SqsQueueValidation.ValidateAttributes(requestedAttributes, fifo, creating: true, current: new Dictionary<string, string>());
+        SqsQueueValidation.ValidateRedriveAllowPolicyRegion(requestedAttributes, _region);
         if (request.Tags is { Count: > 0 })
         {
             SqsQueueValidation.ValidateTags(request.Tags);
@@ -284,7 +297,7 @@ internal sealed class InternalSqsClient
             }
         }
 
-        if (_bus.Queues.TryGetValue(request.QueueName!, out var existingQueue))
+        if (Queues.TryGetValue(request.QueueName!, out var existingQueue))
         {
             // An existing name is only reused when everything asked for matches the queue as it is now.
             EnsureMatchesExistingQueue(existingQueue, requestedAttributes, request.Tags);
@@ -294,7 +307,7 @@ internal sealed class InternalSqsClient
 
         var queueUrl = _bus.ServiceUrl is not null
             ? $"{_bus.ServiceUrl.ToString().TrimEnd('/')}/{_bus.CurrentAccountId}/{request.QueueName}"
-            : $"https://sqs.{_bus.CurrentRegion}.amazonaws.com/{_bus.CurrentAccountId}/{request.QueueName}";
+            : $"https://sqs.{_region}.amazonaws.com/{_bus.CurrentAccountId}/{request.QueueName}";
         var visibilityTimeoutParsed = request.Attributes?.TryGetValue(InternalQueueAttributeName.VisibilityTimeout, out var visibilityTimeout) == true
             ? TimeSpan.FromSeconds(int.Parse(visibilityTimeout, NumberFormatInfo.InvariantInfo))
             : TimeSpan.FromSeconds(30);
@@ -303,7 +316,7 @@ internal sealed class InternalSqsClient
         var queue = new SqsQueueResource
         {
             Name = request.QueueName!,
-            Region = _bus.CurrentRegion,
+            Region = _region,
             AccountId = _bus.CurrentAccountId,
             Url = queueUrl,
             VisibilityTimeout = visibilityTimeoutParsed,
@@ -325,10 +338,11 @@ internal sealed class InternalSqsClient
         AddDefaultAttributes(queue);
         queue.Attributes.Add("QueueArn", queue.Arn);
         UpdateQueueProperties(queue);
-        if (!_bus.Queues.TryAdd(request.QueueName!, queue))
+        var regionQueues = _bus.GetOrAddQueuesInRegion(_region);
+        if (!regionQueues.TryAdd(request.QueueName!, queue))
         {
             // Created concurrently under the same name: answer as for an existing queue.
-            var winner = _bus.Queues[request.QueueName!];
+            var winner = regionQueues[request.QueueName!];
             EnsureMatchesExistingQueue(winner, requestedAttributes, request.Tags);
             return Task.FromResult(new CreateQueueResponse { QueueUrl = winner.Url }.SetCommonProperties());
         }
@@ -384,7 +398,7 @@ internal sealed class InternalSqsClient
         }
 
         var name = arn[(arn.LastIndexOf(':') + 1)..];
-        return _bus.Queues.TryGetValue(name, out var queue) && string.Equals(queue.Arn, arn, StringComparison.Ordinal)
+        return Queues.TryGetValue(name, out var queue) && string.Equals(queue.Arn, arn, StringComparison.Ordinal)
             ? queue
             : null;
     }
@@ -401,6 +415,13 @@ internal sealed class InternalSqsClient
         }
 
         var policy = SqsQueueValidation.ParseRedrivePolicy(value);
+        if (SqsQueueValidation.ArnRegion(policy.DeadLetterTargetArn) is { } targetRegion
+            && !string.Equals(targetRegion, source.Region, StringComparison.Ordinal))
+        {
+            throw SqsRequestValidation.InvalidParameterValue("RedrivePolicy", value,
+                "Dead-letter target must be in same region as the source.");
+        }
+
         var deadLetterQueue = FindQueueByArn(policy.DeadLetterTargetArn)
             ?? throw SqsRequestValidation.InvalidParameterValue("RedrivePolicy", value, "Dead letter target does not exist.");
         if (deadLetterQueue.IsFifo != source.IsFifo)
@@ -453,7 +474,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -493,7 +514,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryRemove(queueName, out var removedQueue))
+        if (!Queues.TryRemove(queueName, out var removedQueue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -508,7 +529,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -990,7 +1011,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -1214,7 +1235,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -1259,7 +1280,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -1304,7 +1325,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -1434,7 +1455,7 @@ internal sealed class InternalSqsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!_bus.Queues.TryGetValue(request.QueueName!, out var queue))
+        if (!Queues.TryGetValue(request.QueueName!, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -1449,12 +1470,12 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var deadLetterQueueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(deadLetterQueueName, out var deadLetterQueue))
+        if (!Queues.TryGetValue(deadLetterQueueName, out var deadLetterQueue))
         {
             throw new InternalQueueDoesNotExistException();
         }
 
-        var deadLetterSourceQueues = _bus.Queues.Values
+        var deadLetterSourceQueues = Queues.Values
             .Where(q => q.ErrorQueue?.Arn == deadLetterQueue.Arn)
             .Select(q => q.Url)
             .OrderBy(url => url)
@@ -1532,7 +1553,7 @@ internal sealed class InternalSqsClient
             throw SqsRequestValidation.InvalidParameterValue("Invalid or expired next token.");
         }
 
-        var allQueues = _bus.Queues
+        var allQueues = Queues
             .Values
             .Where(q => string.IsNullOrEmpty(request.QueueNamePrefix) || q.Name.StartsWith(request.QueueNamePrefix, StringComparison.Ordinal))
             .Select(q => q.Url)
@@ -1579,7 +1600,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -1603,7 +1624,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -1638,7 +1659,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -1688,7 +1709,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -1801,7 +1822,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -1814,6 +1835,7 @@ internal sealed class InternalSqsClient
         // Every attribute is checked before any is applied: one invalid value applies none.
         queue.Attributes ??= [];
         SqsQueueValidation.ValidateAttributes(request.Attributes, queue.IsFifo, creating: false, current: queue.Attributes);
+        SqsQueueValidation.ValidateRedriveAllowPolicyRegion(request.Attributes, queue.Region);
         if (request.Attributes.TryGetValue(InternalQueueAttributeName.RedrivePolicy, out var redrivePolicy))
         {
             ValidateRedrivePolicy(queue, redrivePolicy);
@@ -1875,7 +1897,7 @@ internal sealed class InternalSqsClient
                 var deadLetterTargetQueueName = deadLetterTargetArn.Split(':').Last();
                 // Checked by ValidateRedrivePolicy when set; the dead-letter queue may have been
                 // deleted since, which leaves the policy in place with nowhere to redrive to.
-                queue.ErrorQueue = _bus.Queues.GetValueOrDefault(deadLetterTargetQueueName);
+                queue.ErrorQueue = Queues.GetValueOrDefault(deadLetterTargetQueueName);
                 queue.MaxReceiveCount = maxReceiveCount;
 
                 // SQS stores the policy normalised: compact JSON with a numeric maxReceiveCount.
@@ -1894,7 +1916,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var sourceQueueName = GetQueueNameFromArn(request.SourceArn!);
-        if (!_bus.Queues.TryGetValue(sourceQueueName, out var sourceQueue))
+        if (!Queues.TryGetValue(sourceQueueName, out var sourceQueue))
         {
             throw new InternalResourceNotFoundException("Source queue not found.");
         }
@@ -1907,7 +1929,7 @@ internal sealed class InternalSqsClient
         }
 
         var deadLetterQueues =
-            _bus.Queues.Values
+            Queues.Values
                 .Select(q => q.ErrorQueue?.Arn)
                 .Where(arn => arn is not null);
 
@@ -1969,7 +1991,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -2001,7 +2023,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
@@ -2034,7 +2056,7 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        if (!_bus.Queues.TryGetValue(queueName, out var queue))
+        if (!Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }

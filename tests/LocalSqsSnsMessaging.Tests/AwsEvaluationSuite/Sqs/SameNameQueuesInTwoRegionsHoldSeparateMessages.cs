@@ -22,7 +22,6 @@ public sealed class SameNameQueuesInTwoRegionsHoldSeparateMessages
     [Test]
     [DisplayName("sqs.same-name-queues-in-two-regions-hold-separate-messages")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MultiRegion, "the 'us-east-1' queue of the same name is the home queue, so it delivers the home region's messages too")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
