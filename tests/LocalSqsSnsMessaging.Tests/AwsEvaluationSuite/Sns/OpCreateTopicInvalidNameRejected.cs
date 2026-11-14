@@ -18,7 +18,6 @@ public sealed class OpCreateTopicInvalidNameRejected
     [Test]
     [DisplayName("sns.op-create-topic-invalid-name-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "CreateTopic accepts a name with characters outside [A-Za-z0-9_-] ('bad name!<hex>$') instead of refusing with InvalidParameter 'Invalid parameter: Topic Name'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

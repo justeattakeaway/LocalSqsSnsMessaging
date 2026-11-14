@@ -18,7 +18,6 @@ public sealed class CreateTopicInvalidAttributeCreatesNothing
     [Test]
     [DisplayName("sns.create-topic-invalid-attribute-creates-nothing")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "CreateTopic accepts a malformed Policy ('{not json') and creates the topic instead of refusing with InvalidParameter 'Invalid parameter: Policy Error: null'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -14,7 +14,6 @@ public sealed class ListSubscriptionsByTopicReflectsState
     [Test]
     [DisplayName("sns.list-subscriptions-by-topic-reflects-state")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe to a well-formed SQS ARN of a queue that does not exist is refused with NotFound 'Queue not found.' instead of creating the subscription")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

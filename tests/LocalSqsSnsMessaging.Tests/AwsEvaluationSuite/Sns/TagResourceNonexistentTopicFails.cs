@@ -32,7 +32,6 @@ public sealed class TagResourceNonexistentTopicFails
     [Test]
     [DisplayName("sns.tag-resource-nonexistent-topic-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsErrorMessages, "TagResource on a deleted topic fails with code 'ResourceNotFoundException' instead of 'ResourceNotFound'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

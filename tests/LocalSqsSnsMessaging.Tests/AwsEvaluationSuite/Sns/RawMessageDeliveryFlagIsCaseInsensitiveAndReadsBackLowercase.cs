@@ -22,7 +22,6 @@ public sealed class RawMessageDeliveryFlagIsCaseInsensitiveAndReadsBackLowercase
     [Test]
     [DisplayName("sns.raw-message-delivery-flag-is-case-insensitive-and-reads-back-lowercase")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "RawMessageDelivery 'True' reads back as 'True' instead of 'true'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

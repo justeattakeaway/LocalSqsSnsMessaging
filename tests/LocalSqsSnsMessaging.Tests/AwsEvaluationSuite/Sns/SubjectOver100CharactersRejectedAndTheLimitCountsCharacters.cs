@@ -23,7 +23,7 @@ public sealed class SubjectOver100CharactersRejectedAndTheLimitCountsCharacters
     [Test]
     [DisplayName("sns.subject-over-100-characters-rejected-and-the-limit-counts-characters")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a 101-character Subject instead of refusing with InvalidParameter 'Invalid parameter: Subject'")]
+    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a Subject over 100 characters instead of refusing it with 'Invalid parameter: Subject'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -38,7 +38,6 @@ public sealed class DeleteTopicThenRecreateStartsFresh
     [Test]
     [DisplayName("sns.delete-topic-then-recreate-starts-fresh")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe to the ARN of a queue that does not exist is refused with NotFound 'Queue not found.' instead of creating the subscription")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -17,7 +17,6 @@ public sealed class SetTopicAttributeInvalidPolicyRejected
     [Test]
     [DisplayName("sns.set-topic-attribute-invalid-policy-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "GetTopicAttributes on a new topic has no default Policy attribute")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

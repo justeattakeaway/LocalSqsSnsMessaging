@@ -20,7 +20,6 @@ public sealed class TopicSetAttributeImmutableRejected
     [Test]
     [DisplayName("sns.topic-set-attribute-immutable-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "SetTopicAttributes FifoTopic=true on a standard topic succeeds instead of being refused with InvalidParameter 'Invalid parameter: AttributeName'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

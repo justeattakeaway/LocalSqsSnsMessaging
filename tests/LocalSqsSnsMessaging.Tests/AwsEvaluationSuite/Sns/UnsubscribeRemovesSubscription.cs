@@ -19,7 +19,6 @@ public sealed class UnsubscribeRemovesSubscription
     [Test]
     [DisplayName("sns.unsubscribe-removes-subscription")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribing an SQS ARN with no queue behind it is refused NotFound 'Queue not found.' instead of being confirmed")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

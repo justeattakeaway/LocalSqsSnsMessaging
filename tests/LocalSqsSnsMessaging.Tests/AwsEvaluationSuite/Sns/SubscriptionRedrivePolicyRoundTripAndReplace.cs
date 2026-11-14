@@ -21,7 +21,7 @@ public sealed class SubscriptionRedrivePolicyRoundTripAndReplace
     [Test]
     [DisplayName("sns.subscription-redrive-policy-round-trip-and-replace")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe to a well-formed SQS ARN of a queue that does not exist is refused with NotFound 'Queue not found.' instead of creating the subscription")]
+    [KnownFidelityGap(FidelityGap.SnsDeliveryFailures, "a RedrivePolicy without deadLetterTargetArn is accepted instead of refused with 'Invalid parameter: RedrivePolicy: missing required value'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

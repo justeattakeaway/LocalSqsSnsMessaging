@@ -19,7 +19,6 @@ public sealed class DisplayNameOver100CharactersRejected
     [Test]
     [DisplayName("sns.display-name-over-100-characters-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "SetTopicAttributes accepts a 101-character DisplayName instead of refusing it with InvalidParameter 'Invalid parameter: DisplayName'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

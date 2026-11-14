@@ -20,7 +20,7 @@ public sealed class PublishBatchEntryIdOver80CharactersOrWithInvalidCharactersRe
     [Test]
     [DisplayName("sns.publish-batch-entry-id-over-80-characters-or-with-invalid-characters-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch with an 81-character entry Id succeeds instead of InvalidBatchEntryId")]
+    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch accepts an entry Id over 80 characters or with invalid characters instead of refusing it with InvalidBatchEntryId")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

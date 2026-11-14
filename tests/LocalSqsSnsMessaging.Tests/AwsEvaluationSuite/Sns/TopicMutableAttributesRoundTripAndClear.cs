@@ -20,7 +20,6 @@ public sealed class TopicMutableAttributesRoundTripAndClear
     [Test]
     [DisplayName("sns.topic-mutable-attributes-round-trip-and-clear")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "A new topic reports no DisplayName attribute instead of the default ''")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

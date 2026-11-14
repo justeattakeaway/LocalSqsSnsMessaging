@@ -22,7 +22,7 @@ public sealed class PublishBatchOneCallTwoMessageGroupsEachKeepsItsOwnOrder
     [Test]
     [DisplayName("sns.publish-batch-one-call-two-message-groups-each-keeps-its-own-order")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFifo, "PublishBatch to a FIFO topic returns Successful entries without a SequenceNumber")]
+    [KnownFidelityGap(FidelityGap.SnsFifo, "PublishBatch to a FIFO topic returns no SequenceNumber per entry")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

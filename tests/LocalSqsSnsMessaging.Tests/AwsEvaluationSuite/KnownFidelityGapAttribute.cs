@@ -12,15 +12,6 @@ public enum FidelityGap
     /// <summary>A one-off behavioral difference, kept for compatibility.</summary>
     Other,
 
-    /// <summary>SNS: the right failure, but a different error code or message.</summary>
-    SnsErrorMessages,
-
-    /// <summary>SNS: subscription lifecycle (ARN format, subscribing a missing queue, idempotent subscribe, unsubscribe).</summary>
-    SnsSubscriptions,
-
-    /// <summary>SNS: topic attributes (defaults, computed attributes, validation, immutability).</summary>
-    SnsTopicAttributes,
-
     /// <summary>SNS: subscription attributes (read-back form, validation, unknown names).</summary>
     SnsSubscriptionAttributes,
 
@@ -47,12 +38,6 @@ public enum FidelityGap
 
     /// <summary>SNS: topic policies, AddPermission and RemovePermission.</summary>
     SnsPermissions,
-
-    /// <summary>SNS: topic tags.</summary>
-    SnsTags,
-
-    /// <summary>SNS: list operations and their pagination tokens.</summary>
-    SnsListing,
 
     /// <summary>SNS: <c>MessageStructure=json</c> publishes.</summary>
     SnsMessageStructure,

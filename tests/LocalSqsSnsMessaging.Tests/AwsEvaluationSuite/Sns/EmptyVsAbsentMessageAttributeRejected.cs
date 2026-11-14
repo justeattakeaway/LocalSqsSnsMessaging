@@ -21,7 +21,7 @@ public sealed class EmptyVsAbsentMessageAttributeRejected
     [Test]
     [DisplayName("sns.empty-vs-absent-message-attribute-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts an empty-string String message attribute value instead of refusing it with ParameterValueInvalid")]
+    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a message attribute with an empty value instead of refusing it with InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

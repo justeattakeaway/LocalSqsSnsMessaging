@@ -24,7 +24,7 @@ public sealed class DeletedEndpointQueueDeadLettersEachSubscriptionInItsOwnForma
     [Test]
     [DisplayName("sns.deleted-endpoint-queue-dead-letters-each-subscription-in-its-own-format")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsRawDelivery, "The raw-delivery dead-letter copy carries the Number attribute verbatim as '+5' instead of the SQS-normalised '5'")]
+    [KnownFidelityGap(FidelityGap.SnsRawDelivery, "the raw dead-letter copy carries the Number attribute verbatim ('+5') instead of in canonical form ('5')")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

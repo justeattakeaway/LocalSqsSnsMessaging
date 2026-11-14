@@ -33,7 +33,6 @@ public sealed class TopicTagsAtCreateOverwriteAndUntagAbsentKey
     [Test]
     [DisplayName("sns.topic-tags-at-create-overwrite-and-untag-absent-key")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTags, "Tags given to CreateTopic are not stored: ListTagsForResource returns none")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

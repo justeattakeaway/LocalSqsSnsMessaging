@@ -25,7 +25,7 @@ public sealed class MessageAttributeNameOutsideTheAllowedCharsetRejected
     [Test]
     [DisplayName("sns__sqs.message-attribute-name-outside-the-allowed-charset-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a message attribute name containing a space instead of refusing it with ParameterValueInvalid")]
+    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a message attribute name with characters outside SNS's allowed set")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

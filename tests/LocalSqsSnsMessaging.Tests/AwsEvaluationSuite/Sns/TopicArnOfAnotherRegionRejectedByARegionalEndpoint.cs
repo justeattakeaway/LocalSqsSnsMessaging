@@ -19,7 +19,7 @@ public sealed class TopicArnOfAnotherRegionRejectedByARegionalEndpoint
     [Test]
     [DisplayName("sns.topic-arn-of-another-region-rejected-by-a-regional-endpoint")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsRegions, "a us-east-1 client's GetTopicAttributes for a us-west-2 topic ARN succeeds instead of being refused with InvalidParameter 'Invalid parameter: TopicArn'")]
+    [KnownFidelityGap(FidelityGap.SnsRegions, "SNS isn't regional: an endpoint in one region answers for a topic ARN in another")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -18,7 +18,6 @@ public sealed class DeleteTopicCascadesSubscriptions
     [Test]
     [DisplayName("sns.delete-topic-cascades-subscriptions")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe returns a bare GUID SubscriptionArn instead of '<TopicArn>:<id>'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

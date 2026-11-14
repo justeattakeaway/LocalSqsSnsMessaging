@@ -18,7 +18,7 @@ public sealed class FilterPolicyScopeConstrainsPolicyShape
     [Test]
     [DisplayName("sns.filter-policy-scope-constrains-policy-shape")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe to an sqs endpoint whose queue does not exist is refused with NotFound 'Queue not found.'; AWS accepts it without checking the queue")]
+    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "a nested policy under MessageAttributes scope is refused with 'Invalid parameter: FilterPolicy: Filter policy scope ...' instead of 'Invalid parameter: Filter policy scope ...'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -20,7 +20,6 @@ public sealed class ConcurrentAddPermissionDistinctLabelsAllRetained
     [Test]
     [DisplayName("sns.concurrent-add-permission-distinct-labels-all-retained")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsPermissions, "A new topic has no default Policy attribute, so reading the default statements fails before any AddPermission")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

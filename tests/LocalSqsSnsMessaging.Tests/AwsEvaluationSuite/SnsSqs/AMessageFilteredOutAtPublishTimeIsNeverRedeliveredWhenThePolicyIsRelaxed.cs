@@ -136,7 +136,6 @@ public sealed class AMessageFilteredOutAtPublishTimeIsNeverRedeliveredWhenThePol
     [Test]
     [DisplayName("sns__sqs.a-message-filtered-out-at-publish-time-is-never-redelivered-when-the-policy-is-relaxed")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "A subscription created without a FilterPolicy reports a FilterPolicy attribute (reading '') instead of omitting it")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -24,7 +24,7 @@ public sealed class SnsSubscriptionDlqCapturesTheNotificationTheEndpointPolicyDe
     [Test]
     [DisplayName("sns__sqs.sns-subscription-dlq-captures-the-notification-the-endpoint-policy-denied")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsDeliveryFailures, "SNS delivery ignores a Deny for sns.amazonaws.com in the endpoint queue's policy, so the notification is delivered and never reaches the subscription's dead-letter queue")]
+    [KnownFidelityGap(FidelityGap.SnsDeliveryFailures, "SNS delivers to a queue whose policy denies it, so nothing reaches the subscription's dead-letter queue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

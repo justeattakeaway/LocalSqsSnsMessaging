@@ -16,7 +16,6 @@ public sealed class ListTagsForNonexistentTopicFails
     [Test]
     [DisplayName("sns.list-tags-for-nonexistent-topic-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTags, "CreateTopic drops its Tags, so ListTagsForResource on the live topic returns no sim2real tag")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -21,7 +21,6 @@ public sealed class RawMessageDeliveryStripsTheEnvelopeForOnlyThatSubscription
     [Test]
     [DisplayName("sns.raw-message-delivery-strips-the-envelope-for-only-that-subscription")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "RawMessageDelivery reads back as 'True' instead of 'true', so the wait for the attribute never ends")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -13,7 +13,6 @@ public sealed class TagResourceLifecycleAndLimit
     [Test]
     [DisplayName("sns.tag-resource-lifecycle-and-limit")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTags, "TagResource with 51 tags succeeds instead of being refused with TagLimitExceeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

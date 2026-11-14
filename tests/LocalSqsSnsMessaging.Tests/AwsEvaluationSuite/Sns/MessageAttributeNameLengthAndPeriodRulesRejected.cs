@@ -21,7 +21,7 @@ public sealed class MessageAttributeNameLengthAndPeriodRulesRejected
     [Test]
     [DisplayName("sns.message-attribute-name-length-and-period-rules-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a 257-character message attribute name (and leading, trailing or doubled periods) instead of refusing it with ParameterValueInvalid")]
+    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts message attribute names over 256 characters or with leading, trailing or repeated periods")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

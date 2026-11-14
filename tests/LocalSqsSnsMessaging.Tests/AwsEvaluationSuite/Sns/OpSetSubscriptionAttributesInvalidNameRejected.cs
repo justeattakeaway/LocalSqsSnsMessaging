@@ -16,7 +16,6 @@ public sealed class OpSetSubscriptionAttributesInvalidNameRejected
     [Test]
     [DisplayName("sns.op-set-subscription-attributes-invalid-name-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe to an sqs endpoint whose queue does not exist is refused with NotFound 'Queue not found.'; AWS confirms it without resolving the queue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

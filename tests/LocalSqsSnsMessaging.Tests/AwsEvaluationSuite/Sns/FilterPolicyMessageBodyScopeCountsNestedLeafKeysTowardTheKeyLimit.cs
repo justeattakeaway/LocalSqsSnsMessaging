@@ -22,7 +22,7 @@ public sealed class FilterPolicyMessageBodyScopeCountsNestedLeafKeysTowardTheKey
     [Test]
     [DisplayName("sns.filter-policy-message-body-scope-counts-nested-leaf-keys-toward-the-key-limit")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe to a well-formed SQS ARN of a queue that does not exist is refused with NotFound 'Queue not found.' instead of creating the subscription")]
+    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "a MessageBody-scoped filter policy with more than five nested leaf keys is accepted")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

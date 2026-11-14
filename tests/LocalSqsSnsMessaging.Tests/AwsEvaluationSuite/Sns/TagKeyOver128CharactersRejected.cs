@@ -19,7 +19,6 @@ public sealed class TagKeyOver128CharactersRejected
     [Test]
     [DisplayName("sns.tag-key-over-128-characters-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTags, "TagResource with a 129-character key succeeds instead of ValidationError")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

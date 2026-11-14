@@ -15,7 +15,6 @@ public sealed class TopicPolicyAddRemovePermission
     [Test]
     [DisplayName("sns.topic-policy-add-remove-permission")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsPermissions, "RemovePermission of the only added statement deletes the topic's Policy attribute entirely (AWS keeps the default policy), so reading it back fails")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

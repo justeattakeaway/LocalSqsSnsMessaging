@@ -17,7 +17,6 @@ public sealed class SetTopicAttributesUnknownNameFails
     [Test]
     [DisplayName("sns.set-topic-attributes-unknown-name-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "A new topic reports no default DisplayName attribute, so the baseline read fails before the unknown attribute is tried")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

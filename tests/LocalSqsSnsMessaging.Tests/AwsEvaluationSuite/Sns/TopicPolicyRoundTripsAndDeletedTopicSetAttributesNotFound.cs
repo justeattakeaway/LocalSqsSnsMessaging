@@ -18,7 +18,6 @@ public sealed class TopicPolicyRoundTripsAndDeletedTopicSetAttributesNotFound
     [Test]
     [DisplayName("sns.topic-policy-round-trips-and-deleted-topic-set-attributes-not-found")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsErrorMessages, "GetTopicAttributes on a deleted topic is refused with NotFound 'Topic not found.' instead of 'Topic does not exist'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

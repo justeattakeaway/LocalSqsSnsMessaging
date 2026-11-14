@@ -22,7 +22,7 @@ public sealed class NumberAttributeBeyondThePrecisionOrScaleBoundsRejected
     [Test]
     [DisplayName("sns.number-attribute-beyond-the-precision-or-scale-bounds-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a 39-digit Number attribute instead of refusing it with ParameterValueInvalid '... must have less than 38 precision digits.'")]
+    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a Number attribute beyond SNS's precision or scale bounds")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

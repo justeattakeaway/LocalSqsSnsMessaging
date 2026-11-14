@@ -21,7 +21,7 @@ public sealed class AddPermissionInvalidActionRejected
     [Test]
     [DisplayName("sns.add-permission-invalid-action-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsPermissions, "AddPermission accepts ActionName 'NotARealSnsAction' instead of refusing it with InvalidParameter 'Policy statement action out of service scope!'")]
+    [KnownFidelityGap(FidelityGap.SnsPermissions, "AddPermission accepts an action name SNS doesn't have instead of refusing it with InvalidParameter")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

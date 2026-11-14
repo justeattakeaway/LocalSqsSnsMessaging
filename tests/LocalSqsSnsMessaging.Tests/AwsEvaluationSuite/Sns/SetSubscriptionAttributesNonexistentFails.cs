@@ -17,7 +17,6 @@ public sealed class SetSubscriptionAttributesNonexistentFails
     [Test]
     [DisplayName("sns.set-subscription-attributes-nonexistent-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "RawMessageDelivery set to 'true' reads back as 'True' instead of 'true'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

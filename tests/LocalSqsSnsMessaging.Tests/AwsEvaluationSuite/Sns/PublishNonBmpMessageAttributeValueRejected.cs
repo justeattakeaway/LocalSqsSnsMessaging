@@ -27,7 +27,7 @@ public sealed class PublishNonBmpMessageAttributeValueRejected
     [Test]
     [DisplayName("sns.publish-non-bmp-message-attribute-value-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts an astral-plane codepoint in a String message-attribute value instead of refusing it with InvalidParameter")]
+    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a String attribute value with characters outside the Basic Multilingual Plane")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -15,7 +15,6 @@ public sealed class AddPermissionLifecycleAndDuplicateLabel
     [Test]
     [DisplayName("sns.add-permission-lifecycle-and-duplicate-label")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsPermissions, "AddPermission with a Label already in the policy fails with an internal error (HTTP 500, no error code) instead of InvalidParameter 'Invalid parameter: Statement already exists'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

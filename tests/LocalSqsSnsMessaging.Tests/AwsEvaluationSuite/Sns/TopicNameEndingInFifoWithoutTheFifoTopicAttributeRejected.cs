@@ -19,7 +19,6 @@ public sealed class TopicNameEndingInFifoWithoutTheFifoTopicAttributeRejected
     [Test]
     [DisplayName("sns.topic-name-ending-in-fifo-without-the-fifo-topic-attribute-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "CreateTopic of a .fifo name without FifoTopic=true creates a topic instead of refusing it with InvalidParameter 'Invalid parameter: Topic Name'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

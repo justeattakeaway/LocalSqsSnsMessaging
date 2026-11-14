@@ -41,7 +41,6 @@ public sealed class SnsPublishBatchDeliversOneEnvelopePerEntryToTheSubscribedQue
     [Test]
     [DisplayName("sns__sqs.sns-publish-batch-delivers-one-envelope-per-entry-to-the-subscribed-queue")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsErrorMessages, "GetSubscriptionAttributes on an unsubscribed ARN is refused NotFound 'Subscription not found.' instead of 'Subscription does not exist'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

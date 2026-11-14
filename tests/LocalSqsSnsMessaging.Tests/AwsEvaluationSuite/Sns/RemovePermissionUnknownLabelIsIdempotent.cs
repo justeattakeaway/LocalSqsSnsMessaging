@@ -20,7 +20,6 @@ public sealed class RemovePermissionUnknownLabelIsIdempotent
     [Test]
     [DisplayName("sns.remove-permission-unknown-label-is-idempotent")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsPermissions, "RemovePermission for a never-added label fails with a JSON ArgumentException body ('can't find label') instead of succeeding as a no-op")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

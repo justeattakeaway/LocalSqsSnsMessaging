@@ -23,7 +23,7 @@ public sealed class StandardTopicMessageGroupIdReachesTheQueueAsItsMessageGroupI
     [Test]
     [DisplayName("sns.standard-topic-message-group-id-reaches-the-queue-as-its-message-group-id")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFifo, "A MessageGroupId published to a standard topic is not forwarded as the SQS MessageGroupId system attribute (raw or enveloped)")]
+    [KnownFidelityGap(FidelityGap.SnsFifo, "a MessageGroupId published to a standard topic doesn't reach the subscribed queue's messages")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

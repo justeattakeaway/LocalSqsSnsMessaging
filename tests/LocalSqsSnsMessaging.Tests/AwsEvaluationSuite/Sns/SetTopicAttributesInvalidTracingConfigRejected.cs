@@ -19,7 +19,6 @@ public sealed class SetTopicAttributesInvalidTracingConfigRejected
     [Test]
     [DisplayName("sns.set-topic-attributes-invalid-tracing-config-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "SetTopicAttributes accepts TracingConfig=Sampled instead of refusing with InvalidParameter 'Invalid parameter: Invalid tracing config value: Sampled'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

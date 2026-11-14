@@ -21,7 +21,6 @@ public sealed class ListTopicsAndSubscriptionsForgedNextTokenRejected
     [Test]
     [DisplayName("sns.list-topics-and-subscriptions-forged-next-token-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsListing, "ListTopics accepts a NextToken SNS never issued and returns a page instead of refusing it with 'Invalid parameter: NextToken'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

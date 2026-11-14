@@ -37,7 +37,7 @@ public sealed partial class SnsToSqsEnvelopeCarriesTheSubjectAndTypedMessageAttr
     [Test]
     [DisplayName("sns__sqs.sns-to-sqs-envelope-carries-the-subject-and-typed-message-attributes")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsEnvelope, "non-raw delivery also sets a 'TopicArn' SQS message attribute on the delivered message, where AWS sets none")]
+    [KnownFidelityGap(FidelityGap.SnsEnvelope, "the envelope's UnsubscribeURL doesn't end with this subscription's Unsubscribe action")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

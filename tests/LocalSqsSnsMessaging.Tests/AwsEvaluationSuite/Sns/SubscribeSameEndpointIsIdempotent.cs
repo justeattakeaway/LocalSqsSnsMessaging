@@ -19,7 +19,6 @@ public sealed class SubscribeSameEndpointIsIdempotent
     [Test]
     [DisplayName("sns.subscribe-same-endpoint-is-idempotent")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe to an sqs endpoint whose queue does not exist is refused with NotFound 'Queue not found.'; AWS confirms it without resolving the queue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

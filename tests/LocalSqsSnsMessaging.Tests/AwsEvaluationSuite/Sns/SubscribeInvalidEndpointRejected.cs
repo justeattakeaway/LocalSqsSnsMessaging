@@ -18,7 +18,6 @@ public sealed class SubscribeInvalidEndpointRejected
     [Test]
     [DisplayName("sns.subscribe-invalid-endpoint-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe of a well-formed ARN for a queue that does not exist is refused with NotFound 'Queue not found.' instead of being accepted")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

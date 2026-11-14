@@ -21,7 +21,6 @@ public sealed class SqsSubscriptionDeliversThePublishedMessageUnconditionally
     [Test]
     [DisplayName("sns.sqs-subscription-delivers-the-published-message-unconditionally")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "SubscriptionArn is a bare GUID instead of '<topic ARN>:<id>'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

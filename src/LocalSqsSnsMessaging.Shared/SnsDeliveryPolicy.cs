@@ -51,6 +51,41 @@ internal sealed class SnsDeliveryPolicy
     /// then overrides it unless the topic disables overrides. With neither, the AWS defaults apply
     /// (3 retries, 20 seconds apart, linear).
     /// </summary>
+    /// <summary>The backoff functions SNS accepts in a retry policy.</summary>
+    private static readonly string[] BackoffFunctions = ["linear", "arithmetic", "geometric", "exponential"];
+
+    /// <summary>
+    /// Validates a topic's <c>DeliveryPolicy</c>: well-formed JSON, and a default retry policy within
+    /// the bounds SNS documents. An empty value clears the policy.
+    /// </summary>
+    public static void ValidateTopicPolicy(string? policy)
+    {
+        Validate(policy);
+        if (string.IsNullOrWhiteSpace(policy)
+            || Parse(policy)?["http"] is not JsonObject http
+            || http["defaultHealthyRetryPolicy"] is not JsonObject retry)
+        {
+            return;
+        }
+
+        const string prefix = "Invalid parameter: DeliveryPolicy: http.defaultHealthyRetryPolicy.";
+        if (GetInt(retry, "numRetries") is > 100)
+        {
+            throw new InternalInvalidParameterException($"{prefix}numRetries must be less than or equal to 100");
+        }
+
+        if (GetInt(retry, "numRetries") is < 0)
+        {
+            throw new InternalInvalidParameterException($"{prefix}numRetries must be greater than or equal to 0");
+        }
+
+        if (retry["backoffFunction"] is JsonNode backoff
+            && (backoff is not JsonValue value || !value.TryGetValue<string>(out var function) || !BackoffFunctions.Contains(function, StringComparer.Ordinal)))
+        {
+            throw new InternalInvalidParameterException($"{prefix}backoffFunction must be one of {string.Join(", ", BackoffFunctions)}");
+        }
+    }
+
     public static SnsDeliveryPolicy Resolve(string? subscriptionPolicy, string? topicPolicy)
     {
         var topic = Parse(topicPolicy)?["http"] as JsonObject;

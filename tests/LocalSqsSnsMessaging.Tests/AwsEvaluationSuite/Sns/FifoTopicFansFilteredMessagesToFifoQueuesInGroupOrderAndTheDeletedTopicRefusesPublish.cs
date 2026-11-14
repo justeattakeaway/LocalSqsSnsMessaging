@@ -34,7 +34,6 @@ public sealed class FifoTopicFansFilteredMessagesToFifoQueuesInGroupOrderAndTheD
     [Test]
     [DisplayName("sns.fifo-topic-fans-filtered-messages-to-fifo-queues-in-group-order-and-the-deleted-topic-refuses-publish")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsErrorMessages, "ListSubscriptionsByTopic on a deleted topic is refused NotFound 'Topic not found.' instead of 'Topic does not exist'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

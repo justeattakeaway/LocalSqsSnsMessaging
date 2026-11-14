@@ -19,7 +19,6 @@ public sealed class GetTopicAttributesMalformedArnRejected
     [Test]
     [DisplayName("sns.get-topic-attributes-malformed-arn-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "GetTopicAttributes with TopicArn 'this-is-not-an-arn' fails with an ArgumentException (HTTP 500) instead of InvalidParameter 'An ARN must have at least 6 elements, not 1'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

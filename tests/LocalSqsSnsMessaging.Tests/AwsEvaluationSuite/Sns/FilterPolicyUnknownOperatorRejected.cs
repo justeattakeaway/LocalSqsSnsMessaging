@@ -22,7 +22,7 @@ public sealed class FilterPolicyUnknownOperatorRejected
     [Test]
     [DisplayName("sns.filter-policy-unknown-operator-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe of a well-formed ARN for a queue that does not exist is refused with NotFound 'Queue not found.' instead of being accepted")]
+    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "an unknown match type is refused without SNS's 'Unrecognized match type ...' message and its source-location suffix")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

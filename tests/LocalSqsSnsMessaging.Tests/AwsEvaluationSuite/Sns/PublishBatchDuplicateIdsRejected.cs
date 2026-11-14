@@ -21,7 +21,7 @@ public sealed class PublishBatchDuplicateIdsRejected
     [Test]
     [DisplayName("sns.publish-batch-duplicate-ids-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch with two entries sharing Id 'dup' succeeds for both instead of BatchEntryIdsNotDistinct")]
+    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch accepts two entries with the same Id instead of refusing the batch with BatchEntryIdsNotDistinct")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

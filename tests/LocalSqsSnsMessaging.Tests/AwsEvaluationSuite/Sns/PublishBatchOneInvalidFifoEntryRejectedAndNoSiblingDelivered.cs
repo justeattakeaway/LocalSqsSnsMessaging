@@ -20,7 +20,7 @@ public sealed class PublishBatchOneInvalidFifoEntryRejectedAndNoSiblingDelivered
     [Test]
     [DisplayName("sns.publish-batch-one-invalid-fifo-entry-rejected-and-no-sibling-delivered")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsBatch, "A FIFO PublishBatch with one entry missing MessageGroupId publishes the siblings and fails that entry with InternalError instead of refusing the whole request with InvalidParameter")]
+    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch to a FIFO topic accepts an entry without a MessageGroupId instead of refusing the whole batch")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

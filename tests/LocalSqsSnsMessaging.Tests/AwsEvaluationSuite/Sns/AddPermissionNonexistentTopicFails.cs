@@ -18,7 +18,6 @@ public sealed class AddPermissionNonexistentTopicFails
     [Test]
     [DisplayName("sns.add-permission-nonexistent-topic-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsErrorMessages, "GetTopicAttributes on a deleted topic is refused with NotFound 'Topic not found.' instead of 'Topic does not exist'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

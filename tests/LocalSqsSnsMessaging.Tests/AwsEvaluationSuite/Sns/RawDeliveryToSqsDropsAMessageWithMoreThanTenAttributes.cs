@@ -23,7 +23,7 @@ public sealed class RawDeliveryToSqsDropsAMessageWithMoreThanTenAttributes
     [Test]
     [DisplayName("sns.raw-delivery-to-sqs-drops-a-message-with-more-than-ten-attributes")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsRawDelivery, "Raw delivery hands SQS a message with eleven message attributes instead of dropping it")]
+    [KnownFidelityGap(FidelityGap.SnsRawDelivery, "raw delivery to SQS delivers a message with eleven attributes, which SQS would refuse, instead of dropping it")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

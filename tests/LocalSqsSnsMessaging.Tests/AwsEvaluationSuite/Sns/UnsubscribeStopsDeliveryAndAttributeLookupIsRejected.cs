@@ -22,7 +22,6 @@ public sealed class UnsubscribeStopsDeliveryAndAttributeLookupIsRejected
     [Test]
     [DisplayName("sns.unsubscribe-stops-delivery-and-attribute-lookup-is-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsErrorMessages, "GetSubscriptionAttributes on a removed subscription is refused with NotFound 'Subscription not found.' instead of 'Subscription does not exist'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

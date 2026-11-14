@@ -40,7 +40,6 @@ public sealed class TagResourceReservedAwsPrefixRejected
     [Test]
     [DisplayName("sns.tag-resource-reserved-aws-prefix-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTags, "TagResource accepts a tag key in the reserved aws: namespace instead of refusing it with InvalidParameter")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

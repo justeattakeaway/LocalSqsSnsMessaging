@@ -21,7 +21,7 @@ public sealed class PublishBatchValidationIsRequestLevel
     [Test]
     [DisplayName("sns.publish-batch-validation-is-request-level")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch with a Number attribute of 'not-a-number' succeeds instead of refusing the request with ParameterValueInvalid")]
+    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch accepts an entry with a malformed Number attribute instead of refusing the whole request")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

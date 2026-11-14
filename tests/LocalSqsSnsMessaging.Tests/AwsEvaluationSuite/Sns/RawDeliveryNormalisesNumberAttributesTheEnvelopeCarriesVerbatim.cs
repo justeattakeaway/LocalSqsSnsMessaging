@@ -24,7 +24,7 @@ public sealed class RawDeliveryNormalisesNumberAttributesTheEnvelopeCarriesVerba
     [Test]
     [DisplayName("sns.raw-delivery-normalises-number-attributes-the-envelope-carries-verbatim")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsRawDelivery, "raw delivery passes Number attributes through verbatim ('+5', '.5', '1.', '1.500') instead of in canonical form ('5', '0.5', '1', '1.5')")]
+    [KnownFidelityGap(FidelityGap.SnsRawDelivery, "raw delivery carries Number attributes verbatim instead of in canonical form ('+5' instead of '5')")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

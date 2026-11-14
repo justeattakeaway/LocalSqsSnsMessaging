@@ -19,7 +19,6 @@ public sealed class TopicFeedbackSampleRateOutOfRangeRejected
     [Test]
     [DisplayName("sns.topic-feedback-sample-rate-out-of-range-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "SetTopicAttributes accepts SQSSuccessFeedbackSampleRate=101 instead of refusing it with InvalidParameter")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -17,7 +17,6 @@ public sealed class SubscribeSqsAutoConfirms
     [Test]
     [DisplayName("sns.subscribe-sqs-auto-confirms")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe to an sqs endpoint whose queue does not exist is refused with NotFound 'Queue not found.'; AWS accepts it without checking the queue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

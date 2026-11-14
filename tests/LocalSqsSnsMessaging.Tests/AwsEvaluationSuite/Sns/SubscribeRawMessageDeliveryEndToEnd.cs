@@ -21,7 +21,6 @@ public sealed class SubscribeRawMessageDeliveryEndToEnd
     [Test]
     [DisplayName("sns.subscribe-raw-message-delivery-end-to-end")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "SubscriptionArn is a bare GUID instead of '<topic ARN>:<id>'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

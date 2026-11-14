@@ -19,7 +19,6 @@ public sealed class SetTopicAttributesInvalidSignatureVersionRejected
     [Test]
     [DisplayName("sns.set-topic-attributes-invalid-signature-version-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "SetTopicAttributes accepts SignatureVersion=3 instead of refusing it with InvalidParameter 'Must be 1 or 2.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

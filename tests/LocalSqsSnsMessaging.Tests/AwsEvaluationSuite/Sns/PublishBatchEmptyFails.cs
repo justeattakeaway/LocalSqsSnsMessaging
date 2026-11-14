@@ -51,7 +51,7 @@ public sealed class PublishBatchEmptyFails
     [Test]
     [DisplayName("sns.publish-batch-empty-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch with no entries fails with HTTP 500 (an ArgumentNullException JSON body) instead of EmptyBatchRequest")]
+    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch with no entries fails with an internal error (HTTP 500) instead of EmptyBatchRequest")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

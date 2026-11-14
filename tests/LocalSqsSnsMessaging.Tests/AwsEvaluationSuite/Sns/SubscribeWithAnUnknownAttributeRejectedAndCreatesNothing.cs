@@ -23,7 +23,6 @@ public sealed class SubscribeWithAnUnknownAttributeRejectedAndCreatesNothing
     [Test]
     [DisplayName("sns.subscribe-with-an-unknown-attribute-rejected-and-creates-nothing")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "Subscribe accepts an unknown attribute name (RawMessgeDelivery) instead of refusing with InvalidParameter 'Invalid parameter: Attributes Reason: Unknown attribute RawMessgeDelivery'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

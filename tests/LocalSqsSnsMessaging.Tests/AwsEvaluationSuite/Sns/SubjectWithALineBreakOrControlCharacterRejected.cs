@@ -25,7 +25,7 @@ public sealed class SubjectWithALineBreakOrControlCharacterRejected
     [Test]
     [DisplayName("sns.subject-with-a-line-break-or-control-character-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a Subject containing a line feed (or CR, control character, DEL, empty or only spaces) instead of refusing it with InvalidParameter 'Invalid parameter: Subject'")]
+    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a Subject containing a line break or control character")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

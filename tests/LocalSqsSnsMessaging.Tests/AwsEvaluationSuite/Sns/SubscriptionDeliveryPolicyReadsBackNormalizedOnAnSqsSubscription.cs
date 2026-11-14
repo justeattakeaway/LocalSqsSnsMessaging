@@ -37,7 +37,7 @@ public sealed class SubscriptionDeliveryPolicyReadsBackNormalizedOnAnSqsSubscrip
     [Test]
     [DisplayName("sns.subscription-delivery-policy-reads-back-normalized-on-an-sqs-subscription")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "A subscription DeliveryPolicy reads back exactly as sent instead of in SNS's normalized form (null retry fields, null sections, guaranteed=false)")]
+    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "a subscription's DeliveryPolicy reads back as given instead of normalised with every retry field filled in")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

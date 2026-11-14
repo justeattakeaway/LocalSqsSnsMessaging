@@ -24,7 +24,6 @@ public sealed class ClearingAFilterPolicyWithAnEmptyValueRestoresUnfilteredDeliv
     [Test]
     [DisplayName("sns.clearing-a-filter-policy-with-an-empty-value-restores-unfiltered-delivery")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "SetSubscriptionAttributes FilterPolicy='' leaves the attribute reading '' instead of removing it")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

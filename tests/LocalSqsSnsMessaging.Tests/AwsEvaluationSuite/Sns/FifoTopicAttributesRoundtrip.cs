@@ -41,7 +41,6 @@ public sealed class FifoTopicAttributesRoundtrip
     [Test]
     [DisplayName("sns.fifo-topic-attributes-roundtrip")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "GetTopicAttributes on a FIFO topic omits ContentBasedDeduplication instead of reporting its default 'false'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

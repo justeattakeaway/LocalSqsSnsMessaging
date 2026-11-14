@@ -22,7 +22,6 @@ public sealed class TopicDeliveryPolicyComputesEffectivePolicy
     [Test]
     [DisplayName("sns.topic-delivery-policy-computes-effective-policy")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "GetTopicAttributes on a new topic returns only TopicArn, with no computed EffectiveDeliveryPolicy")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

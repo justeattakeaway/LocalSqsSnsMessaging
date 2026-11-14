@@ -22,7 +22,7 @@ public sealed class FifoSubscriptionRedriveRequiresAFifoDlqAndDeadLettersIntoIt
     [Test]
     [DisplayName("sns.fifo-subscription-redrive-requires-a-fifo-dlq-and-dead-letters-into-it")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsDeliveryFailures, "SetSubscriptionAttributes accepts a standard-queue DLQ in a FIFO subscription's RedrivePolicy instead of refusing it with InvalidParameter")]
+    [KnownFidelityGap(FidelityGap.SnsDeliveryFailures, "a FIFO topic subscription accepts a standard queue as its dead-letter queue instead of refusing it")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

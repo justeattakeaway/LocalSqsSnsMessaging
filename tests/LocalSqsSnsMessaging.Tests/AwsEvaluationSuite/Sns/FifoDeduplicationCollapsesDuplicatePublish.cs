@@ -23,7 +23,7 @@ public sealed class FifoDeduplicationCollapsesDuplicatePublish
     [Test]
     [DisplayName("sns.fifo-deduplication-collapses-duplicate-publish")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFifo, "a repeat Publish with the same MessageDeduplicationId to a FIFO topic gets a new MessageId instead of the original's")]
+    [KnownFidelityGap(FidelityGap.SnsFifo, "a duplicate Publish to a FIFO topic gets a new MessageId instead of the original's: the topic doesn't deduplicate")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

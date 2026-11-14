@@ -22,7 +22,6 @@ public sealed class FilterPolicyScopeSetWithoutAPolicyIsHiddenUntilAPolicyIsSet
     [Test]
     [DisplayName("sns.filter-policy-scope-set-without-a-policy-is-hidden-until-a-policy-is-set")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "A FilterPolicyScope given at Subscribe without a policy makes GetSubscriptionAttributes report FilterPolicy '' instead of no Filter* attributes")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

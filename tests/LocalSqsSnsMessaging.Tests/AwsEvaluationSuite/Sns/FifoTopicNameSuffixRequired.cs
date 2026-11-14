@@ -33,7 +33,6 @@ public sealed class FifoTopicNameSuffixRequired
     [Test]
     [DisplayName("sns.fifo-topic-name-suffix-required")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "CreateTopic with FifoTopic=true and no .fifo suffix succeeds instead of failing InvalidParameter 'Invalid parameter: Topic Name'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

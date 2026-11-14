@@ -22,7 +22,7 @@ public sealed class PublishByTargetArnNamingATopicDeliversLikeTopicArn
     [Test]
     [DisplayName("sns.publish-by-target-arn-naming-a-topic-delivers-like-topic-arn")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish with TargetArn naming a topic (no TopicArn) fails with a NullReferenceException (HTTP 500) instead of publishing to the topic")]
+    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish with TargetArn (a topic ARN) instead of TopicArn is refused with 'Invalid parameter: TopicArn'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

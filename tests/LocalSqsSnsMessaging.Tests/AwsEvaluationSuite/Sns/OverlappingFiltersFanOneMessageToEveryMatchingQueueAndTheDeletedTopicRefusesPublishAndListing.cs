@@ -50,7 +50,6 @@ public sealed class OverlappingFiltersFanOneMessageToEveryMatchingQueueAndTheDel
     [Test]
     [DisplayName("sns.overlapping-filters-fan-one-message-to-every-matching-queue-and-the-deleted-topic-refuses-publish-and-listing")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsErrorMessages, "GetTopicAttributes on a deleted topic is refused with NotFound 'Topic not found.' instead of 'Topic does not exist'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

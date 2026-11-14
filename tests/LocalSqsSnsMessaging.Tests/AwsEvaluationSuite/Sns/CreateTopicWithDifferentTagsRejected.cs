@@ -19,7 +19,6 @@ public sealed class CreateTopicWithDifferentTagsRejected
     [Test]
     [DisplayName("sns.create-topic-with-different-tags-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTags, "CreateTopic on an existing name with different Tags succeeds instead of InvalidParameter 'Topic already exists with different tags'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

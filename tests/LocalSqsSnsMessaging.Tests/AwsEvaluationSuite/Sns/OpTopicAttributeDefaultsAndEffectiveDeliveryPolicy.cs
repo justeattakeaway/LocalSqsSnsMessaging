@@ -14,7 +14,6 @@ public sealed class OpTopicAttributeDefaultsAndEffectiveDeliveryPolicy
     [Test]
     [DisplayName("sns.op-topic-attribute-defaults-and-effective-delivery-policy")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "GetTopicAttributes on a new topic has no Owner attribute")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -20,7 +20,7 @@ public sealed class SubscribeInvalidFilterPolicyFails
     [Test]
     [DisplayName("sns.subscribe-invalid-filter-policy-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsErrorMessages, "An unparseable FilterPolicy is refused with 'Invalid parameter: FilterPolicy: Filter policy is not valid JSON' instead of AWS's Jackson parse-error message")]
+    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "a filter policy that isn't JSON is refused without SNS's 'failed to parse JSON. Unrecognized token ...' message")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

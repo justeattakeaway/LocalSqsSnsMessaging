@@ -17,7 +17,7 @@ public sealed class SubscriptionFilterPolicyUpdateAndValidation
     [Test]
     [DisplayName("sns.subscription-filter-policy-update-and-validation")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe to a well-formed SQS ARN of a queue that does not exist is refused with NotFound 'Queue not found.' instead of creating the subscription")]
+    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "a malformed filter policy is refused with a different message from SNS's")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

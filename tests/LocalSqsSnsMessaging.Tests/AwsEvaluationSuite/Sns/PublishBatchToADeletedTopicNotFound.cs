@@ -22,7 +22,6 @@ public sealed class PublishBatchToADeletedTopicNotFound
     [Test]
     [DisplayName("sns.publish-batch-to-a-deleted-topic-not-found")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsErrorMessages, "PublishBatch to a deleted topic is refused with NotFound 'Topic not found: <arn>' instead of 'Topic does not exist'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

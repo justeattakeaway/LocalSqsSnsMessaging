@@ -42,7 +42,6 @@ public sealed class UnsubscribeNonexistentIsIdempotent
     [Test]
     [DisplayName("sns.unsubscribe-nonexistent-is-idempotent")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Unsubscribe of a well-formed but nonexistent SubscriptionArn fails NotFound 'Subscription not found.' instead of succeeding")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

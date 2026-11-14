@@ -20,7 +20,6 @@ public sealed class ConcurrentTagResourceDistinctKeysAllRetained
     [Test]
     [DisplayName("sns.concurrent-tag-resource-distinct-keys-all-retained")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTags, "CreateTopic drops its Tags, so the creation tag 'sim2real' is missing from the 13 keys after the concurrent TagResource calls")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

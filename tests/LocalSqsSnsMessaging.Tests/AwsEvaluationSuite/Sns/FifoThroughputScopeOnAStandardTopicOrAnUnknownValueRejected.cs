@@ -18,7 +18,6 @@ public sealed class FifoThroughputScopeOnAStandardTopicOrAnUnknownValueRejected
     [Test]
     [DisplayName("sns.fifo-throughput-scope-on-a-standard-topic-or-an-unknown-value-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFifo, "SetTopicAttributes accepts FifoThroughputScope on a standard topic instead of refusing it with 'Invalid parameter: AttributeName'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

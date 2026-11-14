@@ -18,7 +18,6 @@ public sealed class TopicDeleteLifecycleAndIdempotentDelete
     [Test]
     [DisplayName("sns.topic-delete-lifecycle-and-idempotent-delete")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsErrorMessages, "GetTopicAttributes on a deleted topic is refused NotFound 'Topic not found.' instead of 'Topic does not exist'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

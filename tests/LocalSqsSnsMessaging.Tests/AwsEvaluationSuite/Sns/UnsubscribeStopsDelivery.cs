@@ -24,7 +24,6 @@ public sealed class UnsubscribeStopsDelivery
     [Test]
     [DisplayName("sns.unsubscribe-stops-delivery")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe returns a bare GUID as the SubscriptionArn instead of '<TopicArn>:<id>'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

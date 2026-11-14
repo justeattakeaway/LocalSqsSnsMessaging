@@ -22,7 +22,6 @@ public sealed class ConfirmedSqsSubscriptionAttributesAndListingAgreeFieldForFie
     [Test]
     [DisplayName("sns.confirmed-sqs-subscription-attributes-and-listing-agree-field-for-field")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "A confirmed sqs subscription reports FilterPolicy and IsAuthenticated but no SubscriptionPrincipal, with ConfirmationWasAuthenticated and RawMessageDelivery in the wrong form")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

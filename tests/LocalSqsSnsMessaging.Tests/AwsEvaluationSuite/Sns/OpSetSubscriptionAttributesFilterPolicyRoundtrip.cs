@@ -17,7 +17,6 @@ public sealed class OpSetSubscriptionAttributesFilterPolicyRoundtrip
     [Test]
     [DisplayName("sns.op-set-subscription-attributes-filter-policy-roundtrip")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptionAttributes, "A fresh subscription reports FilterPolicy='' instead of omitting the attribute")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

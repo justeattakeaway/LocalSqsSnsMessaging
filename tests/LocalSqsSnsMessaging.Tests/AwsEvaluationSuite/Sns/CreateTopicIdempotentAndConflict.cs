@@ -15,7 +15,6 @@ public sealed class CreateTopicIdempotentAndConflict
     [Test]
     [DisplayName("sns.create-topic-idempotent-and-conflict")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsTopicAttributes, "CreateTopic on an existing name with a different DisplayName succeeds instead of InvalidParameter 'Topic already exists with different attributes'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -20,7 +20,7 @@ public sealed class FilterPolicyScopeSwitchAwayFromMessageBodyRejectedWhilePolic
     [Test]
     [DisplayName("sns.filter-policy-scope-switch-away-from-message-body-rejected-while-policy-is-nested")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe to a well-formed SQS ARN of a queue that does not exist is refused with NotFound 'Queue not found.' instead of creating the subscription")]
+    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "switching a nested policy to MessageAttributes scope is refused with 'Invalid parameter: FilterPolicy: Filter policy scope ...' instead of 'Invalid parameter: Filter policy scope ...'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

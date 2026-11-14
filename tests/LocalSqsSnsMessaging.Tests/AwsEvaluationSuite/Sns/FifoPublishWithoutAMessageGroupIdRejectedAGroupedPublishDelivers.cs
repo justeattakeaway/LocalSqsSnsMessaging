@@ -20,7 +20,7 @@ public sealed class FifoPublishWithoutAMessageGroupIdRejectedAGroupedPublishDeli
     [Test]
     [DisplayName("sns.fifo-publish-without-a-message-group-id-rejected-a-grouped-publish-delivers")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFifo, "Publish to a FIFO topic without MessageGroupId fails with an internal error (HTTP 500, no error code) instead of InvalidParameter 'The MessageGroupId parameter is required for FIFO topics'")]
+    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish to a FIFO topic without a MessageGroupId fails with an internal error (HTTP 500) instead of InvalidParameter")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

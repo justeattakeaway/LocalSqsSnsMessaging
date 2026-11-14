@@ -22,7 +22,6 @@ public sealed class SubscribeFifoQueueToStandardTopicRejected
     [Test]
     [DisplayName("sns.subscribe-fifo-queue-to-standard-topic-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsSubscriptions, "Subscribe accepts a FIFO queue on a standard topic instead of refusing it with InvalidParameter")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
