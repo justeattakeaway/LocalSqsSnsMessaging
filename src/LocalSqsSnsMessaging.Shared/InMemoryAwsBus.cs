@@ -20,25 +20,47 @@ public sealed class InMemoryAwsBus
     /// <value>The TimeProvider instance, defaulting to TimeProvider.System.</value>
     public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 
-    private int _waitingReceiveCount;
+    private readonly ConcurrentDictionary<object, DateTimeOffset> _waitingReceives = new();
 
     /// <summary>
     /// The number of <c>ReceiveMessage</c> calls currently blocked in a long poll, waiting for a
     /// message to arrive or for their wait time to run out. Under a fake <see cref="TimeProvider"/>,
     /// these only finish once time is advanced.
     /// </summary>
-    internal int WaitingReceiveCount => Volatile.Read(ref _waitingReceiveCount);
+    internal int WaitingReceiveCount => _waitingReceives.Count;
 
-    /// <summary>Counts a long poll as waiting until the returned scope is disposed.</summary>
-    internal WaitingReceiveScope EnterWaitingReceive()
+    /// <summary>When the soonest of the blocked long polls runs out of wait time, if any is blocked.</summary>
+    internal DateTimeOffset? EarliestWaitingReceiveDeadline
     {
-        Interlocked.Increment(ref _waitingReceiveCount);
-        return new WaitingReceiveScope(this);
+        get
+        {
+            DateTimeOffset? earliest = null;
+            foreach (var deadline in _waitingReceives.Values)
+            {
+                if (earliest is null || deadline < earliest)
+                {
+                    earliest = deadline;
+                }
+            }
+
+            return earliest;
+        }
     }
 
-    internal readonly struct WaitingReceiveScope(InMemoryAwsBus bus) : IDisposable
+    /// <summary>
+    /// Counts a long poll that waits until <paramref name="deadline"/> at most as blocked, until the
+    /// returned scope is disposed.
+    /// </summary>
+    internal WaitingReceiveScope EnterWaitingReceive(DateTimeOffset deadline)
     {
-        public void Dispose() => Interlocked.Decrement(ref bus._waitingReceiveCount);
+        var token = new object();
+        _waitingReceives[token] = deadline;
+        return new WaitingReceiveScope(this, token);
+    }
+
+    internal readonly struct WaitingReceiveScope(InMemoryAwsBus bus, object token) : IDisposable
+    {
+        public void Dispose() => bus._waitingReceives.TryRemove(token, out _);
     }
 
     /// <summary>

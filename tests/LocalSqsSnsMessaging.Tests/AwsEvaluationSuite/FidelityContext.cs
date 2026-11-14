@@ -21,8 +21,9 @@ namespace LocalSqsSnsMessaging.Tests.AwsEvaluationSuite;
 /// check waits and measures through <see cref="FidelityTime"/> instead of <c>Task.Delay</c> and
 /// <c>Stopwatch</c>. Time stands still while the check is working and moves only while something is
 /// waiting on it: a <see cref="FidelityTime.Delay"/>, or a <c>ReceiveMessage</c> blocked in a long
-/// poll. While either is pending, a pump advances the clock by <see cref="PumpTick"/> about every
-/// millisecond, so a check that waits out SQS's five-minute deduplication interval takes seconds.
+/// poll. While either is pending, a pump advances the clock at <see cref="PumpRate"/> times real
+/// speed, so a check that waits out SQS's five-minute deduplication interval takes seconds. A step
+/// never goes past the soonest pending delay or long-poll deadline, so waits end exactly on time.
 /// Every request also costs <see cref="RequestLatency"/>, so a polling loop with no wait in it
 /// still gets to its deadline.
 /// </para>
@@ -42,10 +43,23 @@ public sealed class FidelityContext : IAsyncDisposable
     /// The real-time limit on each test. A check finishes in well under a second of real time
     /// however much virtual time it waits out, so this only stops a hung check holding up the run.
     /// </summary>
-    public const int HangTimeoutMilliseconds = 30_000;
+    public const int HangTimeoutMilliseconds = 60_000;
 
-    /// <summary>How far the pump moves virtual time on each step while something waits on it.</summary>
-    public static readonly TimeSpan PumpTick = TimeSpan.FromMilliseconds(100);
+    /// <summary>How much faster than real time the pump moves virtual time while something waits on it.</summary>
+    public const int PumpRate = 100;
+
+    /// <summary>
+    /// The most the pump moves virtual time in one step. Real sleeps last about 1 ms on Linux and
+    /// macOS but about 15.6 ms on Windows, so a step is usually <see cref="PumpRate"/> times that.
+    /// </summary>
+    public static readonly TimeSpan MaxPumpStep = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How long, in real time, the check must have been quiet (no request starting or finishing, no
+    /// delay starting) before the pump moves the clock. A check between two steps is not waiting
+    /// on time, and moving the clock under it would make its next step land late.
+    /// </summary>
+    public static readonly TimeSpan PumpQuietPeriod = TimeSpan.FromMilliseconds(10);
 
     /// <summary>The virtual time each request takes, as a stand-in for the network round trip.</summary>
     public static readonly TimeSpan RequestLatency = TimeSpan.FromMilliseconds(1);
@@ -59,7 +73,9 @@ public sealed class FidelityContext : IAsyncDisposable
     private readonly CancellationTokenSource _stopPump = new();
     private readonly Task _pump;
     private readonly RequestLatencyHandler _handler;
-    private int _waitingDelays;
+    private readonly Dictionary<object, DateTimeOffset> _delayDeadlines = [];
+    private readonly System.Diagnostics.Stopwatch _realClock = System.Diagnostics.Stopwatch.StartNew();
+    private long _lastActivityTicks;
 
     public FidelityContext(int budgetMilliseconds = BudgetMilliseconds, CancellationToken cancellationToken = default)
     {
@@ -167,29 +183,38 @@ public sealed class FidelityContext : IAsyncDisposable
 
         // Completed off the pump's thread, so the check never runs inside a clock advance.
         var due = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var timer = Time.CreateTimer(_ => due.TrySetResult(), null, delay, Timeout.InfiniteTimeSpan);
-        await using var registration = cancellationToken.Register(() => due.TrySetCanceled(cancellationToken));
-        Interlocked.Increment(ref _waitingDelays);
+        var token = new object();
+        lock (_delayDeadlines)
+        {
+            _delayDeadlines[token] = Time.GetUtcNow() + delay;
+        }
+
+        MarkActivity();
+
         try
         {
+            using var timer = Time.CreateTimer(_ => due.TrySetResult(), null, delay, Timeout.InfiniteTimeSpan);
+            await using var registration = cancellationToken.Register(() => due.TrySetCanceled(cancellationToken));
             await due.Task;
         }
         finally
         {
-            Interlocked.Decrement(ref _waitingDelays);
+            lock (_delayDeadlines)
+            {
+                _delayDeadlines.Remove(token);
+            }
         }
     }
 
-    /// <summary>Moves virtual time on while a <see cref="Delay"/> or a long poll is waiting on it.</summary>
+    /// <summary>
+    /// Moves virtual time on while a <see cref="Delay"/> or a long poll is waiting on it, at
+    /// <see cref="PumpRate"/> times the real time that passed, never past the soonest deadline.
+    /// </summary>
     private async Task PumpAsync()
     {
+        var last = _realClock.Elapsed;
         while (!_stopPump.IsCancellationRequested)
         {
-            if (Volatile.Read(ref _waitingDelays) > 0 || Bus.WaitingReceiveCount > 0)
-            {
-                Time.Advance(PumpTick);
-            }
-
             try
             {
                 await Task.Delay(1, _stopPump.Token);
@@ -198,8 +223,43 @@ public sealed class FidelityContext : IAsyncDisposable
             {
                 return;
             }
+
+            var now = _realClock.Elapsed;
+            var sinceActivity = now - TimeSpan.FromTicks(Interlocked.Read(ref _lastActivityTicks));
+            if (sinceActivity < PumpQuietPeriod)
+            {
+                // The check is busy between steps: hold the clock, and don't bank the real time.
+                last = now;
+                continue;
+            }
+
+            var step = TimeSpan.FromTicks(Math.Min((now - last).Ticks * PumpRate, MaxPumpStep.Ticks));
+            last = now;
+
+            DateTimeOffset? deadline;
+            lock (_delayDeadlines)
+            {
+                deadline = _delayDeadlines.Count > 0 ? _delayDeadlines.Values.Min() : null;
+            }
+
+            if (Bus.EarliestWaitingReceiveDeadline is { } receiveDeadline && (deadline is null || receiveDeadline < deadline))
+            {
+                deadline = receiveDeadline;
+            }
+
+            if (deadline is null)
+            {
+                // Nothing is waiting on time.
+                continue;
+            }
+
+            var untilDeadline = deadline.Value - Time.GetUtcNow();
+            Time.Advance(untilDeadline > TimeSpan.Zero && untilDeadline < step ? untilDeadline : step);
         }
     }
+
+    /// <summary>Records that the check did something, so the pump holds the clock for <see cref="PumpQuietPeriod"/>.</summary>
+    private void MarkActivity() => Interlocked.Exchange(ref _lastActivityTicks, _realClock.Elapsed.Ticks);
 
     /// <summary><c>ctx.time_left()</c>: virtual time until the runner's budget for this check runs out.</summary>
     public TimeSpan TimeLeft()
@@ -273,14 +333,33 @@ public sealed class FidelityContext : IAsyncDisposable
         _handler.Dispose();
     }
 
-    /// <summary>Charges each request <see cref="RequestLatency"/> of virtual time, then hands it to the bus.</summary>
+    /// <summary>
+    /// Charges each request <see cref="RequestLatency"/> of virtual time, then hands it to the bus
+    /// on another thread-pool work item. The in-memory handler otherwise completes synchronously, so a
+    /// receiver in a loop would never yield, and could drain a queue before concurrent receivers
+    /// got a turn; against SQS every call is asynchronous I/O.
+    /// </summary>
     private sealed class RequestLatencyHandler(FidelityContext context)
         : DelegatingHandler(new InMemoryAwsHttpMessageHandler(context.Bus, AwsServiceType.Sqs))
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            context.MarkActivity();
             context.Time.Advance(RequestLatency);
-            return base.SendAsync(request, cancellationToken);
+            try
+            {
+                // Through the thread pool's global queue: Task.Yield on a pool thread would queue to
+                // that thread's local queue, and the same caller would run again first.
+                return await Task.Factory.StartNew(
+                    () => base.SendAsync(request, cancellationToken),
+                    cancellationToken,
+                    TaskCreationOptions.PreferFairness,
+                    TaskScheduler.Default).Unwrap();
+            }
+            finally
+            {
+                context.MarkActivity();
+            }
         }
     }
 

@@ -542,6 +542,7 @@ internal sealed class InternalSqsClient
             }
 
             using var receiveTimeout = _bus.TimeProvider.CreateCancellationTokenSource(waitTime);
+            var waitDeadline = _bus.TimeProvider.GetUtcNow() + waitTime;
             using var linkedToken =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, receiveTimeout.Token);
 
@@ -559,7 +560,7 @@ internal sealed class InternalSqsClient
                 }
 
                 Message? handedMessage;
-                using (_bus.EnterWaitingReceive())
+                using (_bus.EnterWaitingReceive(waitDeadline))
                 {
                     handedMessage = await queue.Messages.WaitForMessageAsync(linkedToken.Token).ConfigureAwait(true);
                 }
@@ -591,6 +592,7 @@ internal sealed class InternalSqsClient
                 // (enqueue, visibility expiry, or a delete unlocking a message group). The
                 // timeout is TimeProvider-driven so FakeTimeProvider-based tests still work.
                 using var receiveTimeout = _bus.TimeProvider.CreateCancellationTokenSource(waitTime);
+                var waitDeadline = _bus.TimeProvider.GetUtcNow() + waitTime;
                 using var linkedToken =
                     CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, receiveTimeout.Token);
                 var signalReader = queue.FifoMessageAvailableSignal.Reader;
@@ -599,7 +601,7 @@ internal sealed class InternalSqsClient
                 {
                     try
                     {
-                        using (_bus.EnterWaitingReceive())
+                        using (_bus.EnterWaitingReceive(waitDeadline))
                         {
                             await signalReader.WaitToReadAsync(linkedToken.Token).ConfigureAwait(true);
                         }

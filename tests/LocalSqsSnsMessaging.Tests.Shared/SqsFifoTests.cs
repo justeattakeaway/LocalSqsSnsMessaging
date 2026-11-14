@@ -9,6 +9,10 @@ public abstract class SqsFifoTests : WaitingTestBase
     protected IAmazonSQS Sqs = null!;
     protected string AccountId = null!;
 
+    // Real SQS refuses a FIFO SendMessageBatch outright when one entry is invalid; Floci fails that
+    // entry alone, as for a standard queue.
+    protected abstract bool RejectsAFifoBatchWithAnInvalidEntryWhole();
+
     [Test]
     public async Task CreateFifoQueue_SetsCorrectAttributes(CancellationToken cancellationToken)
     {
@@ -231,6 +235,11 @@ public abstract class SqsFifoTests : WaitingTestBase
             Attributes = new Dictionary<string, string> { [QueueAttributeName.FifoQueue] = "true" }
         }, cancellationToken)).QueueUrl;
 
+        if (!RejectsAFifoBatchWithAnInvalidEntryWhole())
+        {
+            return;
+        }
+
         // On a FIFO queue, real SQS refuses the whole batch when an entry has no MessageGroupId.
         var exception = await Assert.ThrowsAsync<AmazonSQSException>(() => Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
         {
@@ -258,6 +267,11 @@ public abstract class SqsFifoTests : WaitingTestBase
                 [QueueAttributeName.ContentBasedDeduplication] = "true"
             }
         }, cancellationToken)).QueueUrl;
+
+        if (!RejectsAFifoBatchWithAnInvalidEntryWhole())
+        {
+            return;
+        }
 
         // Unlike a standard queue, where an invalid entry fails alone, a FIFO queue refuses the
         // whole batch, so none of the valid entries is enqueued either.

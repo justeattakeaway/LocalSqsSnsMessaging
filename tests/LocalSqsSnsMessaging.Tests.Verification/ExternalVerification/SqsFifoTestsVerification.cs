@@ -16,4 +16,6 @@ public class SqsFifoTestsVerification : SqsFifoTests
         Sqs = ClientFactory.CreateSqsClient(AccountId, AspireFixture.ServicePort);
         SqsForTeardown = Sqs;
     }
+
+    protected override bool RejectsAFifoBatchWithAnInvalidEntryWhole() => IsRealAwsMode;
 }

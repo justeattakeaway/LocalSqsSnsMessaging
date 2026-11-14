@@ -15,4 +15,6 @@ public class SqsFifoTestsLocalAwsMessaging : SqsFifoTests
         AccountId = bus.CurrentAccountId;
         Sqs = bus.CreateSqsClient();
     }
+
+    protected override bool RejectsAFifoBatchWithAnInvalidEntryWhole() => true;
 }

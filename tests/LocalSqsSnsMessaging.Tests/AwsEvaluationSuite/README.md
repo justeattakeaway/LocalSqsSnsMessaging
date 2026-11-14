@@ -40,8 +40,11 @@ so the whole suite takes seconds:
   counterparts of `Task.Delay`, `Stopwatch.StartNew()` and `DateTimeOffset.UtcNow`.
 - **What moves it:** time stands still while a check is working, and moves only while something
   waits on it: a `FidelityTime.Delay`, or a `ReceiveMessage` blocked in a long poll. While either
-  is pending, `FidelityContext` advances the clock 100 ms about every millisecond. Requests that
-  are merely slow never move it.
+  is pending, `FidelityContext` advances the clock at 100 times real speed, in steps of at most
+  a second that never pass the soonest pending deadline, so waits end exactly on time on every OS.
+  Requests that are merely slow never move it, and the clock holds until the check has been quiet
+  (no request starting or finishing) for 10 ms of real time, so it never moves under a check that
+  is between two steps.
 - **Request latency:** every request costs 1 ms of virtual time, so a polling loop with no wait
   in it still reaches its deadline.
 - **Budgets and timeouts:** the runner's per-check budgets (`ctx.time_left()`) are in virtual
