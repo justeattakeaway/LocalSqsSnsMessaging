@@ -20,7 +20,7 @@ export function TopicDetail({ state, topic, selectSubscription }: TopicDetailPro
   const [subject, setSubject] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
-  const publishedTimer = useRef<ReturnType<typeof setTimeout>>();
+  const publishedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const subs = getTopicSubscriptions(state, topic);
 
