@@ -18,7 +18,6 @@ public sealed class ImmutableQueueArnMutationRejected
     [Test]
     [DisplayName("sqs.immutable-queue-arn-mutation-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected rejection, but SetQueueAttributes(QueueArn=...) SUCCEEDED")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -23,7 +23,6 @@ public sealed class RedrivePolicyMaxReceiveCountOutOfRangeRejected
     [Test]
     [DisplayName("sqs.redrive-policy-max-receive-count-out-of-range-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "a RedrivePolicy with maxReceiveCount 0 or 1001 is accepted instead of refused")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -23,6 +23,8 @@ internal static class InternalQueueAttributeName
     public const string FifoQueue = "FifoQueue";
     public const string ContentBasedDeduplication = "ContentBasedDeduplication";
     public const string RedrivePolicy = "RedrivePolicy";
+    public const string RedriveAllowPolicy = "RedriveAllowPolicy";
+    public const string Policy = "Policy";
     public const string DeduplicationScope = "DeduplicationScope";
     public const string FifoThroughputLimit = "FifoThroughputLimit";
 }

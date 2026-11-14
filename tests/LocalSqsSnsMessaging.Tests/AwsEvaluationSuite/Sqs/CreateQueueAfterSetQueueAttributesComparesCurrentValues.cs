@@ -22,7 +22,6 @@ public sealed class CreateQueueAfterSetQueueAttributesComparesCurrentValues
     [Test]
     [DisplayName("sqs.create-queue-after-set-queue-attributes-compares-current-values")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.IdempotentCreate, "CreateQueue on an existing name with a VisibilityTimeout differing from the current value succeeds instead of QueueAlreadyExists")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -20,7 +20,6 @@ public sealed class GetQueueAttributesInvalidAttributeNameRejected
     [Test]
     [DisplayName("sqs.get-queue-attributes-invalid-attribute-name-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "real AWS rejects GetQueueAttributes(AttributeNames=['NotARealAttributeName']), but it SUCCEEDED")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

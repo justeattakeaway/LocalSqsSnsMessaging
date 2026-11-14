@@ -14,14 +14,6 @@ internal sealed class InternalSqsClient
     private readonly InMemoryAwsBus _bus;
 
     private const int MaxMessageSize = 1_048_576; // 1MB
-    private static readonly string[] InternalAttributes = [
-        InternalQueueAttributeName.ApproximateNumberOfMessages,
-        InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed,
-        InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible,
-        InternalQueueAttributeName.CreatedTimestamp,
-        InternalQueueAttributeName.LastModifiedTimestamp,
-        InternalQueueAttributeName.QueueArn
-    ];
 
     internal InternalSqsClient(InMemoryAwsBus bus)
     {
@@ -269,6 +261,27 @@ internal sealed class InternalSqsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var fifo = SqsQueueValidation.RequestsFifo(request.Attributes);
+        SqsQueueValidation.ValidateQueueName(request.QueueName, fifo);
+        var requestedAttributes = request.Attributes ?? [];
+        SqsQueueValidation.ValidateAttributes(requestedAttributes, fifo, creating: true, current: new Dictionary<string, string>());
+        if (request.Tags is { Count: > 0 })
+        {
+            SqsQueueValidation.ValidateTags(request.Tags);
+            if (request.Tags.Count > SqsQueueValidation.MaxTagsPerQueue)
+            {
+                throw SqsQueueValidation.TooManyTags(request.QueueName!);
+            }
+        }
+
+        if (_bus.Queues.TryGetValue(request.QueueName!, out var existingQueue))
+        {
+            // An existing name is only reused when everything asked for matches the queue as it is now.
+            EnsureMatchesExistingQueue(existingQueue, requestedAttributes, request.Tags);
+            _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.CreateQueue, existingQueue.Arn);
+            return Task.FromResult(new CreateQueueResponse { QueueUrl = existingQueue.Url }.SetCommonProperties());
+        }
+
         var queueUrl = _bus.ServiceUrl is not null
             ? $"{_bus.ServiceUrl.ToString().TrimEnd('/')}/{_bus.CurrentAccountId}/{request.QueueName}"
             : $"https://sqs.{_bus.CurrentRegion}.amazonaws.com/{_bus.CurrentAccountId}/{request.QueueName}";
@@ -290,19 +303,25 @@ internal sealed class InternalSqsClient
             Tags = request.Tags is { Count: > 0 } tags ? new Dictionary<string, string>(tags) : null
         };
 
-        foreach (var requestAttribute in request.Attributes ?? [])
+        if (requestedAttributes.TryGetValue(InternalQueueAttributeName.RedrivePolicy, out var redrivePolicy))
         {
-            if (InternalAttributes.Contains(requestAttribute.Key))
-            {
-                throw new InvalidOperationException($"Cannot set internal attribute {requestAttribute.Key}");
-            }
+            ValidateRedrivePolicy(queue, redrivePolicy);
+        }
 
+        foreach (var requestAttribute in requestedAttributes)
+        {
             queue.Attributes[requestAttribute.Key] = requestAttribute.Value;
         }
         AddDefaultAttributes(queue);
         queue.Attributes.Add("QueueArn", queue.Arn);
         UpdateQueueProperties(queue);
-        _bus.Queues.TryAdd(request.QueueName!, queue);
+        if (!_bus.Queues.TryAdd(request.QueueName!, queue))
+        {
+            // Created concurrently under the same name: answer as for an existing queue.
+            var winner = _bus.Queues[request.QueueName!];
+            EnsureMatchesExistingQueue(winner, requestedAttributes, request.Tags);
+            return Task.FromResult(new CreateQueueResponse { QueueUrl = winner.Url }.SetCommonProperties());
+        }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.CreateQueue, queue.Arn);
 
@@ -312,6 +331,78 @@ internal sealed class InternalSqsClient
         };
 
         return Task.FromResult(response.SetCommonProperties());
+    }
+
+    /// <summary>
+    /// <c>CreateQueue</c> on an existing name returns that queue only when every requested attribute
+    /// and tag matches its current value; otherwise SQS refuses it with <c>QueueAlreadyExists</c>.
+    /// </summary>
+    private static void EnsureMatchesExistingQueue(SqsQueueResource queue, Dictionary<string, string> requestedAttributes, Dictionary<string, string>? requestedTags)
+    {
+        foreach (var (name, value) in requestedAttributes)
+        {
+            if (!SqsQueueValidation.SameAttributeValue(name, value, queue.Attributes?.GetValueOrDefault(name)))
+            {
+                throw SqsRequestValidation.Error("QueueNameExists",
+                    $"A queue already exists with the same name and a different value for attribute {name}");
+            }
+        }
+
+        if (requestedTags is { Count: > 0 })
+        {
+            bool sameTags;
+            lock (queue.TagsLock)
+            {
+                sameTags = queue.Tags is { } tags && tags.Count == requestedTags.Count
+                           && requestedTags.All(tag => tags.TryGetValue(tag.Key, out var value) && value == tag.Value);
+            }
+
+            if (!sameTags)
+            {
+                throw SqsRequestValidation.Error("QueueNameExists",
+                    "A queue already exists with the same name and a different value for tags ");
+            }
+        }
+    }
+
+    /// <summary>The queue an ARN names, if it is one of this bus's queues.</summary>
+    private SqsQueueResource? FindQueueByArn(string? arn)
+    {
+        if (arn is null)
+        {
+            return null;
+        }
+
+        var name = arn[(arn.LastIndexOf(':') + 1)..];
+        return _bus.Queues.TryGetValue(name, out var queue) && string.Equals(queue.Arn, arn, StringComparison.Ordinal)
+            ? queue
+            : null;
+    }
+
+    /// <summary>
+    /// Checks a <c>RedrivePolicy</c> being set on <paramref name="source"/>: well formed, naming an
+    /// existing queue of the same type whose <c>RedriveAllowPolicy</c> admits the source.
+    /// </summary>
+    private void ValidateRedrivePolicy(SqsQueueResource source, string value)
+    {
+        if (value.Length == 0)
+        {
+            return;
+        }
+
+        var policy = SqsQueueValidation.ParseRedrivePolicy(value);
+        var deadLetterQueue = FindQueueByArn(policy.DeadLetterTargetArn)
+            ?? throw SqsRequestValidation.InvalidParameterValue("RedrivePolicy", value, "Dead letter target does not exist.");
+        if (deadLetterQueue.IsFifo != source.IsFifo)
+        {
+            throw SqsRequestValidation.InvalidParameterValue("RedrivePolicy", value,
+                "Dead-letter queue must be same type of queue as the source..");
+        }
+
+        if (!SqsQueueValidation.RedriveAllowed(deadLetterQueue, source.Arn))
+        {
+            throw SqsQueueValidation.RedriveNotAllowed(policy);
+        }
     }
 
     /// <summary>
@@ -562,7 +653,8 @@ internal sealed class InternalSqsClient
             return false;
         }
 
-        if (IsAtMaxReceiveCount(message, queue) && queue.ErrorQueue is not null)
+        if (IsAtMaxReceiveCount(message, queue) && queue.ErrorQueue is not null
+            && SqsQueueValidation.RedriveAllowed(queue.ErrorQueue, queue.Arn))
         {
             message.Attributes ??= [];
             message.Attributes[InternalMessageSystemAttributeName.DeadLetterQueueSourceArn] = queue.Arn;
@@ -1088,6 +1180,7 @@ internal sealed class InternalSqsClient
 
         var attributes = new Dictionary<string, string>();
         var attributeNames = request.AttributeNames ?? [];
+        SqsQueueValidation.ValidateAttributeNamesToGet(attributeNames);
 
         if (attributeNames.Count == 0 || attributeNames.Contains("All"))
         {
@@ -1257,6 +1350,12 @@ internal sealed class InternalSqsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        if (request.MaxResults is < 1 or > 10)
+        {
+            throw SqsRequestValidation.InvalidParameterValue(
+                "Value for parameter MaxResults is invalid. Reason: You must enter a number that's between 1 and 10.");
+        }
+
         // Most recent first; SQS returns only the latest task unless MaxResults asks for more.
         var tasks = _bus.MoveTasks.Values
             .Where(t => t.SourceQueue.Arn.Equals(request.SourceArn, StringComparison.OrdinalIgnoreCase))
@@ -1287,6 +1386,17 @@ internal sealed class InternalSqsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        if (request.MaxResults is < 1 or > 1000)
+        {
+            throw SqsRequestValidation.InvalidParameterValue(
+                "Value for parameter MaxResults is invalid. Reason: MaxResults must be an integer between 1 and 1000.");
+        }
+
+        if (request.NextToken is { Length: > 0 } requestToken && !IsQueueUrlToken(requestToken))
+        {
+            throw SqsRequestValidation.InvalidParameterValue("Invalid or expired next token.");
+        }
+
         var allQueues = _bus.Queues
             .Values
             .Where(q => string.IsNullOrEmpty(request.QueueNamePrefix) || q.Name.StartsWith(request.QueueNamePrefix, StringComparison.Ordinal))
@@ -1311,6 +1421,20 @@ internal sealed class InternalSqsClient
         static string TokenGenerator(string x)
         {
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(x));
+        }
+    }
+
+    /// <summary>Whether a <c>ListQueues</c> NextToken is one it issued: the base64 of a queue URL.</summary>
+    private static bool IsQueueUrlToken(string token)
+    {
+        try
+        {
+            return Encoding.UTF8.GetString(Convert.FromBase64String(token))
+                .StartsWith("http", StringComparison.Ordinal);
+        }
+        catch (FormatException)
+        {
+            return false;
         }
     }
 
@@ -1384,7 +1508,7 @@ internal sealed class InternalSqsClient
 
         if (queue.Attributes?.TryGetValue("Policy", out var policyJson) != true)
         {
-            throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: can't find label.");
+            throw SqsRequestValidation.InvalidParameterValue("Label", request.Label, "can't find label on existing policy.");
         }
 
         var policy = JsonNode.Parse(policyJson)!.AsObject();
@@ -1402,7 +1526,7 @@ internal sealed class InternalSqsClient
 
         if (indexToRemove is null)
         {
-            throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: can't find label.");
+            throw SqsRequestValidation.InvalidParameterValue("Label", request.Label, "can't find label on existing policy.");
         }
 
         statements.RemoveAt(indexToRemove.Value);
@@ -1545,8 +1669,20 @@ internal sealed class InternalSqsClient
             throw new InternalQueueDoesNotExistException();
         }
 
+        if (request.Attributes is not { Count: > 0 })
+        {
+            throw SqsRequestValidation.MissingParameter("Attribute.Name");
+        }
+
+        // Every attribute is checked before any is applied: one invalid value applies none.
         queue.Attributes ??= [];
-        foreach (var (key, value) in request.Attributes ?? [])
+        SqsQueueValidation.ValidateAttributes(request.Attributes, queue.IsFifo, creating: false, current: queue.Attributes);
+        if (request.Attributes.TryGetValue(InternalQueueAttributeName.RedrivePolicy, out var redrivePolicy))
+        {
+            ValidateRedrivePolicy(queue, redrivePolicy);
+        }
+
+        foreach (var (key, value) in request.Attributes)
         {
             queue.Attributes[key] = value;
         }
@@ -1595,12 +1731,9 @@ internal sealed class InternalSqsClient
             if (deadLetterTargetArn != null && maxReceiveCount > 0)
             {
                 var deadLetterTargetQueueName = deadLetterTargetArn.Split(':').Last();
-                if (!_bus.Queues.TryGetValue(deadLetterTargetQueueName, out var errorQueue))
-                {
-                    throw new InvalidOperationException("Dead letter queue not found");
-                }
-
-                queue.ErrorQueue = errorQueue;
+                // Checked by ValidateRedrivePolicy when set; the dead-letter queue may have been
+                // deleted since, which leaves the policy in place with nowhere to redrive to.
+                queue.ErrorQueue = _bus.Queues.GetValueOrDefault(deadLetterTargetQueueName);
                 queue.MaxReceiveCount = maxReceiveCount;
 
                 // SQS stores the policy normalised: compact JSON with a numeric maxReceiveCount.
@@ -1641,17 +1774,25 @@ internal sealed class InternalSqsClient
             throw new InternalInvalidParameterValueException("Source queue must be configured as a Dead Letter Queue.");
         }
 
+        if (request.MaxNumberOfMessagesPerSecond is < 1 or > 500)
+        {
+            throw SqsRequestValidation.InvalidParameterValue(
+                "Value for parameter MaxNumberOfMessagesPerSecond is invalid. Reason: You must enter a number that's between 1 and 500.");
+        }
+
         SqsQueueResource? destinationQueue = null;
         if (request.DestinationArn is not null)
         {
-            var destinationQueueName = GetQueueNameFromArn(request.DestinationArn);
-            if (!_bus.Queues.TryGetValue(destinationQueueName, out destinationQueue))
+            if (string.Equals(request.DestinationArn, request.SourceArn, StringComparison.Ordinal))
             {
-                throw new InternalResourceNotFoundException("Destination queue not found.")
-                {
-                    ErrorCode = "ResourceNotFoundException",
-                    StatusCode = HttpStatusCode.BadRequest
-                };
+                throw SqsRequestValidation.InvalidParameterValue("Source queue arn and destination queue arn cannot be the same.");
+            }
+
+            destinationQueue = FindQueueByArn(request.DestinationArn)
+                ?? throw new InternalResourceNotFoundException("The resource that you specified for the DestinationArn parameter doesn't exist.");
+            if (destinationQueue.IsFifo != sourceQueue.IsFifo)
+            {
+                throw SqsRequestValidation.InvalidParameterValue("The source queue and destination queue must be of the same queue type.");
             }
         }
 
@@ -1691,20 +1832,17 @@ internal sealed class InternalSqsClient
             throw new InternalQueueDoesNotExistException();
         }
 
-        foreach (var tag in request.Tags ?? [])
-        {
-            if (tag.Value is null)
-            {
-                // Real AWS rejects null tag values with this exact message; we previously
-                // silently dropped them, which masked the difference and let tests pass
-                // that wouldn't have passed against the real service.
-                throw new SqsServiceException("the parameter 'value' may not be null");
-            }
-        }
+        SqsQueueValidation.ValidateTags(request.Tags);
 
         lock (queue.TagsLock)
         {
-            foreach (var tag in request.Tags ?? [])
+            var newKeys = request.Tags!.Keys.Count(key => queue.Tags?.ContainsKey(key) != true);
+            if ((queue.Tags?.Count ?? 0) + newKeys > SqsQueueValidation.MaxTagsPerQueue)
+            {
+                throw SqsQueueValidation.TooManyTags(queue.Name);
+            }
+
+            foreach (var tag in request.Tags)
             {
                 queue.Tags ??= [];
                 queue.Tags[tag.Key] = tag.Value;
@@ -1726,9 +1864,19 @@ internal sealed class InternalSqsClient
             throw new InternalQueueDoesNotExistException();
         }
 
+        if (request.TagKeys is not { Count: > 0 })
+        {
+            throw SqsRequestValidation.MissingParameter("TagKeys");
+        }
+
+        foreach (var tagKey in request.TagKeys)
+        {
+            SqsQueueValidation.ValidateTagKey(tagKey);
+        }
+
         lock (queue.TagsLock)
         {
-            foreach (var tagKey in request.TagKeys ?? [])
+            foreach (var tagKey in request.TagKeys)
             {
                 queue.Tags?.Remove(tagKey);
             }
@@ -1748,6 +1896,8 @@ internal sealed class InternalSqsClient
         {
             throw new InternalQueueDoesNotExistException();
         }
+
+        SqsQueueValidation.ValidatePermissionActions(request.Actions);
 
         JsonObject policy;
         if (queue.Attributes?.TryGetValue("Policy", out var policyJson) == true)
@@ -1770,8 +1920,14 @@ internal sealed class InternalSqsClient
         {
             if (stmt?["Sid"]?.GetValue<string>() == request.Label)
             {
-                throw new ArgumentException($"Value {request.Label} for parameter Label is invalid. Reason: Already exists.");
+                throw SqsRequestValidation.InvalidParameterValue("Label", request.Label, "Already exists.");
             }
+        }
+
+        if (statements.Count >= SqsQueueValidation.MaxPolicyStatements)
+        {
+            throw SqsRequestValidation.Error("OverLimit",
+                $"{statements.Count + 1} Statements were found, maximum allowed is {SqsQueueValidation.MaxPolicyStatements}. ");
         }
 
         var principals = new JsonArray();

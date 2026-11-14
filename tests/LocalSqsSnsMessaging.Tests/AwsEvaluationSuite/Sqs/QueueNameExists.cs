@@ -19,7 +19,6 @@ public sealed class QueueNameExists
     [Test]
     [DisplayName("sqs.queue-name-exists")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.IdempotentCreate, "expected QueueAlreadyExists, got None (None means conflicting create silently succeeded)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

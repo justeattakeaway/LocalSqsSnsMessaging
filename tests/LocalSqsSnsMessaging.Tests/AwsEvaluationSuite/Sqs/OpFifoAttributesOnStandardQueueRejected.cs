@@ -27,7 +27,6 @@ public sealed class OpFifoAttributesOnStandardQueueRejected
     [Test]
     [DisplayName("sqs.op-fifo-attributes-on-standard-queue-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "SetQueueAttributes ContentBasedDeduplication=true on a standard queue succeeded instead of InvalidAttributeName")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

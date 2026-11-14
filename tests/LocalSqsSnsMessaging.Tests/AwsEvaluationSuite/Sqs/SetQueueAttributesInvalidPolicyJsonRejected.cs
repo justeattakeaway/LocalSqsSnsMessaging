@@ -19,7 +19,6 @@ public sealed class SetQueueAttributesInvalidPolicyJsonRejected
     [Test]
     [DisplayName("sqs.set-queue-attributes-invalid-policy-json-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected a malformed Policy JSON to be rejected with InvalidAttributeValue, but SetQueueAttributes succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

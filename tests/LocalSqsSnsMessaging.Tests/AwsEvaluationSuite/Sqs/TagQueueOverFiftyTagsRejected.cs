@@ -21,7 +21,6 @@ public sealed class TagQueueOverFiftyTagsRejected
     [Test]
     [DisplayName("sqs.tag-queue-over-fifty-tags-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Tags, "expected TagQueue with 51 tags to be refused with InvalidParameterValue, but it succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

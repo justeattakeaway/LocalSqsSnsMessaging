@@ -20,7 +20,6 @@ public sealed class QueueNameExistsConflictingAttributesRejected
     [Test]
     [DisplayName("sqs.queue-name-exists-conflicting-attributes-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.IdempotentCreate, "re-creating a FIFO queue with a different ContentBasedDeduplication succeeded instead of QueueAlreadyExists")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

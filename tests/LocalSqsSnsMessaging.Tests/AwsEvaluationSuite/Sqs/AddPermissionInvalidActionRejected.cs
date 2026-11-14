@@ -17,7 +17,6 @@ public sealed class AddPermissionInvalidActionRejected
     [Test]
     [DisplayName("sqs.add-permission-invalid-action-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "AddPermission with Actions=[NotARealSqsAction] succeeded instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

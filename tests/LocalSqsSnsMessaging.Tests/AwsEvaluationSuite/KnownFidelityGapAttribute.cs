@@ -6,14 +6,8 @@ namespace LocalSqsSnsMessaging.Tests.AwsEvaluationSuite;
 /// </summary>
 public enum FidelityGap
 {
-    /// <summary>Message move task validation.</summary>
-    MoveTasks,
-
-    /// <summary>Input validation AWS performs that we skip.</summary>
+    /// <summary>Validation AWS performs that we skip (KMS, purge and re-create cooldowns).</summary>
     Validation,
-
-    /// <summary><c>CreateQueue</c> on an existing name doesn't compare attributes or tags.</summary>
-    IdempotentCreate,
 
     /// <summary>Receipt-handle lifecycle (handles from a deleted queue incarnation).</summary>
     ReceiptHandles,
@@ -21,17 +15,8 @@ public enum FidelityGap
     /// <summary>FIFO semantics (dedup, ReceiveRequestAttemptId, sequence numbers, ...).</summary>
     Fifo,
 
-    /// <summary>Tag validation.</summary>
-    Tags,
-
-    /// <summary>Redrive policy and <c>RedriveAllowPolicy</c> validation and enforcement.</summary>
-    DeadLetterQueues,
-
     /// <summary>The bus serves a single region.</summary>
     MultiRegion,
-
-    /// <summary>The right failure, but a different error code or message.</summary>
-    ErrorMessageText,
 
     /// <summary>Query protocol and raw HTTP handling.</summary>
     Protocol,

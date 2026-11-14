@@ -20,7 +20,7 @@ public sealed class EmptyCollectionParametersValidatedInconsistently
     [Test]
     [DisplayName("sqs.empty-collection-parameters-validated-inconsistently")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "SetQueueAttributes with empty Attributes succeeded instead of MissingParameter")]
+    [KnownFidelityGap(FidelityGap.Other, "GetQueueAttributes with no AttributeNames returns every attribute (kept for compatibility) where SQS returns none")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -17,7 +17,6 @@ public sealed class AddPermissionOverLimitRejected
     [Test]
     [DisplayName("sqs.add-permission-over-limit-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "a 21st AddPermission statement succeeded instead of OverLimit")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

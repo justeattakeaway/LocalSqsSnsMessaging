@@ -26,7 +26,6 @@ public sealed class CreateQueueExistingNameDifferentTagsRejected
     [Test]
     [DisplayName("sqs.create-queue-existing-name-different-tags-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.IdempotentCreate, "re-creating a queue with a different tag value succeeded instead of being refused with QueueAlreadyExists")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

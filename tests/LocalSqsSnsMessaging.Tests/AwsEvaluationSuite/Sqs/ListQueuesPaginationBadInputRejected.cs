@@ -25,7 +25,6 @@ public sealed class ListQueuesPaginationBadInputRejected
     [Test]
     [DisplayName("sqs.list-queues-pagination-bad-input-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected the call to be refused, but ListQueues(MaxResults=1001) succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

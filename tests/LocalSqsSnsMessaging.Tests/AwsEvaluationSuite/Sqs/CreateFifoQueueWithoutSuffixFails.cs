@@ -17,7 +17,6 @@ public sealed class CreateFifoQueueWithoutSuffixFails
     [Test]
     [DisplayName("sqs.create-fifo-queue-without-suffix-fails")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "CreateQueue with FifoQueue=true and no .fifo suffix succeeds instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

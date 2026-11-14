@@ -18,7 +18,6 @@ public sealed class SetQueueAttributesReadonlyAttributeRejected
     [Test]
     [DisplayName("sqs.set-queue-attributes-readonly-attribute-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected a write to the read-only ApproximateNumberOfMessages to be rejected, but SetQueueAttributes succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

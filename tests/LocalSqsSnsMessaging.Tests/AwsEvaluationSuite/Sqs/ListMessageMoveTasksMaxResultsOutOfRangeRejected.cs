@@ -28,7 +28,6 @@ public sealed class ListMessageMoveTasksMaxResultsOutOfRangeRejected
     [Test]
     [DisplayName("sqs.list-message-move-tasks-max-results-out-of-range-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "Check timed out after 60.0s (the move task never reports a terminal status)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

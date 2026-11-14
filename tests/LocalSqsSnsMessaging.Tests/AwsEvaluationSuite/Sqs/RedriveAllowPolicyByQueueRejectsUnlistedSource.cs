@@ -25,7 +25,6 @@ public sealed class RedriveAllowPolicyByQueueRejectsUnlistedSource
     [Test]
     [DisplayName("sqs.redrive-allow-policy-by-queue-rejects-unlisted-source")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "a RedrivePolicy from a source not in the DLQ's byQueue RedriveAllowPolicy is accepted instead of refused")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

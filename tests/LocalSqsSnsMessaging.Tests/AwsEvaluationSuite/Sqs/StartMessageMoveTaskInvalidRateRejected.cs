@@ -19,7 +19,6 @@ public sealed class StartMessageMoveTaskInvalidRateRejected
     [Test]
     [DisplayName("sqs.start-message-move-task-invalid-rate-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "ListDeadLetterSourceQueues never lists the source queue, so the check runs out of its 60s budget waiting for the DLQ association")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

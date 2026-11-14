@@ -48,7 +48,6 @@ public sealed class QueueAttributeRangeBoundsRejected
     [Test]
     [DisplayName("sqs.queue-attribute-range-bounds-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "SetQueueAttributes accepts out-of-range attribute values")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

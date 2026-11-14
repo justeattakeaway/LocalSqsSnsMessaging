@@ -22,7 +22,6 @@ public sealed class CreateFifoQueueAfterSetQueueAttributesComparesCurrentValues
     [Test]
     [DisplayName("sqs.create-fifo-queue-after-set-queue-attributes-compares-current-values")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "CreateQueue on an existing FIFO name with a ContentBasedDeduplication differing from the current value succeeds instead of QueueAlreadyExists")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

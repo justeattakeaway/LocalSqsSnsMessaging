@@ -34,7 +34,6 @@ public sealed class FifoThroughputLimitPerMessageGroupRequiresMessageGroupScopeR
     [Test]
     [DisplayName("sqs.fifo-throughput-limit-per-message-group-requires-message-group-scope-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "expected the call to be refused, but it succeeded: CreateQueue with FifoThroughputLimit=perMessageGroupId and DeduplicationScope=queue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

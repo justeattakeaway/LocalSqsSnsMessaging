@@ -19,7 +19,6 @@ public sealed class RemovePermissionNonexistentLabelRejected
     [Test]
     [DisplayName("sqs.remove-permission-nonexistent-label-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ErrorMessageText, "expected InvalidParameterValue removing a never-granted Label, got 'ArgumentException'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

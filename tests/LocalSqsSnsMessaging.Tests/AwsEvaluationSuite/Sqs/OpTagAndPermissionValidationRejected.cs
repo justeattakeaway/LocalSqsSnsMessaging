@@ -34,7 +34,6 @@ public sealed class OpTagAndPermissionValidationRejected
     [Test]
     [DisplayName("sqs.op-tag-and-permission-validation-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "TagQueue with a 300-character tag value succeeded instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

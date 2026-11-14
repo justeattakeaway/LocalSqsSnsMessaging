@@ -23,7 +23,6 @@ public sealed class TagQueueSystemPrefixAndLengthBoundariesRejected
     [Test]
     [DisplayName("sqs.tag-queue-system-prefix-and-length-boundaries-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Tags, "boundary tags read back without the CreateQueue tag: [('empty-value', 11, 0), ('kkkkkkkkkkkk', 128, 1), ('long-value', 10, 256)]")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -18,7 +18,6 @@ public sealed class TagQueueInvalidTagKeyRejected
     [Test]
     [DisplayName("sqs.tag-queue-invalid-tag-key-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Tags, "expected TagQueue with a 300-character tag key to be rejected with InvalidParameterValue, but it succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

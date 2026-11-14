@@ -85,6 +85,11 @@ internal sealed class SqsQueueResource
     /// </summary>
     private readonly ConcurrentDictionary<Message, byte> _delayedMessages = new(ReferenceEqualityComparer.Instance);
 
+    /// <summary>Delayed FIFO messages per message group, in send order.</summary>
+    private readonly Dictionary<string, Queue<DelayedFifoMessage>> _delayedFifoMessages = new(StringComparer.Ordinal);
+
+    private readonly record struct DelayedFifoMessage(Message Message, long Start, TimeSpan Delay);
+
     /// <summary>Messages sent with a delay that has not elapsed yet (<c>ApproximateNumberOfMessagesDelayed</c>).</summary>
     public int DelayedMessageCount => _delayedMessages.Count;
 
@@ -234,6 +239,20 @@ internal sealed class SqsQueueResource
     {
         _delayedMessages.TryAdd(message, 0);
         var start = timeProvider.GetTimestamp();
+        if (fifoMessageGroupId is not null)
+        {
+            lock (_delayedFifoMessages)
+            {
+                if (!_delayedFifoMessages.TryGetValue(fifoMessageGroupId, out var pending))
+                {
+                    pending = new Queue<DelayedFifoMessage>();
+                    _delayedFifoMessages[fifoMessageGroupId] = pending;
+                }
+
+                pending.Enqueue(new DelayedFifoMessage(message, start, delay));
+            }
+        }
+
         _ = EnqueueAfterDelayCore();
 
         async Task EnqueueAfterDelayCore()
@@ -247,25 +266,57 @@ internal sealed class SqsQueueResource
                 remaining = delay - timeProvider.GetElapsedTime(start);
             }
 
+            if (fifoMessageGroupId is not null)
+            {
+                ReleaseDueFifoMessages(fifoMessageGroupId, timeProvider);
+            }
             // Gone already when the queue was purged while the message was still delayed.
-            if (!_delayedMessages.TryRemove(message, out _))
+            else if (_delayedMessages.TryRemove(message, out _))
+            {
+                Messages.Enqueue(message);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Releases a group's delayed FIFO messages that are due, from the oldest, stopping at the first
+    /// that is not: a message never overtakes an earlier one in its group, whichever timer fires first.
+    /// </summary>
+    private void ReleaseDueFifoMessages(string messageGroupId, TimeProvider timeProvider)
+    {
+        lock (_delayedFifoMessages)
+        {
+            if (!_delayedFifoMessages.TryGetValue(messageGroupId, out var pending))
             {
                 return;
             }
 
-            if (fifoMessageGroupId is null)
+            while (pending.Count > 0 && timeProvider.GetElapsedTime(pending.Peek().Start) >= pending.Peek().Delay)
             {
-                Messages.Enqueue(message);
+                var due = pending.Dequeue().Message;
+                // Gone already when the queue was purged while the message was still delayed.
+                if (_delayedMessages.TryRemove(due, out _))
+                {
+                    EnqueueFifoMessage(messageGroupId, due);
+                }
             }
-            else
+
+            if (pending.Count == 0)
             {
-                EnqueueFifoMessage(fifoMessageGroupId, message);
+                _delayedFifoMessages.Remove(messageGroupId);
             }
         }
     }
 
     /// <summary>Discards every message still waiting out its delay, as <c>PurgeQueue</c> does.</summary>
-    public void DiscardDelayedMessages() => _delayedMessages.Clear();
+    public void DiscardDelayedMessages()
+    {
+        lock (_delayedFifoMessages)
+        {
+            _delayedMessages.Clear();
+            _delayedFifoMessages.Clear();
+        }
+    }
 
     /// <summary>
     /// Makes an in-flight message visible again (visibility timeout expired, or visibility

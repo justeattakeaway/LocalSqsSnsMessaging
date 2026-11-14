@@ -21,7 +21,6 @@ public sealed class RedriveAllowPolicyDocumentValidationRejected
     [Test]
     [DisplayName("sqs.redrive-allow-policy-document-validation-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "an invalid RedriveAllowPolicy document (11 or no byQueue source ARNs, ...) is accepted instead of refused")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

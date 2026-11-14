@@ -22,7 +22,6 @@ public sealed class SetQueueAttributesOneInvalidValueAppliesNoneRejected
     [Test]
     [DisplayName("sqs.set-queue-attributes-one-invalid-value-applies-none-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "SetQueueAttributes accepts a request with one invalid attribute value")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

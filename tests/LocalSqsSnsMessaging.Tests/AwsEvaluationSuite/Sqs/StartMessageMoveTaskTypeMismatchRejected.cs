@@ -25,7 +25,6 @@ public sealed class StartMessageMoveTaskTypeMismatchRejected
     [Test]
     [DisplayName("sqs.start-message-move-task-type-mismatch-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "precondition: the FIFO source's message never redrove into the FIFO DLQ; the DLQ's ApproximateNumberOfMessages read '0'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

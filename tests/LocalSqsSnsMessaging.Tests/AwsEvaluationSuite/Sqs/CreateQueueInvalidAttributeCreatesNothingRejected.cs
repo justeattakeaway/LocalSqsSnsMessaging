@@ -22,7 +22,6 @@ public sealed class CreateQueueInvalidAttributeCreatesNothingRejected
     [Test]
     [DisplayName("sqs.create-queue-invalid-attribute-creates-nothing-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.IdempotentCreate, "CreateQueue with VisibilityTimeout=43201 succeeded instead of being refused with InvalidAttributeValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

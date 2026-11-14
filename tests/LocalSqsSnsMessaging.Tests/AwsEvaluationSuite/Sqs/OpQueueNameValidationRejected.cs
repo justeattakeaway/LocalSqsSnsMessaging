@@ -26,7 +26,6 @@ public sealed class OpQueueNameValidationRejected
     [Test]
     [DisplayName("sqs.op-queue-name-validation-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "CreateQueue with an illegal character in the name succeeded instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

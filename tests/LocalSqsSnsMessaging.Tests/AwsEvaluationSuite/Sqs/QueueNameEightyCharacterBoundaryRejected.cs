@@ -24,7 +24,6 @@ public sealed class QueueNameEightyCharacterBoundaryRejected
     [Test]
     [DisplayName("sqs.queue-name-eighty-character-boundary-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "an 81-character queue name (or '.fifo' on a standard queue) is accepted instead of refused with InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

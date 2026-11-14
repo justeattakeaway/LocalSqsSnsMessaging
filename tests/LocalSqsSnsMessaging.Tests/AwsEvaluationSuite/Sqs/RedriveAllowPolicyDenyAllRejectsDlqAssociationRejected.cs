@@ -26,7 +26,6 @@ public sealed class RedriveAllowPolicyDenyAllRejectsDlqAssociationRejected
     [Test]
     [DisplayName("sqs.redrive-allow-policy-deny-all-rejects-dlq-association-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "naming a denyAll RedriveAllowPolicy queue as a dead-letter target is accepted instead of refused")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

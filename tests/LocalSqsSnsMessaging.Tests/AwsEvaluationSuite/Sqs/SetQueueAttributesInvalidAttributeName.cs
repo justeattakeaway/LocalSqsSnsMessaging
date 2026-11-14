@@ -16,7 +16,6 @@ public sealed class SetQueueAttributesInvalidAttributeName
     [Test]
     [DisplayName("sqs.set-queue-attributes-invalid-attribute-name")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected SetQueueAttributes to reject NotARealAttribute, but it succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

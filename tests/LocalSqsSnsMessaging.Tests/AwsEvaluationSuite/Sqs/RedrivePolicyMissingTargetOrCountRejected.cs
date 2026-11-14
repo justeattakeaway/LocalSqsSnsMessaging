@@ -22,7 +22,6 @@ public sealed class RedrivePolicyMissingTargetOrCountRejected
     [Test]
     [DisplayName("sqs.redrive-policy-missing-target-or-count-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "a ghost DLQ target gave code 'InvalidOperationException'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

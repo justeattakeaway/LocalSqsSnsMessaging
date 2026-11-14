@@ -22,7 +22,6 @@ public sealed class RedrivePolicyDlqTypeMismatchRejected
     [Test]
     [DisplayName("sqs.redrive-policy-dlq-type-mismatch-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "a RedrivePolicy pairing a standard source with a FIFO DLQ (or the reverse) is accepted instead of refused")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

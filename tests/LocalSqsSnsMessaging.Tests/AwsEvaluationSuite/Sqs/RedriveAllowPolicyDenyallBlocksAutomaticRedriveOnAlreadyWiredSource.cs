@@ -25,7 +25,6 @@ public sealed class RedriveAllowPolicyDenyallBlocksAutomaticRedriveOnAlreadyWire
     [Test]
     [DisplayName("sqs.redrive-allow-policy-denyall-blocks-automatic-redrive-on-already-wired-source")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "RedriveAllowPolicy=denyAll does not stop the automatic maxReceiveCount redirect from an already-wired source")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

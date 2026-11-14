@@ -20,7 +20,6 @@ public sealed class CreateQueueExistingNameDifferentPolicyNotConflicting
     [Test]
     [DisplayName("sqs.create-queue-existing-name-different-policy-not-conflicting")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.IdempotentCreate, "CreateQueue on an existing name with a different Policy Action succeeds instead of QueueAlreadyExists")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
