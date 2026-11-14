@@ -25,7 +25,7 @@ public sealed partial class DisabledRuleWithADeadLetterConfiguredTargetDropsTheE
     [Test]
     [DisplayName("events.disabled-rule-with-a-dead-letter-configured-target-drops-the-event-instead-of-dead-lettering-it")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeDeliveryFailures, "an SQS target whose queue has no policy admitting events.amazonaws.com is delivered to instead of failing with NO_PERMISSIONS, so nothing is dead-lettered")]
+    [KnownFidelityGap(FidelityGap.EventBridgeUngrantedTargets, "Kept deliberately: a queue with no policy still receives EventBridge deliveries, so the enabled rule's event is delivered instead of dead-lettered as NO_PERMISSIONS")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

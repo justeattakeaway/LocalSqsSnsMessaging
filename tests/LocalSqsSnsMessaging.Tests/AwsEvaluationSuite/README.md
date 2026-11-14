@@ -94,9 +94,19 @@ These 110 checks are not ported:
 - **KMS keys** (customer-managed keys on buses, queues and topics) (5): `events.cmk-encrypted-bus-delivers-put-events-to-sqs-target`, `events.cmk-without-events-grant-rejected-on-create-and-update`, `events.disabled-bus-key-stops-delivery-dead-letters-encrypted-events-until-reenabled`, `events.sns-target-on-a-kms-encrypted-topic-dead-letters-as-no-permissions-until-the-key-policy-grants-events`, `events.sqs-target-encrypted-with-a-key-events-cannot-use-dead-letters-until-the-key-policy-grants-it`.
 - **CloudFormation stacks** (5): `events.deploy-cfn-bus-target-with-a-stack-created-execution-role-forwards-events-to-the-destination-bus`, `events.deploy-cfn-event-bus-policy-admits-the-named-role-and-a-stack-update-removing-it-denies-again`, `events.deploy-cfn-schedule-rule-fires-into-its-target-and-a-stack-update-disabling-it-stops-firing`, `events.deploy-cfn-target-dead-letter-config-captures-undeliverable-events-until-a-stack-update-adds-the-queue-policy`, `events.deploy-eventbus-rule-target-cfn-then-put-events-delivers`.
 
-Checks that need EventBridge to be regional (a bus per region, cross-region bus targets) are ported
-but stay known gaps (`FidelityGap.EventBridgeRegions`): EventBridge is regional only in a planned
-follow-up, together with SNS.
+Six EventBridge ports stay known gaps:
+
+- **No grant for EventBridge** (4, `FidelityGap.EventBridgeUngrantedTargets`): a queue or topic
+  whose policy says nothing about EventBridge still receives its deliveries, as SNS deliveries do,
+  because most test setups add no policy. A policy that denies EventBridge, or admits it only for
+  other rules, is enforced. Real AWS answers a queue with no policy as `NO_PERMISSIONS` in one check
+  and as `NO_RESOURCE` in another.
+- **Regions** (1, `FidelityGap.EventBridgeRegions`): a cross-region event bus target. EventBridge is
+  regional only in a planned follow-up, together with SNS.
+- **The runner's budget** (1, `FidelityGap.EmulatorBudget`):
+  `events__sqs.events-archive-replay-rule-matching-replay-name-exists-false-is-not-redelivered`
+  spends the runner's 60-second budget for an emulator in its own settle loops and drains, before
+  it reaches the archive, so it fails against any emulator.
 
 One port passes although its Python check failed against the server:
 `events__sqs.custom-bus-fanout-is-at-least-once-and-order-independent`. Its own waits add up to
@@ -145,7 +155,7 @@ so the whole suite takes seconds:
 
 SNS runs on the same clock: deliveries to SQS happen during the Publish, and a FIFO topic's
 five-minute deduplication window and its message archive are measured on the bus's clock.
-EventBridge does too: deliveries happen during PutEvents, and the clock drives retries, replays and
+EventBridge does too: deliveries happen during PutEvents, and the clock drives replays and
 scheduled rules.
 
 Write new waits with `FidelityTime`, never `Task.Delay` or `Stopwatch`: a real wait doesn't

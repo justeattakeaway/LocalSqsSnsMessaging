@@ -21,7 +21,7 @@ public sealed class PutEventsTargetWithoutResourcePolicyBlocksDelivery
     [Test]
     [DisplayName("events.put-events-target-without-resource-policy-blocks-delivery")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeDeliveryFailures, "an SQS target whose queue has no policy granting events.amazonaws.com still receives the event")]
+    [KnownFidelityGap(FidelityGap.EventBridgeUngrantedTargets, "Kept deliberately: a queue with no policy still receives EventBridge deliveries, as most test setups add none; AWS refuses a queue that grants events.amazonaws.com nothing")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

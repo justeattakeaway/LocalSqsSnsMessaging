@@ -33,7 +33,7 @@ public sealed partial class SnsTargetWithoutTopicPolicyDeadLettersAsAccessDenied
     [Test]
     [DisplayName("events.sns-target-without-topic-policy-dead-letters-as-access-denied-until-the-policy-grants-publish")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeSnsTargets, "an SNS topic target is never published to nor dead-lettered (only SQS targets are delivered); AWS dead-letters it as NO_PERMISSIONS when the topic policy grants no Publish")]
+    [KnownFidelityGap(FidelityGap.EventBridgeUngrantedTargets, "Kept deliberately: a topic whose policy says nothing about EventBridge (the default policy) still receives its Publish; AWS dead-letters it as NO_PERMISSIONS until the policy grants events.amazonaws.com")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

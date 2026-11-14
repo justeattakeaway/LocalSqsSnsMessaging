@@ -141,13 +141,24 @@ The HTTP mode implements two different AWS protocols:
 ### SNS Delivery
 
 `SnsPublishAction` (split into `SnsPublishAction*.cs`) fans a published message out per subscription:
-- `SnsFilterPolicy` validates filter policies with AWS's messages (`.Syntax.cs` for JSON errors, `.Grammar.cs` for Event Ruler operator rules) and evaluates them (attribute or body scope) on top of `JsonPatternMatcher`, the same matcher EventBridge uses for event patterns
+- `SnsFilterPolicy` validates filter policies with AWS's messages (`.Syntax.cs` for SNS's JSON errors, the shared `EventRulerJsonReader`/`EventRulerGrammar` for Event Ruler's operator rules) and evaluates them (attribute or body scope) on top of `JsonPatternMatcher`, the same matcher EventBridge uses for event patterns
 - FIFO topics (`SnsPublishAction.Fifo.cs`, `SnsFifoTopicState`) assign sequence numbers and deduplicate for five minutes on the bus `TimeProvider`; an `ArchivePolicy` archives messages, and a subscription's `ReplayPolicy` (`SnsReplayPolicy`) replays them
 - SQS endpoints are resolved from `bus.Queues` at publish time; a deleted queue is a delivery failure. A queue `Policy` that denies SNS (`sns.amazonaws.com`, with the topic as `aws:SourceArn`), or that addresses SNS deliveries without admitting this one, is a delivery failure too (`SnsPublishAction.QueuePolicy.cs`); a policy that says nothing about SNS admits it
 - Non-raw deliveries get the envelope `SnsEnvelope` writes, byte for byte as SNS lays it out and signed (`SnsSigningCertificate`: one self-signed key per process, served at the envelope's `SigningCertURL`; netstandard2.0 keeps `EXAMPLE` placeholders). Raw deliveries convert attributes (`SnsRawMessageAttributes`)
 - HTTP/S subscriptions start `PendingConfirmation` and are excluded from fan-out until `ConfirmSubscription` (or a GET on the `SubscribeURL`) presents the token
 - HTTP/S endpoints are POSTed in the background by `SnsHttpDelivery` using `bus.HttpClient`, retried per `SnsDeliveryPolicy` with `TimeProvider`-driven delays
 - Failed deliveries go to the subscription's dead-letter queue when a `RedrivePolicy` is set
+
+### EventBridge
+
+`InternalEventBridgeClient` (`EventBridgeClient/`) is split into partial files by area: event buses, rules, targets, events (PutEvents and TestEventPattern), tags, permissions, and archives and replays. EventBridge is not regional: every request uses `CurrentRegion`.
+- Requests are validated as EventBridge validates them, with its codes and messages: PutEvents entries fail in place (`EventBridgePutEventsValidation`), PutTargets refuses the whole request (`EventBridgeTargetValidation`, and `EventBridgeTargetInput.Validate` for Input/InputPath/InputTransformer), schedule expressions are checked by `EventBridgeScheduleExpression`, and list operations page with `EventBridgePage`
+- Event patterns are validated and matched as Event Ruler does (`EventBridgeEventPattern`): `EventRulerJsonReader` and `EventRulerGrammar` (shared with SNS filter policies) give Jackson-style refusals, and `JsonPatternMatcher` matches on the event's flattened values
+- `EventBridgeEnvelope` builds each event's envelope; `EventBridgeEventDelivery` routes it through a bus's enabled rules and delivers it, during PutEvents, to each matching rule's targets: SQS queues (FIFO through the FIFO send path, deduplicated by event id), SNS topics (through the topic's publish action) and event buses in the same region and account (forwarded once). `EventBridgeTargetInput` renders what each target receives
+- A failed delivery (missing resource, a queue or topic `Policy` that denies `events.amazonaws.com` or admits it only for other rules, input that is not JSON) goes to the target's `DeadLetterConfig` queue with EventBridge's `ERROR_CODE`/`ERROR_MESSAGE`/`RULE_ARN`/`TARGET_ARN` attributes. A policy that says nothing about EventBridge admits it. These failures are not retried, as on AWS
+- A bus `Policy` (PutPermission/RemovePermission) is enforced for explicit Deny statements on PutEvents, through `SqsQueuePolicy`
+- Archives (`ArchiveResource`) record events through a managed rule on their source bus; replays (`ReplayResource`) and rules with a `ScheduleExpression` (`ScheduledRuleJob`, `EventBridgeSchedule`) run on the bus `TimeProvider`
+- Timestamps go on the wire as epoch seconds (`Http/Serialization/AwsJsonTimestamp.cs`)
 
 ### Time Control
 
@@ -156,6 +167,7 @@ All time-dependent operations use `TimeProvider` from the bus:
 - Visibility timeouts (`ReceiveMessageRequest.VisibilityTimeout`)
 - In-flight message expiration
 - Move task scheduling
+- EventBridge replays and scheduled rules
 
 This allows tests to use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvider.Testing` to control time progression.
 

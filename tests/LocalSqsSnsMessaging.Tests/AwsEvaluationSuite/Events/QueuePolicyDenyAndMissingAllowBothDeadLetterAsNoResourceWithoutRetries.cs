@@ -33,7 +33,7 @@ public sealed partial class QueuePolicyDenyAndMissingAllowBothDeadLetterAsNoReso
     [Test]
     [DisplayName("events.queue-policy-deny-and-missing-allow-both-dead-letter-as-no-resource-without-retries")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeDeliveryFailures, "queues whose policy denies EventBridge (or has no policy) still receive the event and nothing is dead-lettered; AWS dead-letters both as NO_RESOURCE")]
+    [KnownFidelityGap(FidelityGap.EventBridgeUngrantedTargets, "Kept deliberately: the queue whose policy denies EventBridge dead-letters as NO_RESOURCE, but the queue with no policy still receives the event; AWS dead-letters it too")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
