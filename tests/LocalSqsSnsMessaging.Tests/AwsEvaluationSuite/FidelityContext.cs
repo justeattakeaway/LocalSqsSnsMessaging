@@ -87,6 +87,9 @@ public sealed class FidelityContext : IAsyncDisposable
         {
             CurrentRegion = DefaultRegion,
             TimeProvider = Time,
+            // As in AWS: each region's endpoint serves its own queues, and only existing KMS keys work.
+            IsolateRegions = true,
+            KmsKeyAliases = new HashSet<string>(StringComparer.Ordinal),
         };
         _handler = new RequestLatencyHandler(this);
         CurrentContext.Value = this;

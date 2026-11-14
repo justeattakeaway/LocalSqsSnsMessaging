@@ -27,7 +27,6 @@ public sealed class SseRejectsAnonymousSendmessageThatAnUnencryptedQueueAccepts
     [Test]
     [DisplayName("sqs.sse-rejects-anonymous-sendmessage-that-an-unencrypted-queue-accepts")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected an unsigned SendMessage to an SSE-KMS queue to be denied with AccessDenied, but it succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

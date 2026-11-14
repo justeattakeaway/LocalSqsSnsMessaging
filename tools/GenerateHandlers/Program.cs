@@ -126,9 +126,10 @@ static void GenerateJsonHandler(string serviceName, string modelNamespace, JsonE
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
-    // SQS queues are regional: serve the request from the queues of the region it was made in.
+    // SQS queues are regional, and SQS answers each request as the caller who made it: serve the
+    // request from the queues of the region it was made in, as its caller (see SqsCaller).
     code.AppendLine(serviceName == "Sqs"
-        ? "        var client = new InternalSqsClient(bus, AwsRequestRegion.FromRequest(request));"
+        ? "        var client = new InternalSqsClient(bus, AwsRequestRegion.FromRequest(request)) { Caller = SqsCaller.FromRequest(request) };"
         : $"        var client = new Internal{serviceName}Client(bus);");
     code.AppendLine();
     code.AppendLine("        return operationName switch");
@@ -266,7 +267,9 @@ static void GenerateJsonHttpContextHandler(string serviceName, string modelNames
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
-    code.AppendLine($"        var client = new Internal{serviceName}Client(bus);");
+    code.AppendLine(serviceName == "Sqs"
+        ? "        var client = new InternalSqsClient(bus) { Caller = SqsCaller.FromHttpContext(context) };"
+        : $"        var client = new Internal{serviceName}Client(bus);");
     code.AppendLine();
     code.AppendLine("        switch (operationName)");
     code.AppendLine("        {");

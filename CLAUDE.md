@@ -73,7 +73,7 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 **InMemoryAwsBus** (src/LocalSqsSnsMessaging/InMemoryAwsBus.cs:8)
 - Central message bus managing all queues, topics, subscriptions, and move tasks
 - Configurable with `TimeProvider`, `CurrentAccountId`, and `CurrentRegion`
-- SQS queues are partitioned by region: `Queues` holds `CurrentRegion`'s, other regions' are reached via `FindQueuesInRegion`/`GetOrAddQueuesInRegion`, and ARN-addressed deliveries (SNS, EventBridge, move tasks) use `TryGetQueueByArn`. The library HTTP handler serves each SQS request from the region in its SigV4 credential scope, else its `sqs.<region>.amazonaws.com` host (`Http/AwsRequestRegion.cs`), else `CurrentRegion`; the server (`AwsBridgeMiddleware`) always uses `CurrentRegion`
+- SQS queues are partitioned by region when `bus.IsolateRegions` is set (off by default, so every request uses `CurrentRegion`): `Queues` holds `CurrentRegion`'s, other regions' are reached via `FindQueuesInRegion`/`GetOrAddQueuesInRegion`, and ARN-addressed deliveries (SNS, EventBridge, move tasks) use `TryGetQueueByArn`. The library HTTP handler serves each SQS request from the region in its SigV4 credential scope, else its `sqs.<region>.amazonaws.com` host (`Http/AwsRequestRegion.cs`), else `CurrentRegion`; the server (`AwsBridgeMiddleware`) always uses `CurrentRegion`
 - Thread-safe using `ConcurrentDictionary` for all resource collections
 
 **InMemorySqsClient** (src/LocalSqsSnsMessaging/SqsClient/InMemorySqsClient.cs)
@@ -166,6 +166,13 @@ FIFO queues (.fifo suffix) have special handling:
 - Deduplication IDs prevent duplicate messages within 5-minute windows
 - Message group locks ensure ordering (`SqsQueueResource.MessageGroupLocks`)
 - Each message group has its own queue (`SqsQueueResource.MessageGroups`)
+
+### SQS Callers and Queue Policies
+
+The generated SQS handlers build `InternalSqsClient` with a `Caller` (`SqsCaller`: the SigV4 access key, source IP, TLS). A raw client has no `Caller` and is never subject to policies.
+- `SenderId` comes from `SqsCaller.SenderId` (signed: `bus.CurrentUserId`, or the account id for an account-id access key; unsigned: the account id)
+- `InternalSqsClient.Authorization.cs`: `Authorize(queue, action)` runs after each queue lookup and enforces explicit Deny statements only (`SqsQueuePolicy`); `EnsureKmsKeyExists` refuses sends to a queue whose KMS alias is not in `bus.KmsKeyAliases` (only when that is set; by default every key exists)
+- Receipt handles carry the queue's `Incarnation`, so a handle from a deleted queue is refused by a same-name successor
 
 ### Exception Handling in HTTP Mode
 

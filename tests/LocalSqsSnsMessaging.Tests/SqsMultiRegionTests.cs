@@ -8,9 +8,10 @@ using Shouldly;
 namespace LocalSqsSnsMessaging.Tests;
 
 /// <summary>
-/// SQS queues are regional: a request is served from the queues of the region it was made in
-/// (its SigV4 credential scope, else its endpoint host), and <see cref="InMemoryAwsBus.CurrentRegion"/>
-/// when it names none. The evaluation suite's <c>FidelityGap.MultiRegion</c> checks cover the SQS
+/// With <see cref="InMemoryAwsBus.IsolateRegions"/>, SQS queues are regional: a request is served
+/// from the queues of the region it was made in (its SigV4 credential scope, else its endpoint
+/// host), and <see cref="InMemoryAwsBus.CurrentRegion"/> when it names none. Without it, every
+/// request is served from <see cref="InMemoryAwsBus.CurrentRegion"/>. The evaluation suite's <c>FidelityGap.MultiRegion</c> checks cover the SQS
 /// API itself; these cover how the region is read and the deliveries that address a queue by ARN.
 /// </summary>
 public sealed class SqsMultiRegionTests
@@ -54,9 +55,27 @@ public sealed class SqsMultiRegionTests
     }
 
     [Test]
+    public async Task WithoutIsolateRegions_EveryRegionIsServedFromTheCurrentRegion()
+    {
+        // The default, so an app whose SDK clients are configured for another region, wired in
+        // through CreateAwsHttpClientFactory, shares queues with the test's own client.
+        var bus = new InMemoryAwsBus();
+        using var home = bus.CreateSqsClient();
+        using var alt = SqsClientIn(bus, AltRegion);
+
+        var url = (await alt.CreateQueueAsync("shared")).QueueUrl;
+        url.ShouldContain(bus.CurrentRegion);
+        (await alt.GetQueueAttributesAsync(url, ["QueueArn"])).QueueARN.ShouldStartWith($"arn:aws:sqs:{bus.CurrentRegion}:");
+
+        await alt.SendMessageAsync(url, "from another region's client");
+        (await home.ReceiveMessageAsync((await home.GetQueueUrlAsync("shared")).QueueUrl)).Messages
+            .ShouldHaveSingleItem().Body.ShouldBe("from another region's client");
+    }
+
+    [Test]
     public async Task ARequestNamingNoRegionIsServedFromTheCurrentRegion()
     {
-        var bus = new InMemoryAwsBus { CurrentRegion = "us-west-2" };
+        var bus = new InMemoryAwsBus { CurrentRegion = "us-west-2", IsolateRegions = true };
         // Unsigned, so no credential scope, against a custom endpoint that names no region.
         using var local = SqsClientIn(bus, AltRegion, "http://localhost:4566", new AnonymousAWSCredentials());
         using var home = bus.CreateSqsClient();
@@ -70,7 +89,7 @@ public sealed class SqsMultiRegionTests
     [Test]
     public async Task AClientSigningForAnotherRegionGetsThatRegionsQueues()
     {
-        var bus = new InMemoryAwsBus();
+        var bus = new InMemoryAwsBus { IsolateRegions = true };
         using var home = bus.CreateSqsClient();
         using var alt = SqsClientIn(bus, AltRegion);
 
@@ -88,7 +107,7 @@ public sealed class SqsMultiRegionTests
     [Test]
     public async Task SnsDeliversToAQueueInAnotherRegionByItsArn()
     {
-        var bus = new InMemoryAwsBus();
+        var bus = new InMemoryAwsBus { IsolateRegions = true };
         using var sns = bus.CreateSnsClient();
         using var home = bus.CreateSqsClient();
         using var alt = SqsClientIn(bus, AltRegion);
@@ -116,7 +135,7 @@ public sealed class SqsMultiRegionTests
     {
         // Hand-built ARNs naming another region used to reach the home queue of that name; they
         // still do while the bus holds no queue in the region they name.
-        var bus = new InMemoryAwsBus();
+        var bus = new InMemoryAwsBus { IsolateRegions = true };
         using var sns = bus.CreateSnsClient();
         using var sqs = bus.CreateSqsClient();
 
@@ -138,7 +157,7 @@ public sealed class SqsMultiRegionTests
     [Test]
     public async Task RedriveFromAnotherRegionsQueueIsRefusedBeforeLookingTheTargetUp()
     {
-        var bus = new InMemoryAwsBus();
+        var bus = new InMemoryAwsBus { IsolateRegions = true };
         using var sqs = bus.CreateSqsClient();
         var url = (await sqs.CreateQueueAsync("source")).QueueUrl;
         var policy = $$"""{"deadLetterTargetArn":"arn:aws:sqs:{{AltRegion}}:{{bus.CurrentAccountId}}:never-created","maxReceiveCount":3}""";

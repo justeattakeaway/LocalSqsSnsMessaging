@@ -6,19 +6,10 @@ namespace LocalSqsSnsMessaging.Tests.AwsEvaluationSuite;
 /// </summary>
 public enum FidelityGap
 {
-    /// <summary>Validation AWS performs that we skip (KMS, purge and re-create cooldowns).</summary>
+    /// <summary>Validation AWS performs that is deliberately not enforced (the purge and re-create cooldowns).</summary>
     Validation,
 
-    /// <summary>Receipt-handle lifecycle (handles from a deleted queue incarnation).</summary>
-    ReceiptHandles,
-
-    /// <summary>The bus serves a single region.</summary>
-    MultiRegion,
-
-    /// <summary>Query protocol and raw HTTP handling.</summary>
-    Protocol,
-
-    /// <summary>A one-off behavioral difference.</summary>
+    /// <summary>A one-off behavioral difference, kept for compatibility.</summary>
     Other,
 }
 

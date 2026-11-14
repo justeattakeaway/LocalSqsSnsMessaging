@@ -142,7 +142,8 @@ internal sealed class AwsBridgeMiddleware
         }
 
         using var buffer = PooledArrayBufferWriter.Rent();
-        var status = await SqsQueryOperationHandler.HandleAsync(parameters, bus, buffer.Writer, cancellationToken).ConfigureAwait(false);
+        var client = new InternalSqsClient(bus) { Caller = SqsCaller.FromHttpContext(context) };
+        var status = await SqsQueryOperationHandler.HandleAsync(parameters, client, buffer.Writer, cancellationToken).ConfigureAwait(false);
         context.Response.StatusCode = (int)status;
         context.Response.ContentType = SqsQueryOperationHandler.ContentType;
         await context.Response.Body.WriteAsync(buffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);

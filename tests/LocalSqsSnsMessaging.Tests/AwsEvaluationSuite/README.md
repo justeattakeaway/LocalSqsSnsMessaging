@@ -10,7 +10,9 @@ compared side by side.
   against `LocalSqsSnsMessaging.Server`.
 - **Real AWS clients:** tests use real `AmazonSQSClient`s over the in-memory HTTP handler, through
   `FidelityContext`, the C# version of the Python `ctx`.
-- **Isolation:** every test gets its own `InMemoryAwsBus`, on its own virtual clock.
+- **Isolation:** every test gets its own `InMemoryAwsBus`, on its own virtual clock. The bus turns on
+  the library's two strict modes, `IsolateRegions` and `KmsKeyAliases`, so it serves each region's
+  queues separately and refuses unknown KMS aliases, as AWS does.
 - **Left out:** checks that also need IAM, KMS, CloudFormation, CloudWatch, Lambda or STS role
   assumption are not ported.
 

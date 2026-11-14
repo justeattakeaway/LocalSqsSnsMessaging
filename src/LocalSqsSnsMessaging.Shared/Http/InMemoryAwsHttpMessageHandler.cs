@@ -170,7 +170,8 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
             body ??= content is not null ? await content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false) : [];
             // A GET carries its Query parameters in the URL rather than the body.
             var parameters = QueryStringParser.Parse(body.Length > 0 ? body : Encoding.UTF8.GetBytes(query.TrimStart('?')));
-            return await SendSqsQueryAsync(parameters, cancellationToken).ConfigureAwait(false);
+            var client = new InternalSqsClient(_bus, AwsRequestRegion.FromRequest(request)) { Caller = SqsCaller.FromRequest(request) };
+            return await SendSqsQueryAsync(parameters, client, cancellationToken).ConfigureAwait(false);
         }
 
         if (!request.Headers.TryGetValues("x-amz-target", out var targets))
@@ -217,14 +218,14 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         }
     }
 
-    private async Task<HttpResponseMessage> SendSqsQueryAsync(Dictionary<string, string> parameters, CancellationToken cancellationToken)
+    private static async Task<HttpResponseMessage> SendSqsQueryAsync(Dictionary<string, string> parameters, InternalSqsClient client, CancellationToken cancellationToken)
     {
 #if NET
         using var activity = InMemoryAwsBus.ActivitySource.StartActivity(
             $"SQS.{parameters.GetValueOrDefault("Action")}", System.Diagnostics.ActivityKind.Client);
 #endif
         using var buffer = PooledArrayBufferWriter.Rent();
-        var status = await Handlers.SqsQueryOperationHandler.HandleAsync(parameters, _bus, buffer.Writer, cancellationToken).ConfigureAwait(false);
+        var status = await Handlers.SqsQueryOperationHandler.HandleAsync(parameters, client, buffer.Writer, cancellationToken).ConfigureAwait(false);
 #if NET
         if (activity is not null && status != HttpStatusCode.OK)
         {

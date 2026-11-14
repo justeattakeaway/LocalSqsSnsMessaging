@@ -20,7 +20,6 @@ public sealed class QueuePolicyAttributeNormalizesPrincipalAndClears
     [Test]
     [DisplayName("sqs.queue-policy-attribute-normalizes-principal-and-clears")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Other, "a bare account-id principal must read back as the account root ARN; got a bare account id of length 12")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

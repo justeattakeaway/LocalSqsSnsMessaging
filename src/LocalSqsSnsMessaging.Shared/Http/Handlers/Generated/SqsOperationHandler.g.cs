@@ -22,7 +22,7 @@ internal static partial class SqsOperationHandler
         ArgumentNullException.ThrowIfNull(operationName);
         ArgumentNullException.ThrowIfNull(bus);
 
-        var client = new InternalSqsClient(bus, AwsRequestRegion.FromRequest(request));
+        var client = new InternalSqsClient(bus, AwsRequestRegion.FromRequest(request)) { Caller = SqsCaller.FromRequest(request) };
 
         return operationName switch
         {

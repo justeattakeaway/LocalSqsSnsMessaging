@@ -83,6 +83,46 @@ public sealed class InMemoryAwsBus
     /// </summary>
     public Uri? ServiceUrl { get; set; }
 
+    /// <summary>
+    /// Gets or initializes the IAM user id of the caller behind a signed SQS request, which SQS
+    /// reports as a message's <c>SenderId</c> (the <c>UserId</c> <c>sts:GetCallerIdentity</c> answers).
+    /// </summary>
+    /// <remarks>
+    /// The bus models no IAM users, so one id stands for every access key, except an access key
+    /// that is a 12-digit account id: that signs as the account's root user, whose user id is the
+    /// account id. Unsigned requests (as sent by <c>CreateSqsClient()</c>) report
+    /// <see cref="CurrentAccountId"/>.
+    /// </remarks>
+    /// <value>Defaults to <c>"AIDAIOSFODNN7EXAMPLE"</c>.</value>
+    public string CurrentUserId { get; init; } = "AIDAIOSFODNN7EXAMPLE";
+
+    /// <summary>
+    /// Gets or initializes the customer-managed KMS aliases that exist, for queues encrypted with
+    /// <c>KmsMasterKeyId</c>. Names may be given with or without the <c>alias/</c> prefix.
+    /// </summary>
+    /// <remarks>
+    /// The bus models no KMS keys. When this is <see langword="null"/> (the default), every key is
+    /// taken to exist. When it is set, a queue whose key is a key id, a key ARN or an AWS-managed
+    /// alias such as <c>alias/aws/sqs</c> still sends normally, but a queue whose key is any other
+    /// alias refuses <c>SendMessage</c> with <c>KMS.NotFoundException</c>, as SQS does for a missing
+    /// alias, unless that alias is listed here.
+    /// </remarks>
+    public ISet<string>? KmsKeyAliases { get; init; }
+
+    /// <summary>
+    /// Gets or initializes whether SQS requests are served from the queues of the region they were
+    /// made in, as each regional AWS endpoint does.
+    /// </summary>
+    /// <remarks>
+    /// When <see langword="false"/> (the default), every request is served from the queues of
+    /// <see cref="CurrentRegion"/>, whatever region its client was configured for. When
+    /// <see langword="true"/>, the region is read from the request's SigV4 credential scope or its
+    /// endpoint host: same-named queues in two regions are separate queues, a queue's ARN and URL
+    /// name the region it was created in, and a client in one region can't reach another's queues.
+    /// Requests that name no region, and the raw clients, use <see cref="CurrentRegion"/>.
+    /// </remarks>
+    public bool IsolateRegions { get; init; }
+
     private static readonly Lazy<HttpClient> DefaultHttpClient = new(() => new HttpClient());
     private HttpClient? _httpClient;
 

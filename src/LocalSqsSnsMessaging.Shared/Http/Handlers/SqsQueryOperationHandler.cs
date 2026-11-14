@@ -22,17 +22,18 @@ internal static partial class SqsQueryOperationHandler
     private const string QueryQueueDoesNotExistMessage = "The specified queue does not exist for this wsdl version.";
 
     /// <summary>
-    /// Runs the request in <paramref name="parameters"/> and writes its XML response to
+    /// Runs the request in <paramref name="parameters"/> on <paramref name="client"/> (built for the
+    /// request's region and caller, as for the JSON protocol) and writes its XML response to
     /// <paramref name="output"/>, returning the HTTP status code to send it with.
     /// </summary>
     public static async Task<HttpStatusCode> HandleAsync(
         Dictionary<string, string> parameters,
-        InMemoryAwsBus bus,
+        InternalSqsClient client,
         IBufferWriter<byte> output,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(parameters);
-        ArgumentNullException.ThrowIfNull(bus);
+        ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(output);
 
         if (!parameters.TryGetValue("Action", out var action) || string.IsNullOrEmpty(action))
@@ -45,7 +46,7 @@ internal static partial class SqsQueryOperationHandler
         using var pooled = PooledArrayBufferWriter.Rent();
         try
         {
-            if (!await TryDispatchAsync(action, parameters, new InternalSqsClient(bus), pooled.Writer, cancellationToken).ConfigureAwait(false))
+            if (!await TryDispatchAsync(action, parameters, client, pooled.Writer, cancellationToken).ConfigureAwait(false))
             {
                 return WriteError(output, "InvalidAction", $"The action {action} is not valid for this endpoint.", HttpStatusCode.BadRequest);
             }
