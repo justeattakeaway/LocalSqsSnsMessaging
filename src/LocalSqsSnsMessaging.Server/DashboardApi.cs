@@ -128,8 +128,8 @@ internal static class DashboardApi
                 MessagesAvailable = q.Messages.Count,
                 MessagesInFlight = q.InFlightMessages.Count,
                 VisibilityTimeoutSeconds = (int)q.VisibilityTimeout.TotalSeconds,
-                HasDeadLetterQueue = q.ErrorQueue is not null,
-                DeadLetterQueueName = q.ErrorQueue?.Name,
+                HasDeadLetterQueue = q.DeadLetterTargetArn is not null,
+                DeadLetterQueueName = Arn.TryParse(q.DeadLetterTargetArn, out var deadLetterArn) ? deadLetterArn.Resource : null,
                 MaxReceiveCount = q.MaxReceiveCount
             }).OrderBy(q => q.Name).ToList(),
 
@@ -150,7 +150,7 @@ internal static class DashboardApi
             }).ToList(),
 
             MoveTasks = bus.MoveTasks.Values
-                .Where(t => string.Equals(InMemoryAwsBus.ArnRegion(t.SourceQueue.Arn), resources.Region, StringComparison.Ordinal))
+                .Where(t => string.Equals(Arn.RegionOf(t.SourceQueue.Arn), resources.Region, StringComparison.Ordinal))
                 .Select(t => new MoveTaskInfo
             {
                 TaskHandle = t.TaskHandle,

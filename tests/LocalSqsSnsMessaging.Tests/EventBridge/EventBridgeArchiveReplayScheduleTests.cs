@@ -309,13 +309,15 @@ public sealed class EventBridgeArchiveReplayScheduleTests
         await eb.PutRuleAsync(new Eb.PutRuleRequest { Name = "quarterly", ScheduleExpression = "cron(0 0 1 1/3 ? *)" });
         await eb.PutTargetsAsync(new Eb.PutTargetsRequest { Rule = "quarterly", Targets = [new Eb.Target { Id = "q", Arn = queueArn }] });
 
+        // Drained as it goes: a delivery months old has outlived the queue's retention period.
+        var fired = new List<string>();
         for (var day = 0; day < 190; day++)
         {
             time.Advance(TimeSpan.FromDays(1));
+            fired.AddRange((await DrainAsync(sqs, queueUrl)).Select(e => e["time"]!.GetValue<string>()));
         }
 
-        (await DrainAsync(sqs, queueUrl)).Select(e => e["time"]!.GetValue<string>())
-            .ShouldBe(["2026-04-01T00:00:00Z", "2026-07-01T00:00:00Z"]);
+        fired.ShouldBe(["2026-04-01T00:00:00Z", "2026-07-01T00:00:00Z"]);
     }
 
     [Test]

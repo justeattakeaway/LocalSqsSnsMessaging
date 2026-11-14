@@ -157,49 +157,75 @@ public sealed class InMemoryAwsBus
     /// <summary>Every region a resource has been looked up or created in.</summary>
     internal IEnumerable<AwsRegionResources> Regions => _regions.Values;
 
-    /// <summary>
-    /// The resources of the region an ARN names (<c>arn:partition:service:region:account:resource</c>),
-    /// or of <see cref="CurrentRegion"/> when <paramref name="arn"/> is not an ARN naming a region.
-    /// </summary>
-    internal AwsRegionResources RegionOfArn(string? arn) => Region(ArnRegion(arn));
-
-    /// <summary>The region an ARN names, or <see langword="null"/> when it is not an ARN naming one.</summary>
-    internal static string? ArnRegion(string? arn)
-    {
-        if (arn is null || !arn.StartsWith("arn:", StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        var parts = arn.Split(':', 6);
-        return parts.Length == 6 && parts[3].Length > 0 ? parts[3] : null;
-    }
-
     /// <summary>Gets the SQS queues in <see cref="CurrentRegion"/>, keyed by queue name.</summary>
     internal ConcurrentDictionary<string, SqsQueueResource> Queues => Region(CurrentRegion).Queues;
 
     /// <summary>
-    /// Finds the queue an SQS ARN names, in the region the ARN names, for the deliveries that
-    /// address a queue by ARN (SNS subscriptions, EventBridge targets, dead-letter sources). The
-    /// account in the ARN is not checked; a value that is not an ARN is looked up by name in
-    /// <see cref="CurrentRegion"/>.
+    /// The resources of <paramref name="region"/> if anything has been created or looked up there,
+    /// without creating them: resolving an ARN that names an unknown region finds nothing.
+    /// </summary>
+    internal bool TryGetRegion(string? region, [NotNullWhen(true)] out AwsRegionResources? resources)
+    {
+        resources = null;
+        return !string.IsNullOrEmpty(region) && _regions.TryGetValue(region!, out resources);
+    }
+
+    /// <summary>
+    /// Finds the queue an SQS ARN names, for the deliveries that address a queue by ARN (SNS
+    /// subscriptions, EventBridge targets, dead-letter queues, move tasks). The whole ARN must
+    /// match: region, account and name. A queue deleted and recreated under the same name is found,
+    /// so callers resolve the ARN each time they deliver rather than keep the queue they found.
     /// </summary>
     internal bool TryGetQueueByArn(string? arn, [NotNullWhen(true)] out SqsQueueResource? queue)
     {
         queue = null;
-        return arn is not null && RegionOfArn(arn).Queues.TryGetValue(arn[(arn.LastIndexOf(':') + 1)..], out queue);
+        if (!Arn.TryParse(arn, out var parsed)
+            || !TryGetRegion(parsed.Region, out var resources)
+            || !resources.Queues.TryGetValue(parsed.Resource, out var found)
+            || !string.Equals(found.Arn, arn, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        queue = found;
+        return true;
     }
 
-    /// <summary>
-    /// Finds the topic an SNS ARN names, in the region the ARN names. The whole ARN must match, so a
-    /// topic of the same name in another account is not found.
-    /// </summary>
+    /// <summary>Finds the topic an SNS ARN names. The whole ARN must match: region, account and name.</summary>
     internal bool TryGetTopicByArn(string? arn, [NotNullWhen(true)] out SnsTopicResource? topic)
     {
         topic = null;
-        return arn is not null
-               && RegionOfArn(arn).Topics.TryGetValue(arn[(arn.LastIndexOf(':') + 1)..], out topic)
-               && string.Equals(topic.Arn, arn, StringComparison.Ordinal);
+        if (!Arn.TryParse(arn, out var parsed)
+            || !TryGetRegion(parsed.Region, out var resources)
+            || !resources.Topics.TryGetValue(parsed.Resource, out var found)
+            || !string.Equals(found.Arn, arn, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        topic = found;
+        return true;
+    }
+
+    /// <summary>
+    /// Finds the event bus an EventBridge ARN (<c>...:event-bus/name</c>) names. The whole ARN must
+    /// match: region, account and name.
+    /// </summary>
+    internal bool TryGetEventBusByArn(string? arn, [NotNullWhen(true)] out EventBusResource? eventBus)
+    {
+        const string prefix = "event-bus/";
+        eventBus = null;
+        if (!Arn.TryParse(arn, out var parsed)
+            || !parsed.Resource.StartsWith(prefix, StringComparison.Ordinal)
+            || !TryGetRegion(parsed.Region, out var resources)
+            || !resources.EventBuses.TryGetValue(parsed.Resource[prefix.Length..], out var found)
+            || !string.Equals(found.Arn, arn, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        eventBus = found;
+        return true;
     }
 
     /// <summary>

@@ -412,19 +412,11 @@ internal sealed partial class InternalSqsClient
         }
     }
 
-    /// <summary>The queue an ARN names, if it is one of this bus's queues.</summary>
-    private SqsQueueResource? FindQueueByArn(string? arn)
-    {
-        if (arn is null)
-        {
-            return null;
-        }
-
-        var name = arn[(arn.LastIndexOf(':') + 1)..];
-        return Queues.TryGetValue(name, out var queue) && string.Equals(queue.Arn, arn, StringComparison.Ordinal)
+    /// <summary>The queue an ARN names, if it is one of this region's queues.</summary>
+    private SqsQueueResource? FindQueueByArn(string? arn) =>
+        _bus.TryGetQueueByArn(arn, out var queue) && string.Equals(queue.Region, _region, StringComparison.Ordinal)
             ? queue
             : null;
-    }
 
     /// <summary>
     /// Checks a <c>RedrivePolicy</c> being set on <paramref name="source"/>: well formed, naming an
@@ -438,7 +430,7 @@ internal sealed partial class InternalSqsClient
         }
 
         var policy = SqsQueueValidation.ParseRedrivePolicy(value);
-        if (SqsQueueValidation.ArnRegion(policy.DeadLetterTargetArn) is { } targetRegion
+        if (Arn.RegionOf(policy.DeadLetterTargetArn) is { } targetRegion
             && !string.Equals(targetRegion, source.Region, StringComparison.Ordinal))
         {
             throw SqsRequestValidation.InvalidParameterValue("RedrivePolicy", value,
@@ -837,21 +829,21 @@ internal sealed partial class InternalSqsClient
             return false;
         }
 
-        if (IsAtMaxReceiveCount(message, queue) && queue.ErrorQueue is not null
-            && SqsQueueValidation.RedriveAllowed(queue.ErrorQueue, queue.Arn))
+        // A dead-letter queue deleted since the policy was set leaves the message where it is.
+        if (IsAtMaxReceiveCount(message, queue) && _bus.TryGetQueueByArn(queue.DeadLetterTargetArn, out var deadLetterQueue)
+            && SqsQueueValidation.RedriveAllowed(deadLetterQueue, queue.Arn))
         {
             message.Attributes ??= [];
             message.Attributes[InternalMessageSystemAttributeName.DeadLetterQueueSourceArn] = queue.Arn;
-            if (queue.ErrorQueue.IsFifo)
+            if (deadLetterQueue.IsFifo)
             {
-                // In a FIFO dead-letter queue the message is deduplicated by its original id, and
-                // its retention period starts over.
+                // In a FIFO dead-letter queue the message is deduplicated by its original id (and
+                // its retention period starts over, which AcceptRedriven sees to).
                 message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = message.MessageId!;
-                queue.ErrorQueue.RestartRetention(message, _bus.TimeProvider.GetUtcNow());
             }
 
             queue.LatestReceiptHandles.TryRemove(message.MessageId!, out _);
-            EnqueueMessage(queue.ErrorQueue, message);
+            deadLetterQueue.AcceptRedriven(message, _bus.TimeProvider.GetUtcNow());
             return false;
         }
         IncrementReceiveCount(message);
@@ -954,14 +946,6 @@ internal sealed partial class InternalSqsClient
         return messages;
     }
 
-    private static bool IsFairQueue(SqsQueueResource queue)
-    {
-        return queue.Attributes != null &&
-               queue.Attributes.TryGetValue(InternalQueueAttributeName.DeduplicationScope, out var dedupScope) &&
-               dedupScope == "messageGroup" &&
-               queue.Attributes.TryGetValue(InternalQueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
-               throughputLimit == "perMessageGroupId";
-    }
 
     private static bool IsAtMaxReceiveCount(Message message, SqsQueueResource queue)
     {
@@ -1086,45 +1070,17 @@ internal sealed partial class InternalSqsClient
 
         var message = CreateMessage(request.MessageBody!, request.MessageAttributes, request.MessageSystemAttributes);
 
-        if (queue.IsFifo)
+        if (!queue.AcceptSent(message, request.MessageGroupId, request.MessageDeduplicationId, request.DelaySeconds,
+                _bus.TimeProvider, out var original))
         {
-            if (!TryEnqueueFifoMessage(queue, message, request.MessageGroupId!,
-                    request.MessageDeduplicationId, request.MessageBody!, _bus.TimeProvider, out var original))
+            return Task.FromResult(new SendMessageResponse
             {
-                return Task.FromResult(new SendMessageResponse
-                {
-                    MessageId = original.MessageId,
-                    SequenceNumber = original.SequenceNumber,
-                    MD5OfMessageBody = message.MD5OfBody,
-                    MD5OfMessageAttributes = SqsMessageAttributeDigest.Compute(request.MessageAttributes),
-                    MD5OfMessageSystemAttributes = SqsMessageAttributeDigest.Compute(request.MessageSystemAttributes)
-                }.SetCommonProperties());
-            }
-        }
-        else
-        {
-            if (request.MessageGroupId is not null)
-            {
-                // A standard queue keeps a MessageGroupId (for fair queueing) without ordering by it.
-                message.Attributes![InternalMessageSystemAttributeName.MessageGroupId] = request.MessageGroupId;
-            }
-
-            // A message's own DelaySeconds overrides the queue's, in either direction.
-            var delaySeconds = request.DelaySeconds ?? queue.DelaySeconds;
-            if (delaySeconds > 0)
-            {
-                if (request.DelaySeconds > 0)
-                {
-                    message.Attributes ??= [];
-                    message.Attributes["DelaySeconds"] = delaySeconds.ToString(NumberFormatInfo.InvariantInfo);
-                }
-
-                queue.EnqueueAfterDelay(message, TimeSpan.FromSeconds(delaySeconds), _bus.TimeProvider);
-            }
-            else
-            {
-                queue.Messages.Enqueue(message);
-            }
+                MessageId = original.MessageId,
+                SequenceNumber = original.SequenceNumber,
+                MD5OfMessageBody = message.MD5OfBody,
+                MD5OfMessageAttributes = SqsMessageAttributeDigest.Compute(request.MessageAttributes),
+                MD5OfMessageSystemAttributes = SqsMessageAttributeDigest.Compute(request.MessageSystemAttributes)
+            }.SetCommonProperties());
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.SendMessage, queue.Arn);
@@ -1136,49 +1092,6 @@ internal sealed partial class InternalSqsClient
             MD5OfMessageSystemAttributes = SqsMessageAttributeDigest.Compute(request.MessageSystemAttributes),
             SequenceNumber = message.Attributes?.GetValueOrDefault("SequenceNumber")
         }.SetCommonProperties());
-    }
-
-    private static void EnqueueMessage(SqsQueueResource targetQueue, Message message)
-    {
-        if (targetQueue.IsFifo)
-        {
-            if (!message.Attributes!.TryGetValue("MessageGroupId", out var groupId) || string.IsNullOrEmpty(groupId))
-            {
-                throw new InvalidOperationException("Message destined for a FIFO queue must have a MessageGroupId.");
-            }
-            targetQueue.EnqueueFifoMessage(groupId, message);
-        }
-        else
-        {
-            targetQueue.Messages.Enqueue(message);
-        }
-    }
-
-    /// <summary>
-    /// Applies FIFO group assignment and (content-based or explicit) deduplication, enqueuing the
-    /// message via <see cref="SqsQueueResource.EnqueueFifoMessage"/> when it is not a duplicate. Shared by the single
-    /// and batch send paths so both behave identically for FIFO queues.
-    /// </summary>
-    /// <returns>
-    /// <see langword="true"/> when the message was enqueued; <see langword="false"/> when it was a
-    /// duplicate, in which case <paramref name="original"/> is the message that claimed the
-    /// deduplication id.
-    /// </returns>
-    private static bool TryEnqueueFifoMessage(SqsQueueResource queue, Message message, string messageGroupId,
-        string? messageDeduplicationId, string messageBody, TimeProvider timeProvider, out SqsDeduplicationCache.Entry original)
-    {
-        message.Attributes ??= [];
-        message.Attributes["MessageGroupId"] = messageGroupId;
-
-        var deduplicationId = messageDeduplicationId;
-        if (string.IsNullOrEmpty(deduplicationId))
-        {
-            deduplicationId = SqsDeduplicationCache.ContentDeduplicationId(messageBody);
-        }
-
-        message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
-
-        return queue.TryEnqueueFifoSend(message, messageGroupId, deduplicationId, IsFairQueue(queue), timeProvider, out original);
     }
 
     private Message CreateMessage(string messageBody, Dictionary<string, MessageAttributeValue>? messageAttributes, Dictionary<string, MessageSystemAttributeValue>? messageSystemAttributes)
@@ -1194,13 +1107,10 @@ internal sealed partial class InternalSqsClient
 
         messageAttributes = NormalizeNumberAttributes(messageAttributes);
 
-        // Populate server-side system attributes that real AWS sets at SendMessage time:
-        //   - SentTimestamp: epoch milliseconds the request was accepted
-        //   - SenderId: the caller's IAM user id (see SqsCaller.SenderId); the raw client and
-        //     unsigned requests are attributed to the bus's CurrentAccountId
+        // SenderId is the caller's IAM user id (see SqsCaller.SenderId); the raw client and
+        // unsigned requests are attributed to the bus's CurrentAccountId. The queue stamps
+        // SentTimestamp when it accepts the message (SqsQueueResource.AcceptSent).
         attributes ??= [];
-        attributes[InternalMessageSystemAttributeName.SentTimestamp] =
-            _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
         attributes[InternalMessageSystemAttributeName.SenderId] = (Caller ?? SqsCaller.Unsigned).SenderId(_bus);
 
         var message = new Message
@@ -1408,7 +1318,7 @@ internal sealed partial class InternalSqsClient
         }.SetCommonProperties());
     }
 
-    private void UpdateQueueProperties(SqsQueueResource queue)
+    private static void UpdateQueueProperties(SqsQueueResource queue)
     {
         if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.VisibilityTimeout, out var visibilityTimeout) == true)
         {
@@ -1521,7 +1431,7 @@ internal sealed partial class InternalSqsClient
         Authorize(deadLetterQueue, SqsActionName.ListDeadLetterSourceQueues);
 
         var deadLetterSourceQueues = Queues.Values
-            .Where(q => q.ErrorQueue?.Arn == deadLetterQueue.Arn)
+            .Where(q => string.Equals(q.DeadLetterTargetArn, deadLetterQueue.Arn, StringComparison.Ordinal))
             .Select(q => q.Url)
             .OrderBy(url => url)
             .ToList();
@@ -1818,38 +1728,13 @@ internal sealed partial class InternalSqsClient
 
             var reportedMessageId = message.MessageId;
 
-            if (queue.IsFifo)
+            // A FIFO duplicate is still reported as successful (matching real SQS), but carries the
+            // id of the message that originally claimed the deduplication id.
+            if (!queue.AcceptSent(message, entry.MessageGroupId, entry.MessageDeduplicationId, entry.DelaySeconds,
+                    _bus.TimeProvider, out var original))
             {
-                // A duplicate is still reported as successful (matching real SQS), but carries the
-                // id of the message that originally claimed the deduplication id.
-                if (!TryEnqueueFifoMessage(queue, message, entry.MessageGroupId!,
-                        entry.MessageDeduplicationId, entry.MessageBody!, _bus.TimeProvider, out var original))
-                {
-                    reportedMessageId = original.MessageId;
-                    message.Attributes!["SequenceNumber"] = original.SequenceNumber!;
-                }
-            }
-            else
-            {
-                if (entry.MessageGroupId is not null)
-                {
-                    message.Attributes![InternalMessageSystemAttributeName.MessageGroupId] = entry.MessageGroupId;
-                }
-
-                var entryDelaySeconds = entry.DelaySeconds ?? queue.DelaySeconds;
-                if (entryDelaySeconds > 0)
-                {
-                    if (entry.DelaySeconds > 0)
-                    {
-                        message.Attributes!["DelaySeconds"] = entryDelaySeconds.ToString(NumberFormatInfo.InvariantInfo);
-                    }
-
-                    queue.EnqueueAfterDelay(message, TimeSpan.FromSeconds(entryDelaySeconds), _bus.TimeProvider);
-                }
-                else
-                {
-                    queue.Messages.Enqueue(message);
-                }
+                reportedMessageId = original.MessageId;
+                message.Attributes!["SequenceNumber"] = original.SequenceNumber!;
             }
 
             response.Successful.Add(new SendMessageBatchResultEntry
@@ -1918,14 +1803,14 @@ internal sealed partial class InternalSqsClient
         }.SetCommonProperties());
     }
 
-    private void ExtractRedrivePolicy(SqsQueueResource queue)
+    private static void ExtractRedrivePolicy(SqsQueueResource queue)
     {
         if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.RedrivePolicy, out var emptyPolicy) == true
             && string.IsNullOrEmpty(emptyPolicy))
         {
             // An empty RedrivePolicy unlinks the dead-letter queue.
             queue.Attributes.Remove(InternalQueueAttributeName.RedrivePolicy);
-            queue.ErrorQueue = null;
+            queue.DeadLetterTargetArn = null;
             queue.MaxReceiveCount = null;
             return;
         }
@@ -1951,10 +1836,10 @@ internal sealed partial class InternalSqsClient
 
             if (deadLetterTargetArn != null && maxReceiveCount > 0)
             {
-                var deadLetterTargetQueueName = deadLetterTargetArn.Split(':').Last();
-                // Checked by ValidateRedrivePolicy when set; the dead-letter queue may have been
-                // deleted since, which leaves the policy in place with nowhere to redrive to.
-                queue.ErrorQueue = Queues.GetValueOrDefault(deadLetterTargetQueueName);
+                // Checked by ValidateRedrivePolicy when set. The dead-letter queue may be deleted
+                // later, which leaves the policy in place with nowhere to redrive to until a queue
+                // of the same ARN is created again.
+                queue.DeadLetterTargetArn = deadLetterTargetArn;
                 queue.MaxReceiveCount = maxReceiveCount;
 
                 // SQS stores the policy normalised: compact JSON with a numeric maxReceiveCount.
@@ -1987,7 +1872,7 @@ internal sealed partial class InternalSqsClient
 
         var deadLetterQueues =
             Queues.Values
-                .Select(q => q.ErrorQueue?.Arn)
+                .Select(q => q.DeadLetterTargetArn)
                 .Where(arn => arn is not null);
 
         if (!deadLetterQueues.Contains(sourceQueue.Arn))

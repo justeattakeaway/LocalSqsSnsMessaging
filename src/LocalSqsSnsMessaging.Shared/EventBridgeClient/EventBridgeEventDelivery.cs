@@ -1,9 +1,6 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json.Nodes;
 using LocalSqsSnsMessaging.EventBridge.Model;
 using SnsPublishRequest = LocalSqsSnsMessaging.Sns.Model.PublishRequest;
-using SqsMessage = LocalSqsSnsMessaging.Sqs.Model.Message;
 using SqsMessageAttributeValue = LocalSqsSnsMessaging.Sqs.Model.MessageAttributeValue;
 
 namespace LocalSqsSnsMessaging;
@@ -25,7 +22,7 @@ namespace LocalSqsSnsMessaging;
 /// service errors, which the in-memory services never return.
 /// </para>
 /// <para>
-/// Resource policies are evaluated as for SNS deliveries (<see cref="SqsQueuePolicy.AdmitsServiceDelivery"/>):
+/// Resource policies are evaluated as for SNS deliveries (<see cref="SqsQueuePolicy.EvaluateServiceDelivery"/>):
 /// EventBridge delivers as <c>events.amazonaws.com</c>, with the rule as <c>aws:SourceArn</c>. A
 /// policy that denies it, or that grants EventBridge deliveries without admitting this rule,
 /// refuses the delivery. A queue with no policy, or a policy that says nothing about EventBridge,
@@ -38,9 +35,6 @@ namespace LocalSqsSnsMessaging;
 /// </remarks>
 internal static class EventBridgeEventDelivery
 {
-    /// <summary>The service principal EventBridge delivers to targets as.</summary>
-    private const string EventsServicePrincipal = "events.amazonaws.com";
-
     /// <summary>
     /// Routes an event put on <paramref name="eventBus"/> through its rules and delivers it to the
     /// matched rules' targets. Its trace header, if well formed, reaches SQS targets as the
@@ -110,7 +104,7 @@ internal static class EventBridgeEventDelivery
 
     private static void DeliverToTarget(Delivery delivery, InMemoryAwsBus bus)
     {
-        if (!TargetArn.TryParse(delivery.Target.Arn, out var arn))
+        if (!Arn.TryParse(delivery.Target.Arn, out var arn))
         {
             return;
         }
@@ -144,7 +138,7 @@ internal static class EventBridgeEventDelivery
             case "events" when arn.Resource.StartsWith("event-bus/", StringComparison.Ordinal)
                                && string.Equals(arn.Account, bus.CurrentAccountId, StringComparison.Ordinal):
             {
-                if (ForwardToBus(delivery, arn.Region, arn.Resource["event-bus/".Length..], bus) is { } failure)
+                if (ForwardToBus(delivery, arn, bus) is { } failure)
                 {
                     DeadLetter(delivery, EventBridgeJson.Serialize(delivery.Event.Envelope), failure, bus);
                 }
@@ -157,22 +151,30 @@ internal static class EventBridgeEventDelivery
     /// <summary>Sends <paramref name="body"/> to the queue <paramref name="queueArn"/> names.</summary>
     private static DeliveryFailure? DeliverToQueue(Delivery delivery, string queueArn, string body, InMemoryAwsBus bus)
     {
+        var request = QueueDelivery(delivery, queueArn, body) with { TraceHeader = delivery.Event.TraceHeader };
+
         // SQS answers a sender its policy refuses as if the queue did not exist.
-        if (!bus.TryGetQueueByArn(queueArn, out var queue) || !AdmitsDelivery(queue, delivery.Rule))
-        {
-            return new DeliveryFailure("NO_RESOURCE", ServiceErrorMessage(
+        return SqsServiceDelivery.Deliver(bus, request) is SqsServiceDelivery.Outcome.Delivered or SqsServiceDelivery.Outcome.Duplicate
+            ? null
+            : new DeliveryFailure("NO_RESOURCE", ServiceErrorMessage(
                 "The specified queue does not exist or you do not have access to it.",
                 "AmazonSQS", 400, "AWS.SimpleQueueService.NonExistentQueue"));
-        }
+    }
 
-        var message = CreateSqsMessage(body, attributes: null);
-        if (delivery.Event.TraceHeader is not null)
+    /// <summary>
+    /// What EventBridge sends to the queue <paramref name="queueArn"/> for <paramref name="delivery"/>:
+    /// on a FIFO queue, in the target's message group, deduplicated by the event id.
+    /// </summary>
+    private static SqsServiceDelivery.Request QueueDelivery(Delivery delivery, string queueArn, string body)
+    {
+        var fifo = queueArn.EndsWith(".fifo", StringComparison.OrdinalIgnoreCase);
+        return new SqsServiceDelivery.Request(queueArn, SqsServiceDelivery.EventsPrincipal, delivery.Rule.Arn, body)
         {
-            message.Attributes = new() { [InternalMessageSystemAttributeName.AWSTraceHeader] = delivery.Event.TraceHeader };
-        }
-
-        Enqueue(queue, message, delivery, bus);
-        return null;
+            MessageGroupId = fifo
+                ? EventBridgeTargetInput.ResolveMessageGroupId(delivery.Target, delivery.Event.Envelope) ?? delivery.Target.Id ?? "eventbridge"
+                : null,
+            DeduplicationId = fifo ? delivery.EventId : null,
+        };
     }
 
     /// <summary>
@@ -194,14 +196,17 @@ internal static class EventBridgeEventDelivery
             policy = topic.Attributes.GetValueOrDefault(SnsTopicAttributes.Policy);
         }
 
-        var request = ServiceRequest("Publish", topic.Arn, delivery.Rule) with { ActionPrefix = "sns" };
-        if (!string.IsNullOrEmpty(policy) && !SqsQueuePolicy.AdmitsServiceDelivery(policy!, request))
+        var request = SqsQueuePolicy.ServiceRequest("Publish", topic.Arn, SqsServiceDelivery.EventsPrincipal, delivery.Rule.Arn) with { ActionPrefix = "sns" };
+        var reason = SqsQueuePolicy.EvaluateServiceDelivery(policy, request) switch
         {
-            var reason = SqsQueuePolicy.DeniesExplicitly(policy!, request)
-                ? "with an explicit deny in a resource-based policy"
-                : "because no resource-based policy allows the SNS:Publish action";
+            SqsQueuePolicy.ServiceDeliveryVerdict.ExplicitlyDenied => "with an explicit deny in a resource-based policy",
+            SqsQueuePolicy.ServiceDeliveryVerdict.NotAllowed => "because no resource-based policy allows the SNS:Publish action",
+            _ => null,
+        };
+        if (reason is not null)
+        {
             return new DeliveryFailure("NO_PERMISSIONS", ServiceErrorMessage(
-                $"User: {EventsServicePrincipal} is not authorized to perform: SNS:Publish on resource: {topic.Arn} {reason}",
+                $"User: {SqsServiceDelivery.EventsPrincipal} is not authorized to perform: SNS:Publish on resource: {topic.Arn} {reason}",
                 "AmazonSNS", 403, "AuthorizationError"));
         }
 
@@ -215,19 +220,20 @@ internal static class EventBridgeEventDelivery
     }
 
     /// <summary>
-    /// Puts the event on the bus named <paramref name="busName"/> in <paramref name="region"/>, where
-    /// it is routed through that bus's rules. An event that was itself forwarded goes no further.
+    /// Puts the event on the bus <paramref name="busArn"/> names, where it is routed through that
+    /// bus's rules. An event that was itself forwarded goes no further.
     /// Within a region the envelope is unchanged; an event forwarded to another region keeps its
     /// origin <c>region</c> but gets a new <c>id</c>, as EventBridge assigns one on arrival.
     /// </summary>
-    private static DeliveryFailure? ForwardToBus(Delivery delivery, string region, string busName, InMemoryAwsBus bus)
+    private static DeliveryFailure? ForwardToBus(Delivery delivery, Arn busArn, InMemoryAwsBus bus)
     {
         if (delivery.Forwarded)
         {
             return null;
         }
 
-        if (!bus.Region(region).EventBuses.TryGetValue(busName, out var targetBus))
+        var busName = busArn.Resource["event-bus/".Length..];
+        if (!bus.TryGetEventBusByArn(busArn.Value, out var targetBus))
         {
             // The default bus always exists; until something touches it, it has no rules.
             return string.Equals(busName, "default", StringComparison.Ordinal)
@@ -237,7 +243,7 @@ internal static class EventBridgeEventDelivery
         }
 
         var arriving = delivery.Event;
-        if (!string.Equals(region, InMemoryAwsBus.ArnRegion(delivery.Rule.Arn) ?? bus.CurrentRegion, StringComparison.Ordinal))
+        if (!string.Equals(busArn.Region, Arn.RegionOf(delivery.Rule.Arn) ?? bus.CurrentRegion, StringComparison.Ordinal))
         {
             var envelope = (JsonObject)arriving.Envelope.DeepClone();
             envelope["id"] = Guid.NewGuid().ToString();
@@ -256,73 +262,22 @@ internal static class EventBridgeEventDelivery
     /// </summary>
     private static void DeadLetter(Delivery delivery, string body, DeliveryFailure failure, InMemoryAwsBus bus)
     {
-        if (delivery.Target.DeadLetterConfig?.Arn is not { } deadLetterArn
-            || !bus.TryGetQueueByArn(deadLetterArn, out var deadLetterQueue)
-            || !AdmitsDelivery(deadLetterQueue, delivery.Rule))
+        if (delivery.Target.DeadLetterConfig?.Arn is not { } deadLetterArn)
         {
             return;
         }
 
-        var message = CreateSqsMessage(body, new Dictionary<string, SqsMessageAttributeValue>(StringComparer.Ordinal)
+        SqsServiceDelivery.Deliver(bus, QueueDelivery(delivery, deadLetterArn, body) with
         {
-            ["ERROR_CODE"] = StringAttribute(failure.ErrorCode),
-            ["ERROR_MESSAGE"] = StringAttribute(failure.ErrorMessage),
-            ["RULE_ARN"] = StringAttribute(delivery.Rule.Arn),
-            ["TARGET_ARN"] = StringAttribute(delivery.Target.Arn ?? string.Empty),
+            MessageAttributes = new Dictionary<string, SqsMessageAttributeValue>(StringComparer.Ordinal)
+            {
+                ["ERROR_CODE"] = StringAttribute(failure.ErrorCode),
+                ["ERROR_MESSAGE"] = StringAttribute(failure.ErrorMessage),
+                ["RULE_ARN"] = StringAttribute(delivery.Rule.Arn),
+                ["TARGET_ARN"] = StringAttribute(delivery.Target.Arn ?? string.Empty),
+            },
         });
-        Enqueue(deadLetterQueue, message, delivery, bus);
     }
-
-    /// <summary>
-    /// Enqueues <paramref name="message"/> as a <c>SendMessage</c> would, after the queue's
-    /// <c>DelaySeconds</c>. On a FIFO queue it joins the target's message group, deduplicated by
-    /// the event id.
-    /// </summary>
-    private static void Enqueue(SqsQueueResource queue, SqsMessage message, Delivery delivery, InMemoryAwsBus bus)
-    {
-        if (!queue.IsFifo)
-        {
-            if (queue.DelaySeconds > 0)
-            {
-                queue.EnqueueAfterDelay(message, TimeSpan.FromSeconds(queue.DelaySeconds), bus.TimeProvider);
-            }
-            else
-            {
-                queue.Messages.Enqueue(message);
-            }
-
-            return;
-        }
-
-        var groupId = EventBridgeTargetInput.ResolveMessageGroupId(delivery.Target, delivery.Event.Envelope) ?? delivery.Target.Id ?? "eventbridge";
-        message.Attributes ??= [];
-        message.Attributes[InternalMessageSystemAttributeName.MessageGroupId] = groupId;
-        message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = delivery.EventId;
-        queue.TryEnqueueFifoSend(message, groupId, delivery.EventId, DeduplicatesPerMessageGroup(queue), bus.TimeProvider, out _);
-    }
-
-    /// <summary>Whether the FIFO queue is a high-throughput one that deduplicates within each message group.</summary>
-    private static bool DeduplicatesPerMessageGroup(SqsQueueResource queue) =>
-        queue.Attributes is { } attributes
-        && attributes.TryGetValue(InternalQueueAttributeName.DeduplicationScope, out var scope)
-        && string.Equals(scope, "messageGroup", StringComparison.Ordinal)
-        && attributes.TryGetValue(InternalQueueAttributeName.FifoThroughputLimit, out var limit)
-        && string.Equals(limit, "perMessageGroupId", StringComparison.Ordinal);
-
-    /// <summary>Whether <paramref name="queue"/>'s policy lets <paramref name="rule"/> send to it.</summary>
-    private static bool AdmitsDelivery(SqsQueueResource queue, RuleResource rule) =>
-        queue.Attributes?.TryGetValue(InternalQueueAttributeName.Policy, out var policy) != true
-        || string.IsNullOrEmpty(policy)
-        || SqsQueuePolicy.AdmitsServiceDelivery(policy!, ServiceRequest(SqsActionName.SendMessage, queue.Arn, rule));
-
-    /// <summary>A request by EventBridge, on <paramref name="rule"/>'s behalf, to act on a target resource.</summary>
-    private static SqsQueuePolicy.RequestContext ServiceRequest(string action, string resource, RuleResource rule) =>
-        new(action, resource, PrincipalAccount: null, PrincipalArn: null, SourceIp: null, SecureTransport: true)
-        {
-            Service = EventsServicePrincipal,
-            SourceArn = rule.Arn,
-            SourceAccount = rule.Arn.Split(':')[4],
-        };
 
     /// <summary>A target service's error as the AWS SDK for Java words it, which is how EventBridge records it.</summary>
     private static string ServiceErrorMessage(string message, string service, int statusCode, string errorCode) =>
@@ -330,34 +285,4 @@ internal static class EventBridgeEventDelivery
 
     private static SqsMessageAttributeValue StringAttribute(string value) =>
         new() { DataType = "String", StringValue = value };
-
-    private static SqsMessage CreateSqsMessage(string body, Dictionary<string, SqsMessageAttributeValue>? attributes)
-    {
-#pragma warning disable CA5351, CA1308 // SQS's MD5 digest is lowercase hex
-        return new SqsMessage
-        {
-            MessageId = Guid.NewGuid().ToString(),
-            Body = body,
-            MD5OfBody = Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(body))).ToLowerInvariant(),
-            MessageAttributes = attributes,
-        };
-#pragma warning restore CA5351, CA1308
-    }
-
-    /// <summary>The parts of a target ARN: <c>arn:partition:service:region:account:resource</c>.</summary>
-    private readonly record struct TargetArn(string Value, string Service, string Region, string Account, string Resource)
-    {
-        public static bool TryParse(string? arn, out TargetArn parsed)
-        {
-            var parts = arn?.Split([':'], 6);
-            if (parts is not { Length: 6 } || !string.Equals(parts[0], "arn", StringComparison.Ordinal))
-            {
-                parsed = default;
-                return false;
-            }
-
-            parsed = new TargetArn(arn!, parts[2], parts[3], parts[4], parts[5]);
-            return true;
-        }
-    }
 }

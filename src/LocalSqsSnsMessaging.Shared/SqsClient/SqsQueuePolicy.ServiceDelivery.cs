@@ -2,11 +2,37 @@ using System.Text.Json.Nodes;
 
 namespace LocalSqsSnsMessaging;
 
-/// <summary>Whether a queue's policy lets an AWS service, such as SNS, deliver to it.</summary>
+/// <summary>Whether a resource's policy lets an AWS service, such as SNS, deliver to it.</summary>
 internal static partial class SqsQueuePolicy
 {
     /// <summary>The condition keys that scope a grant to the resource a service acts for.</summary>
     private static readonly string[] SourceConditionKeys = ["aws:SourceArn", "aws:SourceAccount", "aws:SourceOwner"];
+
+    /// <summary>What a resource policy says about a service delivery.</summary>
+    internal enum ServiceDeliveryVerdict
+    {
+        /// <summary>The policy lets the service deliver (or there is no policy).</summary>
+        Admitted,
+
+        /// <summary>A Deny statement that applies refuses the delivery.</summary>
+        ExplicitlyDenied,
+
+        /// <summary>The policy says which sources may deliver, and this one is not among them.</summary>
+        NotAllowed,
+    }
+
+    /// <summary>
+    /// A request by <paramref name="servicePrincipal"/> (e.g. <c>sns.amazonaws.com</c>), on behalf of
+    /// <paramref name="sourceArn"/> (<c>aws:SourceArn</c>, whose account is <c>aws:SourceAccount</c>),
+    /// to perform <paramref name="action"/> on <paramref name="resource"/>.
+    /// </summary>
+    public static RequestContext ServiceRequest(string action, string resource, string servicePrincipal, string sourceArn) =>
+        new(action, resource, PrincipalAccount: null, PrincipalArn: null, SourceIp: null, SecureTransport: true)
+        {
+            Service = servicePrincipal,
+            SourceArn = sourceArn,
+            SourceAccount = Arn.AccountOf(sourceArn),
+        };
 
     /// <summary>
     /// Whether <paramref name="policy"/> lets the service in <paramref name="request"/>
@@ -15,24 +41,25 @@ internal static partial class SqsQueuePolicy
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A Deny statement that applies refuses the delivery. Beyond that, a matching Allow is needed
-    /// only when the policy addresses deliveries from that service: when an Allow statement names the
-    /// service principal, or grants to everyone on an <c>aws:SourceArn</c>, <c>aws:SourceAccount</c>
-    /// or <c>aws:SourceOwner</c> condition. A policy like that says which sources may deliver, so a
-    /// source it does not admit is refused, as on AWS. A queue whose policy says nothing about the
-    /// service keeps receiving: AWS would refuse it, but every such delivery succeeded before the
-    /// library evaluated queue policies, and a queue created in a test rarely has one.
+    /// A resource with no policy admits the delivery. A Deny statement that applies refuses it.
+    /// Beyond that, a matching Allow is needed only when the policy addresses deliveries from that
+    /// service: when an Allow statement names the service principal, or grants to everyone on an
+    /// <c>aws:SourceArn</c>, <c>aws:SourceAccount</c> or <c>aws:SourceOwner</c> condition. A policy
+    /// like that says which sources may deliver, so a source it does not admit is refused, as on
+    /// AWS. A queue whose policy says nothing about the service keeps receiving: AWS would refuse
+    /// it, but every such delivery succeeded before the library evaluated queue policies, and a
+    /// queue created in a test rarely has one.
     /// </para>
     /// <para>
     /// As for callers, a statement the library cannot evaluate never refuses: a Deny with an
     /// unsupported condition is skipped, and an Allow with one is taken to grant.
     /// </para>
     /// </remarks>
-    public static bool AdmitsServiceDelivery(string policy, RequestContext request)
+    public static ServiceDeliveryVerdict EvaluateServiceDelivery(string? policy, RequestContext request)
     {
-        if (request.Service is not { } service || Parse(policy) is not { } document)
+        if (string.IsNullOrEmpty(policy) || request.Service is not { } service || Parse(policy!) is not { } document)
         {
-            return true;
+            return ServiceDeliveryVerdict.Admitted;
         }
 
         var allows = new List<JsonObject>();
@@ -41,7 +68,7 @@ internal static partial class SqsQueuePolicy
             var effect = AsString(statement["Effect"]);
             if (string.Equals(effect, "Deny", StringComparison.Ordinal) && Applies(statement, request) == true)
             {
-                return false;
+                return ServiceDeliveryVerdict.ExplicitlyDenied;
             }
 
             if (string.Equals(effect, "Allow", StringComparison.Ordinal))
@@ -51,7 +78,9 @@ internal static partial class SqsQueuePolicy
         }
 
         return !allows.Exists(statement => AddressesService(statement, service))
-               || allows.Exists(statement => Applies(statement, request) != false);
+               || allows.Exists(statement => Applies(statement, request) != false)
+            ? ServiceDeliveryVerdict.Admitted
+            : ServiceDeliveryVerdict.NotAllowed;
     }
 
     /// <summary>

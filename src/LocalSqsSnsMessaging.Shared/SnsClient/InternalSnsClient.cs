@@ -268,7 +268,7 @@ internal sealed partial class InternalSnsClient
     /// even when this region has one of the same name.
     /// </summary>
     private bool InThisRegion(string? arn) =>
-        InMemoryAwsBus.ArnRegion(arn) is not { } region || string.Equals(region, _resources.Region, StringComparison.Ordinal);
+        Arn.RegionOf(arn) is not { } region || string.Equals(region, _resources.Region, StringComparison.Ordinal);
 
     /// <summary>The topic <paramref name="topicArn"/> names, or SNS's <c>NotFound</c> when there is none.</summary>
     private SnsTopicResource GetTopicByArn(string? topicArn, string parameter = "TopicArn")

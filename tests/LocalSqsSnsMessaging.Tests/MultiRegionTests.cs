@@ -73,7 +73,7 @@ public sealed class MultiRegionTests
     [Arguments("orders", null)]
     [Arguments(null, null)]
     public void TheRegionOfAnArnIsItsFourthField(string? arn, string? expected) =>
-        InMemoryAwsBus.ArnRegion(arn).ShouldBe(expected);
+        Arn.RegionOf(arn).ShouldBe(expected);
 
     [Test]
     public async Task ArnLookupsFindOnlyTheResourceTheWholeArnNames()
@@ -88,6 +88,23 @@ public sealed class MultiRegionTests
         bus.TryGetTopicByArn(topicArn.Replace(bus.CurrentRegion, AltRegion, StringComparison.Ordinal), out _).ShouldBeFalse();
         bus.TryGetTopicByArn(null, out _).ShouldBeFalse();
         bus.TryGetQueueByArn(null, out _).ShouldBeFalse();
+    }
+
+    [Test]
+    public async Task QueueLookupsByArnMatchTheWholeArn_AndCreateNoRegion()
+    {
+        var bus = new InMemoryAwsBus();
+        using var sqs = bus.CreateSqsClient();
+        var url = (await sqs.CreateQueueAsync("lookup")).QueueUrl;
+        var queueArn = (await sqs.GetQueueAttributesAsync(url, ["QueueArn"])).Attributes["QueueArn"];
+
+        bus.TryGetQueueByArn(queueArn, out var queue).ShouldBeTrue();
+        queue!.Url.ShouldBe(url);
+        bus.TryGetQueueByArn(queueArn.Replace(bus.CurrentAccountId, "111111111111", StringComparison.Ordinal), out _).ShouldBeFalse();
+        bus.TryGetQueueByArn(queueArn.Replace(bus.CurrentRegion, "xx-nowhere-1", StringComparison.Ordinal), out _).ShouldBeFalse();
+        bus.TryGetQueueByArn("lookup", out _).ShouldBeFalse();
+
+        bus.Regions.Select(r => r.Region).ShouldNotContain("xx-nowhere-1");
     }
 
     [Test]
