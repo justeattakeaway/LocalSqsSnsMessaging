@@ -98,4 +98,24 @@ public class DashboardApiTests
         });
         received.Messages!.ShouldHaveSingleItem().Body.ShouldBe("first");
     }
+
+    [Test]
+    public async Task GetState_ListsTheViewedRegionEvenWhenItIsEmpty()
+    {
+        var registry = new BusRegistry(AccountId, "us-east-1", new Uri("http://localhost:4566"));
+        var euSqs = new InternalSqsClient(registry.DefaultBus, "eu-west-1");
+        var queueUrl = (await euSqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "dashboard-eu-queue" })).QueueUrl!;
+        await euSqs.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = queueUrl });
+
+        // eu-west-1 holds nothing now, but the dashboard is still viewing it: the region selector
+        // must keep offering it, or the viewer can no longer switch away from it.
+        var state = DashboardApi.GetState(registry, AccountId, "eu-west-1")
+            .ShouldBeOfType<JsonHttpResult<DashboardApi.BusState>>().Value!;
+        state.CurrentRegion.ShouldBe("eu-west-1");
+        state.Regions.ShouldBe(["eu-west-1", "us-east-1"]);
+
+        var home = DashboardApi.GetState(registry, AccountId, null)
+            .ShouldBeOfType<JsonHttpResult<DashboardApi.BusState>>().Value!;
+        home.Regions.ShouldBe(["us-east-1"]);
+    }
 }

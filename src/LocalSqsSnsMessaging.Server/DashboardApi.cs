@@ -71,12 +71,16 @@ internal static class DashboardApi
     /// <summary>The resources of <paramref name="region"/> in <paramref name="bus"/>; the bus's own region when none is named.</summary>
     private static AwsRegionResources ResolveRegion(InMemoryAwsBus bus, string? region) => bus.Region(region);
 
-    /// <summary>The regions that hold anything, and always the bus's own, in order.</summary>
-    private static List<string> RegionsInUse(InMemoryAwsBus bus) =>
+    /// <summary>
+    /// The regions that hold anything, and always the bus's own and the one being viewed (so the
+    /// dashboard can still switch away from a region that has emptied), in order.
+    /// </summary>
+    private static List<string> RegionsInUse(InMemoryAwsBus bus, string viewedRegion) =>
         bus.Regions
-            .Where(r => r.Region == bus.CurrentRegion || !r.Queues.IsEmpty || !r.Topics.IsEmpty || !r.EventBuses.IsEmpty)
+            .Where(r => !r.Queues.IsEmpty || !r.Topics.IsEmpty || !r.EventBuses.IsEmpty)
             .Select(r => r.Region)
             .Append(bus.CurrentRegion)
+            .Append(viewedRegion)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToList();
@@ -112,7 +116,7 @@ internal static class DashboardApi
         {
             Accounts = accounts,
             CurrentAccount = currentAccount,
-            Regions = RegionsInUse(bus),
+            Regions = RegionsInUse(bus, resources.Region),
             CurrentRegion = resources.Region,
 
             Queues = resources.Queues.Values.Select(q => new QueueInfo

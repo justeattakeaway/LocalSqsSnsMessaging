@@ -60,6 +60,8 @@ export function App() {
 
   const handleAccountChange = useCallback((account: string | null) => {
     setCurrentAccount(account);
+    // Another account may have nothing in the region being viewed: start from its default region.
+    setCurrentRegion(null);
     setSelectedArn(null);
     setSelectedType(null);
     setSelectedSubscriptionArn(null);
