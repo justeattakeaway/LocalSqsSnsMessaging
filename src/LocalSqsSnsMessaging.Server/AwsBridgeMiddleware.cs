@@ -26,6 +26,14 @@ internal sealed class AwsBridgeMiddleware
     {
         var cancellationToken = context.RequestAborted;
 
+        // The SigningCertURL of a signed SNS message; the same certificate serves every account.
+        if (HttpMethods.IsGet(context.Request.Method) && SnsSigningCertificate.IsCertificatePath(context.Request.Path.Value))
+        {
+            context.Response.ContentType = SnsSigningCertificate.ContentType;
+            await context.Response.WriteAsync(SnsSigningCertificate.Current!.Pem, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         var bus = ResolveBus(context.Request);
 
         // Read the request body upfront using a pooled buffer - SNS Query protocol

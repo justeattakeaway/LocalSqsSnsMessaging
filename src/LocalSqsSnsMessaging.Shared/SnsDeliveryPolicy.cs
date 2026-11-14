@@ -44,6 +44,50 @@ internal sealed class SnsDeliveryPolicy
         }
     }
 
+    /// <summary>The fields of a subscription retry policy, in the order SNS stores them.</summary>
+    private static readonly string[] RetryPolicyFields =
+        ["minDelayTarget", "maxDelayTarget", "numRetries", "numMaxDelayRetries", "numNoDelayRetries", "numMinDelayRetries", "backoffFunction"];
+
+    /// <summary>
+    /// A subscription <c>DeliveryPolicy</c> in the form SNS stores and reads back: every section
+    /// present (<see langword="null"/> when not given), every retry policy field present
+    /// (<see langword="null"/> when not given), and <c>guaranteed</c> defaulting to
+    /// <see langword="false"/>. Fields SNS does not define are dropped. A value that is not a JSON
+    /// object is returned unchanged; <see cref="Validate"/> refuses it.
+    /// </summary>
+    public static string NormalizeSubscriptionPolicy(string policy)
+    {
+        if (Parse(policy) is not { } sent)
+        {
+            return policy;
+        }
+
+        return new JsonObject
+        {
+            ["healthyRetryPolicy"] = Section(sent["healthyRetryPolicy"], RetryPolicyFields),
+            ["sicklyRetryPolicy"] = Section(sent["sicklyRetryPolicy"], RetryPolicyFields),
+            ["throttlePolicy"] = Section(sent["throttlePolicy"], "maxReceivesPerSecond"),
+            ["requestPolicy"] = Section(sent["requestPolicy"], "headerContentType"),
+            ["guaranteed"] = sent["guaranteed"]?.DeepClone() ?? JsonValue.Create(false),
+        }.ToJsonString();
+
+        static JsonObject? Section(JsonNode? section, params string[] fields)
+        {
+            if (section is not JsonObject given)
+            {
+                return null;
+            }
+
+            var normalized = new JsonObject();
+            foreach (var field in fields)
+            {
+                normalized[field] = given[field]?.DeepClone();
+            }
+
+            return normalized;
+        }
+    }
+
     /// <summary>
     /// Resolves the effective policy. Topic-level policies use the AWS topic shape
     /// (<c>{"http": {"defaultHealthyRetryPolicy": ..., "defaultRequestPolicy": ..., "disableSubscriptionOverrides": ...}}</c>)
@@ -51,6 +95,41 @@ internal sealed class SnsDeliveryPolicy
     /// then overrides it unless the topic disables overrides. With neither, the AWS defaults apply
     /// (3 retries, 20 seconds apart, linear).
     /// </summary>
+    /// <summary>The backoff functions SNS accepts in a retry policy.</summary>
+    private static readonly string[] BackoffFunctions = ["linear", "arithmetic", "geometric", "exponential"];
+
+    /// <summary>
+    /// Validates a topic's <c>DeliveryPolicy</c>: well-formed JSON, and a default retry policy within
+    /// the bounds SNS documents. An empty value clears the policy.
+    /// </summary>
+    public static void ValidateTopicPolicy(string? policy)
+    {
+        Validate(policy);
+        if (string.IsNullOrWhiteSpace(policy)
+            || Parse(policy)?["http"] is not JsonObject http
+            || http["defaultHealthyRetryPolicy"] is not JsonObject retry)
+        {
+            return;
+        }
+
+        const string prefix = "Invalid parameter: DeliveryPolicy: http.defaultHealthyRetryPolicy.";
+        if (GetInt(retry, "numRetries") is > 100)
+        {
+            throw new InternalInvalidParameterException($"{prefix}numRetries must be less than or equal to 100");
+        }
+
+        if (GetInt(retry, "numRetries") is < 0)
+        {
+            throw new InternalInvalidParameterException($"{prefix}numRetries must be greater than or equal to 0");
+        }
+
+        if (retry["backoffFunction"] is JsonNode backoff
+            && (backoff is not JsonValue value || !value.TryGetValue<string>(out var function) || !BackoffFunctions.Contains(function, StringComparer.Ordinal)))
+        {
+            throw new InternalInvalidParameterException($"{prefix}backoffFunction must be one of {string.Join(", ", BackoffFunctions)}");
+        }
+    }
+
     public static SnsDeliveryPolicy Resolve(string? subscriptionPolicy, string? topicPolicy)
     {
         var topic = Parse(topicPolicy)?["http"] as JsonObject;

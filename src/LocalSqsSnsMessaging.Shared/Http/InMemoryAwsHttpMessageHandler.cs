@@ -51,6 +51,17 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
             return await SendSqsAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
+        // The SigningCertURL of a signed SNS message.
+        if (_serviceType == AwsServiceType.Sns
+            && request.Method == HttpMethod.Get
+            && SnsSigningCertificate.IsCertificatePath(request.RequestUri?.AbsolutePath))
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(SnsSigningCertificate.Current!.Pem, Encoding.ASCII, SnsSigningCertificate.ContentType)
+            };
+        }
+
         // Extract operation name from request
         string operationName;
         try

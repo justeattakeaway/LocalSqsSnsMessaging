@@ -11,6 +11,9 @@ public enum FidelityGap
 
     /// <summary>A one-off behavioral difference, kept for compatibility.</summary>
     Other,
+
+    /// <summary>SNS topics and subscriptions are not regional yet (planned as separate work).</summary>
+    SnsRegions,
 }
 
 /// <summary>

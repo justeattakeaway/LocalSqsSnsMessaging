@@ -1,4 +1,5 @@
 using Amazon.Runtime;
+using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using LocalSqsSnsMessaging.Http;
 using Microsoft.Extensions.Time.Testing;
@@ -12,9 +13,10 @@ namespace LocalSqsSnsMessaging.Tests.AwsEvaluationSuite;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Clients are real <see cref="AmazonSQSClient"/> instances wired to the bus through
-/// <see cref="InMemoryAwsHttpMessageHandler"/>, so every call goes through the same JSON-protocol
-/// serialization a production SDK client would use.
+/// Clients are real <see cref="AmazonSQSClient"/> and <see cref="AmazonSimpleNotificationServiceClient"/>
+/// instances wired to the bus through <see cref="InMemoryAwsHttpMessageHandler"/>, so every call goes
+/// through the same JSON-protocol (SQS) or Query-protocol (SNS) serialization a production SDK client
+/// would use.
 /// </para>
 /// <para>
 /// Each check runs on virtual time: the bus's clock is a <see cref="FakeTimeProvider"/>, and the
@@ -56,8 +58,8 @@ public sealed class FidelityContext : IAsyncDisposable
 
     /// <summary>
     /// How long, in real time, the check must have been quiet (no request starting or finishing, no
-    /// delay starting) before the pump moves the clock. A check between two steps is not waiting
-    /// on time, and moving the clock under it would make its next step land late.
+    /// delay starting or ending) before the pump moves the clock. A check between two steps is not
+    /// waiting on time, and moving the clock under it would make its next step land late.
     /// </summary>
     public static readonly TimeSpan PumpQuietPeriod = TimeSpan.FromMilliseconds(10);
 
@@ -68,11 +70,14 @@ public sealed class FidelityContext : IAsyncDisposable
 
     private readonly List<Func<Task>> _cleanups = [];
     private readonly Dictionary<string, AmazonSQSClient> _clients = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, AmazonSimpleNotificationServiceClient> _snsClients = new(StringComparer.Ordinal);
     private readonly FidelityStopwatch _clock;
     private readonly TimeSpan _budget;
     private readonly CancellationTokenSource _stopPump = new();
     private readonly Task _pump;
     private readonly RequestLatencyHandler _handler;
+    private readonly RequestLatencyHandler _snsHandler;
+    private readonly IDisposable _noTraceContext;
     private readonly Dictionary<object, DateTimeOffset> _delayDeadlines = [];
     private readonly System.Diagnostics.Stopwatch _realClock = System.Diagnostics.Stopwatch.StartNew();
     private long _lastActivityTicks;
@@ -92,8 +97,14 @@ public sealed class FidelityContext : IAsyncDisposable
             IsolateRegions = true,
             KmsKeyAliases = new HashSet<string>(StringComparer.Ordinal),
         };
-        _handler = new RequestLatencyHandler(this);
+        _handler = new RequestLatencyHandler(this, AwsServiceType.Sqs);
+        _snsHandler = new RequestLatencyHandler(this, AwsServiceType.Sns);
         CurrentContext.Value = this;
+
+        // boto3 sends no trace context. The test run's SDK tracing would otherwise add a traceparent
+        // message attribute to every Publish and an AWSTraceHeader to every SendMessage, which count
+        // against the attribute and size limits the checks grade.
+        _noTraceContext = AwsSdkTracing.SuppressPropagation();
         _pump = Task.Run(PumpAsync);
     }
 
@@ -140,7 +151,7 @@ public sealed class FidelityContext : IAsyncDisposable
             ServiceURL = serviceUrl,
             AuthenticationRegion = region,
             MaxErrorRetry = 0,
-            HttpClientFactory = new VirtualTimeHttpClientFactory(this),
+            HttpClientFactory = new VirtualTimeHttpClientFactory(_handler),
         };
         AWSCredentials credentials = unsigned
             ? new AnonymousAWSCredentials()
@@ -150,17 +161,81 @@ public sealed class FidelityContext : IAsyncDisposable
         return client;
     }
 
+    /// <summary><c>ctx.client("sns")</c>: the default SNS client, in <see cref="Region"/>.</summary>
+    public AmazonSimpleNotificationServiceClient Sns => SnsClient();
+
+    /// <summary>
+    /// <c>ctx.client("sns", region=...)</c>. Clients are cached per combination, like the runner's.
+    /// Every client talks to this context's single bus.
+    /// </summary>
+    /// <param name="region">The client's signing region; defaults to <see cref="Region"/>.</param>
+    /// <param name="serviceUrl">An endpoint override.</param>
+    public AmazonSimpleNotificationServiceClient SnsClient(string? region = null, string? serviceUrl = null)
+    {
+        region ??= Region;
+        serviceUrl ??= $"https://sns.{region}.amazonaws.com";
+        var key = $"{region}|{serviceUrl}";
+        if (_snsClients.TryGetValue(key, out var existing))
+        {
+            return existing;
+        }
+
+        var config = new AmazonSimpleNotificationServiceConfig
+        {
+            ServiceURL = serviceUrl,
+            AuthenticationRegion = region,
+            MaxErrorRetry = 0,
+            HttpClientFactory = new VirtualTimeHttpClientFactory(_snsHandler),
+        };
+        var client = new AmazonSimpleNotificationServiceClient(new BasicAWSCredentials("test", "test"), config);
+        _snsClients[key] = client;
+        return client;
+    }
+
+    /// <summary>
+    /// <c>ctx.client("sts").get_caller_identity()["Arn"]</c>: the bus models no IAM users, so every
+    /// signed caller is the account's root user (as the Python run's STS shim answers).
+    /// </summary>
+    public string CallerArn => $"arn:aws:iam::{Account}:root";
+
+    /// <summary>
+    /// <c>ctx.published_url_mismatch(url)</c>: why a data-plane URL the bus published (an SNS
+    /// <c>SigningCertURL</c> or <c>UnsubscribeURL</c>) is unusable, or <see langword="null"/>. The
+    /// runner also refuses URLs that point at real AWS hosts; here every AWS host is served by the
+    /// bus, so only the shape is graded.
+    /// </summary>
+    public static string? PublishedUrlMismatch(string? url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || string.IsNullOrEmpty(uri.Host))
+        {
+            return $"the published data-plane endpoint is not a URL with a host: '{url}'";
+        }
+
+        return uri.Scheme is "http" or "https" ? null : $"the published endpoint '{url}' is not http(s)";
+    }
+
+    /// <summary>
+    /// Fetches a data-plane URL the bus published (<c>urllib.request.urlopen(url)</c> after
+    /// <c>ctx.endpoint_route(url)</c>), through the bus's SNS handler.
+    /// </summary>
+    public async Task<HttpResponseMessage> GetPublishedUrl(string url, CancellationToken cancellationToken = default)
+    {
+        using var http = new HttpClient(_snsHandler, disposeHandler: false);
+        return await http.GetAsync(new Uri(url), cancellationToken);
+    }
+
     /// <summary>
     /// An <see cref="HttpClient"/> that sends raw HTTP requests straight to the bus's SQS handler,
     /// for checks that POST hand-built requests instead of using an SDK client.
     /// </summary>
-    public HttpClient RawHttpClient()
+    public HttpClient RawHttpClient(AwsServiceType service = AwsServiceType.Sqs)
     {
+        var host = service == AwsServiceType.Sns ? "sns" : "sqs";
 #pragma warning disable CA2000 // The HttpClient owns and disposes the handler.
-        var client = new HttpClient(new RequestLatencyHandler(this))
+        var client = new HttpClient(new RequestLatencyHandler(this, service))
 #pragma warning restore CA2000
         {
-            BaseAddress = new Uri($"https://sqs.{Region}.amazonaws.com/"),
+            BaseAddress = new Uri($"https://{host}.{Region}.amazonaws.com/"),
         };
         OnCleanup(() =>
         {
@@ -197,7 +272,13 @@ public sealed class FidelityContext : IAsyncDisposable
 
         try
         {
-            using var timer = Time.CreateTimer(_ => due.TrySetResult(), null, delay, Timeout.InfiniteTimeSpan);
+            // The check acts as soon as its delay ends: hold the clock for it, as for a request, so the
+            // pump doesn't move time on before a busy thread pool has run the continuation.
+            using var timer = Time.CreateTimer(_ =>
+            {
+                MarkActivity();
+                due.TrySetResult();
+            }, null, delay, Timeout.InfiniteTimeSpan);
             await using var registration = cancellationToken.Register(() => due.TrySetCanceled(cancellationToken));
             await due.Task;
         }
@@ -331,10 +412,17 @@ public sealed class FidelityContext : IAsyncDisposable
             client.Dispose();
         }
 
+        foreach (var client in _snsClients.Values)
+        {
+            client.Dispose();
+        }
+
         await _stopPump.CancelAsync();
         await _pump;
         _stopPump.Dispose();
         _handler.Dispose();
+        _snsHandler.Dispose();
+        _noTraceContext.Dispose();
     }
 
     /// <summary>
@@ -343,8 +431,8 @@ public sealed class FidelityContext : IAsyncDisposable
     /// receiver in a loop would never yield, and could drain a queue before concurrent receivers
     /// got a turn; against SQS every call is asynchronous I/O.
     /// </summary>
-    private sealed class RequestLatencyHandler(FidelityContext context)
-        : DelegatingHandler(new InMemoryAwsHttpMessageHandler(context.Bus, AwsServiceType.Sqs))
+    private sealed class RequestLatencyHandler(FidelityContext context, AwsServiceType service)
+        : DelegatingHandler(new InMemoryAwsHttpMessageHandler(context.Bus, service))
     {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -380,12 +468,12 @@ public sealed class FidelityContext : IAsyncDisposable
 
     /// <summary>
     /// Gives each SDK client an <see cref="HttpClient"/> over this context's
-    /// <see cref="RequestLatencyHandler"/>. The SDK's process-wide HttpClient cache is bypassed:
-    /// it would hand one check's clients another check's handler, bus and clock.
+    /// <see cref="RequestLatencyHandler"/> for its service. The SDK's process-wide HttpClient cache
+    /// is bypassed: it would hand one check's clients another check's handler, bus and clock.
     /// </summary>
-    private sealed class VirtualTimeHttpClientFactory(FidelityContext context) : HttpClientFactory
+    private sealed class VirtualTimeHttpClientFactory(RequestLatencyHandler handler) : HttpClientFactory
     {
-        public override HttpClient CreateHttpClient(IClientConfig clientConfig) => new(context._handler, disposeHandler: false);
+        public override HttpClient CreateHttpClient(IClientConfig clientConfig) => new(handler, disposeHandler: false);
 
         public override bool UseSDKHttpClientCaching(IClientConfig clientConfig) => false;
 

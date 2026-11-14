@@ -130,11 +130,21 @@ The HTTP mode implements two different AWS protocols:
 - `SnsTopicResource` (src/LocalSqsSnsMessaging/SnsTopicResource.cs:3): Topic state with publish actions
 - `SnsSubscription` (src/LocalSqsSnsMessaging/SnsSubscription.cs): Links topics to `sqs` queues or `http`/`https` endpoints, and holds the subscription's `FilterPolicy`/`FilterPolicyScope`, `RedrivePolicy` (dead-letter queue) and `DeliveryPolicy`
 
+### SNS Requests
+
+`InternalSnsClient` is split into partial files under `SnsClient/` (topics, subscriptions, publish, permissions and tags, unsupported operations). Requests are answered as SNS does:
+- ARNs are checked by `SnsArn` before any lookup (malformed: `InvalidParameter`); a missing topic is `NotFound` "Topic does not exist", a missing subscription "Subscription does not exist"
+- A subscription ARN is its topic ARN plus a uuid. Subscribe needs the topic, but not the SQS queue, to exist; subscribing the same endpoint again returns the existing subscription
+- `SnsTopicAttributes` holds topic attribute names, defaults (default `Policy`, `EffectiveDeliveryPolicy`, ...) and validation; `SnsPublishValidation` and `SnsMessageStructure` validate Publish/PublishBatch and pick a `MessageStructure=json` branch per protocol
+- SNS topics and subscriptions are not regional: every request uses `CurrentRegion`
+
 ### SNS Delivery
 
-`SnsPublishAction` fans a published message out per subscription:
-- `SnsFilterPolicy` evaluates filter policies (attribute or body scope) on top of `JsonPatternMatcher`, the same matcher EventBridge uses for event patterns
-- SQS endpoints are resolved from `bus.Queues` at publish time; a deleted queue is a delivery failure
+`SnsPublishAction` (split into `SnsPublishAction*.cs`) fans a published message out per subscription:
+- `SnsFilterPolicy` validates filter policies with AWS's messages (`.Syntax.cs` for JSON errors, `.Grammar.cs` for Event Ruler operator rules) and evaluates them (attribute or body scope) on top of `JsonPatternMatcher`, the same matcher EventBridge uses for event patterns
+- FIFO topics (`SnsPublishAction.Fifo.cs`, `SnsFifoTopicState`) assign sequence numbers and deduplicate for five minutes on the bus `TimeProvider`; an `ArchivePolicy` archives messages, and a subscription's `ReplayPolicy` (`SnsReplayPolicy`) replays them
+- SQS endpoints are resolved from `bus.Queues` at publish time; a deleted queue is a delivery failure. A queue `Policy` that denies SNS (`sns.amazonaws.com`, with the topic as `aws:SourceArn`), or that addresses SNS deliveries without admitting this one, is a delivery failure too (`SnsPublishAction.QueuePolicy.cs`); a policy that says nothing about SNS admits it
+- Non-raw deliveries get the envelope `SnsEnvelope` writes, byte for byte as SNS lays it out and signed (`SnsSigningCertificate`: one self-signed key per process, served at the envelope's `SigningCertURL`; netstandard2.0 keeps `EXAMPLE` placeholders). Raw deliveries convert attributes (`SnsRawMessageAttributes`)
 - HTTP/S subscriptions start `PendingConfirmation` and are excluded from fan-out until `ConfirmSubscription` (or a GET on the `SubscribeURL`) presents the token
 - HTTP/S endpoints are POSTed in the background by `SnsHttpDelivery` using `bus.HttpClient`, retried per `SnsDeliveryPolicy` with `TimeProvider`-driven delays
 - Failed deliveries go to the subscription's dead-letter queue when a `RedrivePolicy` is set

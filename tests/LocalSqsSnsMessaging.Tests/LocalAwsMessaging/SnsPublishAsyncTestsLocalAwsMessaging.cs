@@ -17,7 +17,7 @@ public class SnsPublishAsyncTestsLocalAwsMessaging : SnsPublishAsyncTests
         Sqs = bus.CreateSqsClient();
     }
 
-    protected override bool SupportsAttributeSizeValidation() => false;
+    protected override bool SupportsAttributeSizeValidation() => true;
 
     protected override bool ValidatesFilterPolicies() => true;
 }

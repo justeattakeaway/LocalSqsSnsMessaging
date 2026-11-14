@@ -107,6 +107,13 @@ public class SnsFilterPolicyTests
     [Arguments("""{"colour": [{"anything-but": {"regex": "x"}}]}""")]
     [Arguments("""{"colour": [{"anything-but": {"prefix": 1}}]}""")]
     [Arguments("""{"colour": [{"anything-but": [["red"]]}]}""")]
+    [Arguments("""{"colour": [{"anything-but": ["red", 2]}]}""")]
+    [Arguments("""{"colour": [{"anything-but": {"cidr": "10.0.0.0/8"}}]}""")]
+    [Arguments("""{"price": [{"numeric": ["!=", 5]}]}""")]
+    [Arguments("""{"price": [{"numeric": [">", 10, "<", 5]}]}""")]
+    [Arguments("""{"source_ip": [{"cidr": "10.0.0.0"}]}""")]
+    [Arguments("""{"$or": [{"colour": ["red"]}]}""")]
+    [Arguments("""{"colour": {}}""")]
     public void Validate_RejectsMalformedPolicies(string policy)
     {
         Should.Throw<InternalInvalidParameterException>(() => SnsFilterPolicy.Validate(policy, SnsFilterPolicy.MessageAttributesScope));
@@ -119,7 +126,9 @@ public class SnsFilterPolicyTests
     [Arguments("""{"source_ip": [{"cidr": "10.0.0.0/8"}]}""")]
     [Arguments("""{"price": [{"numeric": ["=", 100]}, {"numeric": [">=", 1, "<", 10]}]}""")]
     [Arguments("""{"colour": [{"exists": false}]}""")]
-    [Arguments("""{"colour": [{"anything-but": "red"}, {"anything-but": 3}, {"anything-but": ["red", 2]}]}""")]
+    [Arguments("""{"colour": [{"anything-but": "red"}, {"anything-but": 3}, {"anything-but": ["red", "blue"]}, {"anything-but": [1, 2]}]}""")]
+    [Arguments("""{"colour": [{"anything-but": {"equals-ignore-case": ["Red"]}}, {"suffix": {"equals-ignore-case": "ED"}}]}""")]
+    [Arguments("""{}""")]
     [Arguments("""{"colour": [{"anything-but": {"prefix": "a"}}, {"anything-but": {"suffix": ["b", "c"]}}, {"anything-but": {"wildcard": "*x"}}]}""")]
     [Arguments("""{"$or": [{"colour": ["red"]}, {"size": ["large"]}], "shape": ["round"]}""")]
     public void Validate_AcceptsWellFormedPolicies(string policy)
@@ -144,5 +153,48 @@ public class SnsFilterPolicyTests
 
         Should.Throw<InternalInvalidParameterException>(() => SnsFilterPolicy.Validate(sixLevels, SnsFilterPolicy.MessageBodyScope));
         Should.NotThrow(() => SnsFilterPolicy.Validate(fiveLevels, SnsFilterPolicy.MessageBodyScope));
+    }
+
+    [Test]
+    [Arguments("this-is-not-json",
+        "Invalid parameter: FilterPolicy: failed to parse JSON. Unrecognized token 'this': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1]")]
+    [Arguments("""{"event": "must-be-a-list"}""",
+        "Invalid parameter: FilterPolicy: \"event\" must be an object or an array\n at [Source: (String)\"{\"event\":\"must-be-a-list\"}\"; line: 1, column: 11]")]
+    [Arguments("""{"price": [{"greater-than": 5}]}""",
+        "Invalid parameter: FilterPolicy: Unrecognized match type greater-than\n at [Source: (String)\"{\"price\":[{\"greater-than\":5}]}\"; line: 1, column: 28]")]
+    [Arguments("""{"price": [{"numeric": ["!=", 5]}]}""",
+        "Invalid parameter: FilterPolicy: Unrecognized numeric range operator: !=\n at [Source: (String)\"{\"price\":[{\"numeric\":[\"!=\",5]}]}\"; line: 1, column: 29]")]
+    [Arguments("""{"ip": [{"anything-but": {"cidr": "10.0.0.0/8"}}]}""",
+        "Invalid parameter: FilterPolicy: Unsupported anything-but pattern: cidr\n at [Source: (String)\"{\"ip\":[{\"anything-but\":{\"cidr\":\"10.0.0.0/8\"}}]}\"; line: 1, column: 33]")]
+    [Arguments("""{"a": ["1"], "b": ["2"], "c": ["3"], "d": ["4"], "e": ["5"], "f": ["6"]}""",
+        "Invalid parameter: FilterPolicy: Filter policy can not have more than 5 keys")]
+    public void Validate_ReportsTheReasonAwsGives(string policy, string expectedMessage)
+    {
+        Should.Throw<InternalInvalidParameterException>(() => SnsFilterPolicy.Validate(policy, SnsFilterPolicy.MessageAttributesScope))
+            .Message.ShouldBe(expectedMessage);
+    }
+
+    [Test]
+    public void Validate_CountsValueCombinations()
+    {
+        static string Policy(params int[] sizes) =>
+            "{" + string.Join(",", sizes.Select((n, i) => $"\"k{i}\": [{string.Join(",", Enumerable.Range(0, n).Select(j => $"\"v{j}\""))}]")) + "}";
+
+        Should.NotThrow(() => SnsFilterPolicy.Validate(Policy(5, 5, 6), SnsFilterPolicy.MessageAttributesScope));
+        Should.Throw<InternalInvalidParameterException>(() => SnsFilterPolicy.Validate(Policy(5, 5, 7), SnsFilterPolicy.MessageAttributesScope))
+            .Message.ShouldBe("Invalid parameter: FilterPolicy: Filter policy is too complex");
+    }
+
+    [Test]
+    public void Validate_CountsNestedLeafKeysForBodyScope()
+    {
+        const string fiveLeaves = """{"order": {"customer": {"tier": ["gold"], "region": ["eu"]}, "total": [{"numeric": [">", 0]}]}, "source": ["web"], "kind": ["created"]}""";
+        const string sixLeaves = """{"order": {"customer": {"tier": ["gold"], "region": ["eu"], "vip": ["yes"]}, "total": [{"numeric": [">", 0]}]}, "source": ["web"], "kind": ["created"]}""";
+
+        Should.NotThrow(() => SnsFilterPolicy.Validate(fiveLeaves, SnsFilterPolicy.MessageBodyScope));
+        Should.Throw<InternalInvalidParameterException>(() => SnsFilterPolicy.Validate(sixLeaves, SnsFilterPolicy.MessageBodyScope))
+            .Message.ShouldBe("Invalid parameter: FilterPolicy: Filter policy can not have more than 5 keys");
+        Should.Throw<InternalInvalidParameterException>(() => SnsFilterPolicy.Validate(fiveLeaves, SnsFilterPolicy.MessageAttributesScope))
+            .Message.ShouldBe("Invalid parameter: Filter policy scope MessageAttributes does not support nested filter policy");
     }
 }

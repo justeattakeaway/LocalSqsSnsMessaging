@@ -42,6 +42,19 @@ internal sealed class SnsSubscription
     /// <summary>The subscription-level HTTP/S delivery policy JSON, if configured.</summary>
     public string? DeliveryPolicy { get; set; }
 
+    /// <summary>The <c>SubscriptionRoleArn</c> attribute, stored for read-back only.</summary>
+    public string? SubscriptionRoleArn { get; set; }
+
+    /// <summary>The <c>ReplayPolicy</c> attribute, if configured.</summary>
+    public string? ReplayPolicy { get; set; }
+
+    /// <summary>
+    /// <c>ReplayStatus</c>: how far the replay <see cref="ReplayPolicy"/> asked for has got
+    /// (<see cref="SnsReplayPolicy.Pending"/> or <see cref="SnsReplayPolicy.Completed"/>), or null
+    /// without a replay policy.
+    /// </summary>
+    public string? ReplayStatus { get; set; }
+
     /// <summary>
     /// True until an HTTP/S endpoint confirms the subscription via <c>ConfirmSubscription</c> (or by
     /// visiting the <c>SubscribeURL</c>). Pending subscriptions don't take part in fan-out, so a

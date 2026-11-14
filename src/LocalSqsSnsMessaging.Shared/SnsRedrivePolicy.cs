@@ -11,14 +11,15 @@ internal static class SnsRedrivePolicy
 {
     /// <summary>
     /// Validates the policy and returns the dead-letter queue ARN, or <see langword="null"/> when the
-    /// policy is empty (which removes any existing redrive policy). Throws
-    /// <see cref="InternalInvalidParameterException"/> for malformed policies or non-SQS targets.
+    /// policy is an empty JSON object (which removes any existing redrive policy). Throws
+    /// <see cref="InternalInvalidParameterException"/> for a missing value, a malformed policy or a
+    /// target that is not an SQS queue.
     /// </summary>
     public static string? ParseDeadLetterTargetArn(string? policy)
     {
         if (string.IsNullOrWhiteSpace(policy))
         {
-            return null;
+            throw new InternalInvalidParameterException("Invalid parameter: RedrivePolicy: missing required value");
         }
 
         JsonObject? json;
@@ -48,9 +49,9 @@ internal static class SnsRedrivePolicy
             throw new InternalInvalidParameterException("Invalid parameter: RedrivePolicy: deadLetterTargetArn is required");
         }
 
-        if (!arn.StartsWith("arn:aws:sqs:", StringComparison.Ordinal))
+        if (!SnsArn.IsSqsQueueArn(arn))
         {
-            throw new InternalInvalidParameterException("Invalid parameter: RedrivePolicy: deadLetterTargetArn must be an SQS queue ARN");
+            throw new InternalInvalidParameterException("Invalid parameter: RedrivePolicy: deadLetterTargetArn must be a SQS queue");
         }
 
         return arn;
