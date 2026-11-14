@@ -55,56 +55,13 @@ internal sealed partial class SnsPublishAction
         return found;
     }
 
-    private void Enqueue(SqsQueueResource queue, Message sqsMessage, OutboundMessage message)
-    {
-        if (!queue.IsFifo)
-        {
-            if (message.MessageGroupId is not null)
-            {
-                // A standard queue keeps a published MessageGroupId (for fair queueing) without ordering by it.
-                sqsMessage.Attributes ??= [];
-                sqsMessage.Attributes[InternalMessageSystemAttributeName.MessageGroupId] = message.MessageGroupId;
-            }
-
-            // SQS applies the subscribed queue's DelaySeconds to messages SNS delivers, too.
-            if (queue.DelaySeconds > 0)
-            {
-                queue.EnqueueAfterDelay(sqsMessage, TimeSpan.FromSeconds(queue.DelaySeconds), _bus.TimeProvider);
-            }
-            else
-            {
-                queue.Messages.Enqueue(sqsMessage);
-            }
-
-            return;
-        }
-
-        sqsMessage.Attributes ??= [];
-        sqsMessage.Attributes["MessageGroupId"] = message.MessageGroupId;
-        sqsMessage.Attributes["SentTimestamp"] = _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
-
-        // The topic's deduplication id (explicit or content-based) travels with the message; without
-        // one, the queue deduplicates by the body it receives.
-        var deduplicationId = message.DeduplicationId;
-        if (string.IsNullOrEmpty(deduplicationId))
-        {
-            deduplicationId = SqsDeduplicationCache.ContentDeduplicationId(sqsMessage.Body);
-        }
-
-        sqsMessage.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
-
-        // Applies the queue's DelaySeconds too, as for a message sent with SendMessage.
-        queue.TryEnqueueFifoSend(sqsMessage, message.MessageGroupId, deduplicationId, IsFairQueue(queue), _bus.TimeProvider, out _);
-    }
-
-    private static bool IsFairQueue(SqsQueueResource queue)
-    {
-        return queue.Attributes != null &&
-               queue.Attributes.TryGetValue(InternalQueueAttributeName.DeduplicationScope, out var dedupScope) &&
-               dedupScope == "messageGroup" &&
-               queue.Attributes.TryGetValue(InternalQueueAttributeName.FifoThroughputLimit, out var throughputLimit) &&
-               throughputLimit == "perMessageGroupId";
-    }
+    /// <summary>
+    /// Enqueues a delivery as a send: after the queue's DelaySeconds, and on a FIFO queue in the
+    /// published message group, deduplicated by the topic's deduplication id or, without one, by
+    /// the body the queue receives.
+    /// </summary>
+    private void Enqueue(SqsQueueResource queue, Message sqsMessage, OutboundMessage message) =>
+        queue.AcceptSent(sqsMessage, message.MessageGroupId, message.DeduplicationId, delaySeconds: null, _bus.TimeProvider, out _);
 
     /// <summary>
     /// The SQS message SNS delivers for <paramref name="subscription"/>: the JSON envelope, or for raw

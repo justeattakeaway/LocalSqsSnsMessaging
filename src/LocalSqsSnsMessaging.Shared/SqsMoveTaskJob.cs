@@ -39,15 +39,7 @@ internal sealed class SqsMoveTaskJob : IDisposable
                 break;
             }
 
-            var newMessage = CloneNewMessage(message, bus.TimeProvider);
-            if (targetQueue!.IsFifo && newMessage.Attributes?.TryGetValue("MessageGroupId", out var groupId) == true && !string.IsNullOrEmpty(groupId))
-            {
-                targetQueue.EnqueueFifoMessage(groupId, newMessage);
-            }
-            else
-            {
-                targetQueue.Messages.Enqueue(newMessage);
-            }
+            targetQueue!.AcceptRedriven(CloneNewMessage(message, bus.TimeProvider), bus.TimeProvider.GetUtcNow());
 
             messagesMovedThisIteration++;
         }

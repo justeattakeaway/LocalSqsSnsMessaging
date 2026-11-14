@@ -281,34 +281,16 @@ internal static class EventBridgeEventDelivery
     /// </summary>
     private static void Enqueue(SqsQueueResource queue, SqsMessage message, Delivery delivery, InMemoryAwsBus bus)
     {
-        if (!queue.IsFifo)
+        string? groupId = null;
+        string? deduplicationId = null;
+        if (queue.IsFifo)
         {
-            if (queue.DelaySeconds > 0)
-            {
-                queue.EnqueueAfterDelay(message, TimeSpan.FromSeconds(queue.DelaySeconds), bus.TimeProvider);
-            }
-            else
-            {
-                queue.Messages.Enqueue(message);
-            }
-
-            return;
+            groupId = EventBridgeTargetInput.ResolveMessageGroupId(delivery.Target, delivery.Event.Envelope) ?? delivery.Target.Id ?? "eventbridge";
+            deduplicationId = delivery.EventId;
         }
 
-        var groupId = EventBridgeTargetInput.ResolveMessageGroupId(delivery.Target, delivery.Event.Envelope) ?? delivery.Target.Id ?? "eventbridge";
-        message.Attributes ??= [];
-        message.Attributes[InternalMessageSystemAttributeName.MessageGroupId] = groupId;
-        message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = delivery.EventId;
-        queue.TryEnqueueFifoSend(message, groupId, delivery.EventId, DeduplicatesPerMessageGroup(queue), bus.TimeProvider, out _);
+        queue.AcceptSent(message, groupId, deduplicationId, delaySeconds: null, bus.TimeProvider, out _);
     }
-
-    /// <summary>Whether the FIFO queue is a high-throughput one that deduplicates within each message group.</summary>
-    private static bool DeduplicatesPerMessageGroup(SqsQueueResource queue) =>
-        queue.Attributes is { } attributes
-        && attributes.TryGetValue(InternalQueueAttributeName.DeduplicationScope, out var scope)
-        && string.Equals(scope, "messageGroup", StringComparison.Ordinal)
-        && attributes.TryGetValue(InternalQueueAttributeName.FifoThroughputLimit, out var limit)
-        && string.Equals(limit, "perMessageGroupId", StringComparison.Ordinal);
 
     /// <summary>Whether <paramref name="queue"/>'s policy lets <paramref name="rule"/> send to it.</summary>
     private static bool AdmitsDelivery(SqsQueueResource queue, RuleResource rule) =>

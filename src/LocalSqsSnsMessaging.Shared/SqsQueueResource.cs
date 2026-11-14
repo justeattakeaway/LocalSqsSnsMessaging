@@ -44,7 +44,7 @@ internal sealed class SqsQueueResource
     /// Counts <paramref name="message"/>'s retention from <paramref name="now"/> rather than from its
     /// SentTimestamp, as SQS does for a message moved to a FIFO dead-letter queue.
     /// </summary>
-    public void RestartRetention(Message message, DateTimeOffset now)
+    private void RestartRetention(Message message, DateTimeOffset now)
     {
 #if NETSTANDARD2_0
         _retentionRestarts.Remove(message);
@@ -201,7 +201,7 @@ internal sealed class SqsQueueResource
     public ConcurrentDictionary<string, SqsDeduplicationCache> GroupDeduplication { get; } = new(StringComparer.Ordinal);
 
     /// <summary>The cache that deduplicates a message sent to <paramref name="messageGroupId"/>.</summary>
-    public SqsDeduplicationCache DeduplicationFor(string messageGroupId, bool perMessageGroup) =>
+    private SqsDeduplicationCache DeduplicationFor(string messageGroupId, bool perMessageGroup) =>
         perMessageGroup ? GroupDeduplication.GetOrAdd(messageGroupId, _ => new SqsDeduplicationCache()) : Deduplication;
 
     /// <summary>Forgets every accepted deduplication id, as <c>PurgeQueue</c> does.</summary>
@@ -270,12 +270,116 @@ internal sealed class SqsQueueResource
     }
 
     /// <summary>
+    /// Accepts a sent message: one a caller sends with <c>SendMessage</c>, or a service delivery
+    /// (SNS for a subscription, EventBridge for a rule's target). It is stamped with its <c>SentTimestamp</c>, from
+    /// which the queue's retention period counts.
+    /// </summary>
+    /// <remarks>
+    /// On a standard queue a <paramref name="messageGroupId"/> is kept as an attribute (for fair
+    /// queueing) without ordering by it, and the message waits out <paramref name="delaySeconds"/>,
+    /// or the queue's <see cref="DelaySeconds"/> when it has none of its own. On a FIFO queue the
+    /// message joins its group, after the queue's delay, unless <paramref name="deduplicationId"/>
+    /// (or, without one, a hash of the body) was already claimed in the queue's deduplication scope.
+    /// </remarks>
+    /// <returns>
+    /// <see langword="true"/> when the message was enqueued; <see langword="false"/> when it was a
+    /// FIFO duplicate, in which case <paramref name="original"/> is the message that claimed the
+    /// deduplication id.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">A FIFO queue was sent a message with no group.</exception>
+    public bool AcceptSent(Message message, string? messageGroupId, string? deduplicationId, int? delaySeconds,
+        TimeProvider timeProvider, out SqsDeduplicationCache.Entry original)
+    {
+        message.Attributes ??= [];
+        message.Attributes[InternalMessageSystemAttributeName.SentTimestamp] =
+            timeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
+
+        if (!IsFifo)
+        {
+            original = default;
+            if (messageGroupId is not null)
+            {
+                message.Attributes[InternalMessageSystemAttributeName.MessageGroupId] = messageGroupId;
+            }
+
+            // A message's own DelaySeconds overrides the queue's, in either direction.
+            var delay = delaySeconds ?? DelaySeconds;
+            if (delay > 0)
+            {
+                if (delaySeconds > 0)
+                {
+                    message.Attributes["DelaySeconds"] = delay.ToString(NumberFormatInfo.InvariantInfo);
+                }
+
+                EnqueueAfterDelay(message, TimeSpan.FromSeconds(delay), timeProvider);
+            }
+            else
+            {
+                Messages.Enqueue(message);
+            }
+
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(messageGroupId))
+        {
+            throw new InvalidOperationException("A message sent to a FIFO queue must have a MessageGroupId.");
+        }
+
+        message.Attributes[InternalMessageSystemAttributeName.MessageGroupId] = messageGroupId!;
+        if (string.IsNullOrEmpty(deduplicationId))
+        {
+            deduplicationId = SqsDeduplicationCache.ContentDeduplicationId(message.Body!);
+        }
+
+        message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId!;
+        return TryEnqueueFifoSend(message, messageGroupId!, deduplicationId!, timeProvider, out original);
+    }
+
+    /// <summary>
+    /// Accepts a redriven message: one moved here from another queue, into a dead-letter queue after
+    /// its <c>maxReceiveCount</c> or back out of one by a move task. It claims no deduplication id
+    /// and waits out no delay. On a FIFO queue it joins the group it carries, and its retention
+    /// period starts over; on a standard queue retention still counts from its <c>SentTimestamp</c>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A FIFO queue was given a message with no group.</exception>
+    public void AcceptRedriven(Message message, DateTimeOffset now)
+    {
+        if (!IsFifo)
+        {
+            Messages.Enqueue(message);
+            return;
+        }
+
+        if (message.Attributes?.TryGetValue(InternalMessageSystemAttributeName.MessageGroupId, out var groupId) != true
+            || string.IsNullOrEmpty(groupId))
+        {
+            throw new InvalidOperationException("A message redriven to a FIFO queue must have a MessageGroupId.");
+        }
+
+        RestartRetention(message, now);
+        EnqueueFifoMessage(groupId!, message);
+    }
+
+    /// <summary>
+    /// Whether this FIFO queue is a high-throughput one that deduplicates within each message group
+    /// (<c>DeduplicationScope=messageGroup</c> with <c>FifoThroughputLimit=perMessageGroupId</c>)
+    /// rather than across the queue.
+    /// </summary>
+    private bool DeduplicatesPerMessageGroup =>
+        Attributes is { } attributes
+        && attributes.TryGetValue(InternalQueueAttributeName.DeduplicationScope, out var scope)
+        && string.Equals(scope, "messageGroup", StringComparison.Ordinal)
+        && attributes.TryGetValue(InternalQueueAttributeName.FifoThroughputLimit, out var limit)
+        && string.Equals(limit, "perMessageGroupId", StringComparison.Ordinal);
+
+    /// <summary>
     /// Appends a message to its FIFO message group, assigning a <c>SequenceNumber</c>
-    /// system attribute if the message does not already carry one (SNS fan-out assigns
-    /// it at publish time). All group mutations happen under the group's lock so enqueue
+    /// system attribute if the message does not already carry one (a send assigns it before
+    /// any delay). All group mutations happen under the group's lock so enqueue
     /// order, receive order, and redelivery re-insertion stay consistent.
     /// </summary>
-    public void EnqueueFifoMessage(string messageGroupId, Message message)
+    private void EnqueueFifoMessage(string messageGroupId, Message message)
     {
         var groupLock = MessageGroupLocks.GetOrAdd(messageGroupId, _ => new object());
         lock (groupLock)
@@ -311,8 +415,8 @@ internal sealed class SqsQueueResource
     /// <see langword="true"/> when the message was enqueued; <see langword="false"/> when it was a duplicate,
     /// in which case <paramref name="original"/> is the message that claimed the deduplication id.
     /// </returns>
-    public bool TryEnqueueFifoSend(Message message, string messageGroupId, string deduplicationId,
-        bool perMessageGroupDeduplication, TimeProvider timeProvider, out SqsDeduplicationCache.Entry original)
+    private bool TryEnqueueFifoSend(Message message, string messageGroupId, string deduplicationId,
+        TimeProvider timeProvider, out SqsDeduplicationCache.Entry original)
     {
         // Numbering and enqueuing under one lock keeps concurrent sends to a group in sequence order.
         lock (_fifoSendLocks.GetOrAdd(messageGroupId, _ => new object()))
@@ -322,7 +426,7 @@ internal sealed class SqsQueueResource
             message.Attributes ??= [];
             message.Attributes["SequenceNumber"] = sequenceNumber;
 
-            if (!DeduplicationFor(messageGroupId, perMessageGroupDeduplication)
+            if (!DeduplicationFor(messageGroupId, DeduplicatesPerMessageGroup)
                     .TryClaim(deduplicationId, message.MessageId!, sequenceNumber, timeProvider.GetUtcNow(), out original))
             {
                 return false;
@@ -360,7 +464,7 @@ internal sealed class SqsQueueResource
     /// Makes <paramref name="message"/> visible once <paramref name="delay"/> has elapsed, counting it as
     /// delayed until then. A FIFO message (non-null <paramref name="fifoMessageGroupId"/>) joins its group.
     /// </summary>
-    public void EnqueueAfterDelay(Message message, TimeSpan delay, TimeProvider timeProvider, string? fifoMessageGroupId = null)
+    private void EnqueueAfterDelay(Message message, TimeSpan delay, TimeProvider timeProvider, string? fifoMessageGroupId = null)
     {
         _delayedMessages.TryAdd(message, 0);
         var start = timeProvider.GetTimestamp();
