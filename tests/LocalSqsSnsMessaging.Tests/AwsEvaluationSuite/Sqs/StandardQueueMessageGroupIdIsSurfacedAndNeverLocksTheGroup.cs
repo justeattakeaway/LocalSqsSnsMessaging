@@ -18,7 +18,6 @@ public sealed class StandardQueueMessageGroupIdIsSurfacedAndNeverLocksTheGroup
     [Test]
     [DisplayName("sqs.standard-queue-message-group-id-is-surfaced-and-never-locks-the-group")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Other, "a standard queue never surfaces MessageGroupId on receive: per body it was {'a1': None, 'a2': None, 'b1': None, 'n1': None}")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

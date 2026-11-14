@@ -231,8 +231,8 @@ public abstract class SqsFifoTests : WaitingTestBase
             Attributes = new Dictionary<string, string> { [QueueAttributeName.FifoQueue] = "true" }
         }, cancellationToken)).QueueUrl;
 
-        // An entry missing MessageGroupId is a per-entry failure, not a whole-batch exception.
-        var sendResponse = await Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
+        // On a FIFO queue, real SQS refuses the whole batch when an entry has no MessageGroupId.
+        var exception = await Assert.ThrowsAsync<AmazonSQSException>(() => Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
         {
             QueueUrl = queueUrl,
             Entries =
@@ -240,17 +240,14 @@ public abstract class SqsFifoTests : WaitingTestBase
                 new SendMessageBatchRequestEntry { Id = "1", MessageBody = "a" }
                 // MessageGroupId is missing
             ]
-        }, cancellationToken);
+        }, cancellationToken));
 
-        (sendResponse.Successful?.Count ?? 0).ShouldBe(0);
-        sendResponse.Failed.Count.ShouldBe(1);
-        sendResponse.Failed[0].Id.ShouldBe("1");
-        sendResponse.Failed[0].SenderFault.ShouldBe(true);
-        sendResponse.Failed[0].Code.ShouldBe("MissingParameter");
+        exception!.ErrorCode.ShouldBe("InvalidParameterValue");
+        exception.Message.ShouldBe("The request must contain the parameter MessageGroupId.");
     }
 
     [Test]
-    public async Task SendMessageBatchToFifoQueue_InvalidEntryDoesNotAbortValidEntries(CancellationToken cancellationToken)
+    public async Task SendMessageBatchToFifoQueue_InvalidEntryRejectsWholeBatch(CancellationToken cancellationToken)
     {
         var queueUrl = (await Sqs.CreateQueueAsync(new CreateQueueRequest
         {
@@ -262,9 +259,9 @@ public abstract class SqsFifoTests : WaitingTestBase
             }
         }, cancellationToken)).QueueUrl;
 
-        // Real SQS validates entries independently: the invalid entry lands in Failed
-        // while the valid ones are enqueued and reported in Successful.
-        var sendResponse = await Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
+        // Unlike a standard queue, where an invalid entry fails alone, a FIFO queue refuses the
+        // whole batch, so none of the valid entries is enqueued either.
+        await Assert.ThrowsAsync<AmazonSQSException>(() => Sqs.SendMessageBatchAsync(new SendMessageBatchRequest
         {
             QueueUrl = queueUrl,
             Entries =
@@ -273,17 +270,15 @@ public abstract class SqsFifoTests : WaitingTestBase
                 new SendMessageBatchRequestEntry { Id = "2", MessageBody = "b" }, // MessageGroupId is missing
                 new SendMessageBatchRequestEntry { Id = "3", MessageBody = "c", MessageGroupId = "g" }
             ]
+        }, cancellationToken));
+
+        var received = await Sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 10
         }, cancellationToken);
 
-        sendResponse.Successful.Count.ShouldBe(2);
-        sendResponse.Successful.Select(e => e.Id).ShouldBe(["1", "3"], ignoreOrder: true);
-        sendResponse.Failed.Count.ShouldBe(1);
-        sendResponse.Failed[0].Id.ShouldBe("2");
-        sendResponse.Failed[0].SenderFault.ShouldBe(true);
-
-        var messages = await ReceiveAllMessagesAsync(Sqs, queueUrl, 2, cancellationToken);
-
-        messages.Select(m => m.Body).ShouldBe(["a", "c"]);
+        (received.Messages?.Count ?? 0).ShouldBe(0);
     }
 
     [Test]

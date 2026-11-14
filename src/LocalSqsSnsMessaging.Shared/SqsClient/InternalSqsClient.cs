@@ -39,8 +39,7 @@ internal sealed class InternalSqsClient
             throw new InternalQueueDoesNotExistException();
         }
 
-        var error = ChangeVisibilityByReceiptHandle(queue, request.ReceiptHandle,
-            TimeSpan.FromSeconds(request.VisibilityTimeout.GetValueOrDefault()));
+        var error = ChangeVisibilityByReceiptHandle(queue, request.ReceiptHandle, request.VisibilityTimeout.GetValueOrDefault());
         if (error is not null)
         {
             throw error;
@@ -65,7 +64,10 @@ internal sealed class InternalSqsClient
         /// <summary>The handle was minted by this queue, but its message is no longer here (deleted, expired, moved).</summary>
         Gone,
 
-        /// <summary>Not a handle this queue minted.</summary>
+        /// <summary>A well-formed handle minted by another queue.</summary>
+        Foreign,
+
+        /// <summary>Not a receipt handle.</summary>
         Invalid,
     }
 
@@ -82,10 +84,14 @@ internal sealed class InternalSqsClient
             return ReceiptHandleState.Current;
         }
 
-        if (!TryParseReceiptHandle(receiptHandle, out var queueArn, out messageId)
-            || !queueArn.Equals(queue.Arn, StringComparison.OrdinalIgnoreCase))
+        if (!TryParseReceiptHandle(receiptHandle, out var queueArn, out messageId, out _))
         {
             return ReceiptHandleState.Invalid;
+        }
+
+        if (!queueArn.Equals(queue.Arn, StringComparison.OrdinalIgnoreCase))
+        {
+            return ReceiptHandleState.Foreign;
         }
 
         if (!queue.LatestReceiptHandles.TryGetValue(messageId, out var latestReceiptHandle))
@@ -99,10 +105,11 @@ internal sealed class InternalSqsClient
     }
 
     /// <summary>Reads the queue ARN and MessageId out of a receipt handle minted by <see cref="CreateReceiptHandle"/>.</summary>
-    private static bool TryParseReceiptHandle(string receiptHandle, out string queueArn, out string messageId)
+    private static bool TryParseReceiptHandle(string receiptHandle, out string queueArn, out string messageId, out DateTimeOffset receivedAt)
     {
         queueArn = string.Empty;
         messageId = string.Empty;
+        receivedAt = default;
 #if NETSTANDARD2_0
         byte[] buffer;
         try
@@ -123,15 +130,22 @@ internal sealed class InternalSqsClient
         }
         var decoded = Encoding.UTF8.GetString(buffer[..written]);
 #endif
-        if (decoded.Split(' ') is not [_, var arn, var id, _])
+        if (decoded.Split(' ') is not [_, var arn, var id, var receivedSeconds]
+            || !double.TryParse(receivedSeconds, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var seconds))
         {
             return false;
         }
 
         queueArn = arn;
         messageId = id;
+        receivedAt = DateTimeOffset.FromUnixTimeMilliseconds((long)Math.Round(seconds * 1000));
         return true;
     }
+
+    private static InternalReceiptHandleIsInvalidException InvalidReceiptHandle(ReceiptHandleState state, string? receiptHandle) =>
+        new(state == ReceiptHandleState.Foreign
+            ? $"The receipt handle \"{receiptHandle}\" is not valid for this queue."
+            : "The input receipt handle is invalid.");
 
     private static InternalInvalidParameterValueException ExpiredReceiptHandle(string receiptHandle) =>
         new($"Value {receiptHandle} for parameter ReceiptHandle is invalid. Reason: The receipt handle has expired.");
@@ -144,7 +158,8 @@ internal sealed class InternalSqsClient
     /// <returns>The error to report, or <see langword="null"/> on success.</returns>
     private static AwsServiceException? DeleteByReceiptHandle(SqsQueueResource queue, string? receiptHandle)
     {
-        switch (ResolveReceiptHandle(queue, receiptHandle, out var messageId))
+        var state = ResolveReceiptHandle(queue, receiptHandle, out var messageId);
+        switch (state)
         {
             case ReceiptHandleState.Current:
                 if (queue.InFlightMessages.TryRemove(receiptHandle!, out var inFlightInfo))
@@ -159,10 +174,6 @@ internal sealed class InternalSqsClient
                 if (queue.TryTakeVisibleMessage(messageId!, out var visibleMessage))
                 {
                     queue.LatestReceiptHandles.TryRemove(messageId!, out _);
-                    if (queue.IsFifo && visibleMessage!.Attributes?.TryGetValue(InternalMessageSystemAttributeName.MessageDeduplicationId, out var deduplicationId) == true)
-                    {
-                        queue.DeduplicationIds.TryRemove(deduplicationId, out _);
-                    }
                 }
 
                 return null;
@@ -171,7 +182,7 @@ internal sealed class InternalSqsClient
             case ReceiptHandleState.Gone:
                 return null;
             default:
-                return new InternalReceiptHandleIsInvalidException($"Receipt handle {receiptHandle} is invalid.");
+                return InvalidReceiptHandle(state, receiptHandle);
         }
     }
 
@@ -181,9 +192,27 @@ internal sealed class InternalSqsClient
     /// message is gone, is refused.
     /// </summary>
     /// <returns>The error to report, or <see langword="null"/> on success.</returns>
-    private AwsServiceException? ChangeVisibilityByReceiptHandle(SqsQueueResource queue, string? receiptHandle, TimeSpan visibilityTimeout)
+    private AwsServiceException? ChangeVisibilityByReceiptHandle(SqsQueueResource queue, string? receiptHandle, int visibilityTimeoutSeconds)
     {
-        switch (ResolveReceiptHandle(queue, receiptHandle, out var messageId))
+        try
+        {
+            SqsRequestValidation.ValidateVisibilityTimeout(visibilityTimeoutSeconds);
+        }
+        catch (AwsServiceException error)
+        {
+            return error;
+        }
+
+        var visibilityTimeout = TimeSpan.FromSeconds(visibilityTimeoutSeconds);
+        var state = ResolveReceiptHandle(queue, receiptHandle, out var messageId);
+        if (state is ReceiptHandleState.Current or ReceiptHandleState.Lapsed
+            && TryParseReceiptHandle(receiptHandle!, out _, out _, out var receivedAt)
+            && SqsRequestValidation.CheckVisibilityCap(visibilityTimeoutSeconds, _bus.TimeProvider.GetUtcNow() - receivedAt) is { } capError)
+        {
+            return capError;
+        }
+
+        switch (state)
         {
             case ReceiptHandleState.Current:
                 if (queue.InFlightMessages.TryGetValue(receiptHandle!, out var inFlightInfo))
@@ -231,7 +260,7 @@ internal sealed class InternalSqsClient
                 return new InternalInvalidParameterValueException(
                     $"Value {receiptHandle} for parameter ReceiptHandle is invalid. Reason: Message does not exist or is not available for visibility timeout change.");
             default:
-                return new InternalReceiptHandleIsInvalidException($"Receipt handle {receiptHandle} is invalid.");
+                return InvalidReceiptHandle(state, receiptHandle);
         }
     }
 
@@ -353,13 +382,8 @@ internal sealed class InternalSqsClient
             return;
         }
 
+        // The deduplication id stays claimed for the rest of its interval.
         queue.ReleaseDeletedFifoMessage(message);
-        queue.SequenceNumbersByMessageId.TryRemove(message.MessageId!, out _);
-
-        if (message.Attributes!.TryGetValue("MessageDeduplicationId", out var deduplicationId))
-        {
-            queue.DeduplicationIds.TryRemove(deduplicationId, out _);
-        }
     }
 
     public Task<DeleteQueueResponse> DeleteQueueAsync(DeleteQueueRequest request,
@@ -382,16 +406,13 @@ internal sealed class InternalSqsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if ((request.MaxNumberOfMessages ?? 1) < 1)
-        {
-            request.MaxNumberOfMessages = 1;
-        }
-
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
             throw new InternalQueueDoesNotExistException();
         }
+
+        SqsRequestValidation.ValidateReceive(request);
 
         List<Message>? messages = null;
         // A receive that names no wait time or visibility timeout takes the queue's; an explicit
@@ -747,29 +768,24 @@ internal sealed class InternalSqsClient
             throw new InternalQueueDoesNotExistException();
         }
 
-        var message = CreateMessage(request.MessageBody!, request.MessageAttributes, request.MessageSystemAttributes);
-        var totalSize = CalculateMessageSize(message.Body!, message.MessageAttributes);
-
-        if (totalSize > MaxMessageSize)
+        if (SqsRequestValidation.ValidateSend(queue, new SqsRequestValidation.SendParameters(
+                request.MessageBody, request.DelaySeconds, request.MessageGroupId, request.MessageDeduplicationId,
+                request.MessageAttributes, request.MessageSystemAttributes)) is { } error)
         {
-            throw new SqsServiceException(
-                $"One or more parameters are invalid. Reason: Message must be shorter than {MaxMessageSize} bytes.");
+            throw error;
         }
+
+        var message = CreateMessage(request.MessageBody!, request.MessageAttributes, request.MessageSystemAttributes);
 
         if (queue.IsFifo)
         {
-            if (string.IsNullOrEmpty(request.MessageGroupId))
-            {
-                throw new InvalidOperationException("MessageGroupId is required for FIFO queues");
-            }
-
-            if (!TryEnqueueFifoMessage(queue, message, request.MessageGroupId,
-                    request.MessageDeduplicationId, request.MessageBody!, _bus.TimeProvider, out var existingMessageId))
+            if (!TryEnqueueFifoMessage(queue, message, request.MessageGroupId!,
+                    request.MessageDeduplicationId, request.MessageBody!, _bus.TimeProvider, out var original))
             {
                 return Task.FromResult(new SendMessageResponse
                 {
-                    MessageId = existingMessageId,
-                    SequenceNumber = queue.SequenceNumbersByMessageId.GetValueOrDefault(existingMessageId),
+                    MessageId = original.MessageId,
+                    SequenceNumber = original.SequenceNumber,
                     MD5OfMessageBody = message.MD5OfBody,
                     MD5OfMessageAttributes = SqsMessageAttributeDigest.Compute(request.MessageAttributes),
                     MD5OfMessageSystemAttributes = SqsMessageAttributeDigest.Compute(request.MessageSystemAttributes)
@@ -778,6 +794,12 @@ internal sealed class InternalSqsClient
         }
         else
         {
+            if (request.MessageGroupId is not null)
+            {
+                // A standard queue keeps a MessageGroupId (for fair queueing) without ordering by it.
+                message.Attributes![InternalMessageSystemAttributeName.MessageGroupId] = request.MessageGroupId;
+            }
+
             // A message's own DelaySeconds overrides the queue's, in either direction.
             var delaySeconds = request.DelaySeconds ?? queue.DelaySeconds;
             if (delaySeconds > 0)
@@ -807,33 +829,6 @@ internal sealed class InternalSqsClient
         }.SetCommonProperties());
     }
 
-    private static int CalculateMessageSize(string messageBody, Dictionary<string, MessageAttributeValue>? messageAttributes)
-    {
-        var totalSize = 0;
-
-        totalSize += Encoding.UTF8.GetByteCount(messageBody);
-
-        if (messageAttributes != null)
-        {
-            foreach (var (key, attributeValue) in messageAttributes)
-            {
-                totalSize += Encoding.UTF8.GetByteCount(key);
-                totalSize += Encoding.UTF8.GetByteCount(attributeValue.DataType!);
-
-                if (attributeValue.BinaryValue != null)
-                {
-                    totalSize += (int)attributeValue.BinaryValue.Length;
-                }
-                else if (attributeValue.StringValue != null)
-                {
-                    totalSize += Encoding.UTF8.GetByteCount(attributeValue.StringValue);
-                }
-            }
-        }
-
-        return totalSize;
-    }
-
     private static void EnqueueMessage(SqsQueueResource targetQueue, Message message)
     {
         if (targetQueue.IsFifo)
@@ -857,11 +852,11 @@ internal sealed class InternalSqsClient
     /// </summary>
     /// <returns>
     /// <see langword="true"/> when the message was enqueued; <see langword="false"/> when it was a
-    /// duplicate, in which case <paramref name="existingMessageId"/> is the id of the message that
-    /// originally carried the deduplication id.
+    /// duplicate, in which case <paramref name="original"/> is the message that claimed the
+    /// deduplication id.
     /// </returns>
     private static bool TryEnqueueFifoMessage(SqsQueueResource queue, Message message, string messageGroupId,
-        string? messageDeduplicationId, string messageBody, TimeProvider timeProvider, out string existingMessageId)
+        string? messageDeduplicationId, string messageBody, TimeProvider timeProvider, out SqsDeduplicationCache.Entry original)
     {
         message.Attributes ??= [];
         message.Attributes["MessageGroupId"] = messageGroupId;
@@ -869,7 +864,7 @@ internal sealed class InternalSqsClient
         var deduplicationId = messageDeduplicationId;
         if (string.IsNullOrEmpty(deduplicationId))
         {
-            deduplicationId = GenerateMessageBodyHash(messageBody);
+            deduplicationId = SqsDeduplicationCache.ContentDeduplicationId(messageBody);
         }
 
         message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
@@ -878,27 +873,12 @@ internal sealed class InternalSqsClient
         var sequenceNumber = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
         message.Attributes["SequenceNumber"] = sequenceNumber;
 
-        if (IsFairQueue(queue))
+        if (!queue.DeduplicationFor(messageGroupId, IsFairQueue(queue))
+                .TryClaim(deduplicationId, message.MessageId!, sequenceNumber, timeProvider.GetUtcNow(), out original))
         {
-            var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
-                messageGroupId,
-                _ => new ConcurrentDictionary<string, string>());
-            if (!groupDeduplicationIds.TryAdd(deduplicationId, message.MessageId!))
-            {
-                existingMessageId = groupDeduplicationIds[deduplicationId];
-                return false;
-            }
-        }
-        else
-        {
-            if (!queue.DeduplicationIds.TryAdd(deduplicationId, message.MessageId!))
-            {
-                existingMessageId = queue.DeduplicationIds[deduplicationId];
-                return false;
-            }
+            return false;
         }
 
-        queue.SequenceNumbersByMessageId[message.MessageId!] = sequenceNumber;
         if (queue.DelaySeconds > 0)
         {
             // FIFO queues only support a queue-level delay.
@@ -909,60 +889,21 @@ internal sealed class InternalSqsClient
             queue.EnqueueFifoMessage(messageGroupId, message);
         }
 
-        existingMessageId = message.MessageId!;
         return true;
-    }
-
-    private static string GenerateMessageBodyHash(string messageBody)
-    {
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(messageBody));
-        return Convert.ToBase64String(hashBytes);
     }
 
     private Message CreateMessage(string messageBody, Dictionary<string, MessageAttributeValue>? messageAttributes, Dictionary<string, MessageSystemAttributeValue>? messageSystemAttributes)
     {
-        // Number-typed message attributes must carry a value that parses as a number.
-        // Real AWS rejects "Number" attributes whose StringValue isn't numeric with a
-        // "Can't cast the value of message (user) attribute" error; we used to store
-        // anything, letting tests round-trip non-numeric strings through a Number type.
-        if (messageAttributes is not null)
-        {
-            foreach (var (name, value) in messageAttributes)
-            {
-                if (value?.DataType is null) continue;
-                // AWS allows custom subtypes like "Number.float"; the base type before the
-                // dot determines validation.
-                var dot = value.DataType.IndexOf('.', StringComparison.Ordinal);
-                var baseType = dot < 0 ? value.DataType : value.DataType[..dot];
-                if (string.Equals(baseType, "Number", StringComparison.Ordinal)
-                    && value.StringValue is not null
-                    && !double.TryParse(value.StringValue, NumberStyles.Float | NumberStyles.AllowExponent,
-                        NumberFormatInfo.InvariantInfo, out _))
-                {
-                    throw new SqsServiceException(
-                        $"Can't cast the value of message (user) attribute '{name}' to a number.");
-                }
-            }
-        }
-
-        // Real AWS only allows AWSTraceHeader to be supplied via MessageSystemAttributes on
-        // SendMessage. Everything else (SenderId, SentTimestamp, ApproximateReceiveCount, ...)
-        // is set server-side; sending them in is rejected with a wire-level error. Mirror that
-        // here so tests can't accidentally rely on the caller "setting" a server attribute.
+        // Validated by SqsRequestValidation.ValidateSend. SQS keeps a well-formed AWSTraceHeader
+        // and silently drops a malformed one; it stores Number attributes in plain notation.
         Dictionary<string, string>? attributes = null;
-        if (messageSystemAttributes is not null)
+        if (messageSystemAttributes?.TryGetValue(InternalMessageSystemAttributeName.AWSTraceHeader, out var traceHeader) == true
+            && SqsRequestValidation.IsWellFormedTraceHeader(traceHeader))
         {
-            foreach (var (key, value) in messageSystemAttributes)
-            {
-                if (!string.Equals(key, InternalMessageSystemAttributeName.AWSTraceHeader, StringComparison.Ordinal))
-                {
-                    throw new SqsServiceException($"Message system attribute name '{key}' is invalid.");
-                }
-
-                attributes ??= [];
-                attributes[key] = value.StringValue;
-            }
+            attributes = new() { [InternalMessageSystemAttributeName.AWSTraceHeader] = traceHeader.StringValue };
         }
+
+        messageAttributes = NormalizeNumberAttributes(messageAttributes);
 
         // Populate server-side system attributes that real AWS sets at SendMessage time:
         //   - SentTimestamp: epoch milliseconds the request was accepted
@@ -990,6 +931,33 @@ internal sealed class InternalSqsClient
 #pragma warning restore CA1308
 
         return message;
+    }
+
+    /// <summary>The attributes as stored: a copy with Number values in plain notation, when any needs it.</summary>
+    private static Dictionary<string, MessageAttributeValue>? NormalizeNumberAttributes(Dictionary<string, MessageAttributeValue>? messageAttributes)
+    {
+        if (messageAttributes is null)
+        {
+            return null;
+        }
+
+        Dictionary<string, MessageAttributeValue>? normalized = null;
+        foreach (var (name, value) in messageAttributes)
+        {
+            if (value.DataType?.StartsWith("Number", StringComparison.Ordinal) != true || value.StringValue is null)
+            {
+                continue;
+            }
+
+            var plain = SqsRequestValidation.NormalizeNumber(value.StringValue);
+            if (!string.Equals(plain, value.StringValue, StringComparison.Ordinal))
+            {
+                normalized ??= new Dictionary<string, MessageAttributeValue>(messageAttributes);
+                normalized[name] = new MessageAttributeValue { DataType = value.DataType, StringValue = plain };
+            }
+        }
+
+        return normalized ?? messageAttributes;
     }
 
     public Task<CancelMessageMoveTaskResponse> CancelMessageMoveTaskAsync(CancelMessageMoveTaskRequest request,
@@ -1024,6 +992,8 @@ internal sealed class InternalSqsClient
             throw new InternalQueueDoesNotExistException();
         }
 
+        SqsRequestValidation.ValidateBatchRequest(request.Entries, entry => entry.Id, "ChangeMessageVisibilityBatchRequestEntry");
+
         var response = new ChangeMessageVisibilityBatchResponse
         {
             Successful = [],
@@ -1032,8 +1002,7 @@ internal sealed class InternalSqsClient
 
         foreach (var entry in request.Entries!)
         {
-            var error = ChangeVisibilityByReceiptHandle(queue, entry.ReceiptHandle,
-                TimeSpan.FromSeconds(entry.VisibilityTimeout.GetValueOrDefault()));
+            var error = ChangeVisibilityByReceiptHandle(queue, entry.ReceiptHandle, entry.VisibilityTimeout.GetValueOrDefault());
             if (error is null)
             {
                 response.Successful.Add(new ChangeMessageVisibilityBatchResultEntry
@@ -1067,6 +1036,8 @@ internal sealed class InternalSqsClient
         {
             throw new InternalQueueDoesNotExistException();
         }
+
+        SqsRequestValidation.ValidateBatchRequest(request.Entries, entry => entry.Id, "DeleteMessageBatchRequestEntry");
 
         var response = new DeleteMessageBatchResponse
         {
@@ -1166,6 +1137,14 @@ internal sealed class InternalSqsClient
         {
             queue.ReceiveMessageWaitTime = TimeSpan.FromSeconds(int.Parse(waitTimeSeconds, NumberFormatInfo.InvariantInfo));
         }
+
+        if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.MaximumMessageSize, out var maximumMessageSize) == true)
+        {
+            queue.MaximumMessageSize = int.Parse(maximumMessageSize, NumberFormatInfo.InvariantInfo);
+        }
+
+        queue.ContentBasedDeduplication = queue.Attributes?.TryGetValue(InternalQueueAttributeName.ContentBasedDeduplication, out var contentBasedDeduplication) == true
+            && bool.TryParse(contentBasedDeduplication, out var enabled) && enabled;
 
         ExtractRedrivePolicy(queue);
     }
@@ -1386,6 +1365,7 @@ internal sealed class InternalSqsClient
         queue.InFlightGroupCounts.Clear();
         queue.DiscardDelayedMessages();
         queue.LatestReceiptHandles.Clear();
+        queue.ClearDeduplication();
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.PurgeQueue, queue.Arn);
         return Task.FromResult(new PurgeQueueResponse().SetCommonProperties());
@@ -1458,47 +1438,71 @@ internal sealed class InternalSqsClient
             Failed = []
         };
 
-        var totalSize = request.Entries!.Sum(e => CalculateMessageSize(e.MessageBody!, e.MessageAttributes));
+        SqsRequestValidation.ValidateBatchRequest(request.Entries, entry => entry.Id, "SendMessageBatchRequestEntry");
 
+        var totalSize = request.Entries!.Sum(e => SqsRequestValidation.MessageSize(e.MessageBody ?? string.Empty, e.MessageAttributes));
         if (totalSize > MaxMessageSize)
         {
             throw new InternalBatchRequestTooLongException(
                 $"Batch requests cannot be longer than {MaxMessageSize} bytes. You have sent {totalSize} bytes.");
         }
 
-        foreach (var entry in request.Entries)
+        // Each entry is validated on its own and fails alone, except that on a FIFO queue an invalid
+        // entry refuses the whole request.
+        var entryErrors = new AwsServiceException?[request.Entries!.Count];
+        for (var i = 0; i < request.Entries.Count; i++)
         {
+            var entry = request.Entries[i];
+            var entryError = SqsRequestValidation.ValidateSend(queue, new SqsRequestValidation.SendParameters(
+                entry.MessageBody, entry.DelaySeconds, entry.MessageGroupId, entry.MessageDeduplicationId,
+                entry.MessageAttributes, entry.MessageSystemAttributes), batchIndex: i);
+            if (queue.IsFifo && entryError is not null)
+            {
+                throw entryError.ErrorCode is "EmptyValue" or "MissingParameter"
+                    ? SqsRequestValidation.InvalidParameterValue(entryError.Message)
+                    : entryError;
+            }
+
+            entryErrors[i] = entryError;
+        }
+
+        for (var i = 0; i < request.Entries.Count; i++)
+        {
+            var entry = request.Entries[i];
+            if (entryErrors[i] is { } entryError)
+            {
+                response.Failed.Add(new BatchResultErrorEntry
+                {
+                    Id = entry.Id,
+                    Code = entryError.ErrorCode,
+                    Message = entryError.Message,
+                    SenderFault = true
+                });
+                continue;
+            }
+
             var message = CreateMessage(entry.MessageBody!, entry.MessageAttributes, entry.MessageSystemAttributes);
 
             var reportedMessageId = message.MessageId;
 
             if (queue.IsFifo)
             {
-                if (string.IsNullOrEmpty(entry.MessageGroupId))
-                {
-                    // Matching real SQS, an invalid entry is reported as a per-entry failure rather
-                    // than aborting the whole batch, so valid entries are still enqueued.
-                    response.Failed.Add(new BatchResultErrorEntry
-                    {
-                        Id = entry.Id,
-                        Code = "MissingParameter",
-                        Message = "The request must contain the parameter MessageGroupId.",
-                        SenderFault = true
-                    });
-                    continue;
-                }
-
                 // A duplicate is still reported as successful (matching real SQS), but carries the
                 // id of the message that originally claimed the deduplication id.
-                if (!TryEnqueueFifoMessage(queue, message, entry.MessageGroupId,
-                        entry.MessageDeduplicationId, entry.MessageBody!, _bus.TimeProvider, out var existingMessageId))
+                if (!TryEnqueueFifoMessage(queue, message, entry.MessageGroupId!,
+                        entry.MessageDeduplicationId, entry.MessageBody!, _bus.TimeProvider, out var original))
                 {
-                    reportedMessageId = existingMessageId;
-                    message.Attributes!["SequenceNumber"] = queue.SequenceNumbersByMessageId.GetValueOrDefault(existingMessageId)!;
+                    reportedMessageId = original.MessageId;
+                    message.Attributes!["SequenceNumber"] = original.SequenceNumber!;
                 }
             }
             else
             {
+                if (entry.MessageGroupId is not null)
+                {
+                    message.Attributes![InternalMessageSystemAttributeName.MessageGroupId] = entry.MessageGroupId;
+                }
+
                 var entryDelaySeconds = entry.DelaySeconds ?? queue.DelaySeconds;
                 if (entryDelaySeconds > 0)
                 {

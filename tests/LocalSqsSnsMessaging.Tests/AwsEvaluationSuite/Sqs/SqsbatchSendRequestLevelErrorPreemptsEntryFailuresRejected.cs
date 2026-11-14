@@ -33,7 +33,6 @@ public sealed class SqsbatchSendRequestLevelErrorPreemptsEntryFailuresRejected
     [Test]
     [DisplayName("sqs.sqsbatch-send-request-level-error-preempts-entry-failures-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "SendMessageBatch with a repeated entry Id unexpectedly SUCCEEDED (the .NET SDK then throws ArgumentException validating the response); real AWS rejects it with BatchEntryIdsNotDistinct")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

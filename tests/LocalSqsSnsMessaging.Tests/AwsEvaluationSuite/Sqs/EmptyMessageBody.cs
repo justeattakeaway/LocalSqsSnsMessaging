@@ -21,7 +21,6 @@ public sealed class EmptyMessageBody
     [Test]
     [DisplayName("sqs.empty-message-body")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "SendMessage with an empty MessageBody was accepted instead of MissingParameter")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

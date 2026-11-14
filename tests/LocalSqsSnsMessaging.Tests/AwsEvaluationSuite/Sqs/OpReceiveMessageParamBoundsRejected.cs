@@ -27,7 +27,6 @@ public sealed class OpReceiveMessageParamBoundsRejected
     [Test]
     [DisplayName("sqs.op-receive-message-param-bounds-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "ReceiveMessage with MaxNumberOfMessages=11 succeeded instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

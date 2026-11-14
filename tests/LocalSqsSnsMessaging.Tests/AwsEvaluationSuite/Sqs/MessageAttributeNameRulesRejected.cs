@@ -40,7 +40,6 @@ public sealed class MessageAttributeNameRulesRejected
     [Test]
     [DisplayName("sqs.message-attribute-name-rules-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected the call to be refused, but it succeeded: SendMessage with a reserved 'AWS.' attribute name")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -25,7 +25,6 @@ public sealed class FifoTokenIdsLimitedTo128PrintableCharactersRejected
     [Test]
     [DisplayName("sqs.fifo-token-ids-limited-to-128-printable-characters-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "expected the call to be refused, but it succeeded: SendMessage with a 129-char MessageGroupId")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -69,7 +68,7 @@ public sealed class FifoTokenIdsLimitedTo128PrintableCharactersRejected
 
         var empty = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 2 });
         Ensure((empty.Messages ?? []).Count == 0,
-            $"refused sends enqueued [{string.Join(", ", empty.Messages!.Select(m => m.Body))}]");
+            $"refused sends enqueued [{string.Join(", ", (empty.Messages ?? []).Select(m => m.Body))}]");
 
         (string Gid, string Did)[] accepted = [(new string('g', 128), new string('d', 128)), (Punct, Punct)];
         foreach (var (gid, did) in accepted)

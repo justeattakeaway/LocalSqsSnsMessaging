@@ -26,6 +26,13 @@ public sealed class FidelityContext : IAsyncDisposable
     /// <summary>The runner's per-check budget for a <c>timing:real-time</c> check.</summary>
     public const int RealTimeBudgetMilliseconds = 600_000;
 
+    /// <summary>
+    /// The category of checks that wait out a real SQS period of a minute or more (a retention
+    /// minimum, the deduplication interval, the purge window). <c>build.ps1</c> leaves them out so
+    /// CI stays inside its time limit; run them with <c>--treenode-filter "/**[Category=LongWait]"</c>.
+    /// </summary>
+    public const string LongWaitCategory = "LongWait";
+
     private readonly List<Func<Task>> _cleanups = [];
     private readonly Dictionary<string, AmazonSQSClient> _clients = new(StringComparer.Ordinal);
     private readonly Stopwatch _clock = Stopwatch.StartNew();

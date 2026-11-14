@@ -27,7 +27,7 @@ public sealed class FifoDedupIdReusableAfterDedupWindowElapses
     [DisplayName("sqs.fifo-dedup-id-reusable-after-dedup-window-elapses")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [KnownFidelityGap(FidelityGap.Fifo, "dedup window never elapsed: sends repeated for up to 330s after the first still echoed its MessageId")]
+    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

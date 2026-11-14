@@ -19,7 +19,6 @@ public sealed class FifoDedupSurvivesConsumerDelete
     [Test]
     [DisplayName("sqs.fifo-dedup-survives-consumer-delete")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "a retry inside the dedup window must be acknowledged with the original MessageId, even after the original was consumed and deleted; the ids differ")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

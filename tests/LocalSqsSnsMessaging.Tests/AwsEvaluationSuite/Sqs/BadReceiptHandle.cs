@@ -22,7 +22,6 @@ public sealed class BadReceiptHandle
     [Test]
     [DisplayName("sqs.bad-receipt-handle")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ErrorMessageText, "ReceiptHandleIsInvalid message is 'Receipt handle sim2real-bogus is invalid.', expected 'The input receipt handle is invalid.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

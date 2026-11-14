@@ -37,7 +37,6 @@ public sealed class FifoGroupLessSendRejectedWithoutConsumingItsDeduplicationId
     [Test]
     [DisplayName("sqs.fifo-group-less-send-rejected-without-consuming-its-deduplication-id")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "queue never reported 7 visible messages; last read '0' (ApproximateNumberOfMessages ignores FIFO message groups)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

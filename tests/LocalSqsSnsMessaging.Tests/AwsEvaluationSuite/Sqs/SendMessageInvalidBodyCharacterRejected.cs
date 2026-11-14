@@ -36,7 +36,6 @@ public sealed class SendMessageInvalidBodyCharacterRejected
     [Test]
     [DisplayName("sqs.send-message-invalid-body-character-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "a SendMessage body containing a character outside the XML 1.0 set is accepted instead of refused with InvalidMessageContents")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -28,7 +28,6 @@ public sealed class OpSendMessageOversizeRejected
     [Test]
     [DisplayName("sqs.op-send-message-oversize-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "a 2048-byte body on a MaximumMessageSize=1024 queue was accepted instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

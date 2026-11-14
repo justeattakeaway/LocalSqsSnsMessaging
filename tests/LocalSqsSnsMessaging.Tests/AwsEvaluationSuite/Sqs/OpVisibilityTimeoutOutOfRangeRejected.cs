@@ -64,7 +64,6 @@ public sealed class OpVisibilityTimeoutOutOfRangeRejected
     [Test]
     [DisplayName("sqs.op-visibility-timeout-out-of-range-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "ChangeMessageVisibility with VisibilityTimeout=43201 succeeded instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

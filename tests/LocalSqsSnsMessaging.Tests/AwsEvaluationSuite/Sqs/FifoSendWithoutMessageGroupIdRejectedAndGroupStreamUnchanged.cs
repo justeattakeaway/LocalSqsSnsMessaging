@@ -26,7 +26,6 @@ public sealed class FifoSendWithoutMessageGroupIdRejectedAndGroupStreamUnchanged
     [Test]
     [DisplayName("sqs.fifo-send-without-message-group-id-rejected-and-group-stream-unchanged")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "Check timed out after 60.0s (ApproximateNumberOfMessages never reports the FIFO queue's visible messages)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

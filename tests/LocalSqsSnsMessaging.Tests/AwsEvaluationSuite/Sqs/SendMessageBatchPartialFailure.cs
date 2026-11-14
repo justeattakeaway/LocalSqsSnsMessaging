@@ -15,7 +15,6 @@ public sealed class SendMessageBatchPartialFailure
     [Test]
     [DisplayName("sqs.send-message-batch-partial-failure")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "an entry with a disallowed body character succeeds instead of failing per-entry (Successful Ids: ['bad', 'good'])")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

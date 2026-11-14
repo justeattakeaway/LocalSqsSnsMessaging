@@ -22,7 +22,6 @@ public sealed class StandardQueueMessageDeduplicationIdRejected
     [Test]
     [DisplayName("sqs.standard-queue-message-deduplication-id-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "expected MessageDeduplicationId on a standard queue to be refused with InvalidParameterValue, but SendMessage succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

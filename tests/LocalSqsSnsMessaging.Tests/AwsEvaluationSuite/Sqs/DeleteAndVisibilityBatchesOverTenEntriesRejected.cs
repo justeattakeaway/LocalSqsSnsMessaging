@@ -26,7 +26,6 @@ public sealed class DeleteAndVisibilityBatchesOverTenEntriesRejected
     [Test]
     [DisplayName("sqs.delete-and-visibility-batches-over-ten-entries-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "an 11-entry DeleteMessageBatch succeeded instead of TooManyEntriesInBatchRequest")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
@@ -73,7 +72,7 @@ public sealed class DeleteAndVisibilityBatchesOverTenEntriesRejected
         // All 21 are still in flight, so an immediate receive sees nothing.
         var leaked = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = url, MaxNumberOfMessages = 10, WaitTimeSeconds = 3 });
         Ensure((leaked.Messages ?? []).Count == 0,
-            $"after refused batches a receive returned [{string.Join(", ", leaked.Messages!.Select(m => m.Body))}]; " +
+            $"after refused batches a receive returned [{string.Join(", ", (leaked.Messages ?? []).Select(m => m.Body))}]; " +
             "the refused 11-entry visibility batch released messages");
 
         // The first 11 handles still being valid shows the refused delete deleted none of them.

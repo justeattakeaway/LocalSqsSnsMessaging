@@ -1,4 +1,3 @@
-using System.Collections.Frozen;
 using System.Net;
 
 namespace LocalSqsSnsMessaging.Http;
@@ -19,7 +18,7 @@ internal static class SqsQueryCompatibleErrors
     /// AWS's Smithy model for SQS (github.com/aws/api-models-aws, models/sqs/service/2012-11-05).
     /// An error without the trait keeps its JSON code.
     /// </summary>
-    private static readonly FrozenDictionary<string, string> QueryErrorCodes = new Dictionary<string, string>(StringComparer.Ordinal)
+    private static readonly IReadOnlyDictionary<string, string> QueryErrorCodes = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["BatchEntryIdsNotDistinct"] = "AWS.SimpleQueueService.BatchEntryIdsNotDistinct",
         ["BatchRequestTooLong"] = "AWS.SimpleQueueService.BatchRequestTooLong",
@@ -45,7 +44,7 @@ internal static class SqsQueryCompatibleErrors
         ["ResourceNotFoundException"] = "ResourceNotFoundException",
         ["TooManyEntriesInBatchRequest"] = "AWS.SimpleQueueService.TooManyEntriesInBatchRequest",
         ["UnsupportedOperation"] = "AWS.SimpleQueueService.UnsupportedOperation",
-    }.ToFrozenDictionary(StringComparer.Ordinal);
+    };
 
     /// <summary>The <see cref="HeaderName"/> value for an error with the given JSON code and status.</summary>
     public static string HeaderValue(string errorCode, HttpStatusCode statusCode)

@@ -22,7 +22,6 @@ public sealed class MessageSystemAttributeOtherThanAwsTraceHeaderRejected
     [Test]
     [DisplayName("sqs.message-system-attribute-other-than-aws-trace-header-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ErrorMessageText, "SendMessage with system attribute 'traceparent': got 'SqsService' \"Message system attribute name 'traceparent' is invalid.\"")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

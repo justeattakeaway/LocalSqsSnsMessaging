@@ -21,7 +21,6 @@ public sealed class ContentBasedDedupIdIsTheSha256OfTheBody
     [Test]
     [DisplayName("sqs.content-based-dedup-id-is-the-sha256-of-the-body")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "an explicit MessageDeduplicationId equal to sha256(body) of a content-based send is not deduplicated against it")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

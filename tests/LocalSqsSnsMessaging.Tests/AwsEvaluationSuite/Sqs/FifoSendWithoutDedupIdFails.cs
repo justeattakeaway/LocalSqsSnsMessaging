@@ -23,7 +23,6 @@ public sealed class FifoSendWithoutDedupIdFails
     [Test]
     [DisplayName("sqs.fifo-send-without-dedup-id-fails")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "expected the send to be rejected, but it SUCCEEDED (FIFO send without dedup id on a queue without ContentBasedDeduplication)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

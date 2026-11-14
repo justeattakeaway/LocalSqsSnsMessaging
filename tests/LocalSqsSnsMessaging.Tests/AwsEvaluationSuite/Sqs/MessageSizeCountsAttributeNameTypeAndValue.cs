@@ -67,7 +67,6 @@ public sealed class MessageSizeCountsAttributeNameTypeAndValue
     [Test]
     [DisplayName("sqs.message-size-counts-attribute-name-type-and-value")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "a message one byte over MaximumMessageSize once its attribute is counted was accepted instead of refused")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

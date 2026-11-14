@@ -28,7 +28,6 @@ public sealed class OpDelaySecondsOutOfRangeRejected
     [Test]
     [DisplayName("sqs.op-delay-seconds-out-of-range-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected DelaySeconds=901 to be rejected, but it SUCCEEDED")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

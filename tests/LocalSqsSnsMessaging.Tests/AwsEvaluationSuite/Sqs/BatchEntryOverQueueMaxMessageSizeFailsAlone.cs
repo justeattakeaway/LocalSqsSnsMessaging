@@ -23,7 +23,6 @@ public sealed class BatchEntryOverQueueMaxMessageSizeFailsAlone
     [Test]
     [DisplayName("sqs.batch-entry-over-queue-max-message-size-fails-alone")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "a SendMessageBatch entry over the queue's MaximumMessageSize succeeds instead of failing alone with InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

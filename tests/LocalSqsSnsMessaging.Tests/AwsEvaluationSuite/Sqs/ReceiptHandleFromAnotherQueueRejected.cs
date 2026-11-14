@@ -22,7 +22,6 @@ public sealed class ReceiptHandleFromAnotherQueueRejected
     [Test]
     [DisplayName("sqs.receipt-handle-from-another-queue-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ReceiptHandles, "a handle from another queue is refused, but the message is not attributed to the handle belonging to another queue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

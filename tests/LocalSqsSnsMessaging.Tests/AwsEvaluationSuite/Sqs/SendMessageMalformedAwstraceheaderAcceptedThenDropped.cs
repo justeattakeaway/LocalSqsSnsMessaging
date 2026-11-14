@@ -30,7 +30,6 @@ public sealed class SendMessageMalformedAwstraceheaderAcceptedThenDropped
     [Test]
     [DisplayName("sqs.send-message-malformed-awstraceheader-accepted-then-dropped")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected an empty AWSTraceHeader to be refused with InvalidParameterValue, but SendMessage succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

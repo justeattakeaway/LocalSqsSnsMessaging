@@ -21,7 +21,6 @@ public sealed class BatchPartialFailureEnvelopeFields
     [Test]
     [DisplayName("sqs.batch-partial-failure-envelope-fields")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "an empty-body SendMessageBatch entry succeeds instead of failing with EmptyValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

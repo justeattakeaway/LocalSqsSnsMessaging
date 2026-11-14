@@ -25,7 +25,6 @@ public sealed class SqsbatchSendPartialFailurePreservesSurvivorAttributes
     [Test]
     [DisplayName("sqs.sqsbatch-send-partial-failure-preserves-survivor-attributes")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "an empty-bodied entry is reported Successful; all ten Ids came back Successful instead of the nine with a non-empty body")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -26,7 +26,6 @@ public sealed class SqsbatchFifoSendOneInvalidEntryRejectsWholeBatch
     [Test]
     [DisplayName("sqs.sqsbatch-fifo-send-one-invalid-entry-rejects-whole-batch")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "FIFO SendMessageBatch with one empty-bodied entry unexpectedly SUCCEEDED; real AWS rejects the whole request with InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -18,7 +18,6 @@ public sealed class SendMessageBatchTooManyEntriesRejected
     [Test]
     [DisplayName("sqs.send-message-batch-too-many-entries-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "an 11-entry SendMessageBatch succeeded instead of TooManyEntriesInBatchRequest")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -115,7 +115,7 @@ public sealed class ReceiptHandleFromADeletedQueueIncarnationRejected
         var rest = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = newUrl, MaxNumberOfMessages = 10, WaitTimeSeconds = 3 });
         Ensure((rest.Messages ?? []).Count == 0,
             "after deleting its one message the recreated queue still delivered "
-            + $"[{string.Join(", ", rest.Messages!.Select(m => m.Body))}]");
+            + $"[{string.Join(", ", (rest.Messages ?? []).Select(m => m.Body))}]");
     }
 
     /// <summary>The botocore Error dict <paramref name="fn"/> raises. An unexpected success raises, naming the result.</summary>

@@ -61,7 +61,7 @@ public sealed class PurgeQueueResetsTheFifoDedupCache
     [DisplayName("sqs.purge-queue-resets-the-fifo-dedup-cache")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [KnownFidelityGap(FidelityGap.Fifo, "resending the same body immediately after PurgeQueue returned the pre-purge MessageId -- PurgeQueue must reset the dedup cache")]
+    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

@@ -33,5 +33,10 @@ Checks that wait out a real AWS period (for example the 60 s minimum `MessageRet
 are in the `TimeBased` category. Leave them out for a fast loop:
 `--treenode-filter "/**[Category!=TimeBased]"`.
 
+The few that wait a minute or more (retention minimums, the five-minute deduplication interval,
+the purge window) are also in the `LongWait` category. `build.ps1` leaves those out, so CI stays
+inside its two-minute limit. Run them on their own with `--treenode-filter "/**[Category=LongWait]"`
+(about five minutes, set by the deduplication interval).
+
 When a fix makes a skipped test pass, delete its attribute. To find every test for one root cause,
 grep for its `FidelityGap` value: `grep -l "FidelityGap.Validation" Sqs/*.cs`.

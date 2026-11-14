@@ -22,6 +22,7 @@ public sealed class MessageMoveTaskRedrivesDlqBackToSource
     // the real-time budget instead; what it asserts is unchanged.
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
+    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

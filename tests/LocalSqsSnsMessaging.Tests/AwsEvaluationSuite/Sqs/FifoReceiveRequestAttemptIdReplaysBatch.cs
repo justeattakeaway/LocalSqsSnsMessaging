@@ -18,7 +18,7 @@ public sealed class FifoReceiveRequestAttemptIdReplaysBatch
     [Test]
     [DisplayName("sqs.fifo-receive-request-attempt-id-replays-batch")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "replay with the same ReceiveRequestAttemptId returned [], expected the original batch")]
+    [KnownFidelityGap(FidelityGap.Fifo, "replay with the same ReceiveRequestAttemptId returned [], expected the original batch")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

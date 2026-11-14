@@ -20,7 +20,6 @@ public sealed class BatchSendPartialFailure
     [Test]
     [DisplayName("sqs.batch-send-partial-failure")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "a SendMessageBatch entry with DelaySeconds=901 succeeds instead of failing with InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

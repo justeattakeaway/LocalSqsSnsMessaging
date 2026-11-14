@@ -16,7 +16,6 @@ public sealed class SendMessageBatchDuplicateIdsRejectedAtomically
     [Test]
     [DisplayName("sqs.send-message-batch-duplicate-ids-rejected-atomically")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "a SendMessageBatch with duplicate entry Ids is accepted instead of refused with BatchEntryIdsNotDistinct")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

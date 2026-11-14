@@ -22,7 +22,6 @@ public sealed class DuplicateBatchIds
     [Test]
     [DisplayName("sqs.duplicate-batch-ids")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "a SendMessageBatch with duplicate entry Ids succeeded instead of BatchEntryIdsNotDistinct")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

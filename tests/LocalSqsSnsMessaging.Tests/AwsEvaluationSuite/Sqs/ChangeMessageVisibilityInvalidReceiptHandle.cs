@@ -17,7 +17,6 @@ public sealed class ChangeMessageVisibilityInvalidReceiptHandle
     [Test]
     [DisplayName("sqs.change-message-visibility-invalid-receipt-handle")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ErrorMessageText, "expected message 'The input receipt handle is invalid.', got 'Receipt handle totally-bogus-handle is invalid.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

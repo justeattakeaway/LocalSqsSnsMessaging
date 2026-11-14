@@ -24,7 +24,6 @@ public sealed class DeleteAndVisibilityBatchesDuplicateIdsRejected
     [Test]
     [DisplayName("sqs.delete-and-visibility-batches-duplicate-ids-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "a DeleteMessageBatch with two entries sharing an Id succeeded instead of BatchEntryIdsNotDistinct")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

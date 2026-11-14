@@ -25,7 +25,6 @@ public sealed class FifoPerMessageDelaySecondsRejected
     [Test]
     [DisplayName("sqs.fifo-per-message-delay-seconds-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "expected the call to be refused, but it succeeded: {'MD5OfMessageBody': '9cdf00cf506abd5a3e1703bd979595c7', 'MessageId': '0162335d-b1a5-4f4a-a01f-8c544ff20eb1',")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

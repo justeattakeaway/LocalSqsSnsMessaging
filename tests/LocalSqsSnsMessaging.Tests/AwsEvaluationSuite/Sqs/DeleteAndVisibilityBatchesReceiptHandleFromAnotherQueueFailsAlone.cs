@@ -22,7 +22,6 @@ public sealed class DeleteAndVisibilityBatchesReceiptHandleFromAnotherQueueFails
     [Test]
     [DisplayName("sqs.delete-and-visibility-batches-receipt-handle-from-another-queue-fails-alone")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ErrorMessageText, "a foreign-queue receipt handle fails with 'Receipt handle ... is invalid.' instead of 'The receipt handle \"...\" is not valid for this queue.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

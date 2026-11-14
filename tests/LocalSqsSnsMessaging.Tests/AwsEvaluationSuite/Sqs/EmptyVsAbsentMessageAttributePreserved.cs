@@ -22,7 +22,6 @@ public sealed class EmptyVsAbsentMessageAttributePreserved
     [Test]
     [DisplayName("sqs.empty-vs-absent-message-attribute-preserved")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "SendMessage with an empty-string String attribute succeeded instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -22,7 +22,6 @@ public sealed class BatchRequestValidationRejected
     [Test]
     [DisplayName("sqs.batch-request-validation-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "an empty SendMessageBatch succeeds instead of AWS.SimpleQueueService.EmptyBatchRequest")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

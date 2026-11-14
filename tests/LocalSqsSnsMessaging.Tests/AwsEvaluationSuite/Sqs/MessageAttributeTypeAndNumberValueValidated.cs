@@ -71,7 +71,6 @@ public sealed class MessageAttributeTypeAndNumberValueValidated
     [Test]
     [DisplayName("sqs.message-attribute-type-and-number-value-validated")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ErrorMessageText, "non-numeric: code 'SqsService'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

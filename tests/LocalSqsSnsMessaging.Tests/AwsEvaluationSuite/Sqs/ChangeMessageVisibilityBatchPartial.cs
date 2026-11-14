@@ -18,7 +18,6 @@ public sealed class ChangeMessageVisibilityBatchPartial
     [Test]
     [DisplayName("sqs.change-message-visibility-batch-partial")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ErrorMessageText, "the failed entry's message is 'Receipt handle bogus-receipt-handle is invalid.', expected 'The input receipt handle is invalid.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -21,7 +21,6 @@ public sealed class FifoMissingMessageGroupIdRejected
     [Test]
     [DisplayName("sqs.fifo-missing-message-group-id-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ErrorMessageText, "expected MissingParameter, got 'InvalidOperationException'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

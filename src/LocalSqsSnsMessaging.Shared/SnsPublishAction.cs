@@ -234,30 +234,15 @@ internal sealed class SnsPublishAction
         if (string.IsNullOrEmpty(deduplicationId))
         {
             // Generate a deduplication ID based on the message body
-            deduplicationId = GenerateMessageBodyHash(sqsMessage.Body);
+            deduplicationId = SqsDeduplicationCache.ContentDeduplicationId(sqsMessage.Body);
         }
 
         sqsMessage.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
-        if (IsFairQueue(queue))
+        if (queue.DeduplicationFor(message.MessageGroupId, IsFairQueue(queue)).TryClaim(deduplicationId, sqsMessage.MessageId,
+                sqsMessage.Attributes["SequenceNumber"], _bus.TimeProvider.GetUtcNow(), out _))
         {
-            // Per-message-group deduplication
-            var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
-                message.MessageGroupId,
-                _ => new ConcurrentDictionary<string, string>());
-
-            if (groupDeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
-            {
-                queue.EnqueueFifoMessage(message.MessageGroupId, sqsMessage);
-            }
-        }
-        else
-        {
-            // Global deduplication (traditional FIFO)
-            if (queue.DeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
-            {
-                queue.EnqueueFifoMessage(message.MessageGroupId, sqsMessage);
-            }
+            queue.EnqueueFifoMessage(message.MessageGroupId, sqsMessage);
         }
     }
 
@@ -357,9 +342,4 @@ internal sealed class SnsPublishAction
         };
     }
 
-    private static string GenerateMessageBodyHash(string messageBody)
-    {
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(messageBody));
-        return Convert.ToBase64String(hashBytes);
-    }
 }

@@ -27,7 +27,6 @@ public sealed class ContentBasedDeduplicationToggledOnLiveFifoQueue
     [Test]
     [DisplayName("sqs.content-based-deduplication-toggled-on-live-fifo-queue")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "an id-less send to a FIFO queue with ContentBasedDeduplication=false succeeds instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

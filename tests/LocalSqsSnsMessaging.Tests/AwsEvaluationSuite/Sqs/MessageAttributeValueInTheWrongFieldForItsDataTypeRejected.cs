@@ -20,7 +20,6 @@ public sealed class MessageAttributeValueInTheWrongFieldForItsDataTypeRejected
     [Test]
     [DisplayName("sqs.message-attribute-value-in-the-wrong-field-for-its-data-type-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected the call to be refused, but it succeeded: SendMessage with a Binary attribute carried in StringValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

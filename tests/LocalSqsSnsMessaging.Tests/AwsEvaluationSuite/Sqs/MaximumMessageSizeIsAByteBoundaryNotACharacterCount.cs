@@ -39,7 +39,6 @@ public sealed class MaximumMessageSizeIsAByteBoundaryNotACharacterCount
     [Test]
     [DisplayName("sqs.maximum-message-size-is-a-byte-boundary-not-a-character-count")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "the call succeeded, but this leg exists because it must be rejected")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -40,7 +40,6 @@ public sealed class SqsbatchSendFullWidthOneInvalidEntryRejected
     [Test]
     [DisplayName("sqs.sqsbatch-send-full-width-one-invalid-entry-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "an empty-bodied entry is reported Successful; all ten Ids came back Successful instead of a 9/1 split with EmptyValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

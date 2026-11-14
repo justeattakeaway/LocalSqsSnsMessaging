@@ -40,4 +40,5 @@ internal static class InternalMessageSystemAttributeName
     public const string AWSTraceHeader = "AWSTraceHeader";
     public const string DeadLetterQueueSourceArn = "DeadLetterQueueSourceArn";
     public const string MessageDeduplicationId = "MessageDeduplicationId";
+    public const string MessageGroupId = "MessageGroupId";
 }

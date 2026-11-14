@@ -28,7 +28,6 @@ public sealed class FifoBatchWithAGroupLessEntryRejectedWholeAndGroupStreamUncha
     [Test]
     [DisplayName("sqs.fifo-batch-with-a-group-less-entry-rejected-whole-and-group-stream-unchanged")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "ApproximateNumberOfMessages on a FIFO queue never reports the 9 seeded messages (reads '0')")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

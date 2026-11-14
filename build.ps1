@@ -87,6 +87,8 @@ function DotNetTest {
         "--coverage-settings"; (Join-Path $solutionPath "codecoverage.runsettings")
         "--results-directory"; $projectResultsDir
         "--timeout"; "2m"
+        # Checks that wait out real SQS periods of a minute or more don't fit the time limit.
+        "--treenode-filter"; "/**[Category!=LongWait]"
     )
 
     try {

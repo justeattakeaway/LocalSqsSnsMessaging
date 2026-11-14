@@ -24,7 +24,6 @@ public sealed class FifoSendMessageBatchSharedDedupIdFirstEntryWins
     [Test]
     [DisplayName("sqs.fifo-send-message-batch-shared-dedup-id-first-entry-wins")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "'SequenceNumber' (KeyError: SendMessageBatch Successful entries carry no SequenceNumber)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

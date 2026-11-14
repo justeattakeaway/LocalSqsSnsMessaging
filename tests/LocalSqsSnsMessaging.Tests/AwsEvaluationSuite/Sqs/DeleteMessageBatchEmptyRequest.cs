@@ -23,7 +23,6 @@ public sealed class DeleteMessageBatchEmptyRequest
     [Test]
     [DisplayName("sqs.delete-message-batch-empty-request")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "a DeleteMessageBatch with an empty Entries list succeeded instead of EmptyBatchRequest")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

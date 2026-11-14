@@ -21,7 +21,6 @@ public sealed class StandardQueueMessageGroupIdValidated
     [Test]
     [DisplayName("sqs.standard-queue-message-group-id-validated")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected a 129-character MessageGroupId on a standard queue to be refused with InvalidParameterValue, but SendMessage succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

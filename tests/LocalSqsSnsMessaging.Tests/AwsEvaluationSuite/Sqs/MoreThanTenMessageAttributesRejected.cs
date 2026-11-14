@@ -33,7 +33,6 @@ public sealed class MoreThanTenMessageAttributesRejected
     [Test]
     [DisplayName("sqs.more-than-ten-message-attributes-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "SendMessage with 11 message attributes succeeded instead of being refused with InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

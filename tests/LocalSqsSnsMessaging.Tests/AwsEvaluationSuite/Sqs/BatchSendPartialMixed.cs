@@ -19,7 +19,6 @@ public sealed class BatchSendPartialMixed
     [Test]
     [DisplayName("sqs.batch-send-partial-mixed")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "an empty-body SendMessageBatch entry succeeds: expected only 'ok' successful, got ['empty', 'ok']")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

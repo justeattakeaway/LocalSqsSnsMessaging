@@ -70,6 +70,12 @@ internal sealed class SqsQueueResource
     /// <summary>The queue's <c>ReceiveMessageWaitTimeSeconds</c>: the long-poll wait of a receive that sets none.</summary>
     public TimeSpan ReceiveMessageWaitTime { get; set; }
 
+    /// <summary>The queue's <c>MaximumMessageSize</c>, in bytes.</summary>
+    public int MaximumMessageSize { get; set; } = 1_048_576;
+
+    /// <summary>The FIFO queue's <c>ContentBasedDeduplication</c>: a send without a MessageDeduplicationId is deduplicated on its body.</summary>
+    public bool ContentBasedDeduplication { get; set; }
+
     public DateTimeOffset CreatedTimestamp { get; init; }
     public DateTimeOffset LastModifiedTimestamp { get; set; }
 
@@ -146,14 +152,23 @@ internal sealed class SqsQueueResource
     public ConcurrentDictionary<string, (Message, SqsInflightMessageExpirationJob)> InFlightMessages { get; } = new();
     public ConcurrentDictionary<string, ConcurrentQueue<Message>> MessageGroups { get; } = new();
     public ConcurrentDictionary<string, object> MessageGroupLocks { get; } = new();
-    public ConcurrentDictionary<string, string> DeduplicationIds { get; } = new();
 
-    /// <summary>
-    /// The SequenceNumber each FIFO message was assigned at send, by MessageId, so a deduplicated
-    /// re-send can report the original's, as SQS does.
-    /// </summary>
-    public ConcurrentDictionary<string, string> SequenceNumbersByMessageId { get; } = new(StringComparer.Ordinal);
-    public ConcurrentDictionary<string, ConcurrentDictionary<string, string>> MessageGroupDeduplicationIds { get; } = new();
+    /// <summary>The deduplication ids a FIFO queue with queue-wide <c>DeduplicationScope</c> has accepted.</summary>
+    public SqsDeduplicationCache Deduplication { get; } = new();
+
+    /// <summary>The deduplication ids accepted per message group, when <c>DeduplicationScope</c> is <c>messageGroup</c>.</summary>
+    public ConcurrentDictionary<string, SqsDeduplicationCache> GroupDeduplication { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>The cache that deduplicates a message sent to <paramref name="messageGroupId"/>.</summary>
+    public SqsDeduplicationCache DeduplicationFor(string messageGroupId, bool perMessageGroup) =>
+        perMessageGroup ? GroupDeduplication.GetOrAdd(messageGroupId, _ => new SqsDeduplicationCache()) : Deduplication;
+
+    /// <summary>Forgets every accepted deduplication id, as <c>PurgeQueue</c> does.</summary>
+    public void ClearDeduplication()
+    {
+        Deduplication.Clear();
+        GroupDeduplication.Clear();
+    }
 
     /// <summary>
     /// Number of in-flight (received-but-not-deleted) messages per FIFO message group.

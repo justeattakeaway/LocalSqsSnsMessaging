@@ -28,6 +28,7 @@ public sealed class RetentionExpiryDiscardsAnInFlightMessage
     [DisplayName("sqs.retention-expiry-discards-an-in-flight-message")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
+    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

@@ -27,7 +27,6 @@ public sealed class VisibilityExtensionCappedAtTwelveHoursFromReceiveRejected
     [Test]
     [DisplayName("sqs.visibility-extension-capped-at-twelve-hours-from-receive-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Other, "extending visibility past 12h from receive is accepted: gave (None, None)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

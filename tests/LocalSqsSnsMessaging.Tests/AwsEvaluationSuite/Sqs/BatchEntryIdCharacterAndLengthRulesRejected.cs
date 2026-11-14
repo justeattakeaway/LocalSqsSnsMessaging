@@ -24,7 +24,6 @@ public sealed class BatchEntryIdCharacterAndLengthRulesRejected
     [Test]
     [DisplayName("sqs.batch-entry-id-character-and-length-rules-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "SendMessageBatch with entry Id 'a.b' succeeded instead of AWS.SimpleQueueService.InvalidBatchEntryId")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

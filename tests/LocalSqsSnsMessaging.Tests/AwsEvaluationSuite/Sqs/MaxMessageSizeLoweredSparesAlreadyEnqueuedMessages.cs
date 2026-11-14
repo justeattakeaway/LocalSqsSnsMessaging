@@ -31,7 +31,6 @@ public sealed class MaxMessageSizeLoweredSparesAlreadyEnqueuedMessages
     [Test]
     [DisplayName("sqs.max-message-size-lowered-spares-already-enqueued-messages")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Other, "Check timed out after 60.0s (a 4096-byte body is still accepted after lowering MaximumMessageSize to 1024)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
