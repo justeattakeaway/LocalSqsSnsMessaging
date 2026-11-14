@@ -66,6 +66,39 @@ public sealed class MultiRegionTests
     }
 
     [Test]
+    [Arguments("arn:aws:sqs:eu-west-1:000000000000:orders", "eu-west-1")]
+    [Arguments("arn:aws:sns:us-west-2:000000000000:topic:3c6d6b4a-0d0e-4d1a-9d3c-1b2a3c4d5e6f", "us-west-2")]
+    [Arguments("arn:aws:s3:::bucket", null)]
+    [Arguments("arn:aws:sqs", null)]
+    [Arguments("orders", null)]
+    [Arguments(null, null)]
+    public void TheRegionOfAnArnIsItsFourthField(string? arn, string? expected) =>
+        InMemoryAwsBus.ArnRegion(arn).ShouldBe(expected);
+
+    [Test]
+    public async Task ArnLookupsFindOnlyTheResourceTheWholeArnNames()
+    {
+        var bus = new InMemoryAwsBus();
+        using var sns = bus.CreateSnsClient();
+        var topicArn = (await sns.CreateTopicAsync("lookup")).TopicArn;
+
+        bus.TryGetTopicByArn(topicArn, out var topic).ShouldBeTrue();
+        topic!.Arn.ShouldBe(topicArn);
+        bus.TryGetTopicByArn(topicArn.Replace(bus.CurrentAccountId, "111111111111", StringComparison.Ordinal), out _).ShouldBeFalse();
+        bus.TryGetTopicByArn(topicArn.Replace(bus.CurrentRegion, AltRegion, StringComparison.Ordinal), out _).ShouldBeFalse();
+        bus.TryGetTopicByArn(null, out _).ShouldBeFalse();
+        bus.TryGetQueueByArn(null, out _).ShouldBeFalse();
+    }
+
+    [Test]
+    public void ARequestWithARelativeUriNamesNoRegion()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/", UriKind.Relative));
+
+        AwsRequestRegion.FromRequest(request).ShouldBeNull();
+    }
+
+    [Test]
     [Arguments("https://sqs.ap-southeast-2.amazonaws.com/", "ap-southeast-2")]
     [Arguments("https://sqs.cn-north-1.amazonaws.com.cn/", "cn-north-1")]
     [Arguments("https://us-west-1.queue.amazonaws.com/", "us-west-1")]

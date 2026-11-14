@@ -208,21 +208,6 @@ public sealed class InMemoryAwsBus
     /// <value>A thread-safe dictionary of SQS move tasks, keyed by task identifier.</value>
     internal ConcurrentDictionary<string, SqsMoveTask> MoveTasks { get; } = [];
 
-    /// <summary>Gets the SNS topics in <see cref="CurrentRegion"/>, keyed by topic name.</summary>
-    internal ConcurrentDictionary<string, SnsTopicResource> Topics => Region(CurrentRegion).Topics;
-
-    /// <summary>Gets the subscriptions to the SNS topics in <see cref="CurrentRegion"/>, keyed by subscription ARN.</summary>
-    internal ConcurrentDictionary<string, SnsSubscription> Subscriptions => Region(CurrentRegion).Subscriptions;
-
-    /// <summary>Gets the EventBridge event buses in <see cref="CurrentRegion"/>, keyed by name.</summary>
-    internal ConcurrentDictionary<string, EventBusResource> EventBuses => Region(CurrentRegion).EventBuses;
-
-    /// <summary>Gets the EventBridge archives in <see cref="CurrentRegion"/>, keyed by name.</summary>
-    internal ConcurrentDictionary<string, ArchiveResource> EventBridgeArchives => Region(CurrentRegion).EventBridgeArchives;
-
-    /// <summary>Gets the EventBridge replays in <see cref="CurrentRegion"/>, keyed by name.</summary>
-    internal ConcurrentDictionary<string, ReplayResource> EventBridgeReplays => Region(CurrentRegion).EventBridgeReplays;
-
     /// <summary>
     /// Records an API operation if usage tracking is enabled.
     /// </summary>
