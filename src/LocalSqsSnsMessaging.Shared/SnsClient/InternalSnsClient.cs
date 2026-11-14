@@ -27,9 +27,18 @@ internal sealed partial class InternalSnsClient
     /// <summary>SNS answers every request for a topic that doesn't exist with this message.</summary>
     internal const string TopicDoesNotExist = "Topic does not exist";
 
-    internal InternalSnsClient(InMemoryAwsBus bus)
+    /// <summary>The resources of the region this client serves: it sees and creates only this region's topics.</summary>
+    private readonly AwsRegionResources _resources;
+
+    /// <param name="bus">The bus holding the topics.</param>
+    /// <param name="region">
+    /// The region the request was made in; <see langword="null"/> for the bus's
+    /// <see cref="InMemoryAwsBus.CurrentRegion"/>.
+    /// </param>
+    internal InternalSnsClient(InMemoryAwsBus bus, string? region = null)
     {
         _bus = bus;
+        _resources = bus.Region(region);
     }
 
     public Task<CreateTopicResponse> CreateTopicAsync(CreateTopicRequest request,
@@ -65,11 +74,11 @@ internal sealed partial class InternalSnsClient
 
         SnsTagValidation.ValidateTags(request.Tags, "tags");
 
-        var topicArn = $"arn:aws:sns:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:{request.Name}";
+        var topicArn = $"arn:aws:sns:{_resources.Region}:{_bus.CurrentAccountId}:{request.Name}";
         var topic = new SnsTopicResource
         {
             Name = request.Name,
-            Region = _bus.CurrentRegion,
+            Region = _resources.Region,
             Arn = topicArn,
             Fifo = fifo ? new SnsFifoTopicState() : null,
         };
@@ -96,7 +105,7 @@ internal sealed partial class InternalSnsClient
             topic.Tags[tag.Key] = tag.Value;
         }
 
-        var existing = _bus.Topics.GetOrAdd(request.Name, topic);
+        var existing = _resources.Topics.GetOrAdd(request.Name, topic);
         if (!ReferenceEquals(existing, topic))
         {
             // CreateTopic on an existing name hands back that topic, as long as the request asks for
@@ -152,13 +161,13 @@ internal sealed partial class InternalSnsClient
 
         // Deleting a topic that doesn't exist succeeds, as on AWS. Its subscriptions go with it.
         var topicName = SnsArn.TopicName(request.TopicArn);
-        if (_bus.Topics.TryRemove(topicName, out var topic))
+        if (InThisRegion(request.TopicArn) && _resources.Topics.TryRemove(topicName, out var topic))
         {
             lock (topic.SubscriptionGate)
             {
-                foreach (var subscription in _bus.Subscriptions.Values.Where(s => string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal)).ToList())
+                foreach (var subscription in _resources.Subscriptions.Values.Where(s => string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal)).ToList())
                 {
-                    _bus.Subscriptions.TryRemove(subscription.SubscriptionArn, out _);
+                    _resources.Subscriptions.TryRemove(subscription.SubscriptionArn, out _);
                 }
             }
         }
@@ -181,7 +190,7 @@ internal sealed partial class InternalSnsClient
             attributes = new Dictionary<string, string>(topic.Attributes, StringComparer.Ordinal);
         }
 
-        var subscriptions = _bus.Subscriptions.Values
+        var subscriptions = _resources.Subscriptions.Values
             .Where(s => string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal))
             .ToList();
         attributes["TopicArn"] = topic.Arn;
@@ -205,7 +214,7 @@ internal sealed partial class InternalSnsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var (items, nextToken) = SnsPagination.Page(
-            _bus.Topics.Values.Select(t => t.Arn),
+            _resources.Topics.Values.Select(t => t.Arn),
             request.NextToken);
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListTopics);
@@ -254,11 +263,24 @@ internal sealed partial class InternalSnsClient
 
     // Helper methods
 
+    /// <summary>
+    /// Whether an ARN names this client's region. A topic in another region is not found here,
+    /// even when this region has one of the same name.
+    /// </summary>
+    private bool InThisRegion(string? arn) =>
+        InMemoryAwsBus.ArnRegion(arn) is not { } region || string.Equals(region, _resources.Region, StringComparison.Ordinal);
+
     /// <summary>The topic <paramref name="topicArn"/> names, or SNS's <c>NotFound</c> when there is none.</summary>
     private SnsTopicResource GetTopicByArn(string? topicArn, string parameter = "TopicArn")
     {
         var topicName = SnsArn.TopicName(topicArn, parameter);
-        return _bus.Topics.TryGetValue(topicName, out var topic)
+        if (!InThisRegion(topicArn))
+        {
+            // A regional endpoint refuses another region's topic ARN outright, whether or not it exists.
+            throw new InternalInvalidParameterException($"Invalid parameter: {parameter}");
+        }
+
+        return _resources.Topics.TryGetValue(topicName, out var topic)
             ? topic
             : throw new InternalNotFoundException(TopicDoesNotExist);
     }
@@ -306,7 +328,7 @@ internal sealed partial class InternalSnsClient
     private void ValidateSubscriptionsSupportLargeMessages(SnsTopicResource topic)
     {
         // Unconfirmed HTTP/S subscriptions count too, as on AWS.
-        var unsupported = _bus.Subscriptions.Values.FirstOrDefault(s => s.TopicArn == topic.Arn && !s.IsSqs);
+        var unsupported = _resources.Subscriptions.Values.FirstOrDefault(s => s.TopicArn == topic.Arn && !s.IsSqs);
         if (unsupported is not null)
         {
             throw new InternalInvalidParameterException(UnsupportedProtocolMessage(unsupported.Protocol));
@@ -333,7 +355,7 @@ internal sealed partial class InternalSnsClient
             throw new InternalInvalidParameterException(UnsupportedProtocolMessage(protocol));
         }
 
-        if (_bus.Subscriptions.Values.Count(s => s.TopicArn == topic.Arn) >= LargeMessageSubscriptionLimit)
+        if (_resources.Subscriptions.Values.Count(s => s.TopicArn == topic.Arn) >= LargeMessageSubscriptionLimit)
         {
             throw new InternalInvalidParameterException(
                 $"Invalid parameter: A topic with {SnsTopicAttributes.MaximumMessageSize} greater than {DefaultMaxMessageSize} bytes " +

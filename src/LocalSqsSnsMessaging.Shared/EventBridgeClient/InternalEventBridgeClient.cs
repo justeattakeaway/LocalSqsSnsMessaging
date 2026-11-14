@@ -17,9 +17,18 @@ internal sealed partial class InternalEventBridgeClient
 
     private readonly InMemoryAwsBus _bus;
 
-    internal InternalEventBridgeClient(InMemoryAwsBus bus)
+    /// <summary>The resources of the region this client serves: it sees and creates only this region's event buses.</summary>
+    private readonly AwsRegionResources _resources;
+
+    /// <param name="bus">The bus holding the event buses.</param>
+    /// <param name="region">
+    /// The region the request was made in; <see langword="null"/> for the bus's
+    /// <see cref="InMemoryAwsBus.CurrentRegion"/>.
+    /// </param>
+    internal InternalEventBridgeClient(InMemoryAwsBus bus, string? region = null)
     {
         _bus = bus;
+        _resources = bus.Region(region);
     }
 
     private EventBusResource ResolveBus(string? nameOrArn)
@@ -28,10 +37,10 @@ internal sealed partial class InternalEventBridgeClient
         if (string.Equals(name, DefaultBusName, StringComparison.Ordinal))
         {
             // The default bus always exists and was never created, so it has no creation time.
-            return _bus.EventBuses.GetOrAdd(DefaultBusName, n => new EventBusResource { Name = n, Arn = EventBusArn(n) });
+            return _resources.EventBuses.GetOrAdd(DefaultBusName, n => new EventBusResource { Name = n, Arn = EventBusArn(n) });
         }
 
-        if (_bus.EventBuses.TryGetValue(name, out var eventBus))
+        if (_resources.EventBuses.TryGetValue(name, out var eventBus))
         {
             return eventBus;
         }
@@ -62,10 +71,10 @@ internal sealed partial class InternalEventBridgeClient
     }
 
     private string EventBusArn(string name) =>
-        $"arn:aws:events:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:event-bus/{name}";
+        $"arn:aws:events:{_resources.Region}:{_bus.CurrentAccountId}:event-bus/{name}";
 
     private string RuleArn(string busName, string ruleName) =>
         string.Equals(busName, DefaultBusName, StringComparison.Ordinal)
-            ? $"arn:aws:events:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:rule/{ruleName}"
-            : $"arn:aws:events:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:rule/{busName}/{ruleName}";
+            ? $"arn:aws:events:{_resources.Region}:{_bus.CurrentAccountId}:rule/{ruleName}"
+            : $"arn:aws:events:{_resources.Region}:{_bus.CurrentAccountId}:rule/{busName}/{ruleName}";
 }

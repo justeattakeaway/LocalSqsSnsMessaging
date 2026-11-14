@@ -62,7 +62,7 @@ function CheckIcon({ className }: { className?: string }) {
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  const copiedTimer = useRef<ReturnType<typeof setTimeout>>();
+  const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleCopy = useCallback(
     (e: React.MouseEvent) => {

@@ -115,12 +115,12 @@ internal sealed partial class InternalSnsClient
         {
             // DeleteTopic removes a topic's subscriptions under this gate: one added after that
             // would outlive the topic, and come back if the name were created again.
-            if (!_bus.Topics.TryGetValue(topic.Name, out var current) || !ReferenceEquals(current, topic))
+            if (!_resources.Topics.TryGetValue(topic.Name, out var current) || !ReferenceEquals(current, topic))
             {
                 throw new InternalNotFoundException(TopicDoesNotExist);
             }
 
-            var existing = _bus.Subscriptions.Values.FirstOrDefault(s =>
+            var existing = _resources.Subscriptions.Values.FirstOrDefault(s =>
                 string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal) &&
                 string.Equals(s.Protocol, protocol, StringComparison.Ordinal) &&
                 string.Equals(s.EndPoint, request.Endpoint, StringComparison.Ordinal));
@@ -139,7 +139,7 @@ internal sealed partial class InternalSnsClient
             else
             {
                 ValidateSubscriptionSupportsTopicMessageSize(topic, protocol);
-                _bus.Subscriptions.TryAdd(snsSubscription.SubscriptionArn, snsSubscription);
+                _resources.Subscriptions.TryAdd(snsSubscription.SubscriptionArn, snsSubscription);
                 SnsPublishActionFactory.Activate(topic, snsSubscription, _bus);
                 subscription = snsSubscription;
                 if (subscription.IsHttp)
@@ -167,7 +167,7 @@ internal sealed partial class InternalSnsClient
         SnsArn.Parse(request.SubscriptionArn, "SubscriptionArn");
 
         // Unsubscribing a subscription that doesn't exist succeeds, as on AWS.
-        if (_bus.Subscriptions.TryGetValue(request.SubscriptionArn, out var subscription))
+        if (_resources.Subscriptions.TryGetValue(request.SubscriptionArn, out var subscription))
         {
             if (FindTopicOf(subscription) is { } topic)
             {
@@ -175,7 +175,7 @@ internal sealed partial class InternalSnsClient
                 // concurrent Subscribe makes.
                 lock (topic.SubscriptionGate)
                 {
-                    if (_bus.Subscriptions.TryRemove(request.SubscriptionArn, out _))
+                    if (_resources.Subscriptions.TryRemove(request.SubscriptionArn, out _))
                     {
                         topic.RecordSubscriptionDeleted();
                         SnsPublishActionFactory.UpdateTopicPublishAction(subscription.TopicArn, _bus);
@@ -184,7 +184,7 @@ internal sealed partial class InternalSnsClient
             }
             else
             {
-                _bus.Subscriptions.TryRemove(request.SubscriptionArn, out _);
+                _resources.Subscriptions.TryRemove(request.SubscriptionArn, out _);
             }
         }
 
@@ -274,7 +274,7 @@ internal sealed partial class InternalSnsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var (items, nextToken) = ListSubscriptionPage(_bus.Subscriptions.Values, request.NextToken);
+        var (items, nextToken) = ListSubscriptionPage(_resources.Subscriptions.Values, request.NextToken);
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListSubscriptions);
         return Task.FromResult(new ListSubscriptionsResponse
@@ -291,7 +291,7 @@ internal sealed partial class InternalSnsClient
 
         var topic = GetTopicByArn(request.TopicArn);
         var (items, nextToken) = ListSubscriptionPage(
-            _bus.Subscriptions.Values.Where(s => string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal)),
+            _resources.Subscriptions.Values.Where(s => string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal)),
             request.NextToken);
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListSubscriptionsByTopic, request.TopicArn);
@@ -306,7 +306,7 @@ internal sealed partial class InternalSnsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var subscription = _bus.Subscriptions.Values.FirstOrDefault(s =>
+        var subscription = _resources.Subscriptions.Values.FirstOrDefault(s =>
             string.Equals(s.TopicArn, request.TopicArn, StringComparison.Ordinal) &&
             string.Equals(s.ConfirmationToken, request.Token, StringComparison.Ordinal));
 
@@ -354,14 +354,14 @@ internal sealed partial class InternalSnsClient
     private SnsSubscription GetSubscriptionByArn(string? subscriptionArn)
     {
         SnsArn.Parse(subscriptionArn, "SubscriptionArn");
-        return _bus.Subscriptions.TryGetValue(subscriptionArn, out var subscription)
+        return _resources.Subscriptions.TryGetValue(subscriptionArn, out var subscription)
             ? subscription
             : throw new InternalNotFoundException(SubscriptionDoesNotExist);
     }
 
     /// <summary>The topic <paramref name="subscription"/> belongs to, or null if it has just been deleted.</summary>
     private SnsTopicResource? FindTopicOf(SnsSubscription subscription) =>
-        _bus.Topics.TryGetValue(SnsArn.TopicName(subscription.TopicArn), out var topic)
+        _resources.Topics.TryGetValue(SnsArn.TopicName(subscription.TopicArn), out var topic)
         && string.Equals(topic.Arn, subscription.TopicArn, StringComparison.Ordinal)
             ? topic
             : null;

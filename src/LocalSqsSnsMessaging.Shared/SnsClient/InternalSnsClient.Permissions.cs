@@ -189,7 +189,7 @@ internal sealed partial class InternalSnsClient
     private SnsTopicResource GetTaggableTopic(string? resourceArn)
     {
         var name = SnsArn.TopicName(resourceArn, "ResourceArn");
-        return _bus.Topics.TryGetValue(name, out var topic)
+        return InThisRegion(resourceArn) && _resources.Topics.TryGetValue(name, out var topic)
             ? topic
             : throw new AwsServiceException(ResourceDoesNotExist) { ErrorCode = "ResourceNotFound", StatusCode = System.Net.HttpStatusCode.NotFound };
     }

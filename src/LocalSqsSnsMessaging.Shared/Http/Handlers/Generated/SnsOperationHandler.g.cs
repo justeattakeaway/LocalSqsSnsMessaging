@@ -23,7 +23,7 @@ internal static partial class SnsOperationHandler
         ArgumentNullException.ThrowIfNull(operationName);
         ArgumentNullException.ThrowIfNull(bus);
 
-        var client = new InternalSnsClient(bus);
+        var client = new InternalSnsClient(bus, AwsRequestRegion.FromRequest(request));
 
         return operationName switch
         {

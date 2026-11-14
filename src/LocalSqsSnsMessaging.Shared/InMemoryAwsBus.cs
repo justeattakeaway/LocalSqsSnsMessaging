@@ -71,8 +71,15 @@ public sealed class InMemoryAwsBus
     public string CurrentAccountId { get; init; } = "000000000000";
 
     /// <summary>
-    /// Gets or initializes the current AWS region.
+    /// Gets or initializes the region requests are served in when they name none, and the region
+    /// the clients made by <c>CreateSqsClient()</c>, <c>CreateSnsClient()</c>,
+    /// <c>CreateEventBridgeClient()</c> and the raw clients use.
     /// </summary>
+    /// <remarks>
+    /// Resources are regional, as on AWS: an SDK request is served from the resources of the region
+    /// it was signed for (or, unsigned, the region in its endpoint host), so a client configured for
+    /// another region sees only that region's queues, topics and event buses.
+    /// </remarks>
     /// <value>The AWS region as a string, defaulting to "us-east-1".</value>
     public string CurrentRegion { get; init; } = "us-east-1";
 
@@ -109,20 +116,6 @@ public sealed class InMemoryAwsBus
     /// </remarks>
     public ISet<string>? KmsKeyAliases { get; init; }
 
-    /// <summary>
-    /// Gets or initializes whether SQS requests are served from the queues of the region they were
-    /// made in, as each regional AWS endpoint does.
-    /// </summary>
-    /// <remarks>
-    /// When <see langword="false"/> (the default), every request is served from the queues of
-    /// <see cref="CurrentRegion"/>, whatever region its client was configured for. When
-    /// <see langword="true"/>, the region is read from the request's SigV4 credential scope or its
-    /// endpoint host: same-named queues in two regions are separate queues, a queue's ARN and URL
-    /// name the region it was created in, and a client in one region can't reach another's queues.
-    /// Requests that name no region, and the raw clients, use <see cref="CurrentRegion"/>.
-    /// </remarks>
-    public bool IsolateRegions { get; init; }
-
     private static readonly Lazy<HttpClient> DefaultHttpClient = new(() => new HttpClient());
     private HttpClient? _httpClient;
 
@@ -152,49 +145,61 @@ public sealed class InMemoryAwsBus
     /// </summary>
     public ApiUsageTracker UsageTracker { get; } = new();
 
-    /// <summary>
-    /// Gets the SQS queues in <see cref="CurrentRegion"/>, the region requests are served in unless
-    /// they name another.
-    /// </summary>
-    /// <value>A thread-safe dictionary of SQS queue resources, keyed by queue name.</value>
-    internal ConcurrentDictionary<string, SqsQueueResource> Queues { get; } = [];
-
-    /// <summary>The SQS queues in every region other than <see cref="CurrentRegion"/>, keyed by region.</summary>
-    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, SqsQueueResource>> _otherRegionQueues = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, AwsRegionResources> _regions = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// The SQS queues in <paramref name="region"/>, keyed by queue name, or <see langword="null"/>
-    /// when no queue was ever created there. Same-named queues in two regions are separate queues.
+    /// The resources of <paramref name="region"/>, created on first use; <see langword="null"/> or
+    /// empty for <see cref="CurrentRegion"/>.
     /// </summary>
-    internal ConcurrentDictionary<string, SqsQueueResource>? FindQueuesInRegion(string region) =>
-        string.Equals(region, CurrentRegion, StringComparison.Ordinal)
-            ? Queues
-            : _otherRegionQueues.TryGetValue(region, out var queues) ? queues : null;
+    internal AwsRegionResources Region(string? region) =>
+        _regions.GetOrAdd(string.IsNullOrEmpty(region) ? CurrentRegion : region!, static name => new AwsRegionResources(name));
 
-    /// <summary>The SQS queues in <paramref name="region"/>, keyed by queue name, created on first use.</summary>
-    internal ConcurrentDictionary<string, SqsQueueResource> GetOrAddQueuesInRegion(string region) =>
-        FindQueuesInRegion(region) ?? _otherRegionQueues.GetOrAdd(region, _ => new ConcurrentDictionary<string, SqsQueueResource>());
+    /// <summary>Every region a resource has been looked up or created in.</summary>
+    internal IEnumerable<AwsRegionResources> Regions => _regions.Values;
+
+    /// <summary>
+    /// The resources of the region an ARN names (<c>arn:partition:service:region:account:resource</c>),
+    /// or of <see cref="CurrentRegion"/> when <paramref name="arn"/> is not an ARN naming a region.
+    /// </summary>
+    internal AwsRegionResources RegionOfArn(string? arn) => Region(ArnRegion(arn));
+
+    /// <summary>The region an ARN names, or <see langword="null"/> when it is not an ARN naming one.</summary>
+    internal static string? ArnRegion(string? arn)
+    {
+        if (arn is null || !arn.StartsWith("arn:", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var parts = arn.Split(':', 6);
+        return parts.Length == 6 && parts[3].Length > 0 ? parts[3] : null;
+    }
+
+    /// <summary>Gets the SQS queues in <see cref="CurrentRegion"/>, keyed by queue name.</summary>
+    internal ConcurrentDictionary<string, SqsQueueResource> Queues => Region(CurrentRegion).Queues;
 
     /// <summary>
     /// Finds the queue an SQS ARN names, in the region the ARN names, for the deliveries that
-    /// address a queue by ARN (SNS subscriptions, EventBridge targets, dead-letter sources).
+    /// address a queue by ARN (SNS subscriptions, EventBridge targets, dead-letter sources). The
+    /// account in the ARN is not checked; a value that is not an ARN is looked up by name in
+    /// <see cref="CurrentRegion"/>.
     /// </summary>
-    /// <remarks>
-    /// The account in the ARN is not checked. An ARN naming a region this bus has never created a
-    /// queue in, or one that is not a well-formed ARN, is looked up by name in
-    /// <see cref="CurrentRegion"/>, as it was before queues were partitioned by region.
-    /// </remarks>
     internal bool TryGetQueueByArn(string? arn, [NotNullWhen(true)] out SqsQueueResource? queue)
     {
         queue = null;
-        if (arn is null)
-        {
-            return false;
-        }
+        return arn is not null && RegionOfArn(arn).Queues.TryGetValue(arn[(arn.LastIndexOf(':') + 1)..], out queue);
+    }
 
-        var parts = arn.Split(':');
-        var queues = parts.Length == 6 ? FindQueuesInRegion(parts[3]) ?? Queues : Queues;
-        return queues.TryGetValue(parts[^1], out queue);
+    /// <summary>
+    /// Finds the topic an SNS ARN names, in the region the ARN names. The whole ARN must match, so a
+    /// topic of the same name in another account is not found.
+    /// </summary>
+    internal bool TryGetTopicByArn(string? arn, [NotNullWhen(true)] out SnsTopicResource? topic)
+    {
+        topic = null;
+        return arn is not null
+               && RegionOfArn(arn).Topics.TryGetValue(arn[(arn.LastIndexOf(':') + 1)..], out topic)
+               && string.Equals(topic.Arn, arn, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -202,36 +207,6 @@ public sealed class InMemoryAwsBus
     /// </summary>
     /// <value>A thread-safe dictionary of SQS move tasks, keyed by task identifier.</value>
     internal ConcurrentDictionary<string, SqsMoveTask> MoveTasks { get; } = [];
-
-    /// <summary>
-    /// Gets the collection of SNS topic resources.
-    /// </summary>
-    /// <value>A thread-safe dictionary of SNS topic resources, keyed by topic name.</value>
-    internal ConcurrentDictionary<string, SnsTopicResource> Topics { get; } = [];
-
-    /// <summary>
-    /// Gets the collection of SNS subscriptions.
-    /// </summary>
-    /// <value>A thread-safe dictionary of SNS subscriptions, keyed by subscription ID.</value>
-    internal ConcurrentDictionary<string, SnsSubscription> Subscriptions { get; } = [];
-
-    /// <summary>
-    /// Gets the collection of EventBridge event buses (each holding its own rules and targets).
-    /// </summary>
-    /// <value>A thread-safe dictionary of event buses, keyed by event bus name.</value>
-    internal ConcurrentDictionary<string, EventBusResource> EventBuses { get; } = [];
-
-    /// <summary>
-    /// Gets the collection of EventBridge archives.
-    /// </summary>
-    /// <value>A thread-safe dictionary of archives, keyed by archive name.</value>
-    internal ConcurrentDictionary<string, ArchiveResource> EventBridgeArchives { get; } = [];
-
-    /// <summary>
-    /// Gets the collection of EventBridge replays (EventBridge keeps finished replays too).
-    /// </summary>
-    /// <value>A thread-safe dictionary of replays, keyed by replay name.</value>
-    internal ConcurrentDictionary<string, ReplayResource> EventBridgeReplays { get; } = [];
 
     /// <summary>
     /// Records an API operation if usage tracking is enabled.

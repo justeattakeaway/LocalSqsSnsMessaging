@@ -36,7 +36,7 @@ internal static class EventBridgeEnvelope
     public static JsonObject? ParseDetail(string detail) => EventRulerDocument.ParseObject(detail, MaxDetailDepth);
 
     /// <summary>Builds the event for a validated PutEvents entry whose Detail parsed to <paramref name="detail"/>.</summary>
-    public static EventBridgeEvent Build(PutEventsRequestEntry entry, JsonObject detail, string eventId, InMemoryAwsBus bus)
+    public static EventBridgeEvent Build(PutEventsRequestEntry entry, JsonObject detail, string eventId, InMemoryAwsBus bus, string region)
     {
         var ingestionTime = bus.TimeProvider.GetUtcNow();
         var time = entry.Time is { } sent ? AsUtc(sent) : ingestionTime.UtcDateTime;
@@ -55,7 +55,7 @@ internal static class EventBridgeEnvelope
             ["source"] = entry.Source,
             ["account"] = bus.CurrentAccountId,
             ["time"] = FormatTime(time),
-            ["region"] = bus.CurrentRegion,
+            ["region"] = region,
             ["resources"] = resources,
             ["detail"] = detail
         };

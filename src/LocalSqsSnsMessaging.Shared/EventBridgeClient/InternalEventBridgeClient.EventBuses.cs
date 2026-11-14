@@ -63,7 +63,7 @@ internal sealed partial class InternalEventBridgeClient
             Tags = tags
         };
 
-        if (string.Equals(name, DefaultBusName, StringComparison.Ordinal) || !_bus.EventBuses.TryAdd(name, created))
+        if (string.Equals(name, DefaultBusName, StringComparison.Ordinal) || !_resources.EventBuses.TryAdd(name, created))
         {
             throw new InternalResourceAlreadyExistsException($"Event bus {name} already exists.");
         }
@@ -90,14 +90,14 @@ internal sealed partial class InternalEventBridgeClient
         }
 
         // Deleting a bus that does not exist succeeds, as it does in EventBridge.
-        if (_bus.EventBuses.TryGetValue(name, out var eventBus))
+        if (_resources.EventBuses.TryGetValue(name, out var eventBus))
         {
             if (!eventBus.Rules.IsEmpty)
             {
                 throw new InternalValidationException("EventBus can't be deleted since it has rules.");
             }
 
-            _bus.EventBuses.TryRemove(name, out _);
+            _resources.EventBuses.TryRemove(name, out _);
         }
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "DeleteEventBus");
@@ -148,7 +148,7 @@ internal sealed partial class InternalEventBridgeClient
         // The default bus always exists.
         ResolveBus(DefaultBusName);
 
-        var matching = _bus.EventBuses.Values
+        var matching = _resources.EventBuses.Values
             .Where(b => string.IsNullOrEmpty(request.NamePrefix) || b.Name.StartsWith(request.NamePrefix, StringComparison.Ordinal))
             .Where(b => startAfterOrAt is null || string.CompareOrdinal(b.Name, startAfterOrAt) >= 0)
             .OrderBy(b => b.Name, StringComparer.Ordinal)

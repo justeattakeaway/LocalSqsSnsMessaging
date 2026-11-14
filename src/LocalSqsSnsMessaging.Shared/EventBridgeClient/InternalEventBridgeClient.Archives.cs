@@ -25,7 +25,7 @@ internal sealed partial class InternalEventBridgeClient
         var archive = new ArchiveResource
         {
             Name = request.ArchiveName,
-            Arn = $"arn:aws:events:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:archive/{request.ArchiveName}",
+            Arn = $"arn:aws:events:{_resources.Region}:{_bus.CurrentAccountId}:archive/{request.ArchiveName}",
             EventSourceArn = request.EventSourceArn,
             EventBusName = eventBus.Name,
             Description = request.Description,
@@ -34,7 +34,7 @@ internal sealed partial class InternalEventBridgeClient
             KmsKeyIdentifier = request.KmsKeyIdentifier,
             CreationTime = _bus.TimeProvider.GetUtcNow()
         };
-        if (!_bus.EventBridgeArchives.TryAdd(archive.Name, archive))
+        if (!_resources.EventBridgeArchives.TryAdd(archive.Name, archive))
         {
             throw new InternalResourceAlreadyExistsException($"Archive {archive.Name} already exists.");
         }
@@ -94,7 +94,7 @@ internal sealed partial class InternalEventBridgeClient
             var eventPattern = request.EventPattern.Length == 0 ? null : request.EventPattern;
             EventBridgeEventPattern.ValidateArchivePattern(eventPattern);
             archive.EventPattern = eventPattern;
-            if (_bus.EventBuses.TryGetValue(archive.EventBusName, out var eventBus)
+            if (_resources.EventBuses.TryGetValue(archive.EventBusName, out var eventBus)
                 && eventBus.Rules.TryGetValue(archive.ManagedRuleName, out var managedRule))
             {
                 managedRule.EventPattern = archive.ManagedRulePattern();
@@ -126,11 +126,11 @@ internal sealed partial class InternalEventBridgeClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (request.ArchiveName is null || !_bus.EventBridgeArchives.TryRemove(request.ArchiveName, out var archive))
+        if (request.ArchiveName is null || !_resources.EventBridgeArchives.TryRemove(request.ArchiveName, out var archive))
         {
             throw ArchiveNotFound(request.ArchiveName);
         }
-        if (_bus.EventBuses.TryGetValue(archive.EventBusName, out var eventBus))
+        if (_resources.EventBuses.TryGetValue(archive.EventBusName, out var eventBus))
         {
             eventBus.Rules.TryRemove(archive.ManagedRuleName, out _);
         }
@@ -145,7 +145,7 @@ internal sealed partial class InternalEventBridgeClient
 
         EnsureAtMostOneListFilter("ListArchives", request.NamePrefix, request.EventSourceArn, request.State);
         var stateMatches = string.IsNullOrEmpty(request.State) || string.Equals(request.State, ArchiveResource.Enabled, StringComparison.Ordinal);
-        var archives = _bus.EventBridgeArchives.Values
+        var archives = _resources.EventBridgeArchives.Values
             .Where(a => string.IsNullOrEmpty(request.NamePrefix) || a.Name.StartsWith(request.NamePrefix, StringComparison.Ordinal))
             .Where(a => string.IsNullOrEmpty(request.EventSourceArn) || string.Equals(a.EventSourceArn, request.EventSourceArn, StringComparison.Ordinal))
             .Where(_ => stateMatches)
@@ -175,7 +175,7 @@ internal sealed partial class InternalEventBridgeClient
         ArgumentNullException.ThrowIfNull(request);
 
         var archiveName = ArnResourceName(request.EventSourceArn, "archive/");
-        if (!_bus.EventBridgeArchives.TryGetValue(archiveName, out var archive))
+        if (!_resources.EventBridgeArchives.TryGetValue(archiveName, out var archive))
         {
             throw ArchiveValidationError($"Parameter EventSourceArn is not valid. Reason: Archive {archiveName} does not exist.");
         }
@@ -203,7 +203,7 @@ internal sealed partial class InternalEventBridgeClient
         var replay = new ReplayResource
         {
             Name = request.ReplayName,
-            Arn = $"arn:aws:events:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:replay/{request.ReplayName}",
+            Arn = $"arn:aws:events:{_resources.Region}:{_bus.CurrentAccountId}:replay/{request.ReplayName}",
             Description = request.Description,
             EventSourceArn = request.EventSourceArn,
             Archive = archive,
@@ -214,7 +214,7 @@ internal sealed partial class InternalEventBridgeClient
             EventEndTime = eventEndTime,
             Bus = _bus
         };
-        if (!_bus.EventBridgeReplays.TryAdd(replay.Name, replay))
+        if (!_resources.EventBridgeReplays.TryAdd(replay.Name, replay))
         {
             throw new InternalResourceAlreadyExistsException($"Replay {replay.Name} already exists.");
         }
@@ -282,7 +282,7 @@ internal sealed partial class InternalEventBridgeClient
         ArgumentNullException.ThrowIfNull(request);
 
         EnsureAtMostOneListFilter("ListReplays", request.NamePrefix, request.EventSourceArn, request.State);
-        var replays = _bus.EventBridgeReplays.Values
+        var replays = _resources.EventBridgeReplays.Values
             .Where(r => string.IsNullOrEmpty(request.NamePrefix) || r.Name.StartsWith(request.NamePrefix, StringComparison.Ordinal))
             .Where(r => string.IsNullOrEmpty(request.EventSourceArn) || string.Equals(r.EventSourceArn, request.EventSourceArn, StringComparison.Ordinal))
             .Where(r => string.IsNullOrEmpty(request.State) || string.Equals(r.State, request.State, StringComparison.Ordinal))
@@ -338,10 +338,10 @@ internal sealed partial class InternalEventBridgeClient
     }
 
     private ArchiveResource GetArchive(string? name) =>
-        name is not null && _bus.EventBridgeArchives.TryGetValue(name, out var archive) ? archive : throw ArchiveNotFound(name);
+        name is not null && _resources.EventBridgeArchives.TryGetValue(name, out var archive) ? archive : throw ArchiveNotFound(name);
 
     private ReplayResource GetReplay(string? name) =>
-        name is not null && _bus.EventBridgeReplays.TryGetValue(name, out var replay)
+        name is not null && _resources.EventBridgeReplays.TryGetValue(name, out var replay)
             ? replay
             : throw new InternalResourceNotFoundException($"Replay {name} does not exist.");
 

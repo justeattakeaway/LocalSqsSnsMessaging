@@ -30,37 +30,44 @@ app.MapGet("/_ui/dashboard.js", Dashboard.ServeJs);
 app.MapGet("/_ui/api/state", (HttpContext ctx) =>
 {
     var account = ctx.Request.Query["account"].FirstOrDefault();
-    return DashboardApi.GetState(registry, account);
+    var viewedRegion = ctx.Request.Query["region"].FirstOrDefault();
+    return DashboardApi.GetState(registry, account, viewedRegion);
 });
 app.MapGet("/_ui/api/state/stream", (HttpContext ctx, CancellationToken ct) =>
 {
     var account = ctx.Request.Query["account"].FirstOrDefault();
-    return DashboardApi.StreamState(registry, account, ct);
+    var viewedRegion = ctx.Request.Query["region"].FirstOrDefault();
+    return DashboardApi.StreamState(registry, account, viewedRegion, ct);
 });
 app.MapGet("/_ui/api/queues/{name}/messages", (HttpContext ctx, string name) =>
 {
     var account = ctx.Request.Query["account"].FirstOrDefault();
-    return DashboardApi.GetQueueMessages(registry, account, name);
+    var viewedRegion = ctx.Request.Query["region"].FirstOrDefault();
+    return DashboardApi.GetQueueMessages(registry, account, viewedRegion, name);
 });
 app.MapDelete("/_ui/api/queues/{name}/messages/{messageId}", (HttpContext ctx, string name, string messageId) =>
 {
     var account = ctx.Request.Query["account"].FirstOrDefault();
-    return DashboardApi.DeleteMessage(registry, account, name, messageId);
+    var viewedRegion = ctx.Request.Query["region"].FirstOrDefault();
+    return DashboardApi.DeleteMessage(registry, account, viewedRegion, name, messageId);
 });
 app.MapPost("/_ui/api/topics/{name}/publish", (HttpContext ctx, string name) =>
 {
     var account = ctx.Request.Query["account"].FirstOrDefault();
-    return DashboardApi.PublishToTopic(registry, account, name, ctx);
+    var viewedRegion = ctx.Request.Query["region"].FirstOrDefault();
+    return DashboardApi.PublishToTopic(registry, account, viewedRegion, name, ctx);
 });
 app.MapPost("/_ui/api/queues/{name}/redrive", (HttpContext ctx, string name) =>
 {
     var account = ctx.Request.Query["account"].FirstOrDefault();
-    return DashboardApi.StartRedrive(registry, account, name);
+    var viewedRegion = ctx.Request.Query["region"].FirstOrDefault();
+    return DashboardApi.StartRedrive(registry, account, viewedRegion, name);
 });
 app.MapPost("/_ui/api/move-tasks/{taskHandle}/cancel", (HttpContext ctx, string taskHandle) =>
 {
     var account = ctx.Request.Query["account"].FirstOrDefault();
-    return DashboardApi.CancelRedrive(registry, account, taskHandle);
+    var viewedRegion = ctx.Request.Query["region"].FirstOrDefault();
+    return DashboardApi.CancelRedrive(registry, account, viewedRegion, taskHandle);
 });
 
 // Fallback: all other requests go to the AWS bridge middleware. The pattern takes paths that look
@@ -69,7 +76,7 @@ var middleware = new AwsBridgeMiddleware(registry);
 app.MapFallback("{*path}", middleware.InvokeAsync);
 
 Console.WriteLine($"LocalSqsSnsMessaging server listening on http://localhost:{port}");
-Console.WriteLine($"  Region:     {region}");
+Console.WriteLine($"  Region:     {region} (requests signed for another region are served from that region)");
 Console.WriteLine($"  AccountId:  {accountId}");
 Console.WriteLine($"  Dashboard:  http://localhost:{port}/_ui");
 Console.WriteLine($"  Multi-account support enabled (12-digit access key = account ID)");

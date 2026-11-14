@@ -12,23 +12,23 @@ namespace LocalSqsSnsMessaging.Server;
 
 internal static class DashboardApi
 {
-    public static IResult GetState(BusRegistry registry, string? account)
+    public static IResult GetState(BusRegistry registry, string? account, string? region)
     {
         var bus = ResolveBus(registry, account);
         var currentAccount = account ?? registry.DefaultAccountId;
-        return Results.Json(BuildState(bus, registry.AccountIds, currentAccount), DashboardJsonContext.Default.BusState);
+        return Results.Json(BuildState(bus, ResolveRegion(bus, region), registry.AccountIds, currentAccount), DashboardJsonContext.Default.BusState);
     }
 
-    public static IResult StreamState(BusRegistry registry, string? account, CancellationToken cancellationToken)
+    public static IResult StreamState(BusRegistry registry, string? account, string? region, CancellationToken cancellationToken)
     {
-        return TypedResults.ServerSentEvents(GenerateStateEvents(registry, account, cancellationToken), eventType: "state");
+        return TypedResults.ServerSentEvents(GenerateStateEvents(registry, account, region, cancellationToken), eventType: "state");
     }
 
-    public static IResult GetQueueMessages(BusRegistry registry, string? account, string queueName)
+    public static IResult GetQueueMessages(BusRegistry registry, string? account, string? region, string queueName)
     {
         var bus = ResolveBus(registry, account);
 
-        if (!bus.Queues.TryGetValue(queueName, out var queue))
+        if (!ResolveRegion(bus, region).Queues.TryGetValue(queueName, out var queue))
         {
             return Results.NotFound("Queue not found");
         }
@@ -68,9 +68,27 @@ internal static class DashboardApi
         return registry.DefaultBus;
     }
 
+    /// <summary>The resources of <paramref name="region"/> in <paramref name="bus"/>; the bus's own region when none is named.</summary>
+    private static AwsRegionResources ResolveRegion(InMemoryAwsBus bus, string? region) => bus.Region(region);
+
+    /// <summary>
+    /// The regions that hold anything, and always the bus's own and the one being viewed (so the
+    /// dashboard can still switch away from a region that has emptied), in order.
+    /// </summary>
+    private static List<string> RegionsInUse(InMemoryAwsBus bus, string viewedRegion) =>
+        bus.Regions
+            .Where(r => !r.Queues.IsEmpty || !r.Topics.IsEmpty || !r.EventBuses.IsEmpty)
+            .Select(r => r.Region)
+            .Append(bus.CurrentRegion)
+            .Append(viewedRegion)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
     private static async IAsyncEnumerable<string> GenerateStateEvents(
         BusRegistry registry,
         string? account,
+        string? region,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var lastJson = "";
@@ -79,7 +97,7 @@ internal static class DashboardApi
         {
             var bus = ResolveBus(registry, account);
             var currentAccount = account ?? registry.DefaultAccountId;
-            var state = BuildState(bus, registry.AccountIds, currentAccount);
+            var state = BuildState(bus, ResolveRegion(bus, region), registry.AccountIds, currentAccount);
             var json = JsonSerializer.Serialize(state, DashboardJsonContext.Default.BusState);
 
             if (json != lastJson)
@@ -92,14 +110,16 @@ internal static class DashboardApi
         }
     }
 
-    private static BusState BuildState(InMemoryAwsBus bus, List<string> accounts, string currentAccount)
+    private static BusState BuildState(InMemoryAwsBus bus, AwsRegionResources resources, List<string> accounts, string currentAccount)
     {
         return new BusState
         {
             Accounts = accounts,
             CurrentAccount = currentAccount,
+            Regions = RegionsInUse(bus, resources.Region),
+            CurrentRegion = resources.Region,
 
-            Queues = bus.Queues.Values.Select(q => new QueueInfo
+            Queues = resources.Queues.Values.Select(q => new QueueInfo
             {
                 Name = q.Name,
                 Arn = q.Arn,
@@ -113,13 +133,13 @@ internal static class DashboardApi
                 MaxReceiveCount = q.MaxReceiveCount
             }).OrderBy(q => q.Name).ToList(),
 
-            Topics = bus.Topics.Values.Select(t => new TopicInfo
+            Topics = resources.Topics.Values.Select(t => new TopicInfo
             {
                 Name = t.Name,
                 Arn = t.Arn
             }).OrderBy(t => t.Name).ToList(),
 
-            Subscriptions = bus.Subscriptions.Values.Select(s => new SubscriptionInfo
+            Subscriptions = resources.Subscriptions.Values.Select(s => new SubscriptionInfo
             {
                 SubscriptionArn = s.SubscriptionArn,
                 TopicArn = s.TopicArn,
@@ -129,7 +149,9 @@ internal static class DashboardApi
                 FilterPolicy = string.IsNullOrEmpty(s.FilterPolicy) ? null : s.FilterPolicy
             }).ToList(),
 
-            MoveTasks = bus.MoveTasks.Values.Select(t => new MoveTaskInfo
+            MoveTasks = bus.MoveTasks.Values
+                .Where(t => string.Equals(InMemoryAwsBus.ArnRegion(t.SourceQueue.Arn), resources.Region, StringComparison.Ordinal))
+                .Select(t => new MoveTaskInfo
             {
                 TaskHandle = t.TaskHandle,
                 SourceArn = t.SourceQueue.Arn,
@@ -156,11 +178,11 @@ internal static class DashboardApi
         };
     }
 
-    public static IResult DeleteMessage(BusRegistry registry, string? account, string queueName, string messageId)
+    public static IResult DeleteMessage(BusRegistry registry, string? account, string? region, string queueName, string messageId)
     {
         var bus = ResolveBus(registry, account);
 
-        if (!bus.Queues.TryGetValue(queueName, out var queue))
+        if (!ResolveRegion(bus, region).Queues.TryGetValue(queueName, out var queue))
         {
             return Results.NotFound("Queue not found");
         }
@@ -205,16 +227,16 @@ internal static class DashboardApi
         return Results.NotFound("Message not found");
     }
 
-    public static async Task<IResult> StartRedrive(BusRegistry registry, string? account, string queueName)
+    public static async Task<IResult> StartRedrive(BusRegistry registry, string? account, string? region, string queueName)
     {
         var bus = ResolveBus(registry, account);
 
-        if (!bus.Queues.TryGetValue(queueName, out var queue))
+        if (!ResolveRegion(bus, region).Queues.TryGetValue(queueName, out var queue))
         {
             return Results.NotFound("Queue not found");
         }
 
-        var sqsClient = new InternalSqsClient(bus);
+        var sqsClient = new InternalSqsClient(bus, region);
         try
         {
             var response = await sqsClient.StartMessageMoveTaskAsync(new StartMessageMoveTaskRequest
@@ -236,11 +258,11 @@ internal static class DashboardApi
         }
     }
 
-    public static async Task<IResult> CancelRedrive(BusRegistry registry, string? account, string taskHandle)
+    public static async Task<IResult> CancelRedrive(BusRegistry registry, string? account, string? region, string taskHandle)
     {
         var bus = ResolveBus(registry, account);
 
-        var sqsClient = new InternalSqsClient(bus);
+        var sqsClient = new InternalSqsClient(bus, region);
         try
         {
             await sqsClient.CancelMessageMoveTaskAsync(new CancelMessageMoveTaskRequest
@@ -259,11 +281,11 @@ internal static class DashboardApi
     /// <summary>The message group the dashboard publishes to a FIFO topic in.</summary>
     private const string DashboardMessageGroupId = "dashboard";
 
-    public static async Task<IResult> PublishToTopic(BusRegistry registry, string? account, string topicName, HttpContext ctx)
+    public static async Task<IResult> PublishToTopic(BusRegistry registry, string? account, string? region, string topicName, HttpContext ctx)
     {
         var bus = ResolveBus(registry, account);
 
-        if (!bus.Topics.TryGetValue(topicName, out var topic))
+        if (!ResolveRegion(bus, region).Topics.TryGetValue(topicName, out var topic))
         {
             return Results.NotFound("Topic not found");
         }
@@ -274,7 +296,7 @@ internal static class DashboardApi
             return Results.BadRequest("Message is required");
         }
 
-        var snsClient = new InternalSnsClient(bus);
+        var snsClient = new InternalSnsClient(bus, region);
         PublishResponse response;
         try
         {
@@ -324,6 +346,8 @@ internal static class DashboardApi
     {
         public required List<string> Accounts { get; init; }
         public required string CurrentAccount { get; init; }
+        public required List<string> Regions { get; init; }
+        public required string CurrentRegion { get; init; }
         public required List<QueueInfo> Queues { get; init; }
         public required List<TopicInfo> Topics { get; init; }
         public required List<SubscriptionInfo> Subscriptions { get; init; }

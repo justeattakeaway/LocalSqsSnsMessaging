@@ -49,7 +49,6 @@ public sealed class SameTopicNameInTwoRegionsIsTwoIndependentTopics
     [Test]
     [DisplayName("sns.same-topic-name-in-two-regions-is-two-independent-topics")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsRegions, "SNS isn't regional: creating a same-named topic in another region finds the first region's topic")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

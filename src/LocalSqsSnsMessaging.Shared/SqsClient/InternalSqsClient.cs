@@ -16,6 +16,8 @@ internal sealed partial class InternalSqsClient
     /// <summary>The region this client serves: it sees, creates and wires only this region's queues.</summary>
     private readonly string _region;
 
+    private readonly AwsRegionResources _resources;
+
     private const int MaxMessageSize = 1_048_576; // 1MB
 
     /// <param name="bus">The bus holding the queues.</param>
@@ -26,11 +28,12 @@ internal sealed partial class InternalSqsClient
     internal InternalSqsClient(InMemoryAwsBus bus, string? region = null)
     {
         _bus = bus;
-        _region = bus.IsolateRegions && !string.IsNullOrEmpty(region) ? region! : bus.CurrentRegion;
+        _resources = bus.Region(region);
+        _region = _resources.Region;
     }
 
-    /// <summary>The queues in this client's region, keyed by name (empty when none was ever created there).</summary>
-    private ConcurrentDictionary<string, SqsQueueResource> Queues => _bus.FindQueuesInRegion(_region) ?? [];
+    /// <summary>The queues in this client's region, keyed by name.</summary>
+    private ConcurrentDictionary<string, SqsQueueResource> Queues => _resources.Queues;
 
     public Task<ChangeMessageVisibilityResponse> ChangeMessageVisibilityAsync(ChangeMessageVisibilityRequest request,
         CancellationToken cancellationToken = default)
@@ -357,7 +360,7 @@ internal sealed partial class InternalSqsClient
         AddDefaultAttributes(queue);
         queue.Attributes.Add("QueueArn", queue.Arn);
         UpdateQueueProperties(queue);
-        var regionQueues = _bus.GetOrAddQueuesInRegion(_region);
+        var regionQueues = _resources.Queues;
         if (!regionQueues.TryAdd(request.QueueName!, queue))
         {
             // Created concurrently under the same name: answer as for an existing queue.

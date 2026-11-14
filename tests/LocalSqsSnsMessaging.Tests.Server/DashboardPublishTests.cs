@@ -47,7 +47,7 @@ public class DashboardPublishTests
             context.Request.ContentType = "application/json";
             context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes("""{"message":"from the dashboard"}"""));
 
-            var result = await DashboardApi.PublishToTopic(registry, AccountId, "dashboard-topic.fifo", context);
+            var result = await DashboardApi.PublishToTopic(registry, AccountId, null, "dashboard-topic.fifo", context);
             result.ShouldBeOfType<JsonHttpResult<DashboardApi.PublishTopicResponse>>();
         }
 

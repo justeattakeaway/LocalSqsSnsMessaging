@@ -118,13 +118,17 @@ All actions in this library that depend on delays or timeouts use the `TimeProvi
 
 ### Regions
 
-By default the bus serves every request from `CurrentRegion`, whatever region a client was configured for, so an application whose SDK clients use another region still shares queues with your test's clients. To model regions as AWS does, set `IsolateRegions`:
+Queues, topics and event buses are regional, as on AWS. Each SDK request is served from the resources of the region it was signed for (or, unsigned, the region in its endpoint host, such as `sqs.eu-west-1.amazonaws.com`), and from the bus's `CurrentRegion` (default `us-east-1`) when it names none. The clients from `CreateSqsClient()`, `CreateSnsClient()` and `CreateEventBridgeClient()`, and the raw clients, use `CurrentRegion`.
+
+So same-named resources in two regions are separate, ARNs and queue URLs name the region a resource was created in, and a client in one region can't see another region's resources. Deliveries that address a resource by ARN go to the region the ARN names: an SNS topic can deliver to a queue in another region, and an EventBridge rule can forward to an event bus in another region.
+
+If your application's SDK clients are configured for a region other than `us-east-1` and you wire them to the bus (for example with `CreateAwsHttpClientFactory`), set `CurrentRegion` to match, so your test's own clients see the same resources:
 
 ```csharp
-var bus = new InMemoryAwsBus { IsolateRegions = true };
+var bus = new InMemoryAwsBus { CurrentRegion = "eu-west-1" };
 ```
 
-Each SQS request is then served from the queues of the region it was signed for (or, unsigned, the region in its endpoint host): same-named queues in two regions are separate, a queue's ARN and URL name the region it was created in, and redrive policies and move tasks can't cross regions.
+> Up to v1.0.x the bus served every request from `CurrentRegion`, whatever region its client was configured for. If your tests relied on that, set `CurrentRegion` to your application's region as above.
 
 ### SQS callers, queue policies and SSE-KMS
 
@@ -279,11 +283,11 @@ dotnet run --project src/LocalSqsSnsMessaging.Server -- --port 5050 --region us-
 | Option | Default | Description |
 | --- | --- | --- |
 | `--port` | `5050` | Port to listen on. Queue URLs are generated with this base address. |
-| `--region` | `us-east-1` | Region used in generated ARNs. |
+| `--region` | `us-east-1` | Region for requests that don't name one. A request signed for another region is served from that region's resources. |
 | `--account-id` | `000000000000` | The default account. |
 
 The server is multi-account: if the access key ID in a request's `Authorization` header is a 12-digit number, that account gets its own isolated bus, created on first use. This mirrors the LocalStack convention and lets parallel test runs share one server without seeing each other's queues.
 
 ### Dashboard
 
-The server hosts a dashboard at `http://localhost:5050/_ui` that updates live as your application runs. It shows every queue, topic and subscription for the selected account with a graph of how they're wired together, lets you peek at pending and in-flight messages, delete or redrive them, publish a message to a topic, and shows a feed of recent API calls so you can see exactly which operations your code made.
+The server hosts a dashboard at `http://localhost:5050/_ui` that updates live as your application runs. It shows every queue, topic and subscription for the selected account and region with a graph of how they're wired together, lets you peek at pending and in-flight messages, delete or redrive them, publish a message to a topic, and shows a feed of recent API calls so you can see exactly which operations your code made.

@@ -22,8 +22,8 @@ compared side by side:
   (a `traceparent` message attribute on Publish, an `AWSTraceHeader` on SendMessage), which boto3
   doesn't, so `FidelityContext` turns that off for the whole check.
 - **Isolation:** every test gets its own `InMemoryAwsBus`, on its own virtual clock. The bus turns on
-  the library's two strict modes, `IsolateRegions` and `KmsKeyAliases`, so it serves each region's
-  queues separately and refuses unknown KMS aliases, as AWS does.
+  the library's strict KMS mode, `KmsKeyAliases`, so it refuses unknown KMS aliases, as AWS does.
+  Regions need no setting: the library always serves each region's resources separately.
 - **Left out:** checks that also need IAM, KMS, CloudFormation, CloudWatch, Lambda or STS role
   assumption are not ported, nor SNS checks about protocols other than SQS, nor EventBridge checks
   about targets and features the library doesn't emulate (see below). A check that only reads the
@@ -49,9 +49,6 @@ These 75 checks are not ported, because they are about another protocol or need 
 - **KMS keys** (2): `sns.encrypted-topic-whose-key-policy-withholds-usage-refuses-publish`, `sns.publish-to-topic-whose-key-is-pending-deletion-fails-kms-invalid-state`.
 - **IAM roles and role assumption** (7): `sns.authorization-error-explicit-deny-returns-correct-code`, `sns.set-topic-attributes-cross-account-feedback-role-rejected`, `sns.set-topic-attributes-malformed-feedback-role-arn-rejected`, `sns.topic-feedback-role-arn-and-sample-rate-round-trip`, `sns.topic-policy-endpoint-condition-limits-which-queue-a-role-may-subscribe`, `sns.topic-policy-principal-arn-pattern-admits-only-matching-roles`, `sns.topic-policy-subscribe-only-grant-refuses-the-roles-publish`.
 
-Checks that need SNS to be regional (a topic per region, a regional endpoint refusing another
-region's topic ARN) are ported but stay known gaps (`FidelityGap.SnsRegions`): making SNS topics and
-subscriptions regional is planned as separate work.
 
 ## EventBridge scope
 
@@ -94,15 +91,13 @@ These 110 checks are not ported:
 - **KMS keys** (customer-managed keys on buses, queues and topics) (5): `events.cmk-encrypted-bus-delivers-put-events-to-sqs-target`, `events.cmk-without-events-grant-rejected-on-create-and-update`, `events.disabled-bus-key-stops-delivery-dead-letters-encrypted-events-until-reenabled`, `events.sns-target-on-a-kms-encrypted-topic-dead-letters-as-no-permissions-until-the-key-policy-grants-events`, `events.sqs-target-encrypted-with-a-key-events-cannot-use-dead-letters-until-the-key-policy-grants-it`.
 - **CloudFormation stacks** (5): `events.deploy-cfn-bus-target-with-a-stack-created-execution-role-forwards-events-to-the-destination-bus`, `events.deploy-cfn-event-bus-policy-admits-the-named-role-and-a-stack-update-removing-it-denies-again`, `events.deploy-cfn-schedule-rule-fires-into-its-target-and-a-stack-update-disabling-it-stops-firing`, `events.deploy-cfn-target-dead-letter-config-captures-undeliverable-events-until-a-stack-update-adds-the-queue-policy`, `events.deploy-eventbus-rule-target-cfn-then-put-events-delivers`.
 
-Six EventBridge ports stay known gaps:
+Five EventBridge ports stay known gaps:
 
 - **No grant for EventBridge** (4, `FidelityGap.EventBridgeUngrantedTargets`): a queue or topic
   whose policy says nothing about EventBridge still receives its deliveries, as SNS deliveries do,
   because most test setups add no policy. A policy that denies EventBridge, or admits it only for
   other rules, is enforced. Real AWS answers a queue with no policy as `NO_PERMISSIONS` in one check
   and as `NO_RESOURCE` in another.
-- **Regions** (1, `FidelityGap.EventBridgeRegions`): a cross-region event bus target. EventBridge is
-  regional only in a planned follow-up, together with SNS.
 - **The runner's budget** (1, `FidelityGap.EmulatorBudget`):
   `events__sqs.events-archive-replay-rule-matching-replay-name-exists-false-is-not-redelivered`
   spends the runner's 60-second budget for an emulator in its own settle loops and drains, before

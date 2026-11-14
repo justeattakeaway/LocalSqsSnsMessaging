@@ -1,6 +1,8 @@
 export interface BusState {
   accounts: string[];
   currentAccount: string;
+  regions: string[];
+  currentRegion: string;
   queues: QueueInfo[];
   topics: TopicInfo[];
   subscriptions: SubscriptionInfo[];

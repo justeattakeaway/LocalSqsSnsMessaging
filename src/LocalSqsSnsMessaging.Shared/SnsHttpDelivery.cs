@@ -33,21 +33,23 @@ internal static class SnsHttpDelivery
 
     /// <summary>The <c>SubscribeURL</c> of a confirmation: a GET that confirms the subscription.</summary>
     public static string SubscribeUrl(InMemoryAwsBus bus, SnsSubscription subscription) =>
-        $"{BaseUrl(bus)}/?Action=ConfirmSubscription&TopicArn={subscription.TopicArn}&Token={subscription.ConfirmationToken}";
+        $"{BaseUrl(bus, subscription.TopicArn)}/?Action=ConfirmSubscription&TopicArn={subscription.TopicArn}&Token={subscription.ConfirmationToken}";
 
     /// <summary>The <c>UnsubscribeURL</c> of a notification: a GET that unsubscribes <paramref name="subscription"/>.</summary>
     public static string UnsubscribeUrl(InMemoryAwsBus bus, SnsSubscription subscription) =>
-        $"{BaseUrl(bus)}/?Action=Unsubscribe&SubscriptionArn={subscription.SubscriptionArn}";
+        $"{BaseUrl(bus, subscription.TopicArn)}/?Action=Unsubscribe&SubscriptionArn={subscription.SubscriptionArn}";
 
     /// <summary>
     /// The <c>SigningCertURL</c> of a signed message: a GET of it serves <paramref name="certificate"/>
     /// in PEM form, through the SNS <see cref="Http.InMemoryAwsHttpMessageHandler"/> or the server.
     /// </summary>
-    public static string SigningCertUrl(InMemoryAwsBus bus, SnsSigningCertificate certificate) =>
-        $"{BaseUrl(bus)}/{certificate.FileName}";
+    public static string SigningCertUrl(InMemoryAwsBus bus, SnsSigningCertificate certificate, string? topicArn) =>
+        $"{BaseUrl(bus, topicArn)}/{certificate.FileName}";
 
-    private static string BaseUrl(InMemoryAwsBus bus) =>
-        bus.ServiceUrl?.ToString().TrimEnd('/') ?? $"https://sns.{bus.CurrentRegion}.amazonaws.com";
+    /// <summary>The SNS endpoint of the region <paramref name="topicArn"/> is in, unless the bus has a <c>ServiceUrl</c>.</summary>
+    private static string BaseUrl(InMemoryAwsBus bus, string? topicArn) =>
+        bus.ServiceUrl?.ToString().TrimEnd('/')
+        ?? $"https://sns.{InMemoryAwsBus.ArnRegion(topicArn) ?? bus.CurrentRegion}.amazonaws.com";
 
     /// <summary>
     /// Sends the <c>SubscriptionConfirmation</c> message real SNS posts when an HTTP/S endpoint is
@@ -57,7 +59,7 @@ internal static class SnsHttpDelivery
     public static void SendSubscriptionConfirmation(InMemoryAwsBus bus, SnsSubscription subscription)
     {
         var messageId = Guid.NewGuid().ToString();
-        var signatureVersion = bus.Topics.TryGetValue(SnsArn.TopicName(subscription.TopicArn), out var topic)
+        var signatureVersion = bus.TryGetTopicByArn(subscription.TopicArn, out var topic)
             ? topic.SignatureVersion ?? SnsEnvelope.DefaultSignatureVersion
             : SnsEnvelope.DefaultSignatureVersion;
 

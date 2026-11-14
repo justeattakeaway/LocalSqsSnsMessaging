@@ -42,7 +42,7 @@ public class DashboardApiTests
         await SendAsync(sqs, queueUrl, "first");
         await SendAsync(sqs, queueUrl, "second");
 
-        var result = DashboardApi.GetQueueMessages(registry, AccountId, "dashboard-queue")
+        var result = DashboardApi.GetQueueMessages(registry, AccountId, null, "dashboard-queue")
             .ShouldBeOfType<JsonHttpResult<DashboardApi.QueueMessages>>();
 
         result.Value!.PendingMessages.Select(m => m.Body).ShouldBe(["first", "second"]);
@@ -57,7 +57,7 @@ public class DashboardApiTests
         received.Messages!.Select(m => m.Body).ShouldBe(["first", "second"]);
 
         // ...and once received they move from waiting to in flight.
-        var afterReceive = DashboardApi.GetQueueMessages(registry, AccountId, "dashboard-queue")
+        var afterReceive = DashboardApi.GetQueueMessages(registry, AccountId, null, "dashboard-queue")
             .ShouldBeOfType<JsonHttpResult<DashboardApi.QueueMessages>>();
         afterReceive.Value!.PendingMessages.ShouldBeEmpty();
         afterReceive.Value.InFlightMessages.Select(m => m.Body).ShouldBe(["first", "second"], ignoreOrder: true);
@@ -71,7 +71,7 @@ public class DashboardApiTests
         var second = await SendAsync(sqs, queueUrl, "second");
         await SendAsync(sqs, queueUrl, "third");
 
-        DashboardApi.DeleteMessage(registry, AccountId, "dashboard-delete-queue", second)
+        DashboardApi.DeleteMessage(registry, AccountId, null, "dashboard-delete-queue", second)
             .ShouldBeOfType<NoContent>();
 
         var received = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -88,7 +88,7 @@ public class DashboardApiTests
         var (registry, sqs, queueUrl) = CreateQueue("dashboard-missing-queue");
         await SendAsync(sqs, queueUrl, "first");
 
-        DashboardApi.DeleteMessage(registry, AccountId, "dashboard-missing-queue", "no-such-message-id")
+        DashboardApi.DeleteMessage(registry, AccountId, null, "dashboard-missing-queue", "no-such-message-id")
             .ShouldBeOfType<NotFound<string>>();
 
         var received = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -97,5 +97,25 @@ public class DashboardApiTests
             MaxNumberOfMessages = 10
         });
         received.Messages!.ShouldHaveSingleItem().Body.ShouldBe("first");
+    }
+
+    [Test]
+    public async Task GetState_ListsTheViewedRegionEvenWhenItIsEmpty()
+    {
+        var registry = new BusRegistry(AccountId, "us-east-1", new Uri("http://localhost:4566"));
+        var euSqs = new InternalSqsClient(registry.DefaultBus, "eu-west-1");
+        var queueUrl = (await euSqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "dashboard-eu-queue" })).QueueUrl!;
+        await euSqs.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = queueUrl });
+
+        // eu-west-1 holds nothing now, but the dashboard is still viewing it: the region selector
+        // must keep offering it, or the viewer can no longer switch away from it.
+        var state = DashboardApi.GetState(registry, AccountId, "eu-west-1")
+            .ShouldBeOfType<JsonHttpResult<DashboardApi.BusState>>().Value!;
+        state.CurrentRegion.ShouldBe("eu-west-1");
+        state.Regions.ShouldBe(["eu-west-1", "us-east-1"]);
+
+        var home = DashboardApi.GetState(registry, AccountId, null)
+            .ShouldBeOfType<JsonHttpResult<DashboardApi.BusState>>().Value!;
+        home.Regions.ShouldBe(["us-east-1"]);
     }
 }

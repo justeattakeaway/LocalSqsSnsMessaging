@@ -3,7 +3,7 @@ import { MessageItem } from "@/components/message-item";
 import { SubscriptionItem } from "@/components/subscription-item";
 import type { BusState, QueueInfo, QueueMessages, SubscriptionInfo } from "@/types";
 import { getQueueSubscriptions, isDlqTarget, getActiveMoveTask } from "@/utils/resource-helpers";
-import { cn } from "@/lib/utils";
+import { cn, scopeQuery } from "@/lib/utils";
 
 interface QueueDetailProps {
   state: BusState;
@@ -19,17 +19,15 @@ export function QueueDetail({ state, queue, selectSubscription }: QueueDetailPro
 
   const loadMessages = useCallback(async () => {
     try {
-      const accountParam = state.currentAccount
-        ? `?account=${encodeURIComponent(state.currentAccount)}`
-        : "";
+      const scope = scopeQuery(state.currentAccount, state.currentRegion);
       const resp = await fetch(
-        `/_ui/api/queues/${encodeURIComponent(queue.name)}/messages${accountParam}`
+        `/_ui/api/queues/${encodeURIComponent(queue.name)}/messages${scope}`
       );
       if (resp.ok) setMessages(await resp.json());
     } catch {
       setMessages({ queueName: queue.name, pendingMessages: [], inFlightMessages: [] });
     }
-  }, [queue.name, state.currentAccount]);
+  }, [queue.name, state.currentAccount, state.currentRegion]);
 
   useEffect(() => {
     loadMessages();
@@ -51,28 +49,24 @@ export function QueueDetail({ state, queue, selectSubscription }: QueueDetailPro
   const startRedrive = useCallback(async () => {
     setRedriveLoading(true);
     try {
-      const accountParam = state.currentAccount
-        ? `?account=${encodeURIComponent(state.currentAccount)}`
-        : "";
+      const scope = scopeQuery(state.currentAccount, state.currentRegion);
       await fetch(
-        `/_ui/api/queues/${encodeURIComponent(queue.name)}/redrive${accountParam}`,
+        `/_ui/api/queues/${encodeURIComponent(queue.name)}/redrive${scope}`,
         { method: "POST" }
       );
     } finally {
       setRedriveLoading(false);
     }
-  }, [queue.name, state.currentAccount]);
+  }, [queue.name, state.currentAccount, state.currentRegion]);
 
   const cancelRedrive = useCallback(async () => {
     if (!activeMoveTask) return;
-    const accountParam = state.currentAccount
-      ? `?account=${encodeURIComponent(state.currentAccount)}`
-      : "";
+    const scope = scopeQuery(state.currentAccount, state.currentRegion);
     await fetch(
-      `/_ui/api/move-tasks/${encodeURIComponent(activeMoveTask.taskHandle)}/cancel${accountParam}`,
+      `/_ui/api/move-tasks/${encodeURIComponent(activeMoveTask.taskHandle)}/cancel${scope}`,
       { method: "POST" }
     );
-  }, [activeMoveTask, state.currentAccount]);
+  }, [activeMoveTask, state.currentAccount, state.currentRegion]);
 
   const tabs = [
     { id: "info", label: "Info" },

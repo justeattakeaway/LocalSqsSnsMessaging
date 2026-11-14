@@ -7,8 +7,7 @@ public static class SnsPublishActionFactory
         ArgumentNullException.ThrowIfNull(topicArn);
         ArgumentNullException.ThrowIfNull(bus);
 
-        var topicName = GetNameFromArn(topicArn);
-        if (!bus.Topics.TryGetValue(topicName, out var topic))
+        if (!bus.TryGetTopicByArn(topicArn, out var topic))
         {
             throw new InvalidOperationException($"Topic not found: {topicArn}");
         }
@@ -16,7 +15,7 @@ public static class SnsPublishActionFactory
         // Endpoints are resolved at publish time rather than captured here, so a queue deleted
         // after subscribing is treated as a delivery failure (and dead-lettered if configured)
         // instead of silently receiving messages through a stale reference.
-        var subscriptions = bus.Subscriptions.Values
+        var subscriptions = bus.RegionOfArn(topicArn).Subscriptions.Values
             .Where(s => s.TopicArn == topicArn && !s.PendingConfirmation)
             .ToList();
 
@@ -43,6 +42,4 @@ public static class SnsPublishActionFactory
             topic.PublishAction.Replay(subscription);
         }
     }
-
-    private static string GetNameFromArn(string arn) => arn.Split(':').Last();
 }

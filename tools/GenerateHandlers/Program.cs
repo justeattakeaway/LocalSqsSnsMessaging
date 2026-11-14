@@ -128,11 +128,11 @@ static void GenerateJsonHandler(string serviceName, string modelNamespace, JsonE
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
-    // SQS queues are regional, and SQS answers each request as the caller who made it: serve the
-    // request from the queues of the region it was made in, as its caller (see SqsCaller).
+    // Resources are regional: serve the request from the region it was made in. SQS also answers
+    // each request as the caller who made it (see SqsCaller).
     code.AppendLine(serviceName == "Sqs"
         ? "        var client = new InternalSqsClient(bus, AwsRequestRegion.FromRequest(request)) { Caller = SqsCaller.FromRequest(request) };"
-        : $"        var client = new Internal{serviceName}Client(bus);");
+        : $"        var client = new Internal{serviceName}Client(bus, AwsRequestRegion.FromRequest(request));");
     code.AppendLine();
     code.AppendLine("        return operationName switch");
     code.AppendLine("        {");
@@ -270,9 +270,11 @@ static void GenerateJsonHttpContextHandler(string serviceName, string modelNames
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
+    // Resources are regional: serve the request from the region it was made in. SQS also answers
+    // each request as the caller who made it (see SqsCaller).
     code.AppendLine(serviceName == "Sqs"
-        ? "        var client = new InternalSqsClient(bus) { Caller = SqsCaller.FromHttpContext(context) };"
-        : $"        var client = new Internal{serviceName}Client(bus);");
+        ? "        var client = new InternalSqsClient(bus, AwsRequestRegion.FromHttpContext(context)) { Caller = SqsCaller.FromHttpContext(context) };"
+        : $"        var client = new Internal{serviceName}Client(bus, AwsRequestRegion.FromHttpContext(context));");
     code.AppendLine();
     code.AppendLine("        switch (operationName)");
     code.AppendLine("        {");
@@ -454,7 +456,8 @@ static void GenerateQueryHandler(string serviceName, string modelNamespace, Json
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
-    code.AppendLine($"        var client = new Internal{serviceName}Client(bus);");
+    // Resources are regional: serve the request from the region it was made in.
+    code.AppendLine($"        var client = new Internal{serviceName}Client(bus, AwsRequestRegion.FromRequest(request));");
     code.AppendLine();
     code.AppendLine("        return operationName switch");
     code.AppendLine("        {");
@@ -595,7 +598,8 @@ static void GenerateQueryHttpContextHandler(string serviceName, string modelName
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
-    code.AppendLine($"        var client = new Internal{serviceName}Client(bus);");
+    // Resources are regional: serve the request from the region it was made in.
+    code.AppendLine($"        var client = new Internal{serviceName}Client(bus, AwsRequestRegion.FromHttpContext(context));");
     code.AppendLine();
     code.AppendLine("        switch (operationName)");
     code.AppendLine("        {");

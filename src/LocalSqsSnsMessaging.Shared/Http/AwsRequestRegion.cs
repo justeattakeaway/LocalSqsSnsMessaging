@@ -1,4 +1,7 @@
-#if !ASPNETCORE
+#if ASPNETCORE
+using Microsoft.AspNetCore.Http;
+#endif
+
 namespace LocalSqsSnsMessaging.Http;
 
 /// <summary>
@@ -9,6 +12,7 @@ internal static class AwsRequestRegion
 {
     private const string CredentialKey = "Credential=";
 
+#if !ASPNETCORE
     /// <summary>
     /// The region the request names, or <see langword="null"/> when it names none. In order: the
     /// region in the Signature Version 4 credential scope (the <c>Authorization</c> header, or the
@@ -19,27 +23,37 @@ internal static class AwsRequestRegion
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (request.Headers.TryGetValues("Authorization", out var authorization)
-            && FromCredentialScope(string.Join(",", authorization)) is { } signedRegion)
+        var authorization = request.Headers.TryGetValues("Authorization", out var values) ? string.Join(",", values) : null;
+        return request.RequestUri is { IsAbsoluteUri: true } uri
+            ? From(authorization, uri.Query, uri.Host)
+            : From(authorization, query: null, host: null);
+    }
+#else
+    /// <summary>The region a request the server received names; see <c>FromRequest</c> in the library build.</summary>
+    public static string? FromHttpContext(HttpContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return From(context.Request.Headers.Authorization.ToString(), context.Request.QueryString.Value, context.Request.Host.Host);
+    }
+#endif
+
+    private static string? From(string? authorization, string? query, string? host)
+    {
+        if (!string.IsNullOrEmpty(authorization) && FromCredentialScope(authorization!) is { } signedRegion)
         {
             return signedRegion;
         }
 
-        if (request.RequestUri is { IsAbsoluteUri: true } uri)
+        if (!string.IsNullOrEmpty(query))
         {
-            if (!string.IsNullOrEmpty(uri.Query))
+            var credential = System.Web.HttpUtility.ParseQueryString(query)["X-Amz-Credential"];
+            if (credential is not null && FromScope(credential) is { } presignedRegion)
             {
-                var credential = System.Web.HttpUtility.ParseQueryString(uri.Query)["X-Amz-Credential"];
-                if (credential is not null && FromScope(credential) is { } presignedRegion)
-                {
-                    return presignedRegion;
-                }
+                return presignedRegion;
             }
-
-            return FromHost(uri.Host);
         }
 
-        return null;
+        return string.IsNullOrEmpty(host) ? null : FromHost(host!);
     }
 
     /// <summary>
@@ -110,4 +124,3 @@ internal static class AwsRequestRegion
         return hyphenated;
     }
 }
-#endif

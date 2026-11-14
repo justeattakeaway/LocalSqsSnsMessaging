@@ -12,18 +12,12 @@ public enum FidelityGap
     /// <summary>A one-off behavioral difference, kept for compatibility.</summary>
     Other,
 
-    /// <summary>SNS topics and subscriptions are not regional yet (planned as separate work).</summary>
-    SnsRegions,
-
     /// <summary>
     /// A queue or topic whose policy grants EventBridge nothing still receives EventBridge's
     /// deliveries, kept deliberately as for SNS: most test setups add no policy. A policy that
     /// denies EventBridge, or admits it only for other rules, is enforced.
     /// </summary>
     EventBridgeUngrantedTargets,
-
-    /// <summary>EventBridge is not regional yet (planned as separate work, with SNS regions).</summary>
-    EventBridgeRegions,
 
     /// <summary>
     /// The check's own waits outlast the runner's 60-second budget for an emulator, so it fails
