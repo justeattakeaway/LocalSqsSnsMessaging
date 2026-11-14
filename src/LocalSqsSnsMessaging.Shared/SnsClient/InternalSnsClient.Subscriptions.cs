@@ -95,14 +95,14 @@ internal sealed partial class InternalSnsClient
         // Apply the scope before the policy so a nested (body-scoped) policy validates correctly.
         if (requested.TryGetValue(SnsSubscriptionAttributes.FilterPolicyScope, out var scope))
         {
-            ApplySubscriptionAttribute(snsSubscription, SnsSubscriptionAttributes.FilterPolicyScope, scope, atSubscribe: true);
+            ApplySubscriptionAttribute(topic, snsSubscription, SnsSubscriptionAttributes.FilterPolicyScope, scope, atSubscribe: true);
         }
 
         foreach (var (name, value) in requested)
         {
             if (!name.Equals(SnsSubscriptionAttributes.FilterPolicyScope, StringComparison.Ordinal))
             {
-                ApplySubscriptionAttribute(snsSubscription, name, value, atSubscribe: true);
+                ApplySubscriptionAttribute(topic, snsSubscription, name, value, atSubscribe: true);
             }
         }
 
@@ -133,7 +133,7 @@ internal sealed partial class InternalSnsClient
             {
                 ValidateSubscriptionSupportsTopicMessageSize(topic, protocol);
                 _bus.Subscriptions.TryAdd(snsSubscription.SubscriptionArn, snsSubscription);
-                SnsPublishActionFactory.UpdateTopicPublishAction(snsSubscription.TopicArn, _bus);
+                SnsPublishActionFactory.Activate(topic, snsSubscription, _bus);
                 subscription = snsSubscription;
                 if (subscription.IsHttp)
                 {
@@ -214,6 +214,11 @@ internal sealed partial class InternalSnsClient
         {
             attributes[SnsSubscriptionAttributes.SubscriptionRoleArn] = subscription.SubscriptionRoleArn;
         }
+        if (subscription.ReplayPolicy is not null)
+        {
+            attributes[SnsSubscriptionAttributes.ReplayPolicy] = subscription.ReplayPolicy;
+            attributes[SnsSubscriptionAttributes.ReplayStatus] = subscription.ReplayStatus;
+        }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.GetSubscriptionAttributes, subscription.SubscriptionArn);
         return Task.FromResult(new GetSubscriptionAttributesResponse
@@ -234,7 +239,13 @@ internal sealed partial class InternalSnsClient
             throw new InternalInvalidParameterException("Invalid parameter: AttributeName");
         }
 
-        ApplySubscriptionAttribute(subscription, request.AttributeName, request.AttributeValue, atSubscribe: false);
+        var topic = FindTopicOf(subscription);
+        ApplySubscriptionAttribute(topic, subscription, request.AttributeName, request.AttributeValue, atSubscribe: false);
+        if (topic is not null && request.AttributeName == SnsSubscriptionAttributes.ReplayPolicy)
+        {
+            // A replay policy set on an existing subscription starts a replay straight away.
+            topic.PublishAction.Replay(subscription);
+        }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetSubscriptionAttributes, subscription.SubscriptionArn);
         return Task.FromResult(new SetSubscriptionAttributesResponse().SetCommonProperties());
@@ -289,7 +300,10 @@ internal sealed partial class InternalSnsClient
         if (subscription.PendingConfirmation)
         {
             subscription.PendingConfirmation = false;
-            SnsPublishActionFactory.UpdateTopicPublishAction(subscription.TopicArn, _bus);
+            if (FindTopicOf(subscription) is { } topic)
+            {
+                SnsPublishActionFactory.Activate(topic, subscription, _bus);
+            }
         }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ConfirmSubscription, subscription.SubscriptionArn);
@@ -323,6 +337,13 @@ internal sealed partial class InternalSnsClient
             ? subscription
             : throw new InternalNotFoundException(SubscriptionDoesNotExist);
     }
+
+    /// <summary>The topic <paramref name="subscription"/> belongs to, or null if it has just been deleted.</summary>
+    private SnsTopicResource? FindTopicOf(SnsSubscription subscription) =>
+        _bus.Topics.TryGetValue(SnsArn.TopicName(subscription.TopicArn), out var topic)
+        && string.Equals(topic.Arn, subscription.TopicArn, StringComparison.Ordinal)
+            ? topic
+            : null;
 
     /// <summary>
     /// Whether <paramref name="subscription"/> already has <paramref name="name"/> set to
@@ -365,9 +386,10 @@ internal sealed partial class InternalSnsClient
     /// <summary>
     /// Validates and applies a single subscription attribute. <paramref name="atSubscribe"/> is true
     /// when it came in <c>Subscribe</c>'s attribute map, where SNS reports a bad value as a reason
-    /// against <c>Attributes</c>.
+    /// against <c>Attributes</c>. <paramref name="topic"/> is the subscription's topic (null if it has
+    /// just been deleted), which some attributes are validated against.
     /// </summary>
-    private static void ApplySubscriptionAttribute(SnsSubscription subscription, string name, string? value, bool atSubscribe)
+    private static void ApplySubscriptionAttribute(SnsTopicResource? topic, SnsSubscription subscription, string name, string? value, bool atSubscribe)
     {
         value ??= string.Empty;
         try
@@ -406,6 +428,14 @@ internal sealed partial class InternalSnsClient
 
                 case SnsSubscriptionAttributes.RedrivePolicy:
                     var deadLetterTargetArn = SnsRedrivePolicy.ParseDeadLetterTargetArn(value);
+                    if (deadLetterTargetArn is not null && topic is { IsFifo: true } && subscription.IsSqs
+                        && subscription.EndPoint.EndsWith(".fifo", StringComparison.Ordinal)
+                        && !deadLetterTargetArn.EndsWith(".fifo", StringComparison.Ordinal))
+                    {
+                        throw new InternalInvalidParameterException(
+                            "Invalid parameter: RedrivePolicy: must use a FIFO queue as DLQ for a FIFO Subscription to a FIFO Topic.");
+                    }
+
                     subscription.DeadLetterTargetArn = deadLetterTargetArn;
                     subscription.RedrivePolicy = deadLetterTargetArn is null ? null : value;
                     break;
@@ -420,7 +450,16 @@ internal sealed partial class InternalSnsClient
                     break;
 
                 case SnsSubscriptionAttributes.ReplayPolicy:
-                    subscription.ReplayPolicy = string.IsNullOrEmpty(value) ? null : value;
+                    if (string.IsNullOrEmpty(value))
+                    {
+                        subscription.ReplayPolicy = null;
+                        subscription.ReplayStatus = null;
+                        break;
+                    }
+
+                    SnsReplayPolicy.Validate(value, topic);
+                    subscription.ReplayPolicy = value;
+                    subscription.ReplayStatus = SnsReplayPolicy.Pending;
                     break;
 
                 default:
@@ -460,4 +499,5 @@ internal static class SnsSubscriptionAttributes
     public const string DeliveryPolicy = "DeliveryPolicy";
     public const string SubscriptionRoleArn = "SubscriptionRoleArn";
     public const string ReplayPolicy = "ReplayPolicy";
+    public const string ReplayStatus = "ReplayStatus";
 }

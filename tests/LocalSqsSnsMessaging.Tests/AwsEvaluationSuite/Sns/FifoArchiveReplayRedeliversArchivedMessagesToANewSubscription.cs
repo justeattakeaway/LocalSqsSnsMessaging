@@ -21,7 +21,6 @@ public sealed class FifoArchiveReplayRedeliversArchivedMessagesToANewSubscriptio
     [Test]
     [DisplayName("sns.fifo-archive-replay-redelivers-archived-messages-to-a-new-subscription")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsArchive, "a topic with an ArchivePolicy reports no BeginningArchiveTime, and archived messages can't be replayed")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -14,9 +14,14 @@ internal sealed class SnsTopicResource
     /// </summary>
     public Dictionary<string, string> Attributes { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// A FIFO topic's deduplication and archive state, or null for a standard topic. Fixed when the
+    /// topic is created, as <c>FifoTopic</c> is.
+    /// </summary>
+    public SnsFifoTopicState? Fifo { get; init; }
+
     /// <summary>Whether this is a FIFO topic (<c>FifoTopic=true</c>, and a <c>.fifo</c> name).</summary>
-    public bool IsFifo => Attributes.TryGetValue(SnsTopicAttributes.FifoTopic, out var fifo)
-                          && string.Equals(fifo, "true", StringComparison.Ordinal);
+    public bool IsFifo => Fifo is not null;
 
     /// <summary>
     /// Serialises the checks that weigh a topic's subscriptions against its <c>MaximumMessageSize</c>
@@ -25,7 +30,13 @@ internal sealed class SnsTopicResource
     /// guards <see cref="Attributes"/> and <see cref="Tags"/>.
     /// </summary>
     internal object SubscriptionGate { get; } = new();
-    internal SnsPublishAction PublishAction { get; set; } = SnsPublishAction.NullInstance;
+
+    /// <summary>
+    /// Fans published messages out to the topic's confirmed subscriptions. <c>CreateTopic</c> sets the
+    /// first one, and it is replaced whenever the subscriptions change.
+    /// </summary>
+    internal SnsPublishAction PublishAction { get; set; } = null!;
+
     public Dictionary<string, string> Tags { get; } = new(StringComparer.Ordinal);
 
     private int _subscriptionsDeleted;
@@ -34,4 +45,57 @@ internal sealed class SnsTopicResource
     public int SubscriptionsDeleted => Volatile.Read(ref _subscriptionsDeleted);
 
     public void RecordSubscriptionDeleted() => Interlocked.Increment(ref _subscriptionsDeleted);
+
+    /// <summary>
+    /// Stores attribute <paramref name="name"/> (or removes it, for a value that clears it) and applies
+    /// it to the FIFO state it governs. The caller holds <see cref="SubscriptionGate"/>, or owns a topic
+    /// that isn't on the bus yet.
+    /// </summary>
+    public void SetAttribute(string name, string? value, DateTimeOffset now)
+    {
+        if (SnsTopicAttributes.ClearsAttribute(name, value))
+        {
+            Attributes.Remove(name);
+        }
+        else
+        {
+            Attributes[name] = value ?? string.Empty;
+        }
+
+        if (Fifo is not { } fifo)
+        {
+            return;
+        }
+
+        lock (fifo.Gate)
+        {
+            switch (name)
+            {
+                case SnsTopicAttributes.ContentBasedDeduplication:
+                    fifo.ContentBasedDeduplication = string.Equals(value, "true", StringComparison.Ordinal);
+                    break;
+
+                case SnsTopicAttributes.FifoThroughputScope:
+                    fifo.DeduplicatePerMessageGroup = string.Equals(value, "MessageGroup", StringComparison.Ordinal);
+                    break;
+
+                case SnsTopicAttributes.ArchivePolicy:
+                    if (SnsTopicAttributes.ArchiveRetention(value) is { } retention)
+                    {
+                        fifo.StartArchiving(retention, now);
+                        Attributes[SnsTopicAttributes.BeginningArchiveTime] =
+                            SnsTopicAttributes.FormatTimestamp(fifo.BeginningArchiveTime!.Value);
+                    }
+                    else
+                    {
+                        // An empty policy (or {}) turns archiving off.
+                        fifo.StopArchiving();
+                        Attributes.Remove(SnsTopicAttributes.ArchivePolicy);
+                        Attributes.Remove(SnsTopicAttributes.BeginningArchiveTime);
+                    }
+
+                    break;
+            }
+        }
+    }
 }

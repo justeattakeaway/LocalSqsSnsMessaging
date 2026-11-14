@@ -49,6 +49,13 @@ internal sealed class SnsSubscription
     public string? ReplayPolicy { get; set; }
 
     /// <summary>
+    /// <c>ReplayStatus</c>: how far the replay <see cref="ReplayPolicy"/> asked for has got
+    /// (<see cref="SnsReplayPolicy.Pending"/> or <see cref="SnsReplayPolicy.Completed"/>), or null
+    /// without a replay policy.
+    /// </summary>
+    public string? ReplayStatus { get; set; }
+
+    /// <summary>
     /// True until an HTTP/S endpoint confirms the subscription via <c>ConfirmSubscription</c> (or by
     /// visiting the <c>SubscribeURL</c>). Pending subscriptions don't take part in fan-out, so a
     /// caller can't point the bus at an arbitrary URL and have it start posting there.

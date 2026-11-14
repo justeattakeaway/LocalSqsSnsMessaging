@@ -53,6 +53,13 @@ internal sealed partial class SnsPublishAction
     {
         if (!queue.IsFifo)
         {
+            if (message.MessageGroupId is not null)
+            {
+                // A standard queue keeps a published MessageGroupId (for fair queueing) without ordering by it.
+                sqsMessage.Attributes ??= [];
+                sqsMessage.Attributes[InternalMessageSystemAttributeName.MessageGroupId] = message.MessageGroupId;
+            }
+
             // SQS applies the subscribed queue's DelaySeconds to messages SNS delivers, too.
             if (queue.DelaySeconds > 0)
             {
@@ -70,10 +77,11 @@ internal sealed partial class SnsPublishAction
         sqsMessage.Attributes["MessageGroupId"] = message.MessageGroupId;
         sqsMessage.Attributes["SentTimestamp"] = _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
 
+        // The topic's deduplication id (explicit or content-based) travels with the message; without
+        // one, the queue deduplicates by the body it receives.
         var deduplicationId = message.DeduplicationId;
         if (string.IsNullOrEmpty(deduplicationId))
         {
-            // Generate a deduplication ID based on the message body
             deduplicationId = SqsDeduplicationCache.ContentDeduplicationId(sqsMessage.Body);
         }
 

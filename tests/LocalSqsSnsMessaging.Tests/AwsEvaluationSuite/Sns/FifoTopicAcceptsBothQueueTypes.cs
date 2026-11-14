@@ -21,7 +21,6 @@ public sealed class FifoTopicAcceptsBothQueueTypes
     [Test]
     [DisplayName("sns.fifo-topic-accepts-both-queue-types")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFifo, "Publish to a FIFO topic returns no SequenceNumber")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

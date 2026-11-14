@@ -22,7 +22,6 @@ public sealed class PublishBatchFifoOrdersEntriesAndDedupsAcrossBatches
     [Test]
     [DisplayName("sns.publish-batch-fifo-orders-entries-and-dedups-across-batches")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFifo, "PublishBatch to a FIFO topic returns no SequenceNumber per entry")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

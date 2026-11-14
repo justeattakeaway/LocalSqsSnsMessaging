@@ -25,7 +25,6 @@ public sealed class FifoConcurrentPublishersAcrossManyGroupsKeepEachGroupInOrder
     [Test]
     [DisplayName("sns.fifo-concurrent-publishers-across-many-groups-keep-each-group-in-order")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFifo, "Publish to a FIFO topic returns no SequenceNumber")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

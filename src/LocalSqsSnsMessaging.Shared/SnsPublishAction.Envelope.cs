@@ -26,6 +26,11 @@ internal sealed partial class SnsPublishAction
             ["UnsubscribeURL"] = SnsHttpDelivery.UnsubscribeUrl(_bus, subscription)
         };
 
+        if (message.SequenceNumber is not null)
+        {
+            snsMessage["SequenceNumber"] = message.SequenceNumber;
+        }
+
         if (message.Subject is not null)
         {
             snsMessage["Subject"] = message.Subject;

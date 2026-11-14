@@ -12,14 +12,8 @@ public enum FidelityGap
     /// <summary>A one-off behavioral difference, kept for compatibility.</summary>
     Other,
 
-    /// <summary>SNS: request validation AWS performs that we skip (names, publish parameters, message attributes, subjects).</summary>
-    SnsValidation,
-
     /// <summary>SNS: PublishBatch validation and per-entry results.</summary>
     SnsBatch,
-
-    /// <summary>SNS: FIFO topic semantics (sequence numbers, topic-level deduplication, throughput scope).</summary>
-    SnsFifo,
 
     /// <summary>SNS: the JSON envelope delivered to SQS (fields, layout, signature, signing certificate).</summary>
     SnsEnvelope,
@@ -29,12 +23,6 @@ public enum FidelityGap
 
     /// <summary>SNS: subscription filter policy evaluation and validation.</summary>
     SnsFilterPolicy,
-
-    /// <summary>SNS: deliveries SQS refuses (queue policies, deleted queues) and subscription dead-letter queues.</summary>
-    SnsDeliveryFailures,
-
-    /// <summary>SNS: FIFO topic message archiving and replay.</summary>
-    SnsArchive,
 
     /// <summary>SNS topics and subscriptions are not regional yet (planned as separate work).</summary>
     SnsRegions,

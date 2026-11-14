@@ -23,5 +23,26 @@ public static class SnsPublishActionFactory
         topic.PublishAction = new SnsPublishAction(subscriptions, topic, bus);
     }
 
+    /// <summary>
+    /// Brings <paramref name="subscription"/> into its topic's fan-out (once it has been added to the
+    /// bus, or confirmed), then replays to it the archived messages its <c>ReplayPolicy</c> selects.
+    /// On a FIFO topic both happen under the topic's gate, so no publish lands between the replayed
+    /// messages and the live ones that follow them.
+    /// </summary>
+    internal static void Activate(SnsTopicResource topic, SnsSubscription subscription, InMemoryAwsBus bus)
+    {
+        if (topic.Fifo is not { } fifo)
+        {
+            UpdateTopicPublishAction(topic.Arn, bus);
+            return;
+        }
+
+        lock (fifo.Gate)
+        {
+            UpdateTopicPublishAction(topic.Arn, bus);
+            topic.PublishAction.Replay(subscription);
+        }
+    }
+
     private static string GetNameFromArn(string arn) => arn.Split(':').Last();
 }

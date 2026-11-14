@@ -70,8 +70,10 @@ internal sealed partial class InternalSnsClient
         {
             Name = request.Name,
             Region = _bus.CurrentRegion,
-            Arn = topicArn
+            Arn = topicArn,
+            Fifo = fifo ? new SnsFifoTopicState() : null,
         };
+        topic.PublishAction = new SnsPublishAction([], topic, _bus);
         topic.Attributes[SnsTopicAttributes.DisplayName] = string.Empty;
         topic.Attributes[SnsTopicAttributes.Policy] = SnsTopicAttributes.DefaultPolicy(topicArn, _bus.CurrentAccountId);
         if (fifo)
@@ -80,20 +82,12 @@ internal sealed partial class InternalSnsClient
             topic.Attributes[SnsTopicAttributes.ContentBasedDeduplication] = "false";
         }
 
+        var now = _bus.TimeProvider.GetUtcNow();
         foreach (var (name, value) in attributes)
         {
-            if (name.Equals(SnsTopicAttributes.FifoTopic, StringComparison.Ordinal))
+            if (!name.Equals(SnsTopicAttributes.FifoTopic, StringComparison.Ordinal))
             {
-                continue;
-            }
-
-            if (SnsTopicAttributes.ClearsAttribute(name, value))
-            {
-                topic.Attributes.Remove(name);
-            }
-            else
-            {
-                topic.Attributes[name] = value ?? string.Empty;
+                topic.SetAttribute(name, value, now);
             }
         }
 
@@ -248,14 +242,7 @@ internal sealed partial class InternalSnsClient
                     topic.Attributes.TryGetValue(name, out var current) ? current : null);
             }
 
-            if (SnsTopicAttributes.ClearsAttribute(name, request.AttributeValue))
-            {
-                topic.Attributes.Remove(name);
-            }
-            else
-            {
-                topic.Attributes[name] = request.AttributeValue ?? string.Empty;
-            }
+            topic.SetAttribute(name, request.AttributeValue, _bus.TimeProvider.GetUtcNow());
         }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetTopicAttributes, topic.Arn);

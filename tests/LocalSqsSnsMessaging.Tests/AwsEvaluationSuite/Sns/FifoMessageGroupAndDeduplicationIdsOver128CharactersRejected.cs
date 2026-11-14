@@ -20,7 +20,6 @@ public sealed class FifoMessageGroupAndDeduplicationIdsOver128CharactersRejected
     [Test]
     [DisplayName("sns.fifo-message-group-and-deduplication-ids-over-128-characters-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a MessageGroupId or MessageDeduplicationId over 128 characters")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

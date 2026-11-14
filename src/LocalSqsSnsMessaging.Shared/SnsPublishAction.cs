@@ -17,8 +17,6 @@ namespace LocalSqsSnsMessaging;
 /// </summary>
 internal sealed partial class SnsPublishAction
 {
-    internal static SnsPublishAction NullInstance { get; } = new([], null!, null!);
-
     private readonly List<SnsSubscription> _subscriptions;
     private readonly SnsTopicResource _topic;
     private readonly InMemoryAwsBus _bus;
@@ -30,8 +28,12 @@ internal sealed partial class SnsPublishAction
         _bus = bus;
     }
 
-    /// <summary>A published message, independent of whether it came from Publish or PublishBatch.</summary>
-    private sealed record OutboundMessage(
+    /// <summary>
+    /// A published message, independent of whether it came from Publish or PublishBatch. On a FIFO
+    /// topic, <see cref="SequenceNumber"/> and <see cref="DeduplicationId"/> are the ones the topic
+    /// assigned and deduplicated it by.
+    /// </summary>
+    internal sealed record OutboundMessage(
         string MessageId,
         string TopicArn,
         string? Subject,
@@ -39,14 +41,13 @@ internal sealed partial class SnsPublishAction
         string? MessageStructure,
         Dictionary<string, MessageAttributeValue>? Attributes,
         string? MessageGroupId,
-        string? DeduplicationId);
+        string? DeduplicationId,
+        string? SequenceNumber = null);
 
     public PublishResponse Execute(PublishRequest request)
     {
-        var messageId = Guid.NewGuid().ToString();
-
-        Deliver(new OutboundMessage(
-            messageId,
+        var (messageId, sequenceNumber) = Publish(new OutboundMessage(
+            Guid.NewGuid().ToString(),
             request.TopicArn ?? request.TargetArn,
             request.Subject,
             request.Message,
@@ -57,7 +58,8 @@ internal sealed partial class SnsPublishAction
 
         return new PublishResponse
         {
-            MessageId = messageId
+            MessageId = messageId,
+            SequenceNumber = sequenceNumber
         }.SetCommonProperties();
     }
 
@@ -73,9 +75,8 @@ internal sealed partial class SnsPublishAction
         {
             try
             {
-                var messageId = Guid.NewGuid().ToString();
-                Deliver(new OutboundMessage(
-                    messageId,
+                var (messageId, sequenceNumber) = Publish(new OutboundMessage(
+                    Guid.NewGuid().ToString(),
                     request.TopicArn,
                     entry.Subject,
                     entry.Message,
@@ -87,7 +88,8 @@ internal sealed partial class SnsPublishAction
                 response.Successful.Add(new PublishBatchResultEntry
                 {
                     Id = entry.Id,
-                    MessageId = messageId
+                    MessageId = messageId,
+                    SequenceNumber = sequenceNumber
                 });
             }
 #pragma warning disable CA1031
@@ -107,26 +109,47 @@ internal sealed partial class SnsPublishAction
         return response.SetCommonProperties();
     }
 
-    private void Deliver(OutboundMessage published)
+    /// <summary>
+    /// Publishes one message, returning the <c>MessageId</c> and (on a FIFO topic) the
+    /// <c>SequenceNumber</c> to report for it.
+    /// </summary>
+    private (string MessageId, string? SequenceNumber) Publish(OutboundMessage message)
     {
-        var structure = SnsMessageStructure.Parse(published.Body, published.MessageStructure);
+        if (_topic.Fifo is { } fifo)
+        {
+            return PublishToFifoTopic(fifo, message);
+        }
+
+        Deliver(message);
+        return (message.MessageId, null);
+    }
+
+    private void Deliver(OutboundMessage message)
+    {
         foreach (var subscription in _subscriptions)
         {
-            // With MessageStructure=json each protocol has its own body.
-            var message = published with { Body = structure.BodyFor(subscription.Protocol) };
-            if (!SnsFilterPolicy.Matches(subscription, message.Body, message.Attributes))
-            {
-                continue;
-            }
+            DeliverTo(subscription, message);
+        }
+    }
 
-            if (subscription.IsSqs)
-            {
-                DeliverToSqs(subscription, message);
-            }
-            else if (subscription.IsHttp)
-            {
-                DeliverToHttp(subscription, message);
-            }
+    private void DeliverTo(SnsSubscription subscription, OutboundMessage published)
+    {
+        // With MessageStructure=json each protocol has its own body.
+        var message = published.MessageStructure is null
+            ? published
+            : published with { Body = SnsMessageStructure.Parse(published.Body, published.MessageStructure).BodyFor(subscription.Protocol) };
+        if (!SnsFilterPolicy.Matches(subscription, message.Body, message.Attributes))
+        {
+            return;
+        }
+
+        if (subscription.IsSqs)
+        {
+            DeliverToSqs(subscription, message);
+        }
+        else if (subscription.IsHttp)
+        {
+            DeliverToHttp(subscription, message);
         }
     }
 }

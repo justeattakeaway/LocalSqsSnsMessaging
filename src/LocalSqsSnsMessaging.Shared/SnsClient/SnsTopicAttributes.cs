@@ -20,10 +20,14 @@ internal static class SnsTopicAttributes
     public const string ContentBasedDeduplication = "ContentBasedDeduplication";
     public const string FifoThroughputScope = "FifoThroughputScope";
     public const string ArchivePolicy = "ArchivePolicy";
+    public const string BeginningArchiveTime = "BeginningArchiveTime";
     public const string MaximumMessageSize = "MaximumMessageSize";
 
     /// <summary>The largest <c>DisplayName</c> SNS accepts, in characters.</summary>
     private const int MaxDisplayNameLength = 100;
+
+    /// <summary>The longest an <c>ArchivePolicy</c> can keep messages, in days.</summary>
+    private const int MaxArchiveRetentionDays = 365;
 
     /// <summary>The longest topic name SNS accepts, <c>.fifo</c> suffix included.</summary>
     private const int MaxTopicNameLength = 256;
@@ -243,6 +247,15 @@ internal static class SnsTopicAttributes
 
                 break;
 
+            case ArchivePolicy:
+                if (!TryParseArchivePolicy(value, out _))
+                {
+                    throw new InternalInvalidParameterException(
+                        $"Invalid parameter: ArchivePolicy: MessageRetentionPeriod must be an integer between 1 and {MaxArchiveRetentionDays}");
+                }
+
+                break;
+
             default:
                 if (FeedbackSampleRateAttributes.Contains(name)
                     && (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var rate) || rate > 100))
@@ -262,4 +275,54 @@ internal static class SnsTopicAttributes
     /// </summary>
     public static bool ClearsAttribute(string name, string? value) =>
         string.IsNullOrEmpty(value) && name is not (DisplayName or Policy);
+
+    /// <summary>
+    /// How long an <c>ArchivePolicy</c> keeps messages, or null for a policy that turns archiving off
+    /// (an empty value or <c>{}</c>) or that isn't valid.
+    /// </summary>
+    public static TimeSpan? ArchiveRetention(string? policy) =>
+        TryParseArchivePolicy(policy, out var retention) ? retention : null;
+
+    /// <summary>
+    /// Parses an <c>ArchivePolicy</c> (<c>{"MessageRetentionPeriod": "&lt;days&gt;"}</c>): false when it
+    /// isn't valid; otherwise <paramref name="retention"/> is the retention period, or null when the
+    /// policy turns archiving off.
+    /// </summary>
+    private static bool TryParseArchivePolicy(string? policy, out TimeSpan? retention)
+    {
+        retention = null;
+        if (string.IsNullOrWhiteSpace(policy))
+        {
+            return true;
+        }
+
+        if (TryParseObject(policy!) is not { } json)
+        {
+            return false;
+        }
+
+        if (json.Count == 0)
+        {
+            return true;
+        }
+
+        var days = json["MessageRetentionPeriod"] switch
+        {
+            JsonValue value when value.TryGetValue<int>(out var number) => number,
+            JsonValue value when value.TryGetValue<string>(out var text)
+                                 && int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) => parsed,
+            _ => 0,
+        };
+        if (days is < 1 or > MaxArchiveRetentionDays)
+        {
+            return false;
+        }
+
+        retention = TimeSpan.FromDays(days);
+        return true;
+    }
+
+    /// <summary>A timestamp as SNS reports one in an attribute: ISO 8601 UTC, to the millisecond.</summary>
+    public static string FormatTimestamp(DateTimeOffset timestamp) =>
+        timestamp.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
 }

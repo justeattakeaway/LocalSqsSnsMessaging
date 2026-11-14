@@ -24,7 +24,6 @@ public sealed class FifoThroughputScopeMessageGroupNarrowsTheDeduplicationScope
     [Test]
     [DisplayName("sns.fifo-throughput-scope-message-group-narrows-the-deduplication-scope")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFifo, "the topic doesn't deduplicate: a publish reusing a deduplication id in another message group is delivered under FifoThroughputScope=Topic")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

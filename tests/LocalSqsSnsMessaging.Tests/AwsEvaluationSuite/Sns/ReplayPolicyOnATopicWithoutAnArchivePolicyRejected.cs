@@ -22,7 +22,6 @@ public sealed class ReplayPolicyOnATopicWithoutAnArchivePolicyRejected
     [Test]
     [DisplayName("sns.replay-policy-on-a-topic-without-an-archive-policy-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsArchive, "a topic with an ArchivePolicy reports no BeginningArchiveTime")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
