@@ -16,7 +16,6 @@ public sealed class MaxMessageSize
     [Test]
     [DisplayName("sqs.max-message-size")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Protocol, "expected a 413 (request entity too large) for a 2MB body, got InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

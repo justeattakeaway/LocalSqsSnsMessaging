@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text;
+using LocalSqsSnsMessaging.Http;
 using LocalSqsSnsMessaging.Http.Handlers;
 using Microsoft.AspNetCore.Http;
 
@@ -39,7 +40,8 @@ internal sealed class AwsBridgeMiddleware
 
             // A GET with the parameters in the query string (e.g. an SNS SubscribeURL) is a valid
             // Query-protocol request; present the query to the handler as if it were the body.
-            if (bodyLength == 0 && context.Request.QueryString.HasValue)
+            var parametersInUrl = bodyLength == 0 && context.Request.QueryString.HasValue;
+            if (parametersInUrl)
             {
                 bodyBuffer = Encoding.UTF8.GetBytes(context.Request.QueryString.Value!.TrimStart('?'));
                 bodyLength = bodyBuffer.Length;
@@ -49,20 +51,34 @@ internal sealed class AwsBridgeMiddleware
             {
                 context.Response.Headers["x-amzn-RequestId"] = Guid.NewGuid().ToString();
 
-                // Both SQS and EventBridge use the JSON protocol with an x-amz-target header;
-                // the service is identified by the target's prefix (AmazonSQS.* vs AWSEvents.*).
-                if (TryGetJsonTarget(context.Request, out var targetService, out var jsonOperation))
+                var mediaType = MediaTypeOf(context.Request.ContentType);
+                var hasTarget = TryGetJsonTarget(context.Request, out var targetService, out var jsonOperation);
+
+                // SQS and EventBridge use the JSON protocol with an x-amz-target header, told apart
+                // by the target's prefix (AmazonSQS.* vs AWSEvents.*). SNS, and SQS too, speak the
+                // AWS Query protocol: form-encoded parameters, told apart by their API Version.
+                if (hasTarget && string.Equals(targetService, "AWSEvents", StringComparison.Ordinal))
                 {
-                    if (string.Equals(targetService, "AWSEvents", StringComparison.Ordinal))
+                    await EventBridgeOperationHandler.HandleAsync(
+                        context, bodyBuffer, bodyLength, jsonOperation, bus, cancellationToken).ConfigureAwait(false);
+                }
+                else if (SqsWireProtocol.IsForm(mediaType) || parametersInUrl)
+                {
+                    var parameters = QueryStringParser.Parse(bodyBuffer.AsSpan(0, bodyLength));
+                    if (SqsWireProtocol.IsSqsQueryRequest(parameters, context.Request.Headers.Authorization.ToString()))
                     {
-                        await EventBridgeOperationHandler.HandleAsync(
-                            context, bodyBuffer, bodyLength, jsonOperation, bus, cancellationToken).ConfigureAwait(false);
+                        await HandleSqsQueryAsync(context, bodyBuffer, bodyLength, parameters, bus, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
-                        await SqsOperationHandler.HandleAsync(
-                            context, bodyBuffer, bodyLength, jsonOperation, bus, cancellationToken).ConfigureAwait(false);
+                        var operationName = ExtractSnsOperationName(context.Request, bodyBuffer, bodyLength);
+                        await SnsOperationHandler.HandleAsync(
+                            context, bodyBuffer, bodyLength, operationName, bus, cancellationToken).ConfigureAwait(false);
                     }
+                }
+                else if (hasTarget || SqsWireProtocol.IsJson(mediaType))
+                {
+                    await HandleSqsJsonAsync(context, bodyBuffer, bodyLength, mediaType, hasTarget ? jsonOperation : null, bus, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -87,6 +103,68 @@ internal sealed class AwsBridgeMiddleware
             await ms.DisposeAsync().ConfigureAwait(false);
             ArrayPool<byte>.Shared.Return(initialBuffer, clearArray: true);
         }
+    }
+
+    /// <summary>
+    /// An SQS request over the JSON protocol. As in <c>InMemoryAwsHttpMessageHandler</c>, a target
+    /// sent with any Content-Type but <c>application/x-amz-json-1.0</c>, or that Content-Type without
+    /// a known target, is refused as an unknown operation; an oversized body with HTTP 413.
+    /// </summary>
+    private static async Task HandleSqsJsonAsync(
+        HttpContext context, byte[] body, int bodyLength, string? mediaType, string? operation, InMemoryAwsBus bus, CancellationToken cancellationToken)
+    {
+        if (SqsWireProtocol.IsTooLarge(body.AsSpan(0, bodyLength), isForm: false))
+        {
+            await WriteRefusalAsync(context, SqsWireProtocol.RequestEntityTooLargeStatus, SqsWireProtocol.RequestEntityTooLargeBody, "text/html", cancellationToken).ConfigureAwait(false);
+        }
+        else if (!SqsWireProtocol.IsJson(mediaType))
+        {
+            await WriteRefusalAsync(context, SqsWireProtocol.UnknownOperationXmlStatus, SqsWireProtocol.UnknownOperationXml, "application/xml", cancellationToken).ConfigureAwait(false);
+        }
+        else if (operation is null || !SqsQueryOperationHandler.IsOperation(operation))
+        {
+            await WriteRefusalAsync(context, SqsWireProtocol.UnknownOperationJsonStatus, SqsWireProtocol.UnknownOperationJson, SqsWireProtocol.JsonContentType, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            await SqsOperationHandler.HandleAsync(context, body, bodyLength, operation, bus, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>An SQS request over the AWS Query protocol: form-encoded parameters, an XML response.</summary>
+    private static async Task HandleSqsQueryAsync(
+        HttpContext context, byte[] body, int bodyLength, Dictionary<string, string> parameters, InMemoryAwsBus bus, CancellationToken cancellationToken)
+    {
+        if (SqsWireProtocol.IsTooLarge(body.AsSpan(0, bodyLength), isForm: true))
+        {
+            await WriteRefusalAsync(context, SqsWireProtocol.RequestEntityTooLargeStatus, SqsWireProtocol.RequestEntityTooLargeBody, "text/html", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        using var buffer = PooledArrayBufferWriter.Rent();
+        var status = await SqsQueryOperationHandler.HandleAsync(parameters, bus, buffer.Writer, cancellationToken).ConfigureAwait(false);
+        context.Response.StatusCode = (int)status;
+        context.Response.ContentType = SqsQueryOperationHandler.ContentType;
+        await context.Response.Body.WriteAsync(buffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task WriteRefusalAsync(HttpContext context, System.Net.HttpStatusCode status, string body, string contentType, CancellationToken cancellationToken)
+    {
+        context.Response.StatusCode = (int)status;
+        context.Response.ContentType = contentType;
+        await context.Response.Body.WriteAsync(SqsWireProtocol.Utf8(body), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The media type of a Content-Type header, without its parameters.</summary>
+    private static string? MediaTypeOf(string? contentType)
+    {
+        if (string.IsNullOrEmpty(contentType))
+        {
+            return null;
+        }
+
+        var semicolon = contentType.IndexOf(';', StringComparison.Ordinal);
+        return (semicolon >= 0 ? contentType[..semicolon] : contentType).Trim();
     }
 
     private InMemoryAwsBus ResolveBus(HttpRequest request)

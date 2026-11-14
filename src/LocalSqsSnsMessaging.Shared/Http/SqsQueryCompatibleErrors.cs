@@ -46,10 +46,13 @@ internal static class SqsQueryCompatibleErrors
         ["UnsupportedOperation"] = "AWS.SimpleQueueService.UnsupportedOperation",
     };
 
+    /// <summary>The Query-protocol error code for the JSON error code <paramref name="errorCode"/>.</summary>
+    public static string QueryCode(string errorCode) => QueryErrorCodes.GetValueOrDefault(errorCode, errorCode);
+
     /// <summary>The <see cref="HeaderName"/> value for an error with the given JSON code and status.</summary>
     public static string HeaderValue(string errorCode, HttpStatusCode statusCode)
     {
-        var queryCode = QueryErrorCodes.GetValueOrDefault(errorCode, errorCode);
+        var queryCode = QueryCode(errorCode);
         var fault = (int)statusCode >= 500 ? "Receiver" : "Sender";
         return $"{queryCode};{fault}";
     }

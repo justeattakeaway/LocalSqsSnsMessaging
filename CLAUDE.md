@@ -101,6 +101,7 @@ The HTTP mode implements two different AWS protocols:
    - Request/Response: JSON with camelCase properties
    - Operations identified by `X-Amz-Target` header
    - Example: `{"QueueUrl": "...", "MaxNumberOfMessages": 10}`
+   - SQS also serves the AWS Query protocol (it is `awsQueryCompatible`): form-encoded `Action=...&Version=2012-11-05`, XML responses in the `http://queue.amazonaws.com/doc/2012-11-05/` namespace, flattened lists/maps (`Attribute.1.Name`, `MessageAttribute.1.Value.DataType`). Both protocols share queue state. `SqsWireProtocol` holds the routing rules (Content-Type picks the protocol; a JSON POST without a known target, or a target with another Content-Type, is refused as `UnknownOperationException`; a body over 2 MiB once decoded gets HTTP 413) for both the in-memory handler and the server. The server tells SQS Query from SNS Query by `Version` (or the SigV4 scope).
 
 2. **SNS - Query Protocol:**
    - Content-Type: `application/x-www-form-urlencoded`
@@ -197,7 +198,7 @@ Operation handlers in `src/LocalSqsSnsMessaging/Http/Handlers/Generated/` are au
 - `SqsOperationHandler.g.cs` - JSON protocol handler for SQS operations
 - `SnsOperationHandler.g.cs` - Query protocol handler for SNS operations
 - `SnsQuerySerializers.g.cs` - Query string deserializers for SNS request parameters
-- `SqsQuerySerializers.g.cs` - Query string deserializers for SQS request parameters
+- `SqsQuerySerializers.g.cs` / `SqsQueryOperationHandler.g.cs` - SQS Query protocol serializers and dispatcher, from `tools/GenerateHandlers/SqsQueryCodeGenerator.cs`. The SQS model is the JSON one and has lost the Query wire names, so the generator restores them from its `WireNames` table
 
 **Regenerate handlers:**
 ```bash

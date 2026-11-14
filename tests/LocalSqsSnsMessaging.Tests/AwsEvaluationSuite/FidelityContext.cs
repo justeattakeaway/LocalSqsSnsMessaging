@@ -286,7 +286,7 @@ public sealed class FidelityContext : IAsyncDisposable
         }
         catch (AmazonServiceException ex)
         {
-            return new AwsError(ex.ErrorCode, ex.Message, ex.StatusCode, ex);
+            return AwsError.From(ex);
         }
     }
 
@@ -303,7 +303,7 @@ public sealed class FidelityContext : IAsyncDisposable
         }
         catch (AmazonServiceException ex)
         {
-            return (null, new AwsError(ex.ErrorCode, ex.Message, ex.StatusCode, ex));
+            return (null, AwsError.From(ex));
         }
     }
 
@@ -381,6 +381,20 @@ public sealed class FidelityContext : IAsyncDisposable
 /// <summary>What botocore puts in <c>ClientError.response["Error"]</c>: the wire error code and message.</summary>
 public sealed record AwsError(string? Code, string? Message, System.Net.HttpStatusCode StatusCode, AmazonServiceException Exception)
 {
+    /// <summary>
+    /// The error botocore would report for <paramref name="ex"/>. When an error response carries no
+    /// AWS error code (say, a front end's HTML page for HTTP 413), botocore reports the HTTP status
+    /// code as the code (<c>str(status_code)</c> in its parsers); the .NET SDK leaves it empty.
+    /// </summary>
+    public static AwsError From(AmazonServiceException ex)
+    {
+        ArgumentNullException.ThrowIfNull(ex);
+        var code = string.IsNullOrEmpty(ex.ErrorCode) && ex.StatusCode != 0
+            ? ((int)ex.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : ex.ErrorCode;
+        return new AwsError(code, ex.Message, ex.StatusCode, ex);
+    }
+
     public override string ToString() => $"({Code}, {Message})";
 }
 
