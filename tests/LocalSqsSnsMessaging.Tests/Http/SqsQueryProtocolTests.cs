@@ -165,6 +165,21 @@ public sealed class SqsQueryProtocolTests : IDisposable
     }
 
     [Test]
+    public async Task ReceiveMessage_OverQuery_KeepsCarriageReturnsInTheBodyItsMd5Describes()
+    {
+        var url = (await _sqs.CreateQueueAsync("query-carriage-return")).QueueUrl;
+        const string Body = "a\rb\r\nc";
+        var sent = await _sqs.SendMessageAsync(url, Body);
+
+        var (status, root) = await QueryAsync(("Action", "ReceiveMessage"), ("QueueUrl", url));
+
+        status.ShouldBe(HttpStatusCode.OK);
+        var message = root.Descendants(Ns + "Message").ShouldHaveSingleItem();
+        message.Element(Ns + "Body")!.Value.ShouldBe(Body);
+        message.Element(Ns + "MD5OfBody")!.Value.ShouldBe(sent.MD5OfMessageBody);
+    }
+
+    [Test]
     public async Task Get_WithTheQueryParametersInTheUrl_IsServedLikeAPost()
     {
         var url = (await _sqs.CreateQueueAsync("query-get")).QueueUrl;

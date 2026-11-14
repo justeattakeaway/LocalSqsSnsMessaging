@@ -57,7 +57,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeAddPermissionResponse(AddPermissionResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("AddPermissionResponse", XmlNamespace);
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -78,7 +78,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeCancelMessageMoveTaskResponse(CancelMessageMoveTaskResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("CancelMessageMoveTaskResponse", XmlNamespace);
         writer.WriteStartElement("CancelMessageMoveTaskResult");
         if (response.ApproximateNumberOfMessagesMoved.HasValue) writer.WriteElementString("ApproximateNumberOfMessagesMoved", response.ApproximateNumberOfMessagesMoved.Value.ToString(CultureInfo.InvariantCulture));
@@ -108,7 +108,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeChangeMessageVisibilityResponse(ChangeMessageVisibilityResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("ChangeMessageVisibilityResponse", XmlNamespace);
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -144,7 +144,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeChangeMessageVisibilityBatchResponse(ChangeMessageVisibilityBatchResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("ChangeMessageVisibilityBatchResponse", XmlNamespace);
         writer.WriteStartElement("ChangeMessageVisibilityBatchResult");
         if (response.Successful is { Count: > 0 } v14List)
@@ -213,7 +213,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeCreateQueueResponse(CreateQueueResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("CreateQueueResponse", XmlNamespace);
         writer.WriteStartElement("CreateQueueResult");
         if (response.QueueUrl != null) writer.WriteElementString("QueueUrl", response.QueueUrl);
@@ -240,7 +240,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeDeleteMessageResponse(DeleteMessageResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("DeleteMessageResponse", XmlNamespace);
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -276,7 +276,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeDeleteMessageBatchResponse(DeleteMessageBatchResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("DeleteMessageBatchResponse", XmlNamespace);
         writer.WriteStartElement("DeleteMessageBatchResult");
         if (response.Successful is { Count: > 0 } v26List)
@@ -313,7 +313,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeDeleteQueueResponse(DeleteQueueResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("DeleteQueueResponse", XmlNamespace);
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -348,7 +348,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeGetQueueAttributesResponse(GetQueueAttributesResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("GetQueueAttributesResponse", XmlNamespace);
         writer.WriteStartElement("GetQueueAttributesResult");
         if (response.Attributes is { Count: > 0 } v32Map)
@@ -384,7 +384,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeGetQueueUrlResponse(GetQueueUrlResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("GetQueueUrlResponse", XmlNamespace);
         writer.WriteStartElement("GetQueueUrlResult");
         if (response.QueueUrl != null) writer.WriteElementString("QueueUrl", response.QueueUrl);
@@ -414,7 +414,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeListDeadLetterSourceQueuesResponse(ListDeadLetterSourceQueuesResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("ListDeadLetterSourceQueuesResponse", XmlNamespace);
         writer.WriteStartElement("ListDeadLetterSourceQueuesResult");
         if (response.QueueUrls is { Count: > 0 } v38List)
@@ -448,7 +448,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeListMessageMoveTasksResponse(ListMessageMoveTasksResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("ListMessageMoveTasksResponse", XmlNamespace);
         writer.WriteStartElement("ListMessageMoveTasksResult");
         if (response.Results is { Count: > 0 } v41List)
@@ -478,7 +478,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeListQueueTagsResponse(ListQueueTagsResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("ListQueueTagsResponse", XmlNamespace);
         writer.WriteStartElement("ListQueueTagsResult");
         if (response.Tags is { Count: > 0 } v43Map)
@@ -517,7 +517,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeListQueuesResponse(ListQueuesResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("ListQueuesResponse", XmlNamespace);
         writer.WriteStartElement("ListQueuesResult");
         if (response.QueueUrls is { Count: > 0 } v47List)
@@ -548,7 +548,7 @@ internal static class SqsQuerySerializers
     internal static void SerializePurgeQueueResponse(PurgeQueueResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("PurgeQueueResponse", XmlNamespace);
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -623,7 +623,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeReceiveMessageResponse(ReceiveMessageResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("ReceiveMessageResponse", XmlNamespace);
         writer.WriteStartElement("ReceiveMessageResult");
         if (response.Messages is { Count: > 0 } v60List)
@@ -656,7 +656,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeRemovePermissionResponse(RemovePermissionResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("RemovePermissionResponse", XmlNamespace);
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -719,7 +719,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeSendMessageResponse(SendMessageResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("SendMessageResponse", XmlNamespace);
         writer.WriteStartElement("SendMessageResult");
         if (response.MD5OfMessageBody != null) writer.WriteElementString("MD5OfMessageBody", response.MD5OfMessageBody);
@@ -762,7 +762,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeSendMessageBatchResponse(SendMessageBatchResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("SendMessageBatchResponse", XmlNamespace);
         writer.WriteStartElement("SendMessageBatchResult");
         if (response.Successful is { Count: > 0 } v75List)
@@ -815,7 +815,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeSetQueueAttributesResponse(SetQueueAttributesResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("SetQueueAttributesResponse", XmlNamespace);
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -842,7 +842,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeStartMessageMoveTaskResponse(StartMessageMoveTaskResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("StartMessageMoveTaskResponse", XmlNamespace);
         writer.WriteStartElement("StartMessageMoveTaskResult");
         if (response.TaskHandle != null) writer.WriteElementString("TaskHandle", response.TaskHandle);
@@ -882,7 +882,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeTagQueueResponse(TagQueueResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("TagQueueResponse", XmlNamespace);
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -917,7 +917,7 @@ internal static class SqsQuerySerializers
     internal static void SerializeUntagQueueResponse(UntagQueueResponse response, IBufferWriter<byte> buffer)
     {
         using var stream = new BufferWriterStream(buffer);
-        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });
+        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("UntagQueueResponse", XmlNamespace);
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());

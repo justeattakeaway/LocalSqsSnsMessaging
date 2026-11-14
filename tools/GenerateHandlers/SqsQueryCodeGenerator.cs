@@ -248,7 +248,7 @@ internal sealed class SqsQueryCodeGenerator
         code.AppendLine($"    internal static void Serialize{opName}Response({opName}Response response, IBufferWriter<byte> buffer)");
         code.AppendLine("    {");
         code.AppendLine("        using var stream = new BufferWriterStream(buffer);");
-        code.AppendLine("        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false });");
+        code.AppendLine("        using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });");
         code.AppendLine($"        writer.WriteStartElement(\"{opName}Response\", XmlNamespace);");
         if (shapeName is not null)
         {

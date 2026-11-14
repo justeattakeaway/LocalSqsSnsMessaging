@@ -7,7 +7,9 @@ using LocalSqsSnsMessaging.Sqs.Model;
 
 namespace LocalSqsSnsMessaging;
 
+#pragma warning disable CA1001 // _fifoDelayChanged is a cancel-only signal: never linked or timed, so it holds nothing to dispose.
 internal sealed class SqsQueueResource
+#pragma warning restore CA1001
 {
     public required string Name { get; init; }
     public required string Region { get; init; }
@@ -292,6 +294,63 @@ internal sealed class SqsQueueResource
         SignalFifoMessageAvailable();
     }
 
+    /// <summary>Per-group locks held across a FIFO send, so a group's sequence numbers follow its enqueue order.</summary>
+    private readonly ConcurrentDictionary<string, object> _fifoSendLocks = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Sends <paramref name="message"/> to FIFO group <paramref name="messageGroupId"/>: assigns its sequence
+    /// number, claims <paramref name="deduplicationId"/>, and enqueues it, after the queue's
+    /// <see cref="DelaySeconds"/> when there is one.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> when the message was enqueued; <see langword="false"/> when it was a duplicate,
+    /// in which case <paramref name="original"/> is the message that claimed the deduplication id.
+    /// </returns>
+    public bool TryEnqueueFifoSend(Message message, string messageGroupId, string deduplicationId,
+        bool perMessageGroupDeduplication, TimeProvider timeProvider, out SqsDeduplicationCache.Entry original)
+    {
+        // Numbering and enqueuing under one lock keeps concurrent sends to a group in sequence order.
+        lock (_fifoSendLocks.GetOrAdd(messageGroupId, _ => new object()))
+        {
+            // The sequence number is fixed at send time, as in SQS (not when a delay ends).
+            var sequenceNumber = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
+            message.Attributes ??= [];
+            message.Attributes["SequenceNumber"] = sequenceNumber;
+
+            if (!DeduplicationFor(messageGroupId, perMessageGroupDeduplication)
+                    .TryClaim(deduplicationId, message.MessageId!, sequenceNumber, timeProvider.GetUtcNow(), out original))
+            {
+                return false;
+            }
+
+            if (DelaySeconds > 0)
+            {
+                // FIFO queues only support a queue-level delay.
+                EnqueueAfterDelay(message, TimeSpan.FromSeconds(DelaySeconds), timeProvider, messageGroupId);
+            }
+            else
+            {
+                EnqueueFifoMessage(messageGroupId, message);
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>Cancelled, and replaced, when a FIFO queue's <see cref="DelaySeconds"/> changes, waking delayed messages.</summary>
+    private CancellationTokenSource _fifoDelayChanged = new();
+
+    /// <summary>
+    /// Applies a changed <see cref="DelaySeconds"/> to a FIFO queue's messages already waiting: those now due
+    /// are released, and the rest wait out the new delay rather than the one they were sent with.
+    /// </summary>
+    public void FifoDelaySecondsChanged(TimeProvider timeProvider)
+    {
+        // Not disposed: a delayed message may have read its token and not yet registered on it.
+        Interlocked.Exchange(ref _fifoDelayChanged, new CancellationTokenSource()).Cancel();
+        ReleaseDueFifoMessages(timeProvider);
+    }
+
     /// <summary>
     /// Makes <paramref name="message"/> visible once <paramref name="delay"/> has elapsed, counting it as
     /// delayed until then. A FIFO message (non-null <paramref name="fifoMessageGroupId"/>) joins its group.
@@ -321,12 +380,25 @@ internal sealed class SqsQueueResource
             // Timers can fire a little early; a delayed message must never be visible before
             // its full delay has elapsed. A FIFO queue's delay is whatever the queue's is now,
             // so a change applies to messages already waiting.
-            var remaining = delay;
-            while (remaining > TimeSpan.Zero)
+            while (true)
             {
-                await timeProvider.Delay(remaining).ConfigureAwait(false);
+                // Read before the delay, so a change made after it is read wakes this wait.
+                var delayChanged = fifoMessageGroupId is null ? CancellationToken.None : Volatile.Read(ref _fifoDelayChanged).Token;
                 var currentDelay = fifoMessageGroupId is null ? delay : TimeSpan.FromSeconds(DelaySeconds);
-                remaining = currentDelay - timeProvider.GetElapsedTime(start);
+                var remaining = currentDelay - timeProvider.GetElapsedTime(start);
+                if (remaining <= TimeSpan.Zero)
+                {
+                    break;
+                }
+
+                try
+                {
+                    await timeProvider.Delay(remaining, delayChanged).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (delayChanged.IsCancellationRequested)
+                {
+                    // The queue's delay changed: recompute what is left of it.
+                }
             }
 
             if (fifoMessageGroupId is not null)
@@ -342,7 +414,7 @@ internal sealed class SqsQueueResource
     }
 
     /// <summary>Releases every group's delayed FIFO messages that are due, as after the queue's delay is lowered.</summary>
-    public void ReleaseDueFifoMessages(TimeProvider timeProvider)
+    private void ReleaseDueFifoMessages(TimeProvider timeProvider)
     {
         List<string> groups;
         lock (_delayedFifoMessages)

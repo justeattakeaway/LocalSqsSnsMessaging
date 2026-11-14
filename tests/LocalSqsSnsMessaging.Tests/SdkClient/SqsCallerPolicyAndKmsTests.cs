@@ -151,6 +151,28 @@ public sealed class SqsCallerPolicyAndKmsTests
     }
 
     [Test]
+    public async Task Deny_WithANegatedConditionOnAKeyTheLibraryDoesNotModel_IsNotEnforced()
+    {
+        var bus = new InMemoryAwsBus();
+        using var sqs = bus.CreateSqsClient();
+        var url = (await sqs.CreateQueueAsync("deny-unmodelled-key")).QueueUrl;
+        var arn = await QueueArn(sqs, url);
+        // A common organization guardrail: the request has no modelled aws:PrincipalOrgID, so the
+        // statement cannot be evaluated and is skipped, not applied as if the key were absent.
+        await sqs.SetQueueAttributesAsync(url, new() { ["Policy"] = Policy(new JsonObject
+        {
+            ["Effect"] = "Deny",
+            ["Principal"] = "*",
+            ["Action"] = "sqs:*",
+            ["Resource"] = arn,
+            ["Condition"] = new JsonObject { ["StringNotEquals"] = new JsonObject { ["aws:PrincipalOrgID"] = "o-abc123" } },
+        }) });
+
+        await sqs.SendMessageAsync(url, "allowed");
+        await sqs.SetQueueAttributesAsync(url, new() { ["Policy"] = "" });
+    }
+
+    [Test]
     public async Task Deny_ConditionedOnSourceIp_MatchesTheInProcessLoopbackAddress()
     {
         var bus = new InMemoryAwsBus();

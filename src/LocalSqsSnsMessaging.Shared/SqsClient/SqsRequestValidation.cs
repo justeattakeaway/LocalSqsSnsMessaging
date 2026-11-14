@@ -416,17 +416,57 @@ internal static class SqsRequestValidation
     /// A Number attribute as SQS stores it: exponent notation is written out in plain notation
     /// (<c>1e3</c> reads back as <c>1000</c>); any other form is kept as sent.
     /// </summary>
+    /// <remarks>
+    /// The expansion is exact, digit for digit, as Java's <c>BigDecimal.toPlainString()</c> writes it
+    /// (<c>1.50e1</c> reads back as <c>15.0</c>, <c>1e-30</c> as <c>0.000…1</c>). A value whose plain form
+    /// would be longer than <see cref="MaxPlainNumberLength"/> characters is kept as sent.
+    /// </remarks>
     public static string NormalizeNumber(string number)
     {
-        if (number.IndexOfAny(['e', 'E']) < 0)
+        var exponentAt = number.IndexOfAny(['e', 'E']);
+        if (exponentAt < 0
+            || !int.TryParse(number[(exponentAt + 1)..], NumberStyles.AllowLeadingSign, NumberFormatInfo.InvariantInfo, out var exponent)
+            || Math.Abs((long)exponent) > MaxPlainNumberLength * 2L)
         {
             return number;
         }
 
-        return decimal.TryParse(number, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var value)
-            ? value.ToString(NumberFormatInfo.InvariantInfo)
-            : number;
+        var mantissa = number[..exponentAt];
+        var negative = mantissa.Length > 0 && mantissa[0] == '-';
+        mantissa = mantissa.TrimStart('+', '-');
+        var point = mantissa.IndexOf('.', StringComparison.Ordinal);
+        var fractionDigits = point < 0 ? 0 : mantissa.Length - point - 1;
+        var unscaled = mantissa.Replace(".", string.Empty, StringComparison.Ordinal).TrimStart('0');
+        var scale = fractionDigits - exponent;
+
+        if (unscaled.Length == 0)
+        {
+            // Zero has no sign; its plain form keeps only a positive scale.
+            return scale > 0 && scale <= MaxPlainNumberLength ? "0." + new string('0', scale) : "0";
+        }
+
+        var plainLength = scale <= 0 ? unscaled.Length - scale : Math.Max(unscaled.Length, scale + 1) + 1;
+        if (plainLength > MaxPlainNumberLength)
+        {
+            return number;
+        }
+
+        string plain;
+        if (scale <= 0)
+        {
+            plain = unscaled + new string('0', -scale);
+        }
+        else
+        {
+            var digits = unscaled.PadLeft(scale + 1, '0');
+            plain = digits[..^scale] + "." + digits[^scale..];
+        }
+
+        return negative ? "-" + plain : plain;
     }
+
+    /// <summary>The longest plain-notation Number <see cref="NormalizeNumber"/> writes out.</summary>
+    private const int MaxPlainNumberLength = 256;
 
     private static AwsServiceException? ValidateSystemAttributes(Dictionary<string, MessageSystemAttributeValue>? attributes)
     {

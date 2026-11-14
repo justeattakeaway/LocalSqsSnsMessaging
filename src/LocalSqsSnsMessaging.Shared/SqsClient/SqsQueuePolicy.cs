@@ -204,7 +204,13 @@ internal static class SqsQueuePolicy
 
             foreach (var (key, expected) in keys)
             {
-                var result = EvaluateOperator(op, ContextValue(key, request), Values(expected).ToList());
+                if (!TryGetContextValue(key, request, out var actual))
+                {
+                    // A key the library does not model cannot be evaluated, so the statement is skipped.
+                    return null;
+                }
+
+                var result = EvaluateOperator(op, actual, Values(expected).ToList());
                 if (result != true)
                 {
                     return result;
@@ -279,17 +285,37 @@ internal static class SqsQueuePolicy
         return negated ? !any : any;
     }
 
-    /// <summary>The request's value for a global condition key, or <see langword="null"/> when it has none.</summary>
-    private static string? ContextValue(string key, RequestContext request) => key.ToUpperInvariant() switch
+    /// <summary>
+    /// The request's value for a global condition key (<see langword="null"/> when the request has none);
+    /// <see langword="false"/> when the library does not model the key at all.
+    /// </summary>
+    private static bool TryGetContextValue(string key, RequestContext request, out string? value)
     {
-        "AWS:SOURCEIP" => request.SourceIp?.ToString(),
-        "AWS:SECURETRANSPORT" => request.SecureTransport ? "true" : "false",
-        "AWS:PRINCIPALACCOUNT" => request.PrincipalAccount,
-        "AWS:PRINCIPALARN" => request.PrincipalArn,
-        "AWS:PRINCIPALTYPE" => request.IsAnonymous ? "Anonymous" : "Account",
-        "AWS:USERID" => request.IsAnonymous ? "anonymous" : request.PrincipalAccount,
-        _ => null,
-    };
+        switch (key.ToUpperInvariant())
+        {
+            case "AWS:SOURCEIP":
+                value = request.SourceIp?.ToString();
+                return true;
+            case "AWS:SECURETRANSPORT":
+                value = request.SecureTransport ? "true" : "false";
+                return true;
+            case "AWS:PRINCIPALACCOUNT":
+                value = request.PrincipalAccount;
+                return true;
+            case "AWS:PRINCIPALARN":
+                value = request.PrincipalArn;
+                return true;
+            case "AWS:PRINCIPALTYPE":
+                value = request.IsAnonymous ? "Anonymous" : "Account";
+                return true;
+            case "AWS:USERID":
+                value = request.IsAnonymous ? "anonymous" : request.PrincipalAccount;
+                return true;
+            default:
+                value = null;
+                return false;
+        }
+    }
 
     /// <summary>Whether <paramref name="address"/> is within <paramref name="cidr"/>; <see langword="null"/> when either is malformed.</summary>
     internal static bool? InCidr(string cidr, string address)

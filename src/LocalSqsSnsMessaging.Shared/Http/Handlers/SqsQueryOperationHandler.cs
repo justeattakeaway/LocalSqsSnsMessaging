@@ -79,7 +79,7 @@ internal static partial class SqsQueryOperationHandler
     private static HttpStatusCode WriteError(IBufferWriter<byte> output, string code, string message, HttpStatusCode statusCode)
     {
         using var stream = new BufferWriterStream(output);
-        using (var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false }))
+        using (var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize }))
         {
             writer.WriteStartElement("ErrorResponse", SqsQuerySerializers.XmlNamespace);
             writer.WriteStartElement("Error");

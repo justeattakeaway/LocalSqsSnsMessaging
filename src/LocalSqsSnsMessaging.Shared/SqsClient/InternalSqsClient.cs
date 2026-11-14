@@ -552,13 +552,12 @@ internal sealed partial class InternalSqsClient
     public async Task<ReceiveMessageResponse> ReceiveMessageAsync(ReceiveMessageRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await ReceiveMessageCoreAsync(request, cancellationToken).ConfigureAwait(true);
+        var (response, queue, visibilityTimeout) = await ReceiveMessageCoreAsync(request, cancellationToken).ConfigureAwait(true);
 
         // Messages received with a zero visibility timeout are visible again as soon as the
-        // receive returns, as on SQS.
-        if (response.Messages is { Count: > 0 } received
-            && Queues.TryGetValue(GetQueueNameFromUrl(request.QueueUrl!), out var queue)
-            && (request.VisibilityTimeout is { } requested ? requested == 0 : queue.VisibilityTimeout == TimeSpan.Zero))
+        // receive returns, as on SQS. The timeout is the one the receive applied: the queue's may
+        // have changed during a long poll.
+        if (response.Messages is { Count: > 0 } received && visibilityTimeout == TimeSpan.Zero)
         {
             foreach (var message in received)
             {
@@ -569,8 +568,9 @@ internal sealed partial class InternalSqsClient
         return response;
     }
 
-    private async Task<ReceiveMessageResponse> ReceiveMessageCoreAsync(ReceiveMessageRequest request,
-        CancellationToken cancellationToken)
+    /// <returns>The response, the queue it was served from, and the visibility timeout given to its messages.</returns>
+    private async Task<(ReceiveMessageResponse Response, SqsQueueResource Queue, TimeSpan VisibilityTimeout)> ReceiveMessageCoreAsync(
+        ReceiveMessageRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -603,10 +603,10 @@ internal sealed partial class InternalSqsClient
             if (messages is not null && messages.Count > 0 || waitTime == TimeSpan.Zero)
             {
                 _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ReceiveMessage, queue.Arn);
-                return new ReceiveMessageResponse
+                return (new ReceiveMessageResponse
                 {
                     Messages = messages.ToInitializedList()
-                }.SetCommonProperties();
+                }.SetCommonProperties(), queue, visibilityTimeout);
             }
 
             using var receiveTimeout = _bus.TimeProvider.CreateCancellationTokenSource(waitTime);
@@ -647,7 +647,7 @@ internal sealed partial class InternalSqsClient
             if (request.ReceiveRequestAttemptId is { } attemptId && TryReplayReceiveAttempt(queue, attemptId, visibilityTimeout) is { } replayed)
             {
                 _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ReceiveMessage, queue.Arn);
-                return new ReceiveMessageResponse { Messages = replayed }.SetCommonProperties();
+                return (new ReceiveMessageResponse { Messages = replayed }.SetCommonProperties(), queue, visibilityTimeout);
             }
 
             messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, requestedSystemAttributes, requestedMessageAttributes);
@@ -708,10 +708,10 @@ internal sealed partial class InternalSqsClient
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ReceiveMessage, queue.Arn);
-        return new ReceiveMessageResponse
+        return (new ReceiveMessageResponse
         {
             Messages = messages.ToInitializedList(),
-        }.SetCommonProperties();
+        }.SetCommonProperties(), queue, visibilityTimeout);
 
         void ReadAvailableMessages()
         {
@@ -985,7 +985,9 @@ internal sealed partial class InternalSqsClient
 #pragma warning disable CA1308
         var guid = Guid.NewGuid().ToString().ToLowerInvariant();
 #pragma warning restore CA1308
-        var decodedReceiptHandle = $"{guid} {queue.Arn} {message.MessageId} {_bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds() / 1000.0} {queue.Incarnation}";
+        // Invariant: TryParseReceiptHandle reads the timestamp back with the invariant culture.
+        var decodedReceiptHandle = FormattableString.Invariant(
+            $"{guid} {queue.Arn} {message.MessageId} {_bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds() / 1000.0} {queue.Incarnation}");
         return Convert.ToBase64String(Encoding.UTF8.GetBytes(decodedReceiptHandle));
     }
 
@@ -1173,27 +1175,7 @@ internal sealed partial class InternalSqsClient
 
         message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
-        // The sequence number is fixed at send time, as in SQS (not when a delay ends).
-        var sequenceNumber = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
-        message.Attributes["SequenceNumber"] = sequenceNumber;
-
-        if (!queue.DeduplicationFor(messageGroupId, IsFairQueue(queue))
-                .TryClaim(deduplicationId, message.MessageId!, sequenceNumber, timeProvider.GetUtcNow(), out original))
-        {
-            return false;
-        }
-
-        if (queue.DelaySeconds > 0)
-        {
-            // FIFO queues only support a queue-level delay.
-            queue.EnqueueAfterDelay(message, TimeSpan.FromSeconds(queue.DelaySeconds), timeProvider, messageGroupId);
-        }
-        else
-        {
-            queue.EnqueueFifoMessage(messageGroupId, message);
-        }
-
-        return true;
+        return queue.TryEnqueueFifoSend(message, messageGroupId, deduplicationId, IsFairQueue(queue), timeProvider, out original);
     }
 
     private Message CreateMessage(string messageBody, Dictionary<string, MessageAttributeValue>? messageAttributes, Dictionary<string, MessageSystemAttributeValue>? messageSystemAttributes)
@@ -1922,8 +1904,8 @@ internal sealed partial class InternalSqsClient
         UpdateQueueProperties(queue);
         if (queue.IsFifo)
         {
-            // A FIFO queue's delay applies to messages already waiting: a lower one may release them.
-            queue.ReleaseDueFifoMessages(_bus.TimeProvider);
+            // A FIFO queue's delay applies to messages already waiting.
+            queue.FifoDelaySecondsChanged(_bus.TimeProvider);
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.SetQueueAttributes, queue.Arn);

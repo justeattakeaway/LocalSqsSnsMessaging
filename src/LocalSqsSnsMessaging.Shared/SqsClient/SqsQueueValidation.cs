@@ -227,7 +227,8 @@ internal static class SqsQueueValidation
         {
             "denyAll" => false,
             "byQueue" => policy["sourceQueueArns"] is JsonArray arns
-                         && arns.Any(arn => string.Equals(arn?.GetValue<string>(), sourceArn, StringComparison.Ordinal)),
+                         && arns.Any(arn => arn?.GetValueKind() == JsonValueKind.String
+                                            && string.Equals(arn.GetValue<string>(), sourceArn, StringComparison.Ordinal)),
             _ => true,
         };
     }
@@ -279,7 +280,13 @@ internal static class SqsQueueValidation
         var permission = policy["redrivePermission"]?.GetValueKind() == JsonValueKind.String
             ? policy["redrivePermission"]!.GetValue<string>()
             : null;
-        var sourceArnCount = (policy["sourceQueueArns"] as JsonArray)?.Count ?? 0;
+        var sourceArns = policy["sourceQueueArns"] as JsonArray;
+        if (sourceArns?.Any(arn => arn?.GetValueKind() != JsonValueKind.String) == true)
+        {
+            throw unsupported;
+        }
+
+        var sourceArnCount = sourceArns?.Count ?? 0;
         switch (permission)
         {
             case "byQueue" when sourceArnCount > MaxRedriveAllowSourceArns:

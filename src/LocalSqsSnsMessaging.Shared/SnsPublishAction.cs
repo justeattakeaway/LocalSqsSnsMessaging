@@ -228,7 +228,6 @@ internal sealed class SnsPublishAction
 
         sqsMessage.Attributes ??= [];
         sqsMessage.Attributes["MessageGroupId"] = message.MessageGroupId;
-        sqsMessage.Attributes["SequenceNumber"] = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
         sqsMessage.Attributes["SentTimestamp"] = _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
 
         var deduplicationId = message.DeduplicationId;
@@ -240,11 +239,8 @@ internal sealed class SnsPublishAction
 
         sqsMessage.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
-        if (queue.DeduplicationFor(message.MessageGroupId, IsFairQueue(queue)).TryClaim(deduplicationId, sqsMessage.MessageId,
-                sqsMessage.Attributes["SequenceNumber"], _bus.TimeProvider.GetUtcNow(), out _))
-        {
-            queue.EnqueueFifoMessage(message.MessageGroupId, sqsMessage);
-        }
+        // Applies the queue's DelaySeconds too, as for a message sent with SendMessage.
+        queue.TryEnqueueFifoSend(sqsMessage, message.MessageGroupId, deduplicationId, IsFairQueue(queue), _bus.TimeProvider, out _);
     }
 
     private static bool IsFairQueue(SqsQueueResource queue)
