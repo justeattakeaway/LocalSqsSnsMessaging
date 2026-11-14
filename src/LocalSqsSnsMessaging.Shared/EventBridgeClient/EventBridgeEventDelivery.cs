@@ -82,7 +82,7 @@ internal static class EventBridgeEventDelivery
     {
         if (rule.Archive is { } archive)
         {
-            archive.Store(@event.Envelope);
+            archive.Store(@event.Envelope, bus.TimeProvider.GetUtcNow());
             return;
         }
 

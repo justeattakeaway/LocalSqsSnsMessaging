@@ -172,4 +172,99 @@ public sealed class EventBridgeArchiveReplayScheduleTests
         schedule.NextAfter(Start).ShouldBeNull();
         await Task.CompletedTask;
     }
+
+    [Test]
+    public async Task Replay_RedeliversAnEventWhoseDetailNestsDeeperThanTheJsonDefault()
+    {
+        var (_, time, eb, sqs, queueUrl, queueArn) = await CreateAsync();
+        using var _ = sqs;
+        var busArn = (await eb.CreateEventBusAsync(new Eb.CreateEventBusRequest { Name = "orders" })).EventBusArn;
+        await eb.PutRuleAsync(new Eb.PutRuleRequest { Name = "r", EventBusName = "orders", EventPattern = """{"source":["shop"]}""" });
+        await eb.PutTargetsAsync(new Eb.PutTargetsRequest { Rule = "r", EventBusName = "orders", Targets = [new Eb.Target { Id = "q", Arn = queueArn }] });
+        var archiveArn = (await eb.CreateArchiveAsync(new Eb.CreateArchiveRequest { ArchiveName = "a", EventSourceArn = busArn })).ArchiveArn;
+
+        // PutEvents accepts a Detail up to 1000 levels deep; System.Text.Json reads 64 by default.
+        var detail = string.Concat(Enumerable.Repeat("{\"a\":", 200)) + "1" + new string('}', 200);
+        await eb.PutEventsAsync(new Eb.PutEventsRequest { Entries = [new Eb.PutEventsRequestEntry { EventBusName = "orders", Source = "shop", DetailType = "Deep", Detail = detail }] });
+        await sqs.PurgeQueueAsync(queueUrl);
+        await eb.StartReplayAsync(new Eb.StartReplayRequest
+        {
+            ReplayName = "rp",
+            EventSourceArn = archiveArn,
+            EventStartTime = Start.AddHours(-1).UtcDateTime,
+            EventEndTime = Start.AddHours(1).UtcDateTime,
+            Destination = new Eb.ReplayDestination { Arn = busArn }
+        });
+
+        time.Advance(ReplayResource.StepInterval);
+
+        var replayed = await sqs.ReceiveMessageAsync(new Amazon.SQS.Model.ReceiveMessageRequest { QueueUrl = queueUrl });
+        replayed.Messages.ShouldHaveSingleItem().Body.ShouldContain("\"replay-name\":\"rp\"");
+    }
+
+    [Test]
+    public async Task Replay_SkipsEventsTheArchiveNoLongerRetains()
+    {
+        var (_, time, eb, sqs, queueUrl, queueArn) = await CreateAsync();
+        using var _ = sqs;
+        var busArn = (await eb.CreateEventBusAsync(new Eb.CreateEventBusRequest { Name = "orders" })).EventBusArn;
+        await eb.PutRuleAsync(new Eb.PutRuleRequest { Name = "r", EventBusName = "orders", EventPattern = """{"source":["shop"]}""" });
+        await eb.PutTargetsAsync(new Eb.PutTargetsRequest { Rule = "r", EventBusName = "orders", Targets = [new Eb.Target { Id = "q", Arn = queueArn }] });
+        var archiveArn = (await eb.CreateArchiveAsync(new Eb.CreateArchiveRequest { ArchiveName = "a", EventSourceArn = busArn, RetentionDays = 1 })).ArchiveArn;
+        await eb.PutEventsAsync(new Eb.PutEventsRequest { Entries = [new Eb.PutEventsRequestEntry { EventBusName = "orders", Source = "shop", DetailType = "Old", Detail = "{}" }] });
+        await DrainAsync(sqs, queueUrl);
+
+        time.Advance(TimeSpan.FromDays(2));
+        await eb.StartReplayAsync(new Eb.StartReplayRequest
+        {
+            ReplayName = "rp",
+            EventSourceArn = archiveArn,
+            EventStartTime = Start.AddHours(-1).UtcDateTime,
+            EventEndTime = Start.AddHours(1).UtcDateTime,
+            Destination = new Eb.ReplayDestination { Arn = busArn }
+        });
+        time.Advance(ReplayResource.StepInterval);
+
+        (await DrainAsync(sqs, queueUrl)).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task ConcurrentPutRules_OfOneSchedule_FireItOncePerPeriod()
+    {
+        var (_, time, eb, sqs, queueUrl, queueArn) = await CreateAsync();
+        using var _ = sqs;
+        await Task.WhenAll(Enumerable.Range(0, 32).Select(_ => Task.Run(() =>
+            eb.PutRuleAsync(new Eb.PutRuleRequest { Name = "tick", ScheduleExpression = "rate(1 minute)" }))));
+        await eb.PutTargetsAsync(new Eb.PutTargetsRequest { Rule = "tick", Targets = [new Eb.Target { Id = "q", Arn = queueArn }] });
+
+        time.Advance(TimeSpan.FromMinutes(1));
+
+        (await DrainAsync(sqs, queueUrl)).Count.ShouldBe(1);
+    }
+
+    [Test]
+    [Arguments("rate(512409557 hours)")]
+    [Arguments("rate(10000000 days)")]
+    [Arguments("rate(2147483647 days)")]
+    public async Task RateRule_WithAPeriodPastTheCalendar_IsStoredAndNeverFires(string expression)
+    {
+        var (_, time, eb, sqs, queueUrl, queueArn) = await CreateAsync();
+        using var _ = sqs;
+        await eb.PutRuleAsync(new Eb.PutRuleRequest { Name = "never", ScheduleExpression = expression });
+        await eb.PutTargetsAsync(new Eb.PutTargetsRequest { Rule = "never", Targets = [new Eb.Target { Id = "q", Arn = queueArn }] });
+
+        time.Advance(TimeSpan.FromDays(400));
+
+        (await DrainAsync(sqs, queueUrl)).ShouldBeEmpty();
+        (await eb.DescribeRuleAsync(new Eb.DescribeRuleRequest { Name = "never" })).ScheduleExpression.ShouldBe(expression);
+    }
+
+    [Test]
+    public void Schedule_LastDayOfWeek_IsSaturday()
+    {
+        EventBridgeSchedule.TryParse("cron(0 12 ? * L *)", out var schedule).ShouldBeTrue();
+
+        // 2026-01-05 is a Monday.
+        schedule.NextAfter(Start).ShouldBe(new DateTimeOffset(2026, 1, 10, 12, 0, 0, TimeSpan.Zero));
+    }
 }

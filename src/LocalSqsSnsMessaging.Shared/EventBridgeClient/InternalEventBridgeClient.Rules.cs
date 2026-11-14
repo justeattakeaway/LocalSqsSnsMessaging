@@ -77,7 +77,6 @@ internal sealed partial class InternalEventBridgeClient
         {
             ThrowIfManagedRule(rule, request.Force);
             rule.Delete(() => eventBus.Rules.TryRemove(rule.Name, out _), ignoreTargets: rule.ManagedBy is not null);
-            rule.Schedule?.Dispose();
         }
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "DeleteRule");

@@ -61,10 +61,16 @@ internal sealed class ArchiveResource
         }
     }
 
-    /// <summary>Records an event envelope routed to the archive by its managed rule.</summary>
-    public void Store(JsonObject envelope)
+    /// <summary>
+    /// How deep an archived envelope may nest: PutEvents accepts a Detail up to 1000 levels deep,
+    /// and the envelope adds one.
+    /// </summary>
+    public const int MaxEnvelopeDepth = 1001;
+
+    /// <summary>Records an event envelope routed to the archive by its managed rule at <paramref name="now"/>.</summary>
+    public void Store(JsonObject envelope, DateTimeOffset now)
     {
-        var json = envelope.ToJsonString();
+        var json = EventBridgeJson.Serialize(envelope);
         var time = DateTimeOffset.TryParse(envelope["time"]?.GetValue<string>(), CultureInfo.InvariantCulture,
             DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed)
             ? parsed
@@ -72,17 +78,36 @@ internal sealed class ArchiveResource
 
         lock (_eventsLock)
         {
-            _events.Add(new ArchivedEvent(time, json));
+            DropExpired(now);
+            _events.Add(new ArchivedEvent(time, json, now));
             _sizeBytes += Encoding.UTF8.GetByteCount(json);
         }
     }
 
-    /// <summary>The archived envelopes whose event time falls within [start, end], oldest first.</summary>
-    public List<ArchivedEvent> EventsBetween(DateTimeOffset start, DateTimeOffset end)
+    /// <summary>The archived envelopes, still retained at <paramref name="now"/>, whose event time falls within [start, end], oldest first.</summary>
+    public List<ArchivedEvent> EventsBetween(DateTimeOffset start, DateTimeOffset end, DateTimeOffset now)
     {
         lock (_eventsLock)
         {
+            DropExpired(now);
             return [.. _events.Where(e => e.Time >= start && e.Time <= end).OrderBy(e => e.Time)];
+        }
+    }
+
+    /// <summary>Drops the events archived longer ago than <see cref="RetentionDays"/>; 0 keeps them indefinitely.</summary>
+    private void DropExpired(DateTimeOffset now)
+    {
+        if (RetentionDays <= 0)
+        {
+            return;
+        }
+
+        var cutoff = now - TimeSpan.FromDays(RetentionDays);
+        var expired = _events.TakeWhile(e => e.ArchivedAt < cutoff).ToList();
+        if (expired.Count > 0)
+        {
+            _events.RemoveRange(0, expired.Count);
+            _sizeBytes -= expired.Sum(e => (long)Encoding.UTF8.GetByteCount(e.Envelope));
         }
     }
 
@@ -100,5 +125,5 @@ internal sealed class ArchiveResource
     }
 }
 
-/// <summary>An event as an archive stored it: its event time and its envelope JSON.</summary>
-internal sealed record ArchivedEvent(DateTimeOffset Time, string Envelope);
+/// <summary>An event as an archive stored it: its event time, its envelope JSON, and when it was archived.</summary>
+internal sealed record ArchivedEvent(DateTimeOffset Time, string Envelope, DateTimeOffset ArchivedAt);

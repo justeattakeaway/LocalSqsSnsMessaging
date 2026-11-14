@@ -39,7 +39,9 @@ internal abstract class EventBridgeSchedule
     /// <summary><c>rate(value unit)</c>: fires every period, counted from when the rule was scheduled.</summary>
     private sealed class RateSchedule(TimeSpan period) : EventBridgeSchedule
     {
-        public override DateTimeOffset? NextAfter(DateTimeOffset after) => after + period;
+        // A period too long to reach before DateTimeOffset.MaxValue never fires again.
+        public override DateTimeOffset? NextAfter(DateTimeOffset after) =>
+            DateTimeOffset.MaxValue.UtcTicks - after.UtcTicks < period.Ticks ? null : after + period;
 
         public static bool TryRead(string body, out EventBridgeSchedule schedule)
         {
@@ -64,7 +66,10 @@ internal abstract class EventBridgeSchedule
                 return false;
             }
 
-            schedule = new RateSchedule(TimeSpan.FromTicks(unit.Value.Ticks * value));
+            // rate() takes any positive int; a period past TimeSpan's range never fires.
+            schedule = new RateSchedule(value > TimeSpan.MaxValue.Ticks / unit.Value.Ticks
+                ? TimeSpan.MaxValue
+                : TimeSpan.FromTicks(unit.Value.Ticks * value));
             return true;
         }
     }
@@ -268,6 +273,11 @@ internal abstract class EventBridgeSchedule
                         return false;
                     }
                     _nthWeekdays.Add((day, ordinal));
+                }
+                else if (item == "L")
+                {
+                    // On its own, L in day-of-week is the last day of the week: Saturday.
+                    listed.Add("7");
                 }
                 else if (item.Length > 1 && item.EndsWith('L'))
                 {

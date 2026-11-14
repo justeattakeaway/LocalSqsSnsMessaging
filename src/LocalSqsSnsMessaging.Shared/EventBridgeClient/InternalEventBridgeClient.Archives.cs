@@ -334,13 +334,7 @@ internal sealed partial class InternalEventBridgeClient
     private void ApplySchedule(RuleResource rule)
     {
         var expression = string.Equals(rule.EventBusName, DefaultBusName, StringComparison.Ordinal) ? rule.ScheduleExpression : null;
-        if (string.Equals(rule.Schedule?.Expression, expression, StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        rule.Schedule?.Dispose();
-        rule.Schedule = expression is null ? null : ScheduledRuleJob.Start(rule, expression, _bus);
+        rule.Reschedule(expression, e => ScheduledRuleJob.Start(rule, e, _bus));
     }
 
     private ArchiveResource GetArchive(string? name) =>

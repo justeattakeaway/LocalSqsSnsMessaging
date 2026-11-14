@@ -28,7 +28,7 @@ internal sealed class RuleResource
     public ArchiveResource? Archive { get; init; }
 
     /// <summary>The job firing the rule's ScheduleExpression, while it has one.</summary>
-    public ScheduledRuleJob? Schedule { get; set; }
+    public ScheduledRuleJob? Schedule { get; private set; }
 
     public bool IsEnabled => string.Equals(State, "ENABLED", StringComparison.Ordinal);
 
@@ -105,6 +105,27 @@ internal sealed class RuleResource
 
             _deleted = true;
             remove();
+            Schedule?.Dispose();
+            Schedule = null;
+        }
+    }
+
+    /// <summary>
+    /// Fires the rule on <paramref name="expression"/> from now on, replacing the job of any other
+    /// expression; null stops it firing. Serialised with <see cref="Delete"/>, so a concurrent
+    /// PutRule never leaves two jobs, nor a job on a deleted rule.
+    /// </summary>
+    public void Reschedule(string? expression, Func<string, ScheduledRuleJob?> start)
+    {
+        lock (_targetsGate)
+        {
+            if (_deleted || string.Equals(Schedule?.Expression, expression, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            Schedule?.Dispose();
+            Schedule = expression is null ? null : start(expression);
         }
     }
 

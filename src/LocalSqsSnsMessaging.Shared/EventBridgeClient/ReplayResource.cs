@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace LocalSqsSnsMessaging;
@@ -105,9 +106,9 @@ internal sealed class ReplayResource
             ? rule => filterArns.Contains(rule.Arn, StringComparer.Ordinal)
             : null;
 
-        foreach (var archived in Archive.EventsBetween(EventStartTime, EventEndTime))
+        foreach (var archived in Archive.EventsBetween(EventStartTime, EventEndTime, Bus.TimeProvider.GetUtcNow()))
         {
-            if (JsonNode.Parse(archived.Envelope) is not JsonObject envelope)
+            if (JsonNode.Parse(archived.Envelope, documentOptions: new JsonDocumentOptions { MaxDepth = ArchiveResource.MaxEnvelopeDepth }) is not JsonObject envelope)
             {
                 continue;
             }
