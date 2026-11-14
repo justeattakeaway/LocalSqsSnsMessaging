@@ -73,7 +73,7 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 **InMemoryAwsBus** (src/LocalSqsSnsMessaging/InMemoryAwsBus.cs:8)
 - Central message bus managing all queues, topics, subscriptions, and move tasks
 - Configurable with `TimeProvider`, `CurrentAccountId`, and `CurrentRegion`
-- SQS queues are partitioned by region when `bus.IsolateRegions` is set (off by default, so every request uses `CurrentRegion`): `Queues` holds `CurrentRegion`'s, other regions' are reached via `FindQueuesInRegion`/`GetOrAddQueuesInRegion`, and ARN-addressed deliveries (SNS, EventBridge, move tasks) use `TryGetQueueByArn`. The library HTTP handler serves each SQS request from the region in its SigV4 credential scope, else its `sqs.<region>.amazonaws.com` host (`Http/AwsRequestRegion.cs`), else `CurrentRegion`; the server (`AwsBridgeMiddleware`) always uses `CurrentRegion`
+- Resources are regional: `AwsRegionResources` holds one region's queues, topics, subscriptions, event buses, archives and replays, and `bus.Region(name)` gets (or creates) it. `bus.Queues`/`Topics`/`Subscriptions`/`EventBuses`/... are `CurrentRegion`'s. Each internal client (`InternalSqsClient`, `InternalSnsClient`, `InternalEventBridgeClient`) is constructed with the request's region and sees only that region. ARN-addressed deliveries (SNS to SQS, EventBridge targets, dead-letter queues, move tasks) use `TryGetQueueByArn`/`TryGetTopicByArn`/`RegionOfArn`, which look in the region the ARN names, so they can cross regions. The library HTTP handler and the server both read the region from the SigV4 credential scope, else an AWS endpoint host (`Http/AwsRequestRegion.cs`), else `CurrentRegion`. Move tasks stay bus-wide, keyed by handle
 - Thread-safe using `ConcurrentDictionary` for all resource collections
 
 **InMemorySqsClient** (src/LocalSqsSnsMessaging/SqsClient/InMemorySqsClient.cs)
@@ -136,7 +136,7 @@ The HTTP mode implements two different AWS protocols:
 - ARNs are checked by `SnsArn` before any lookup (malformed: `InvalidParameter`); a missing topic is `NotFound` "Topic does not exist", a missing subscription "Subscription does not exist"
 - A subscription ARN is its topic ARN plus a uuid. Subscribe needs the topic, but not the SQS queue, to exist; subscribing the same endpoint again returns the existing subscription
 - `SnsTopicAttributes` holds topic attribute names, defaults (default `Policy`, `EffectiveDeliveryPolicy`, ...) and validation; `SnsPublishValidation` and `SnsMessageStructure` validate Publish/PublishBatch and pick a `MessageStructure=json` branch per protocol
-- SNS topics and subscriptions are not regional: every request uses `CurrentRegion`
+- SNS is regional: a topic ARN naming another region is refused with `InvalidParameter` "Invalid parameter: TopicArn", as a regional endpoint does
 
 ### SNS Delivery
 
@@ -151,7 +151,7 @@ The HTTP mode implements two different AWS protocols:
 
 ### EventBridge
 
-`InternalEventBridgeClient` (`EventBridgeClient/`) is split into partial files by area: event buses, rules, targets, events (PutEvents and TestEventPattern), tags, permissions, and archives and replays. EventBridge is not regional: every request uses `CurrentRegion`.
+`InternalEventBridgeClient` (`EventBridgeClient/`) is split into partial files by area: event buses, rules, targets, events (PutEvents and TestEventPattern), tags, permissions, and archives and replays. EventBridge is regional: an event's `region` is its bus's region, and an event forwarded to a bus in another region keeps its origin `region` but gets a new `id`.
 - Requests are validated as EventBridge validates them, with its codes and messages: PutEvents entries fail in place (`EventBridgePutEventsValidation`), PutTargets refuses the whole request (`EventBridgeTargetValidation`, and `EventBridgeTargetInput.Validate` for Input/InputPath/InputTransformer), schedule expressions are checked by `EventBridgeScheduleExpression`, and list operations page with `EventBridgePage`
 - Event patterns are validated and matched as Event Ruler does (`EventBridgeEventPattern`): `EventRulerJsonReader` and `EventRulerGrammar` (shared with SNS filter policies) give Jackson-style refusals, and `JsonPatternMatcher` matches on the event's flattened values
 - `EventBridgeEnvelope` builds each event's envelope; `EventBridgeEventDelivery` routes it through a bus's enabled rules and delivers it, during PutEvents, to each matching rule's targets: SQS queues (FIFO through the FIFO send path, deduplicated by event id), SNS topics (through the topic's publish action) and event buses in the same region and account (forwarded once). `EventBridgeTargetInput` renders what each target receives

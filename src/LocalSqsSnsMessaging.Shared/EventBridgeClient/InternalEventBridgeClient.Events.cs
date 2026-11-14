@@ -35,7 +35,7 @@ internal sealed partial class InternalEventBridgeClient
             }
 
             var eventId = Guid.NewGuid().ToString();
-            var @event = EventBridgeEnvelope.Build(entry, detail, eventId, _bus);
+            var @event = EventBridgeEnvelope.Build(entry, detail, eventId, _bus, _resources.Region);
             if (FindPutEventsBus(entry.EventBusName) is { } eventBus)
             {
                 EventBridgeEventDelivery.Route(eventBus, @event, _bus);
@@ -59,7 +59,7 @@ internal sealed partial class InternalEventBridgeClient
         {
             return ResolveBus(DefaultBusName);
         }
-        return _bus.EventBuses.TryGetValue(name, out var eventBus) ? eventBus : null;
+        return _resources.EventBuses.TryGetValue(name, out var eventBus) ? eventBus : null;
     }
 
     public Task<TestEventPatternResponse> TestEventPatternAsync(TestEventPatternRequest request, CancellationToken cancellationToken = default)

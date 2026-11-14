@@ -21,6 +21,7 @@ public sealed class ServerSmokeTests : IAsyncDisposable
 {
     private WebApplication? _app;
     private int _port;
+    private BusRegistry? _registry;
     private AmazonSQSClient? _sqsClient;
     private AmazonSimpleNotificationServiceClient? _snsClient;
 
@@ -29,7 +30,7 @@ public sealed class ServerSmokeTests : IAsyncDisposable
     {
         _port = GetAvailablePort();
 
-        var registry = new BusRegistry("000000000000", "us-east-1", new Uri($"http://localhost:{_port}"));
+        var registry = _registry = new BusRegistry("000000000000", "us-east-1", new Uri($"http://localhost:{_port}"));
 
         // Each test spins up its own host. The default appsettings.json sources are registered
         // with reloadOnChange:true, so every host starts two FileSystemWatchers over the output
@@ -83,6 +84,33 @@ public sealed class ServerSmokeTests : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await Cleanup();
+    }
+
+    [Test]
+    public async Task RequestsAreServedFromTheRegionTheyAreSignedFor()
+    {
+        using var euSqs = new AmazonSQSClient(
+            new BasicAWSCredentials("000000000000", "fake"),
+            new AmazonSQSConfig { ServiceURL = $"http://localhost:{_port}", AuthenticationRegion = "eu-west-1", MaxErrorRetry = 0 });
+
+        var euUrl = (await euSqs.CreateQueueAsync("regional-queue")).QueueUrl;
+        var euArn = (await euSqs.GetQueueAttributesAsync(euUrl, ["QueueArn"])).QueueARN;
+        euArn.ShouldBe("arn:aws:sqs:eu-west-1:000000000000:regional-queue");
+
+        // The default client signs for us-east-1, the server's region, which has no such queue.
+        await Should.ThrowAsync<QueueDoesNotExistException>(() => _sqsClient!.GetQueueUrlAsync("regional-queue"));
+
+        // The dashboard lists the regions in use, and shows a region's resources on request.
+        var home = DashboardApi.GetState(_registry!, account: null, region: null)
+            .ShouldBeOfType<Microsoft.AspNetCore.Http.HttpResults.JsonHttpResult<DashboardApi.BusState>>().Value!;
+        home.CurrentRegion.ShouldBe("us-east-1");
+        home.Regions.ShouldBe(["eu-west-1", "us-east-1"]);
+        home.Queues.ShouldBeEmpty();
+
+        var eu = DashboardApi.GetState(_registry!, account: null, region: "eu-west-1")
+            .ShouldBeOfType<Microsoft.AspNetCore.Http.HttpResults.JsonHttpResult<DashboardApi.BusState>>().Value!;
+        eu.CurrentRegion.ShouldBe("eu-west-1");
+        eu.Queues.ShouldHaveSingleItem().Arn.ShouldBe(euArn);
     }
 
     [Test]

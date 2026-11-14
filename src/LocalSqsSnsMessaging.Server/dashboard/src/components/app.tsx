@@ -7,7 +7,8 @@ import type { QueueInfo, TopicInfo, SubscriptionInfo } from "@/types";
 
 export function App() {
   const [currentAccount, setCurrentAccount] = useState<string | null>(null);
-  const { state, connected } = useSSE(currentAccount);
+  const [currentRegion, setCurrentRegion] = useState<string | null>(null);
+  const { state, connected } = useSSE(currentAccount, currentRegion);
   const [view, setView] = useState<"resources" | "activity">("resources");
   const [selectedArn, setSelectedArn] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<"queue" | "topic" | "subscription" | null>(null);
@@ -64,6 +65,13 @@ export function App() {
     setSelectedSubscriptionArn(null);
   }, []);
 
+  const handleRegionChange = useCallback((region: string | null) => {
+    setCurrentRegion(region);
+    setSelectedArn(null);
+    setSelectedType(null);
+    setSelectedSubscriptionArn(null);
+  }, []);
+
   return (
     <>
       <TopBar
@@ -73,6 +81,8 @@ export function App() {
         connected={connected}
         currentAccount={currentAccount}
         onAccountChange={handleAccountChange}
+        currentRegion={currentRegion}
+        onRegionChange={handleRegionChange}
       />
       {view === "resources" && (
         <ResourcesView

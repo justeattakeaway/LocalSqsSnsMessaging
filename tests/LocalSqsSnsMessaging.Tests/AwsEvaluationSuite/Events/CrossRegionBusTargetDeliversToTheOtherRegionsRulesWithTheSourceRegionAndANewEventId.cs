@@ -23,7 +23,6 @@ public sealed class CrossRegionBusTargetDeliversToTheOtherRegionsRulesWithTheSou
     [Test]
     [DisplayName("events.cross-region-bus-target-delivers-to-the-other-regions-rules-with-the-source-region-and-a-new-event-id")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeRegions, "a bus created through the us-east-1 endpoint gets an ARN in us-west-2: EventBridge is not regional")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

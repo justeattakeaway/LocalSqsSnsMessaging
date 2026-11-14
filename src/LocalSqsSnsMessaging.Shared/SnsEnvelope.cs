@@ -124,7 +124,7 @@ internal static class SnsEnvelope
         }
 
         return (certificate.Sign(CanonicalString(members), signatureVersion) ?? Placeholder,
-            SnsHttpDelivery.SigningCertUrl(bus, certificate));
+            SnsHttpDelivery.SigningCertUrl(bus, certificate, members.Find(member => member.Key == "TopicArn").Value));
     }
 
     /// <summary>Appends SignatureVersion, Signature and SigningCertURL.</summary>

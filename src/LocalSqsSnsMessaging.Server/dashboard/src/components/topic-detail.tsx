@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { BusState, TopicInfo, SubscriptionInfo } from "@/types";
 import { getTopicSubscriptions } from "@/utils/resource-helpers";
-import { cn } from "@/lib/utils";
+import { cn, scopeQuery } from "@/lib/utils";
 
 interface TopicDetailProps {
   state: BusState;
@@ -28,11 +28,9 @@ export function TopicDetail({ state, topic, selectSubscription }: TopicDetailPro
     if (!message.trim() || publishing) return;
     setPublishing(true);
     try {
-      const accountParam = state.currentAccount
-        ? `?account=${encodeURIComponent(state.currentAccount)}`
-        : "";
+      const scope = scopeQuery(state.currentAccount, state.currentRegion);
       const resp = await fetch(
-        `/_ui/api/topics/${encodeURIComponent(topic.name)}/publish${accountParam}`,
+        `/_ui/api/topics/${encodeURIComponent(topic.name)}/publish${scope}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -52,7 +50,7 @@ export function TopicDetail({ state, topic, selectSubscription }: TopicDetailPro
     } finally {
       setPublishing(false);
     }
-  }, [message, subject, publishing, state.currentAccount, topic.name]);
+  }, [message, subject, publishing, state.currentAccount, state.currentRegion, topic.name]);
 
   const tabs = [
     { id: "info", label: "Info" },

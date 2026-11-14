@@ -9,6 +9,8 @@ interface TopBarProps {
   connected: boolean;
   currentAccount: string | null;
   onAccountChange: (account: string | null) => void;
+  currentRegion: string | null;
+  onRegionChange: (region: string | null) => void;
 }
 
 export function TopBar({
@@ -18,9 +20,13 @@ export function TopBar({
   connected,
   currentAccount,
   onAccountChange,
+  currentRegion,
+  onRegionChange,
 }: TopBarProps) {
   const accounts = state.accounts || [];
   const displayAccount = currentAccount || state.currentAccount || "";
+  const regions = state.regions || [];
+  const displayRegion = currentRegion || state.currentRegion || "";
   const opCount = (state.recentOperations || []).length;
 
   return (
@@ -84,6 +90,25 @@ export function TopBar({
       </div>
 
       <div className="flex items-center gap-4 text-sm">
+        {regions.length > 1 && (
+          <select
+            className="px-2 py-1 text-xs font-mono bg-background text-foreground border border-border rounded cursor-pointer outline-none hover:border-muted-foreground/30 focus:border-highlight appearance-none pr-6 bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%238b90a0%22%3E%3Cpath%20d%3D%22M3%205l3%203%203-3%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_6px_center]"
+            value={displayRegion}
+            onChange={(e) => onRegionChange(e.target.value || null)}
+            aria-label="Region"
+          >
+            {regions.map((region) => (
+              <option key={region} value={region}>
+                {region}
+              </option>
+            ))}
+          </select>
+        )}
+        {regions.length <= 1 && displayRegion && (
+          <span className="text-xs font-mono text-muted-foreground">
+            {displayRegion}
+          </span>
+        )}
         {accounts.length > 1 && (
           <select
             className="px-2 py-1 text-xs font-mono bg-background text-foreground border border-border rounded cursor-pointer outline-none hover:border-muted-foreground/30 focus:border-highlight appearance-none pr-6 bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%238b90a0%22%3E%3Cpath%20d%3D%22M3%205l3%203%203-3%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_6px_center]"

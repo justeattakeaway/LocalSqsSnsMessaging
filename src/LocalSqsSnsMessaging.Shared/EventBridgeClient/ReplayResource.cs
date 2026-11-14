@@ -97,7 +97,7 @@ internal sealed class ReplayResource
 
     private void ReplayEvents()
     {
-        if (!Bus.EventBuses.TryGetValue(DestinationBusName, out var destination))
+        if (!Bus.RegionOfArn(DestinationArn).EventBuses.TryGetValue(DestinationBusName, out var destination))
         {
             return;
         }

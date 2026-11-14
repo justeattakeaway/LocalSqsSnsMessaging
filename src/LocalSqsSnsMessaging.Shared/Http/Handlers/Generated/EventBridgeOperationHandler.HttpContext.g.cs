@@ -24,7 +24,7 @@ internal static partial class EventBridgeOperationHandler
         ArgumentNullException.ThrowIfNull(operationName);
         ArgumentNullException.ThrowIfNull(bus);
 
-        var client = new InternalEventBridgeClient(bus);
+        var client = new InternalEventBridgeClient(bus, AwsRequestRegion.FromHttpContext(context));
 
         switch (operationName)
         {

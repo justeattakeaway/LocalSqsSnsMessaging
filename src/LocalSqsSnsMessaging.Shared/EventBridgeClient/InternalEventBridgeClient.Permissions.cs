@@ -89,7 +89,7 @@ internal sealed partial class InternalEventBridgeClient
         var callerArn = $"arn:aws:iam::{_bus.CurrentAccountId}:root";
         foreach (var entry in entries ?? [])
         {
-            if (!_bus.EventBuses.TryGetValue(ExtractBusName(entry.EventBusName), out var eventBus)
+            if (!_resources.EventBuses.TryGetValue(ExtractBusName(entry.EventBusName), out var eventBus)
                 || eventBus.Policy is not { } policy)
             {
                 continue;

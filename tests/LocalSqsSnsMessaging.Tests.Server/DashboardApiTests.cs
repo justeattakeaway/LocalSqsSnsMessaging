@@ -42,7 +42,7 @@ public class DashboardApiTests
         await SendAsync(sqs, queueUrl, "first");
         await SendAsync(sqs, queueUrl, "second");
 
-        var result = DashboardApi.GetQueueMessages(registry, AccountId, "dashboard-queue")
+        var result = DashboardApi.GetQueueMessages(registry, AccountId, null, "dashboard-queue")
             .ShouldBeOfType<JsonHttpResult<DashboardApi.QueueMessages>>();
 
         result.Value!.PendingMessages.Select(m => m.Body).ShouldBe(["first", "second"]);
@@ -57,7 +57,7 @@ public class DashboardApiTests
         received.Messages!.Select(m => m.Body).ShouldBe(["first", "second"]);
 
         // ...and once received they move from waiting to in flight.
-        var afterReceive = DashboardApi.GetQueueMessages(registry, AccountId, "dashboard-queue")
+        var afterReceive = DashboardApi.GetQueueMessages(registry, AccountId, null, "dashboard-queue")
             .ShouldBeOfType<JsonHttpResult<DashboardApi.QueueMessages>>();
         afterReceive.Value!.PendingMessages.ShouldBeEmpty();
         afterReceive.Value.InFlightMessages.Select(m => m.Body).ShouldBe(["first", "second"], ignoreOrder: true);
@@ -71,7 +71,7 @@ public class DashboardApiTests
         var second = await SendAsync(sqs, queueUrl, "second");
         await SendAsync(sqs, queueUrl, "third");
 
-        DashboardApi.DeleteMessage(registry, AccountId, "dashboard-delete-queue", second)
+        DashboardApi.DeleteMessage(registry, AccountId, null, "dashboard-delete-queue", second)
             .ShouldBeOfType<NoContent>();
 
         var received = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
@@ -88,7 +88,7 @@ public class DashboardApiTests
         var (registry, sqs, queueUrl) = CreateQueue("dashboard-missing-queue");
         await SendAsync(sqs, queueUrl, "first");
 
-        DashboardApi.DeleteMessage(registry, AccountId, "dashboard-missing-queue", "no-such-message-id")
+        DashboardApi.DeleteMessage(registry, AccountId, null, "dashboard-missing-queue", "no-such-message-id")
             .ShouldBeOfType<NotFound<string>>();
 
         var received = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest

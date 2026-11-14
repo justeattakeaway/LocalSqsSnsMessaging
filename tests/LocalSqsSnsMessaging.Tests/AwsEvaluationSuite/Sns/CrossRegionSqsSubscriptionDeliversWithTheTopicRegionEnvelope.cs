@@ -24,7 +24,6 @@ public sealed class CrossRegionSqsSubscriptionDeliversWithTheTopicRegionEnvelope
     [Test]
     [DisplayName("sns.cross-region-sqs-subscription-delivers-with-the-topic-region-envelope")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsRegions, "SNS isn't regional: account-wide ListSubscriptions from the queue's region lists the topic region's subscription")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

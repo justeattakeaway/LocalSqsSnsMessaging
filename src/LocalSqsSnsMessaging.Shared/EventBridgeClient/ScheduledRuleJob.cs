@@ -96,7 +96,7 @@ internal sealed class ScheduledRuleJob : IDisposable
         ["source"] = "aws.events",
         ["account"] = _bus.CurrentAccountId,
         ["time"] = time.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
-        ["region"] = _bus.CurrentRegion,
+        ["region"] = InMemoryAwsBus.ArnRegion(_rule.Arn) ?? _bus.CurrentRegion,
         ["resources"] = new JsonArray(_rule.Arn),
         ["detail"] = new JsonObject()
     };

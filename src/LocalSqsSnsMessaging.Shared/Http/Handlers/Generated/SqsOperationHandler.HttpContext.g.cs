@@ -24,7 +24,7 @@ internal static partial class SqsOperationHandler
         ArgumentNullException.ThrowIfNull(operationName);
         ArgumentNullException.ThrowIfNull(bus);
 
-        var client = new InternalSqsClient(bus) { Caller = SqsCaller.FromHttpContext(context) };
+        var client = new InternalSqsClient(bus, AwsRequestRegion.FromHttpContext(context)) { Caller = SqsCaller.FromHttpContext(context) };
 
         switch (operationName)
         {
