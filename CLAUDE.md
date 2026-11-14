@@ -73,6 +73,7 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 **InMemoryAwsBus** (src/LocalSqsSnsMessaging/InMemoryAwsBus.cs:8)
 - Central message bus managing all queues, topics, subscriptions, and move tasks
 - Configurable with `TimeProvider`, `CurrentAccountId`, and `CurrentRegion`
+- SQS queues are partitioned by region when `bus.IsolateRegions` is set (off by default, so every request uses `CurrentRegion`): `Queues` holds `CurrentRegion`'s, other regions' are reached via `FindQueuesInRegion`/`GetOrAddQueuesInRegion`, and ARN-addressed deliveries (SNS, EventBridge, move tasks) use `TryGetQueueByArn`. The library HTTP handler serves each SQS request from the region in its SigV4 credential scope, else its `sqs.<region>.amazonaws.com` host (`Http/AwsRequestRegion.cs`), else `CurrentRegion`; the server (`AwsBridgeMiddleware`) always uses `CurrentRegion`
 - Thread-safe using `ConcurrentDictionary` for all resource collections
 
 **InMemorySqsClient** (src/LocalSqsSnsMessaging/SqsClient/InMemorySqsClient.cs)
@@ -101,6 +102,7 @@ The HTTP mode implements two different AWS protocols:
    - Request/Response: JSON with camelCase properties
    - Operations identified by `X-Amz-Target` header
    - Example: `{"QueueUrl": "...", "MaxNumberOfMessages": 10}`
+   - SQS also serves the AWS Query protocol (it is `awsQueryCompatible`): form-encoded `Action=...&Version=2012-11-05`, XML responses in the `http://queue.amazonaws.com/doc/2012-11-05/` namespace, flattened lists/maps (`Attribute.1.Name`, `MessageAttribute.1.Value.DataType`). Both protocols share queue state. `SqsWireProtocol` holds the routing rules (Content-Type picks the protocol; a JSON POST without a known target, or a target with another Content-Type, is refused as `UnknownOperationException`; a body over 2 MiB once decoded gets HTTP 413) for both the in-memory handler and the server. The server tells SQS Query from SNS Query by `Version` (or the SigV4 scope).
 
 2. **SNS - Query Protocol:**
    - Content-Type: `application/x-www-form-urlencoded`
@@ -165,6 +167,13 @@ FIFO queues (.fifo suffix) have special handling:
 - Message group locks ensure ordering (`SqsQueueResource.MessageGroupLocks`)
 - Each message group has its own queue (`SqsQueueResource.MessageGroups`)
 
+### SQS Callers and Queue Policies
+
+The generated SQS handlers build `InternalSqsClient` with a `Caller` (`SqsCaller`: the SigV4 access key, source IP, TLS). A raw client has no `Caller` and is never subject to policies.
+- `SenderId` comes from `SqsCaller.SenderId` (signed: `bus.CurrentUserId`, or the account id for an account-id access key; unsigned: the account id)
+- `InternalSqsClient.Authorization.cs`: `Authorize(queue, action)` runs after each queue lookup and enforces explicit Deny statements only (`SqsQueuePolicy`); `EnsureKmsKeyExists` refuses sends to a queue whose KMS alias is not in `bus.KmsKeyAliases` (only when that is set; by default every key exists)
+- Receipt handles carry the queue's `Incarnation`, so a handle from a deleted queue is refused by a same-name successor
+
 ### Exception Handling in HTTP Mode
 
 When using SDK clients (`CreateSqsClient`/`CreateSnsClient`), exceptions must include the `ErrorCode` property for the AWS SDK to deserialize them correctly.
@@ -197,7 +206,7 @@ Operation handlers in `src/LocalSqsSnsMessaging/Http/Handlers/Generated/` are au
 - `SqsOperationHandler.g.cs` - JSON protocol handler for SQS operations
 - `SnsOperationHandler.g.cs` - Query protocol handler for SNS operations
 - `SnsQuerySerializers.g.cs` - Query string deserializers for SNS request parameters
-- `SqsQuerySerializers.g.cs` - Query string deserializers for SQS request parameters
+- `SqsQuerySerializers.g.cs` / `SqsQueryOperationHandler.g.cs` - SQS Query protocol serializers and dispatcher, from `tools/GenerateHandlers/SqsQueryCodeGenerator.cs`. The SQS model is the JSON one and has lost the Query wire names, so the generator restores them from its `WireNames` table
 
 **Regenerate handlers:**
 ```bash

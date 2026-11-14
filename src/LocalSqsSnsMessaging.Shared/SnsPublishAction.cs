@@ -204,52 +204,43 @@ internal sealed class SnsPublishAction
 
     private bool TryGetQueue(string arn, out SqsQueueResource queue)
     {
-        queue = null!;
-        return _bus.Queues.TryGetValue(arn.Split(':').Last(), out queue!);
+        var found = _bus.TryGetQueueByArn(arn, out var match);
+        queue = match!;
+        return found;
     }
 
     private void Enqueue(SqsQueueResource queue, Message sqsMessage, OutboundMessage message)
     {
         if (!queue.IsFifo)
         {
-            queue.Messages.Enqueue(sqsMessage);
+            // SQS applies the subscribed queue's DelaySeconds to messages SNS delivers, too.
+            if (queue.DelaySeconds > 0)
+            {
+                queue.EnqueueAfterDelay(sqsMessage, TimeSpan.FromSeconds(queue.DelaySeconds), _bus.TimeProvider);
+            }
+            else
+            {
+                queue.Messages.Enqueue(sqsMessage);
+            }
+
             return;
         }
 
         sqsMessage.Attributes ??= [];
         sqsMessage.Attributes["MessageGroupId"] = message.MessageGroupId;
-        sqsMessage.Attributes["SequenceNumber"] = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
         sqsMessage.Attributes["SentTimestamp"] = _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
 
         var deduplicationId = message.DeduplicationId;
         if (string.IsNullOrEmpty(deduplicationId))
         {
             // Generate a deduplication ID based on the message body
-            deduplicationId = GenerateMessageBodyHash(sqsMessage.Body);
+            deduplicationId = SqsDeduplicationCache.ContentDeduplicationId(sqsMessage.Body);
         }
 
         sqsMessage.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
-        if (IsFairQueue(queue))
-        {
-            // Per-message-group deduplication
-            var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
-                message.MessageGroupId,
-                _ => new ConcurrentDictionary<string, string>());
-
-            if (groupDeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
-            {
-                queue.EnqueueFifoMessage(message.MessageGroupId, sqsMessage);
-            }
-        }
-        else
-        {
-            // Global deduplication (traditional FIFO)
-            if (queue.DeduplicationIds.TryAdd(deduplicationId, sqsMessage.MessageId))
-            {
-                queue.EnqueueFifoMessage(message.MessageGroupId, sqsMessage);
-            }
-        }
+        // Applies the queue's DelaySeconds too, as for a message sent with SendMessage.
+        queue.TryEnqueueFifoSend(sqsMessage, message.MessageGroupId, deduplicationId, IsFairQueue(queue), _bus.TimeProvider, out _);
     }
 
     private static bool IsFairQueue(SqsQueueResource queue)
@@ -348,9 +339,4 @@ internal sealed class SnsPublishAction
         };
     }
 
-    private static string GenerateMessageBodyHash(string messageBody)
-    {
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(messageBody));
-        return Convert.ToBase64String(hashBytes);
-    }
 }

@@ -1,12 +1,15 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using LocalSqsSnsMessaging.Sqs.Model;
 
 namespace LocalSqsSnsMessaging;
 
+#pragma warning disable CA1001 // _fifoDelayChanged is a cancel-only signal: never linked or timed, so it holds nothing to dispose.
 internal sealed class SqsQueueResource
+#pragma warning restore CA1001
 {
     public required string Name { get; init; }
     public required string Region { get; init; }
@@ -14,17 +17,194 @@ internal sealed class SqsQueueResource
     public required string AccountId { get; init; }
     public bool IsFifo => Name.EndsWith(".fifo", StringComparison.OrdinalIgnoreCase);
     public TimeSpan VisibilityTimeout { get; set; }
+
+    /// <summary>The queue's <c>MessageRetentionPeriod</c>: how long after it was sent a message is discarded.</summary>
+    public TimeSpan MessageRetentionPeriod { get; set; } = TimeSpan.FromDays(4);
+
+    /// <summary>
+    /// Whether <paramref name="message"/> has outlived <see cref="MessageRetentionPeriod"/>, counted
+    /// from its <c>SentTimestamp</c>. Retention applies wherever the message is, in flight included.
+    /// </summary>
+    public bool IsExpired(Message message, DateTimeOffset now)
+    {
+        if (_retentionRestarts.TryGetValue(message, out var restartedAt))
+        {
+            return (DateTimeOffset)restartedAt + MessageRetentionPeriod <= now;
+        }
+
+        return message.Attributes?.TryGetValue("SentTimestamp", out var sentTimestamp) == true
+               && long.TryParse(sentTimestamp, NumberStyles.None, NumberFormatInfo.InvariantInfo, out var sentMilliseconds)
+               && DateTimeOffset.FromUnixTimeMilliseconds(sentMilliseconds) + MessageRetentionPeriod <= now;
+    }
+
+    /// <summary>Messages whose retention period counts from a later instant than their SentTimestamp.</summary>
+    private readonly ConditionalWeakTable<Message, object> _retentionRestarts = new();
+
+    /// <summary>
+    /// Counts <paramref name="message"/>'s retention from <paramref name="now"/> rather than from its
+    /// SentTimestamp, as SQS does for a message moved to a FIFO dead-letter queue.
+    /// </summary>
+    public void RestartRetention(Message message, DateTimeOffset now)
+    {
+#if NETSTANDARD2_0
+        _retentionRestarts.Remove(message);
+        _retentionRestarts.Add(message, now);
+#else
+        _retentionRestarts.AddOrUpdate(message, now);
+#endif
+    }
+
+    /// <summary>
+    /// Discards every message that has outlived the retention period, waiting or in flight, so the
+    /// approximate counters stop reporting them. Delivery checks expiry per message as well, so
+    /// this only needs to run before the counters are read.
+    /// </summary>
+    public void RemoveExpiredMessages(DateTimeOffset now)
+    {
+        Messages.RemoveWhere(message => IsExpired(message, now));
+
+        foreach (var groupId in MessageGroups.Keys)
+        {
+            var groupLock = MessageGroupLocks.GetOrAdd(groupId, _ => new object());
+            lock (groupLock)
+            {
+                if (MessageGroups.TryGetValue(groupId, out var groupQueue) && groupQueue.Any(message => IsExpired(message, now)))
+                {
+                    MessageGroups[groupId] = new ConcurrentQueue<Message>(groupQueue.Where(message => !IsExpired(message, now)));
+                }
+            }
+        }
+
+        foreach (var (receiptHandle, (message, expirationJob)) in InFlightMessages)
+        {
+            if (IsExpired(message, now) && InFlightMessages.TryRemove(receiptHandle, out _))
+            {
+                LatestReceiptHandles.TryRemove(message.MessageId!, out _);
+                expirationJob.Dispose();
+                if (IsFifo)
+                {
+                    ReleaseDeletedFifoMessage(message);
+                }
+            }
+        }
+    }
+
+    /// <summary>The queue's <c>DelaySeconds</c>: the delay applied to a message sent without its own.</summary>
+    public int DelaySeconds { get; set; }
+
+    /// <summary>The queue's <c>ReceiveMessageWaitTimeSeconds</c>: the long-poll wait of a receive that sets none.</summary>
+    public TimeSpan ReceiveMessageWaitTime { get; set; }
+
+    /// <summary>The queue's <c>MaximumMessageSize</c>, in bytes.</summary>
+    public int MaximumMessageSize { get; set; } = 1_048_576;
+
+    /// <summary>The FIFO queue's <c>ContentBasedDeduplication</c>: a send without a MessageDeduplicationId is deduplicated on its body.</summary>
+    public bool ContentBasedDeduplication { get; set; }
+
+    public DateTimeOffset CreatedTimestamp { get; init; }
+    public DateTimeOffset LastModifiedTimestamp { get; set; }
+
+    /// <summary>
+    /// Messages sent with a delay that has not elapsed yet. A message leaves the set when its delay
+    /// ends and it becomes visible, or when a purge discards it first.
+    /// </summary>
+    private readonly ConcurrentDictionary<Message, byte> _delayedMessages = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>Delayed FIFO messages per message group, in send order.</summary>
+    private readonly Dictionary<string, Queue<DelayedFifoMessage>> _delayedFifoMessages = new(StringComparer.Ordinal);
+
+    private readonly record struct DelayedFifoMessage(Message Message, long Start);
+
+    /// <summary>Messages sent with a delay that has not elapsed yet (<c>ApproximateNumberOfMessagesDelayed</c>).</summary>
+    public int DelayedMessageCount => _delayedMessages.Count;
+
+    /// <summary>
+    /// Visible messages (<c>ApproximateNumberOfMessages</c>): the standard-queue store plus, for FIFO
+    /// queues, every message waiting in a message group.
+    /// </summary>
+    public int VisibleMessageCount => Messages.Count + MessageGroups.Values.Sum(group => group.Count);
     public string Arn => $"arn:aws:sqs:{Region}:{AccountId}:{Name}";
+
+    /// <summary>
+    /// Tells this queue apart from an earlier or later queue of the same name (and so the same ARN),
+    /// so a receipt handle from a deleted queue is not honoured by its successor.
+    /// </summary>
+    public string Incarnation { get; } = Guid.NewGuid().ToString("N");
     public SqsQueueResource? ErrorQueue { get; set; }
     public int? MaxReceiveCount { get; set; }
     public Dictionary<string, string>? Attributes { get; set; }
     public Dictionary<string, string>? Tags { get; set; }
+
+    /// <summary>Guards <see cref="Tags"/>: concurrent TagQueue/UntagQueue calls must not lose updates.</summary>
+    public object TagsLock { get; } = new();
     public SqsMessageStore Messages { get; } = new();
+
+    /// <summary>
+    /// The receipt handle each message was most recently received with, by MessageId. Only that
+    /// handle can act on the message: after its visibility timeout lapses it still re-hides or
+    /// deletes it, while an older handle is stale. The entry goes when the message leaves the queue.
+    /// </summary>
+    public ConcurrentDictionary<string, string> LatestReceiptHandles { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Takes a visible (waiting, not in flight) message out of the queue by id, so a lapsed receipt
+    /// handle can delete or re-hide it.
+    /// </summary>
+    public bool TryTakeVisibleMessage(string messageId, out Message? message)
+    {
+        Message? found = null;
+        Messages.RemoveWhere(candidate =>
+        {
+            if (found is null && candidate.MessageId == messageId)
+            {
+                found = candidate;
+                return true;
+            }
+
+            return false;
+        });
+
+        if (found is null && IsFifo)
+        {
+            foreach (var groupId in MessageGroups.Keys)
+            {
+                var groupLock = MessageGroupLocks.GetOrAdd(groupId, _ => new object());
+                lock (groupLock)
+                {
+                    if (MessageGroups.TryGetValue(groupId, out var groupQueue)
+                        && groupQueue.FirstOrDefault(candidate => candidate.MessageId == messageId) is { } match)
+                    {
+                        MessageGroups[groupId] = new ConcurrentQueue<Message>(groupQueue.Where(candidate => !ReferenceEquals(candidate, match)));
+                        found = match;
+                        break;
+                    }
+                }
+            }
+        }
+
+        message = found;
+        return found is not null;
+    }
     public ConcurrentDictionary<string, (Message, SqsInflightMessageExpirationJob)> InFlightMessages { get; } = new();
     public ConcurrentDictionary<string, ConcurrentQueue<Message>> MessageGroups { get; } = new();
     public ConcurrentDictionary<string, object> MessageGroupLocks { get; } = new();
-    public ConcurrentDictionary<string, string> DeduplicationIds { get; } = new();
-    public ConcurrentDictionary<string, ConcurrentDictionary<string, string>> MessageGroupDeduplicationIds { get; } = new();
+
+    /// <summary>The deduplication ids a FIFO queue with queue-wide <c>DeduplicationScope</c> has accepted.</summary>
+    public SqsDeduplicationCache Deduplication { get; } = new();
+
+    /// <summary>The deduplication ids accepted per message group, when <c>DeduplicationScope</c> is <c>messageGroup</c>.</summary>
+    public ConcurrentDictionary<string, SqsDeduplicationCache> GroupDeduplication { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>The cache that deduplicates a message sent to <paramref name="messageGroupId"/>.</summary>
+    public SqsDeduplicationCache DeduplicationFor(string messageGroupId, bool perMessageGroup) =>
+        perMessageGroup ? GroupDeduplication.GetOrAdd(messageGroupId, _ => new SqsDeduplicationCache()) : Deduplication;
+
+    /// <summary>Forgets every accepted deduplication id, as <c>PurgeQueue</c> does.</summary>
+    public void ClearDeduplication()
+    {
+        Deduplication.Clear();
+        GroupDeduplication.Clear();
+    }
 
     /// <summary>
     /// Number of in-flight (received-but-not-deleted) messages per FIFO message group.
@@ -46,6 +226,38 @@ internal sealed class SqsQueueResource
     /// </summary>
     public Channel<bool> FifoMessageAvailableSignal { get; } = Channel.CreateBounded<bool>(
         new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
+
+    /// <summary>
+    /// A FIFO receive made under a <c>ReceiveRequestAttemptId</c>: the batch it returned, which a
+    /// retry with the same id replays until one of its messages is deleted or has its visibility
+    /// changed.
+    /// </summary>
+    internal sealed class ReceiveAttempt(List<Message> batch, DateTimeOffset receivedAt)
+    {
+        public List<Message> Batch { get; } = batch;
+        public DateTimeOffset ReceivedAt { get; } = receivedAt;
+        public bool Modified { get; set; }
+    }
+
+    /// <summary>FIFO receive attempts by <c>ReceiveRequestAttemptId</c>.</summary>
+    public ConcurrentDictionary<string, ReceiveAttempt> ReceiveAttempts { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>The receive attempt that handed out each receipt handle, for the handles of attempts still held.</summary>
+    public ConcurrentDictionary<string, ReceiveAttempt> ReceiveAttemptsByReceiptHandle { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Marks the receive attempt that handed out <paramref name="receiptHandle"/>, if any, as no longer retryable.</summary>
+    public void MarkReceiveAttemptModified(string? receiptHandle)
+    {
+        if (receiptHandle is not null && ReceiveAttemptsByReceiptHandle.TryGetValue(receiptHandle, out var attempt))
+        {
+            attempt.Modified = true;
+        }
+    }
+
+    private int _fifoReceiveStart;
+
+    /// <summary>A rotating start position for scanning message groups, one per FIFO receive.</summary>
+    public int NextFifoReceiveStart() => Interlocked.Increment(ref _fifoReceiveStart);
 
     public void SignalFifoMessageAvailable()
     {
@@ -80,6 +292,181 @@ internal sealed class SqsQueueResource
         }
 
         SignalFifoMessageAvailable();
+    }
+
+    /// <summary>Per-group locks held across a FIFO send, so a group's sequence numbers follow its enqueue order.</summary>
+    private readonly ConcurrentDictionary<string, object> _fifoSendLocks = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Sends <paramref name="message"/> to FIFO group <paramref name="messageGroupId"/>: assigns its sequence
+    /// number, claims <paramref name="deduplicationId"/>, and enqueues it, after the queue's
+    /// <see cref="DelaySeconds"/> when there is one.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> when the message was enqueued; <see langword="false"/> when it was a duplicate,
+    /// in which case <paramref name="original"/> is the message that claimed the deduplication id.
+    /// </returns>
+    public bool TryEnqueueFifoSend(Message message, string messageGroupId, string deduplicationId,
+        bool perMessageGroupDeduplication, TimeProvider timeProvider, out SqsDeduplicationCache.Entry original)
+    {
+        // Numbering and enqueuing under one lock keeps concurrent sends to a group in sequence order.
+        lock (_fifoSendLocks.GetOrAdd(messageGroupId, _ => new object()))
+        {
+            // The sequence number is fixed at send time, as in SQS (not when a delay ends).
+            var sequenceNumber = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
+            message.Attributes ??= [];
+            message.Attributes["SequenceNumber"] = sequenceNumber;
+
+            if (!DeduplicationFor(messageGroupId, perMessageGroupDeduplication)
+                    .TryClaim(deduplicationId, message.MessageId!, sequenceNumber, timeProvider.GetUtcNow(), out original))
+            {
+                return false;
+            }
+
+            if (DelaySeconds > 0)
+            {
+                // FIFO queues only support a queue-level delay.
+                EnqueueAfterDelay(message, TimeSpan.FromSeconds(DelaySeconds), timeProvider, messageGroupId);
+            }
+            else
+            {
+                EnqueueFifoMessage(messageGroupId, message);
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>Cancelled, and replaced, when a FIFO queue's <see cref="DelaySeconds"/> changes, waking delayed messages.</summary>
+    private CancellationTokenSource _fifoDelayChanged = new();
+
+    /// <summary>
+    /// Applies a changed <see cref="DelaySeconds"/> to a FIFO queue's messages already waiting: those now due
+    /// are released, and the rest wait out the new delay rather than the one they were sent with.
+    /// </summary>
+    public void FifoDelaySecondsChanged(TimeProvider timeProvider)
+    {
+        // Not disposed: a delayed message may have read its token and not yet registered on it.
+        Interlocked.Exchange(ref _fifoDelayChanged, new CancellationTokenSource()).Cancel();
+        ReleaseDueFifoMessages(timeProvider);
+    }
+
+    /// <summary>
+    /// Makes <paramref name="message"/> visible once <paramref name="delay"/> has elapsed, counting it as
+    /// delayed until then. A FIFO message (non-null <paramref name="fifoMessageGroupId"/>) joins its group.
+    /// </summary>
+    public void EnqueueAfterDelay(Message message, TimeSpan delay, TimeProvider timeProvider, string? fifoMessageGroupId = null)
+    {
+        _delayedMessages.TryAdd(message, 0);
+        var start = timeProvider.GetTimestamp();
+        if (fifoMessageGroupId is not null)
+        {
+            lock (_delayedFifoMessages)
+            {
+                if (!_delayedFifoMessages.TryGetValue(fifoMessageGroupId, out var pending))
+                {
+                    pending = new Queue<DelayedFifoMessage>();
+                    _delayedFifoMessages[fifoMessageGroupId] = pending;
+                }
+
+                pending.Enqueue(new DelayedFifoMessage(message, start));
+            }
+        }
+
+        _ = EnqueueAfterDelayCore();
+
+        async Task EnqueueAfterDelayCore()
+        {
+            // Timers can fire a little early; a delayed message must never be visible before
+            // its full delay has elapsed. A FIFO queue's delay is whatever the queue's is now,
+            // so a change applies to messages already waiting.
+            while (true)
+            {
+                // Read before the delay, so a change made after it is read wakes this wait.
+                var delayChanged = fifoMessageGroupId is null ? CancellationToken.None : Volatile.Read(ref _fifoDelayChanged).Token;
+                var currentDelay = fifoMessageGroupId is null ? delay : TimeSpan.FromSeconds(DelaySeconds);
+                var remaining = currentDelay - timeProvider.GetElapsedTime(start);
+                if (remaining <= TimeSpan.Zero)
+                {
+                    break;
+                }
+
+                try
+                {
+                    await timeProvider.Delay(remaining, delayChanged).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (delayChanged.IsCancellationRequested)
+                {
+                    // The queue's delay changed: recompute what is left of it.
+                }
+            }
+
+            if (fifoMessageGroupId is not null)
+            {
+                ReleaseDueFifoMessages(fifoMessageGroupId, timeProvider);
+            }
+            // Gone already when the queue was purged while the message was still delayed.
+            else if (_delayedMessages.TryRemove(message, out _))
+            {
+                Messages.Enqueue(message);
+            }
+        }
+    }
+
+    /// <summary>Releases every group's delayed FIFO messages that are due, as after the queue's delay is lowered.</summary>
+    private void ReleaseDueFifoMessages(TimeProvider timeProvider)
+    {
+        List<string> groups;
+        lock (_delayedFifoMessages)
+        {
+            groups = [.. _delayedFifoMessages.Keys];
+        }
+
+        foreach (var group in groups)
+        {
+            ReleaseDueFifoMessages(group, timeProvider);
+        }
+    }
+
+    /// <summary>
+    /// Releases a group's delayed FIFO messages that are due, from the oldest, stopping at the first
+    /// that is not: a message never overtakes an earlier one in its group, whichever timer fires first.
+    /// </summary>
+    private void ReleaseDueFifoMessages(string messageGroupId, TimeProvider timeProvider)
+    {
+        lock (_delayedFifoMessages)
+        {
+            if (!_delayedFifoMessages.TryGetValue(messageGroupId, out var pending))
+            {
+                return;
+            }
+
+            var delay = TimeSpan.FromSeconds(DelaySeconds);
+            while (pending.Count > 0 && timeProvider.GetElapsedTime(pending.Peek().Start) >= delay)
+            {
+                var due = pending.Dequeue().Message;
+                // Gone already when the queue was purged while the message was still delayed.
+                if (_delayedMessages.TryRemove(due, out _))
+                {
+                    EnqueueFifoMessage(messageGroupId, due);
+                }
+            }
+
+            if (pending.Count == 0)
+            {
+                _delayedFifoMessages.Remove(messageGroupId);
+            }
+        }
+    }
+
+    /// <summary>Discards every message still waiting out its delay, as <c>PurgeQueue</c> does.</summary>
+    public void DiscardDelayedMessages()
+    {
+        lock (_delayedFifoMessages)
+        {
+            _delayedMessages.Clear();
+            _delayedFifoMessages.Clear();
+        }
     }
 
     /// <summary>

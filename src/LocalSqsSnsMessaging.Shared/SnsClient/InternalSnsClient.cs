@@ -426,8 +426,7 @@ internal sealed class InternalSnsClient
         switch (protocol)
         {
             case "sqs":
-                var queueName = request.Endpoint.Split(':').Last();
-                if (!_bus.Queues.TryGetValue(queueName, out _))
+                if (!_bus.TryGetQueueByArn(request.Endpoint, out _))
                 {
                     throw new InternalNotFoundException("Queue not found.");
                 }

@@ -116,6 +116,24 @@ Console.WriteLine(message.Body); // Hello, World!
 
 All actions in this library that depend on delays or timeouts use the `TimeProvider` to control time, so you can also take advantage of this feature with features like visibility timeouts.
 
+### Regions
+
+By default the bus serves every request from `CurrentRegion`, whatever region a client was configured for, so an application whose SDK clients use another region still shares queues with your test's clients. To model regions as AWS does, set `IsolateRegions`:
+
+```csharp
+var bus = new InMemoryAwsBus { IsolateRegions = true };
+```
+
+Each SQS request is then served from the queues of the region it was signed for (or, unsigned, the region in its endpoint host): same-named queues in two regions are separate, a queue's ARN and URL name the region it was created in, and redrive policies and move tasks can't cross regions.
+
+### SQS callers, queue policies and SSE-KMS
+
+The library models no IAM, but SDK clients are answered according to how they sign their requests:
+
+- **`SenderId`.** A request signed with an access key is stamped with the bus's `CurrentUserId` (default `AIDAIOSFODNN7EXAMPLE`), as SQS stamps the sender's IAM user id. An access key that is a 12-digit account id signs as that account's root user, whose id is the account id. Unsigned requests, which is what `CreateSqsClient()` sends, keep the account id.
+- **Queue policies.** Explicit `Deny` statements in a queue's `Policy` are enforced for SDK clients and refused with `AccessDenied`, as SQS does. `Allow` statements are not evaluated, so a queue with no policy, or one that only allows, behaves as before. A statement whose condition uses an operator the library does not evaluate is skipped. As on SQS, a bare account-id principal reads back as `arn:aws:iam::<account>:root`, and setting `Policy` to `""` removes it.
+- **SSE-KMS.** By default every KMS key is taken to exist. Set `KmsKeyAliases` on the bus to check aliases as SQS does: a key id, a key ARN or an AWS-managed alias (`alias/aws/sqs`) still sends normally, but any other alias must be listed, or `SendMessage` fails with `KMS.NotFoundException`. An unsigned request that the queue's policy only admits through a `"Principal": "*"` grant is anonymous, and is refused on an SSE-KMS queue.
+
 ### SNS filter policies
 
 Subscriptions honour [filter policies](https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html) on either the message attributes (the default) or, with `FilterPolicyScope` set to `MessageBody`, the JSON message body. The full grammar is supported: exact matches, `anything-but`, `prefix`, `suffix`, `equals-ignore-case`, `wildcard`, `cidr`, `numeric` ranges, `exists`, `$or`, and nested keys for body-scoped policies. Invalid policies are rejected with `InvalidParameterException`, as on AWS.

@@ -96,6 +96,25 @@ internal sealed class SqsMessageStore
     }
 
     /// <summary>
+    /// Removes every waiting message that matches <paramref name="predicate"/>, keeping the others
+    /// in order. A receive dequeuing concurrently may still take a message being inspected.
+    /// </summary>
+    public void RemoveWhere(Func<Message, bool> predicate)
+    {
+        lock (SyncObj)
+        {
+            var count = _items.Count;
+            for (var i = 0; i < count && _items.TryDequeue(out var message); i++)
+            {
+                if (!predicate(message))
+                {
+                    _items.Enqueue(message);
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Waits until a message is handed to this receive - returned for it alone to deliver - or
     /// until <paramref name="cancellationToken"/> fires, which for a long poll means its
     /// <c>WaitTimeSeconds</c> elapsed, or the caller gave up; then this returns

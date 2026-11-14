@@ -13,7 +13,18 @@ internal static class InternalQueueAttributeName
     public const string LastModifiedTimestamp = "LastModifiedTimestamp";
     public const string QueueArn = "QueueArn";
     public const string VisibilityTimeout = "VisibilityTimeout";
+    public const string DelaySeconds = "DelaySeconds";
+    public const string MaximumMessageSize = "MaximumMessageSize";
+    public const string MessageRetentionPeriod = "MessageRetentionPeriod";
+    public const string ReceiveMessageWaitTimeSeconds = "ReceiveMessageWaitTimeSeconds";
+    public const string SqsManagedSseEnabled = "SqsManagedSseEnabled";
+    public const string KmsMasterKeyId = "KmsMasterKeyId";
+    public const string KmsDataKeyReusePeriodSeconds = "KmsDataKeyReusePeriodSeconds";
+    public const string FifoQueue = "FifoQueue";
+    public const string ContentBasedDeduplication = "ContentBasedDeduplication";
     public const string RedrivePolicy = "RedrivePolicy";
+    public const string RedriveAllowPolicy = "RedriveAllowPolicy";
+    public const string Policy = "Policy";
     public const string DeduplicationScope = "DeduplicationScope";
     public const string FifoThroughputLimit = "FifoThroughputLimit";
 }
@@ -31,4 +42,5 @@ internal static class InternalMessageSystemAttributeName
     public const string AWSTraceHeader = "AWSTraceHeader";
     public const string DeadLetterQueueSourceArn = "DeadLetterQueueSourceArn";
     public const string MessageDeduplicationId = "MessageDeduplicationId";
+    public const string MessageGroupId = "MessageGroupId";
 }

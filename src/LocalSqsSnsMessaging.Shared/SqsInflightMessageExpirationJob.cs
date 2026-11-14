@@ -9,10 +9,13 @@ internal sealed class SqsInflightMessageExpirationJob : IDisposable
         public SqsQueueResource Queue { get; }
         public string ReceiptHandle { get; }
 
-        public TimerState(SqsQueueResource queue, string receiptHandle)
+        public TimeProvider TimeProvider { get; }
+
+        public TimerState(SqsQueueResource queue, string receiptHandle, TimeProvider timeProvider)
         {
             Queue = queue;
             ReceiptHandle = receiptHandle;
+            TimeProvider = timeProvider;
         }
     }
 
@@ -20,7 +23,8 @@ internal sealed class SqsInflightMessageExpirationJob : IDisposable
     {
         var state = new TimerState(
             queue ?? throw new ArgumentNullException(nameof(queue)),
-            receiptHandle ?? throw new ArgumentNullException(nameof(receiptHandle))
+            receiptHandle ?? throw new ArgumentNullException(nameof(receiptHandle)),
+            timeProvider
         );
 
         _timer = timeProvider.CreateTimer(VisibilityTimeoutCallback, state, timeout, Timeout.InfiniteTimeSpan);
@@ -34,10 +38,32 @@ internal sealed class SqsInflightMessageExpirationJob : IDisposable
     private static void VisibilityTimeoutCallback(object? state)
     {
         var timerState = (TimerState)state!;
-        if (timerState.Queue.InFlightMessages.TryRemove(timerState.ReceiptHandle, out var inFlightMessage))
+        EndVisibilityTimeout(timerState.Queue, timerState.ReceiptHandle, timerState.TimeProvider);
+    }
+
+    /// <summary>
+    /// Ends the visibility timeout of the message in flight under <paramref name="receiptHandle"/>
+    /// now: it becomes visible again, or is discarded if it outlived the queue's retention period.
+    /// </summary>
+    public static void EndVisibilityTimeout(SqsQueueResource queue, string receiptHandle, TimeProvider timeProvider)
+    {
+        if (queue.InFlightMessages.TryRemove(receiptHandle, out var inFlightMessage))
         {
             var (message, inFlightExpireCallback) = inFlightMessage;
-            timerState.Queue.ReturnInFlightMessage(message);
+            if (queue.IsExpired(message, timeProvider.GetUtcNow()))
+            {
+                // Retention runs from the send, so a message can expire while in flight; it is
+                // discarded rather than made visible again.
+                if (queue.IsFifo)
+                {
+                    queue.ReleaseDeletedFifoMessage(message);
+                }
+            }
+            else
+            {
+                queue.ReturnInFlightMessage(message);
+            }
+
             inFlightExpireCallback.Dispose();
         }
     }

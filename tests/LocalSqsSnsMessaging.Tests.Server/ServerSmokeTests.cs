@@ -234,6 +234,38 @@ public sealed class ServerSmokeTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task Sqs_SenderId_IsTheSigningCallersUserId()
+    {
+        // The default client signs with access key "000000000000": the account's root user,
+        // whose user id is the account id. Any other access key signs as the bus's IAM user.
+        using var userClient = new AmazonSQSClient(
+            new BasicAWSCredentials("test", "fake"),
+            new AmazonSQSConfig
+            {
+                ServiceURL = $"http://localhost:{_port}",
+                MaxErrorRetry = 0
+            });
+        var queueUrl = (await _sqsClient!.CreateQueueAsync("sender-id-queue")).QueueUrl;
+
+        await _sqsClient.SendMessageAsync(queueUrl, "from root");
+        var fromRoot = (await _sqsClient.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageSystemAttributeNames = ["SenderId"]
+        })).Messages.ShouldHaveSingleItem();
+        fromRoot.Attributes["SenderId"].ShouldBe("000000000000");
+        await _sqsClient.DeleteMessageAsync(queueUrl, fromRoot.ReceiptHandle);
+
+        await userClient.SendMessageAsync(queueUrl, "from user");
+        var fromUser = (await _sqsClient.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageSystemAttributeNames = ["SenderId"]
+        })).Messages.ShouldHaveSingleItem();
+        fromUser.Attributes["SenderId"].ShouldBe("AIDAIOSFODNN7EXAMPLE");
+    }
+
+    [Test]
     public async Task Sqs_MultiAccount_ShouldIsolateQueues()
     {
         // Create a second SQS client with a different 12-digit account ID
@@ -295,6 +327,82 @@ public sealed class ServerSmokeTests : IAsyncDisposable
             WaitTimeSeconds = 0
         });
         (recv2.Messages ?? []).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task Sqs_QueryProtocolRequests_ShareQueuesWithJsonClients()
+    {
+        // Form-encoded SQS requests are told apart from SNS's, which share the endpoint, by their
+        // API Version; both protocols act on the same queues.
+        var queueUrl = (await _sqsClient!.CreateQueueAsync("query-protocol-queue")).QueueUrl;
+
+        using var http = new HttpClient();
+        using var sendContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Action"] = "SendMessage",
+                ["Version"] = "2012-11-05",
+                ["QueueUrl"] = queueUrl,
+                ["MessageBody"] = "sent over query",
+                ["MessageAttribute.1.Name"] = "proto",
+                ["MessageAttribute.1.Value.DataType"] = "String",
+                ["MessageAttribute.1.Value.StringValue"] = "query",
+            });
+        using var send = await http.PostAsync(new Uri($"http://localhost:{_port}/"), sendContent);
+        send.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await send.Content.ReadAsStringAsync()).ShouldContain("<SendMessageResponse xmlns=\"http://queue.amazonaws.com/doc/2012-11-05/\">");
+
+        var received = (await _sqsClient.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageAttributeNames = ["All"],
+        })).Messages.ShouldHaveSingleItem();
+        received.Body.ShouldBe("sent over query");
+        received.MessageAttributes["proto"].StringValue.ShouldBe("query");
+
+        using var missingContent = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Action"] = "GetQueueUrl",
+                ["Version"] = "2012-11-05",
+                ["QueueName"] = "no-such-queue",
+            });
+        using var missing = await http.PostAsync(new Uri($"http://localhost:{_port}/"), missingContent);
+        missing.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var error = await missing.Content.ReadAsStringAsync();
+        error.ShouldContain("<Code>AWS.SimpleQueueService.NonExistentQueue</Code>");
+        error.ShouldContain("<Message>The specified queue does not exist for this wsdl version.</Message>");
+    }
+
+    [Test]
+    [Arguments("application/x-amz-json-1.0", null, 400, "{\"__type\":\"com.amazon.coral.service#UnknownOperationException\"}")]
+    [Arguments("application/json", "AmazonSQS.CreateQueue", 404, "<UnknownOperationException/>\n")]
+    public async Task Sqs_RawJsonPostWithoutBothProtocolHeaders_IsRefusedAsAnUnknownOperation(
+        string contentType, string? target, int expectedStatus, string expectedBody)
+    {
+        using var http = new HttpClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri($"http://localhost:{_port}/"));
+        request.Content = new StringContent("{\"QueueName\":\"raw-post-queue\"}");
+        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        if (target is not null)
+        {
+            request.Headers.TryAddWithoutValidation("X-Amz-Target", target);
+        }
+
+        using var response = await http.SendAsync(request);
+
+        ((int)response.StatusCode).ShouldBe(expectedStatus);
+        (await response.Content.ReadAsStringAsync()).ShouldBe(expectedBody);
+        var error = await Should.ThrowAsync<QueueDoesNotExistException>(() => _sqsClient!.GetQueueUrlAsync("raw-post-queue"));
+        error.ErrorCode.ShouldBe("AWS.SimpleQueueService.NonExistentQueue");
+    }
+
+    [Test]
+    public async Task Sqs_RequestOverTwoMiB_IsRefusedWith413()
+    {
+        var queueUrl = (await _sqsClient!.CreateQueueAsync("too-large-queue")).QueueUrl;
+
+        var error = await Should.ThrowAsync<AmazonSQSException>(() => _sqsClient.SendMessageAsync(queueUrl, new string('x', 2 * 1024 * 1024)));
+
+        error.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
     }
 
     private static int GetAvailablePort()

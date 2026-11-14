@@ -22,7 +22,7 @@ internal static partial class SqsOperationHandler
         ArgumentNullException.ThrowIfNull(operationName);
         ArgumentNullException.ThrowIfNull(bus);
 
-        var client = new InternalSqsClient(bus);
+        var client = new InternalSqsClient(bus, AwsRequestRegion.FromRequest(request)) { Caller = SqsCaller.FromRequest(request) };
 
         return operationName switch
         {
@@ -794,10 +794,12 @@ internal static partial class SqsOperationHandler
         }
         """;
 
-        return new HttpResponseMessage(statusCode)
+        var response = new HttpResponseMessage(statusCode)
         {
             Content = new StringContent(errorJson, Encoding.UTF8, "application/x-amz-json-1.0")
         };
+        response.Headers.TryAddWithoutValidation(SqsQueryCompatibleErrors.HeaderName, SqsQueryCompatibleErrors.HeaderValue(errorCode, statusCode));
+        return response;
     }
 }
 

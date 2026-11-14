@@ -44,6 +44,12 @@ GenerateJsonProtocolHandler(
     "LocalSqsSnsMessaging.Sqs.Model",
     outputDir);
 
+// Generate SQS's second wire protocol: SQS is awsQueryCompatible and still serves AWS Query
+GenerateSqsQueryProtocol(
+    Path.Combine(serviceModelsDir, "sqs-2012-11-05.normal.json"),
+    "LocalSqsSnsMessaging.Sqs.Model",
+    outputDir);
+
 // Generate SNS handler (Query protocol)
 GenerateQueryProtocolHandler(
     Path.Combine(serviceModelsDir, "sns-2010-03-31.normal.json"),
@@ -120,7 +126,11 @@ static void GenerateJsonHandler(string serviceName, string modelNamespace, JsonE
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
-    code.AppendLine($"        var client = new Internal{serviceName}Client(bus);");
+    // SQS queues are regional, and SQS answers each request as the caller who made it: serve the
+    // request from the queues of the region it was made in, as its caller (see SqsCaller).
+    code.AppendLine(serviceName == "Sqs"
+        ? "        var client = new InternalSqsClient(bus, AwsRequestRegion.FromRequest(request)) { Caller = SqsCaller.FromRequest(request) };"
+        : $"        var client = new Internal{serviceName}Client(bus);");
     code.AppendLine();
     code.AppendLine("        return operationName switch");
     code.AppendLine("        {");
@@ -207,10 +217,16 @@ static void GenerateJsonHandler(string serviceName, string modelNamespace, JsonE
     code.AppendLine("        }");
     code.AppendLine("        \"\"\";");
     code.AppendLine();
-    code.AppendLine("        return new HttpResponseMessage(statusCode)");
+    code.AppendLine("        var response = new HttpResponseMessage(statusCode)");
     code.AppendLine("        {");
     code.AppendLine($"            Content = new StringContent(errorJson, Encoding.UTF8, \"{contentType}\")");
     code.AppendLine("        };");
+    if (serviceName == "Sqs")
+    {
+        // SQS is awsQueryCompatible: SDKs read the Query-protocol error code from this header.
+        code.AppendLine("        response.Headers.TryAddWithoutValidation(SqsQueryCompatibleErrors.HeaderName, SqsQueryCompatibleErrors.HeaderValue(errorCode, statusCode));");
+    }
+    code.AppendLine("        return response;");
     code.AppendLine("    }");
 
     code.AppendLine("}");
@@ -251,7 +267,9 @@ static void GenerateJsonHttpContextHandler(string serviceName, string modelNames
     code.AppendLine("        ArgumentNullException.ThrowIfNull(operationName);");
     code.AppendLine("        ArgumentNullException.ThrowIfNull(bus);");
     code.AppendLine();
-    code.AppendLine($"        var client = new Internal{serviceName}Client(bus);");
+    code.AppendLine(serviceName == "Sqs"
+        ? "        var client = new InternalSqsClient(bus) { Caller = SqsCaller.FromHttpContext(context) };"
+        : $"        var client = new Internal{serviceName}Client(bus);");
     code.AppendLine();
     code.AppendLine("        switch (operationName)");
     code.AppendLine("        {");
@@ -333,6 +351,11 @@ static void GenerateJsonHttpContextHandler(string serviceName, string modelNames
     code.AppendLine();
     code.AppendLine("        context.Response.StatusCode = statusCode;");
     code.AppendLine("        context.Response.ContentType = \"application/x-amz-json-1.0\";");
+    if (serviceName == "Sqs")
+    {
+        // SQS is awsQueryCompatible: SDKs read the Query-protocol error code from this header.
+        code.AppendLine("        context.Response.Headers[SqsQueryCompatibleErrors.HeaderName] = SqsQueryCompatibleErrors.HeaderValue(errorCode, (System.Net.HttpStatusCode)statusCode);");
+    }
     code.AppendLine();
     code.AppendLine("        var errorJson = $$\"\"\"");
     code.AppendLine("        {");
@@ -351,6 +374,23 @@ static void GenerateJsonHttpContextHandler(string serviceName, string modelNames
 
     var outputPath = Path.Combine(outputDir, $"{serviceName}OperationHandler.HttpContext.g.cs");
     File.WriteAllText(outputPath, code.ToString());
+}
+
+static void GenerateSqsQueryProtocol(string modelPath, string modelNamespace, string outputDir)
+{
+    Console.WriteLine("  Processing Sqs (Query protocol)...");
+
+    var json = File.ReadAllText(modelPath);
+    using var doc = JsonDocument.Parse(json);
+    var root = doc.RootElement;
+    var operations = root.GetProperty("operations");
+
+    // The JSON model carries no xmlNamespace; this is the one SQS has always answered Query in.
+    var generator = new SqsQueryCodeGenerator(modelNamespace, "http://queue.amazonaws.com/doc/2012-11-05/", root.GetProperty("shapes"));
+    File.WriteAllText(Path.Combine(outputDir, "SqsQuerySerializers.g.cs"), generator.GenerateSerializers(operations));
+    File.WriteAllText(Path.Combine(outputDir, "SqsQueryOperationHandler.g.cs"), SqsQueryCodeGenerator.GenerateDispatcher(operations));
+
+    Console.WriteLine("    Generated Query protocol dispatcher and serializers for Sqs");
 }
 
 static void GenerateQueryProtocolHandler(string modelPath, string serviceName, string modelNamespace, string outputDir)
