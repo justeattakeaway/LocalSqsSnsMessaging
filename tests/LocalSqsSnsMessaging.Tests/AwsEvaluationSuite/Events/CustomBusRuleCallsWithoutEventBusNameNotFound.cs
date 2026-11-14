@@ -17,7 +17,6 @@ public sealed class CustomBusRuleCallsWithoutEventBusNameNotFound
     [Test]
     [DisplayName("events.custom-bus-rule-calls-without-event-bus-name-not-found")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeErrorMessages, "DescribeRule of a rule missing from the default bus says '... does not exist on event bus default.' instead of '... on EventBus default.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

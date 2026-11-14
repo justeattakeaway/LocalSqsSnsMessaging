@@ -15,6 +15,98 @@ namespace LocalSqsSnsMessaging.Http.Handlers;
 /// </summary>
 internal static class EventBridgeJsonSerializers
 {
+    internal static CancelReplayRequest DeserializeCancelReplayRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new CancelReplayRequest();
+
+        // ReplayName
+        if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
+            request.ReplayName = ReplayNameElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeCancelReplayResponse(CancelReplayResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ReplayArn
+        if (response.ReplayArn != null)
+            writer.WriteString("ReplayArn", response.ReplayArn);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static CreateArchiveRequest DeserializeCreateArchiveRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new CreateArchiveRequest();
+
+        // ArchiveName
+        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+            request.ArchiveName = ArchiveNameElem.GetString();
+
+        // EventSourceArn
+        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+            request.EventSourceArn = EventSourceArnElem.GetString();
+
+        // Description
+        if (root.TryGetProperty("Description", out var DescriptionElem))
+            request.Description = DescriptionElem.GetString();
+
+        // EventPattern
+        if (root.TryGetProperty("EventPattern", out var EventPatternElem))
+            request.EventPattern = EventPatternElem.GetString();
+
+        // RetentionDays
+        if (root.TryGetProperty("RetentionDays", out var RetentionDaysElem) && RetentionDaysElem.TryGetInt32(out var RetentionDaysVal))
+            request.RetentionDays = RetentionDaysVal;
+
+        // KmsKeyIdentifier
+        if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
+            request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeCreateArchiveResponse(CreateArchiveResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ArchiveArn
+        if (response.ArchiveArn != null)
+            writer.WriteString("ArchiveArn", response.ArchiveArn);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        // CreationTime
+        if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
+            writer.WriteString("CreationTime", SdkCompatibility.GetValue(response.CreationTime).ToString("O"));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
     internal static CreateEventBusRequest DeserializeCreateEventBusRequest(Stream stream)
     {
         using var doc = JsonDocument.Parse(stream);
@@ -88,6 +180,28 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
+    internal static DeleteArchiveRequest DeserializeDeleteArchiveRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new DeleteArchiveRequest();
+
+        // ArchiveName
+        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+            request.ArchiveName = ArchiveNameElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeDeleteArchiveResponse(DeleteArchiveResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
     internal static DeleteEventBusRequest DeserializeDeleteEventBusRequest(Stream stream)
     {
         using var doc = JsonDocument.Parse(stream);
@@ -134,6 +248,76 @@ internal static class EventBridgeJsonSerializers
     {
         using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
         writer.WriteStartObject();
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static DescribeArchiveRequest DeserializeDescribeArchiveRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new DescribeArchiveRequest();
+
+        // ArchiveName
+        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+            request.ArchiveName = ArchiveNameElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeDescribeArchiveResponse(DescribeArchiveResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ArchiveArn
+        if (response.ArchiveArn != null)
+            writer.WriteString("ArchiveArn", response.ArchiveArn);
+
+        // ArchiveName
+        if (response.ArchiveName != null)
+            writer.WriteString("ArchiveName", response.ArchiveName);
+
+        // EventSourceArn
+        if (response.EventSourceArn != null)
+            writer.WriteString("EventSourceArn", response.EventSourceArn);
+
+        // Description
+        if (response.Description != null)
+            writer.WriteString("Description", response.Description);
+
+        // EventPattern
+        if (response.EventPattern != null)
+            writer.WriteString("EventPattern", response.EventPattern);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        // KmsKeyIdentifier
+        if (response.KmsKeyIdentifier != null)
+            writer.WriteString("KmsKeyIdentifier", response.KmsKeyIdentifier);
+
+        // RetentionDays
+        if (SdkCompatibility.HasNonDefaultValue(response.RetentionDays))
+            writer.WriteNumber("RetentionDays", SdkCompatibility.GetValue(response.RetentionDays));
+
+        // SizeBytes
+        if (SdkCompatibility.HasNonDefaultValue(response.SizeBytes))
+            writer.WriteNumber("SizeBytes", SdkCompatibility.GetValue(response.SizeBytes));
+
+        // EventCount
+        if (SdkCompatibility.HasNonDefaultValue(response.EventCount))
+            writer.WriteNumber("EventCount", SdkCompatibility.GetValue(response.EventCount));
+
+        // CreationTime
+        if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
+            writer.WriteString("CreationTime", SdkCompatibility.GetValue(response.CreationTime).ToString("O"));
+
         writer.WriteEndObject();
         writer.Flush();
     }
@@ -189,6 +373,75 @@ internal static class EventBridgeJsonSerializers
         // LastModifiedTime
         if (SdkCompatibility.HasNonDefaultValue(response.LastModifiedTime))
             writer.WriteString("LastModifiedTime", SdkCompatibility.GetValue(response.LastModifiedTime).ToString("O"));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static DescribeReplayRequest DeserializeDescribeReplayRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new DescribeReplayRequest();
+
+        // ReplayName
+        if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
+            request.ReplayName = ReplayNameElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeDescribeReplayResponse(DescribeReplayResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ReplayName
+        if (response.ReplayName != null)
+            writer.WriteString("ReplayName", response.ReplayName);
+
+        // ReplayArn
+        if (response.ReplayArn != null)
+            writer.WriteString("ReplayArn", response.ReplayArn);
+
+        // Description
+        if (response.Description != null)
+            writer.WriteString("Description", response.Description);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        // EventSourceArn
+        if (response.EventSourceArn != null)
+            writer.WriteString("EventSourceArn", response.EventSourceArn);
+
+        // Destination
+        // TODO: Implement structure serialization for Destination (ReplayDestination)
+
+        // EventStartTime
+        if (SdkCompatibility.HasNonDefaultValue(response.EventStartTime))
+            writer.WriteString("EventStartTime", SdkCompatibility.GetValue(response.EventStartTime).ToString("O"));
+
+        // EventEndTime
+        if (SdkCompatibility.HasNonDefaultValue(response.EventEndTime))
+            writer.WriteString("EventEndTime", SdkCompatibility.GetValue(response.EventEndTime).ToString("O"));
+
+        // EventLastReplayedTime
+        if (SdkCompatibility.HasNonDefaultValue(response.EventLastReplayedTime))
+            writer.WriteString("EventLastReplayedTime", SdkCompatibility.GetValue(response.EventLastReplayedTime).ToString("O"));
+
+        // ReplayStartTime
+        if (SdkCompatibility.HasNonDefaultValue(response.ReplayStartTime))
+            writer.WriteString("ReplayStartTime", SdkCompatibility.GetValue(response.ReplayStartTime).ToString("O"));
+
+        // ReplayEndTime
+        if (SdkCompatibility.HasNonDefaultValue(response.ReplayEndTime))
+            writer.WriteString("ReplayEndTime", SdkCompatibility.GetValue(response.ReplayEndTime).ToString("O"));
 
         writer.WriteEndObject();
         writer.Flush();
@@ -310,6 +563,77 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
+    internal static ListArchivesRequest DeserializeListArchivesRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new ListArchivesRequest();
+
+        // NamePrefix
+        if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
+            request.NamePrefix = NamePrefixElem.GetString();
+
+        // EventSourceArn
+        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+            request.EventSourceArn = EventSourceArnElem.GetString();
+
+        // State
+        if (root.TryGetProperty("State", out var StateElem))
+            request.State = StateElem.GetString();
+
+        // NextToken
+        if (root.TryGetProperty("NextToken", out var NextTokenElem))
+            request.NextToken = NextTokenElem.GetString();
+
+        // Limit
+        if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
+            request.Limit = LimitVal;
+
+        return request;
+    }
+
+    internal static void SerializeListArchivesResponse(ListArchivesResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // Archives
+        if (response.Archives != null)
+        {
+            writer.WritePropertyName("Archives");
+            writer.WriteStartArray();
+            foreach (var item in response.Archives)
+            {
+                writer.WriteStartObject();
+                if (item.ArchiveName != null)
+                    writer.WriteString("ArchiveName", item.ArchiveName);
+                if (item.EventSourceArn != null)
+                    writer.WriteString("EventSourceArn", item.EventSourceArn);
+                if (item.State != null)
+                    writer.WriteString("State", item.State);
+                if (item.StateReason != null)
+                    writer.WriteString("StateReason", item.StateReason);
+                if (SdkCompatibility.HasNonDefaultValue(item.RetentionDays))
+                    writer.WriteNumber("RetentionDays", SdkCompatibility.GetValue(item.RetentionDays));
+                if (SdkCompatibility.HasNonDefaultValue(item.SizeBytes))
+                    writer.WriteNumber("SizeBytes", SdkCompatibility.GetValue(item.SizeBytes));
+                if (SdkCompatibility.HasNonDefaultValue(item.EventCount))
+                    writer.WriteNumber("EventCount", SdkCompatibility.GetValue(item.EventCount));
+                if (SdkCompatibility.HasNonDefaultValue(item.CreationTime))
+                    writer.WriteString("CreationTime", SdkCompatibility.GetValue(item.CreationTime).ToString("O"));
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+
+        // NextToken
+        if (response.NextToken != null)
+            writer.WriteString("NextToken", response.NextToken);
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
     internal static ListEventBusesRequest DeserializeListEventBusesRequest(Stream stream)
     {
         using var doc = JsonDocument.Parse(stream);
@@ -337,7 +661,7 @@ internal static class EventBridgeJsonSerializers
         writer.WriteStartObject();
 
         // EventBuses
-        if (response.EventBuses != null && response.EventBuses.Count > 0)
+        if (response.EventBuses != null)
         {
             writer.WritePropertyName("EventBuses");
             writer.WriteStartArray();
@@ -356,6 +680,79 @@ internal static class EventBridgeJsonSerializers
                     writer.WriteString("CreationTime", SdkCompatibility.GetValue(item.CreationTime).ToString("O"));
                 if (SdkCompatibility.HasNonDefaultValue(item.LastModifiedTime))
                     writer.WriteString("LastModifiedTime", SdkCompatibility.GetValue(item.LastModifiedTime).ToString("O"));
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+
+        // NextToken
+        if (response.NextToken != null)
+            writer.WriteString("NextToken", response.NextToken);
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static ListReplaysRequest DeserializeListReplaysRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new ListReplaysRequest();
+
+        // NamePrefix
+        if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
+            request.NamePrefix = NamePrefixElem.GetString();
+
+        // State
+        if (root.TryGetProperty("State", out var StateElem))
+            request.State = StateElem.GetString();
+
+        // EventSourceArn
+        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+            request.EventSourceArn = EventSourceArnElem.GetString();
+
+        // NextToken
+        if (root.TryGetProperty("NextToken", out var NextTokenElem))
+            request.NextToken = NextTokenElem.GetString();
+
+        // Limit
+        if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
+            request.Limit = LimitVal;
+
+        return request;
+    }
+
+    internal static void SerializeListReplaysResponse(ListReplaysResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // Replays
+        if (response.Replays != null)
+        {
+            writer.WritePropertyName("Replays");
+            writer.WriteStartArray();
+            foreach (var item in response.Replays)
+            {
+                writer.WriteStartObject();
+                if (item.ReplayName != null)
+                    writer.WriteString("ReplayName", item.ReplayName);
+                if (item.EventSourceArn != null)
+                    writer.WriteString("EventSourceArn", item.EventSourceArn);
+                if (item.State != null)
+                    writer.WriteString("State", item.State);
+                if (item.StateReason != null)
+                    writer.WriteString("StateReason", item.StateReason);
+                if (SdkCompatibility.HasNonDefaultValue(item.EventStartTime))
+                    writer.WriteString("EventStartTime", SdkCompatibility.GetValue(item.EventStartTime).ToString("O"));
+                if (SdkCompatibility.HasNonDefaultValue(item.EventEndTime))
+                    writer.WriteString("EventEndTime", SdkCompatibility.GetValue(item.EventEndTime).ToString("O"));
+                if (SdkCompatibility.HasNonDefaultValue(item.EventLastReplayedTime))
+                    writer.WriteString("EventLastReplayedTime", SdkCompatibility.GetValue(item.EventLastReplayedTime).ToString("O"));
+                if (SdkCompatibility.HasNonDefaultValue(item.ReplayStartTime))
+                    writer.WriteString("ReplayStartTime", SdkCompatibility.GetValue(item.ReplayStartTime).ToString("O"));
+                if (SdkCompatibility.HasNonDefaultValue(item.ReplayEndTime))
+                    writer.WriteString("ReplayEndTime", SdkCompatibility.GetValue(item.ReplayEndTime).ToString("O"));
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -400,7 +797,7 @@ internal static class EventBridgeJsonSerializers
         writer.WriteStartObject();
 
         // RuleNames
-        if (response.RuleNames != null && response.RuleNames.Count > 0)
+        if (response.RuleNames != null)
         {
             writer.WritePropertyName("RuleNames");
             writer.WriteStartArray();
@@ -450,7 +847,7 @@ internal static class EventBridgeJsonSerializers
         writer.WriteStartObject();
 
         // Rules
-        if (response.Rules != null && response.Rules.Count > 0)
+        if (response.Rules != null)
         {
             writer.WritePropertyName("Rules");
             writer.WriteStartArray();
@@ -488,6 +885,45 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
+    internal static ListTagsForResourceRequest DeserializeListTagsForResourceRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new ListTagsForResourceRequest();
+
+        // ResourceARN
+        if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
+            request.ResourceARN = ResourceARNElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeListTagsForResourceResponse(ListTagsForResourceResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // Tags
+        if (response.Tags != null)
+        {
+            writer.WritePropertyName("Tags");
+            writer.WriteStartArray();
+            foreach (var item in response.Tags)
+            {
+                writer.WriteStartObject();
+                if (item.Key != null)
+                    writer.WriteString("Key", item.Key);
+                if (item.Value != null)
+                    writer.WriteString("Value", item.Value);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
     internal static ListTargetsByRuleRequest DeserializeListTargetsByRuleRequest(Stream stream)
     {
         using var doc = JsonDocument.Parse(stream);
@@ -519,7 +955,7 @@ internal static class EventBridgeJsonSerializers
         writer.WriteStartObject();
 
         // Targets
-        if (response.Targets != null && response.Targets.Count > 0)
+        if (response.Targets != null)
         {
             writer.WritePropertyName("Targets");
             writer.WriteStartArray();
@@ -923,7 +1359,7 @@ internal static class EventBridgeJsonSerializers
             writer.WriteNumber("FailedEntryCount", SdkCompatibility.GetValue(response.FailedEntryCount));
 
         // Entries
-        if (response.Entries != null && response.Entries.Count > 0)
+        if (response.Entries != null)
         {
             writer.WritePropertyName("Entries");
             writer.WriteStartArray();
@@ -941,6 +1377,46 @@ internal static class EventBridgeJsonSerializers
             writer.WriteEndArray();
         }
 
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static PutPermissionRequest DeserializePutPermissionRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new PutPermissionRequest();
+
+        // EventBusName
+        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+            request.EventBusName = EventBusNameElem.GetString();
+
+        // Action
+        if (root.TryGetProperty("Action", out var ActionElem))
+            request.Action = ActionElem.GetString();
+
+        // Principal
+        if (root.TryGetProperty("Principal", out var PrincipalElem))
+            request.Principal = PrincipalElem.GetString();
+
+        // StatementId
+        if (root.TryGetProperty("StatementId", out var StatementIdElem))
+            request.StatementId = StatementIdElem.GetString();
+
+        // Condition
+        // TODO: Implement structure deserialization for Condition (Condition)
+
+        // Policy
+        if (root.TryGetProperty("Policy", out var PolicyElem))
+            request.Policy = PolicyElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializePutPermissionResponse(PutPermissionResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
     }
@@ -1334,7 +1810,7 @@ internal static class EventBridgeJsonSerializers
             writer.WriteNumber("FailedEntryCount", SdkCompatibility.GetValue(response.FailedEntryCount));
 
         // FailedEntries
-        if (response.FailedEntries != null && response.FailedEntries.Count > 0)
+        if (response.FailedEntries != null)
         {
             writer.WritePropertyName("FailedEntries");
             writer.WriteStartArray();
@@ -1352,6 +1828,35 @@ internal static class EventBridgeJsonSerializers
             writer.WriteEndArray();
         }
 
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static RemovePermissionRequest DeserializeRemovePermissionRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new RemovePermissionRequest();
+
+        // StatementId
+        if (root.TryGetProperty("StatementId", out var StatementIdElem))
+            request.StatementId = StatementIdElem.GetString();
+
+        // RemoveAllPermissions
+        if (root.TryGetProperty("RemoveAllPermissions", out var RemoveAllPermissionsElem) && RemoveAllPermissionsElem.ValueKind == JsonValueKind.True || RemoveAllPermissionsElem.ValueKind == JsonValueKind.False)
+            request.RemoveAllPermissions = RemoveAllPermissionsElem.GetBoolean();
+
+        // EventBusName
+        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+            request.EventBusName = EventBusNameElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeRemovePermissionResponse(RemovePermissionResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
     }
@@ -1397,7 +1902,7 @@ internal static class EventBridgeJsonSerializers
             writer.WriteNumber("FailedEntryCount", SdkCompatibility.GetValue(response.FailedEntryCount));
 
         // FailedEntries
-        if (response.FailedEntries != null && response.FailedEntries.Count > 0)
+        if (response.FailedEntries != null)
         {
             writer.WritePropertyName("FailedEntries");
             writer.WriteStartArray();
@@ -1414,6 +1919,100 @@ internal static class EventBridgeJsonSerializers
             }
             writer.WriteEndArray();
         }
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static StartReplayRequest DeserializeStartReplayRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new StartReplayRequest();
+
+        // ReplayName
+        if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
+            request.ReplayName = ReplayNameElem.GetString();
+
+        // Description
+        if (root.TryGetProperty("Description", out var DescriptionElem))
+            request.Description = DescriptionElem.GetString();
+
+        // EventSourceArn
+        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+            request.EventSourceArn = EventSourceArnElem.GetString();
+
+        // EventStartTime
+        if (root.TryGetProperty("EventStartTime", out var EventStartTimeElem) && EventStartTimeElem.TryGetDateTime(out var EventStartTimeVal))
+            request.EventStartTime = EventStartTimeVal;
+
+        // EventEndTime
+        if (root.TryGetProperty("EventEndTime", out var EventEndTimeElem) && EventEndTimeElem.TryGetDateTime(out var EventEndTimeVal))
+            request.EventEndTime = EventEndTimeVal;
+
+        // Destination
+        // TODO: Implement structure deserialization for Destination (ReplayDestination)
+
+        return request;
+    }
+
+    internal static void SerializeStartReplayResponse(StartReplayResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ReplayArn
+        if (response.ReplayArn != null)
+            writer.WriteString("ReplayArn", response.ReplayArn);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        // ReplayStartTime
+        if (SdkCompatibility.HasNonDefaultValue(response.ReplayStartTime))
+            writer.WriteString("ReplayStartTime", SdkCompatibility.GetValue(response.ReplayStartTime).ToString("O"));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static TagResourceRequest DeserializeTagResourceRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new TagResourceRequest();
+
+        // ResourceARN
+        if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
+            request.ResourceARN = ResourceARNElem.GetString();
+
+        // Tags
+        if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
+        {
+            request.Tags = new List<Tag>();
+            foreach (var item in TagsElem.EnumerateArray())
+            {
+                var entry89 = new Tag();
+                if (item.TryGetProperty("Key", out var _e90))
+                    entry89.Key = _e90.GetString();
+                if (item.TryGetProperty("Value", out var _e91))
+                    entry89.Value = _e91.GetString();
+                request.Tags.Add(entry89);
+            }
+        }
+
+        return request;
+    }
+
+    internal static void SerializeTagResourceResponse(TagResourceResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
 
         writer.WriteEndObject();
         writer.Flush();
@@ -1444,6 +2043,150 @@ internal static class EventBridgeJsonSerializers
         // Result
         if (SdkCompatibility.HasNonDefaultValue(response.Result))
             writer.WriteBoolean("Result", SdkCompatibility.GetValue(response.Result));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static UntagResourceRequest DeserializeUntagResourceRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new UntagResourceRequest();
+
+        // ResourceARN
+        if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
+            request.ResourceARN = ResourceARNElem.GetString();
+
+        // TagKeys
+        if (root.TryGetProperty("TagKeys", out var TagKeysElem) && TagKeysElem.ValueKind == JsonValueKind.Array)
+        {
+            request.TagKeys = new List<string>();
+            foreach (var item in TagKeysElem.EnumerateArray())
+            {
+                request.TagKeys.Add(item.GetString()!);
+            }
+        }
+
+        return request;
+    }
+
+    internal static void SerializeUntagResourceResponse(UntagResourceResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static UpdateArchiveRequest DeserializeUpdateArchiveRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new UpdateArchiveRequest();
+
+        // ArchiveName
+        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+            request.ArchiveName = ArchiveNameElem.GetString();
+
+        // Description
+        if (root.TryGetProperty("Description", out var DescriptionElem))
+            request.Description = DescriptionElem.GetString();
+
+        // EventPattern
+        if (root.TryGetProperty("EventPattern", out var EventPatternElem))
+            request.EventPattern = EventPatternElem.GetString();
+
+        // RetentionDays
+        if (root.TryGetProperty("RetentionDays", out var RetentionDaysElem) && RetentionDaysElem.TryGetInt32(out var RetentionDaysVal))
+            request.RetentionDays = RetentionDaysVal;
+
+        // KmsKeyIdentifier
+        if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
+            request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeUpdateArchiveResponse(UpdateArchiveResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ArchiveArn
+        if (response.ArchiveArn != null)
+            writer.WriteString("ArchiveArn", response.ArchiveArn);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        // CreationTime
+        if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
+            writer.WriteString("CreationTime", SdkCompatibility.GetValue(response.CreationTime).ToString("O"));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static UpdateEventBusRequest DeserializeUpdateEventBusRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new UpdateEventBusRequest();
+
+        // Name
+        if (root.TryGetProperty("Name", out var NameElem))
+            request.Name = NameElem.GetString();
+
+        // KmsKeyIdentifier
+        if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
+            request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
+
+        // Description
+        if (root.TryGetProperty("Description", out var DescriptionElem))
+            request.Description = DescriptionElem.GetString();
+
+        // DeadLetterConfig
+        // TODO: Implement structure deserialization for DeadLetterConfig (DeadLetterConfig)
+
+        // LogConfig
+        // TODO: Implement structure deserialization for LogConfig (LogConfig)
+
+        return request;
+    }
+
+    internal static void SerializeUpdateEventBusResponse(UpdateEventBusResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // Arn
+        if (response.Arn != null)
+            writer.WriteString("Arn", response.Arn);
+
+        // Name
+        if (response.Name != null)
+            writer.WriteString("Name", response.Name);
+
+        // KmsKeyIdentifier
+        if (response.KmsKeyIdentifier != null)
+            writer.WriteString("KmsKeyIdentifier", response.KmsKeyIdentifier);
+
+        // Description
+        if (response.Description != null)
+            writer.WriteString("Description", response.Description);
+
+        // DeadLetterConfig
+        // TODO: Implement structure serialization for DeadLetterConfig (DeadLetterConfig)
+
+        // LogConfig
+        // TODO: Implement structure serialization for LogConfig (LogConfig)
 
         writer.WriteEndObject();
         writer.Flush();

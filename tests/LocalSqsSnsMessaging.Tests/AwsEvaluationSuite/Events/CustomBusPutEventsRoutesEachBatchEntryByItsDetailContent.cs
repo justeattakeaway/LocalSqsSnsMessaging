@@ -40,7 +40,6 @@ public sealed class CustomBusPutEventsRoutesEachBatchEntryByItsDetailContent
     [Test]
     [DisplayName("events.custom-bus-put-events-routes-each-batch-entry-by-its-detail-content")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeErrorMessages, "DescribeRule of a deleted rule says '... does not exist on event bus <bus>.' instead of '... on EventBus <bus>.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -17,7 +17,6 @@ public sealed class RemoveTargetsUnknownIdIsLenient
     [Test]
     [DisplayName("events.remove-targets-unknown-id-is-lenient")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeListing, "ListTargetsByRule of a rule with no targets omits the Targets member (KeyError 'Targets'); AWS returns \"Targets\": []")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

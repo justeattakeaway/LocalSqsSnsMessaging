@@ -17,7 +17,6 @@ public sealed class DeleteRuleWithoutEventBusNameLeavesCustomBusRuleInPlace
     [Test]
     [DisplayName("events.delete-rule-without-event-bus-name-leaves-custom-bus-rule-in-place")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeErrorMessages, "DescribeRule of a deleted custom-bus rule says '... does not exist on event bus <bus>.' instead of '... on EventBus <bus>.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

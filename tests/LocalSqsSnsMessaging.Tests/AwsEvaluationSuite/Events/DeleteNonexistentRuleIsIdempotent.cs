@@ -16,7 +16,6 @@ public sealed class DeleteNonexistentRuleIsIdempotent
     [Test]
     [DisplayName("events.delete-nonexistent-rule-is-idempotent")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeErrorMessages, "DescribeRule of a missing rule says '... does not exist on event bus default.' instead of '... on EventBus default.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

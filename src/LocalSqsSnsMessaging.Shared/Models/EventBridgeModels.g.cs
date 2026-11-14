@@ -9,6 +9,18 @@ internal class AppSyncParameters
     public string? GraphQLOperation { get; set; }
 }
 
+internal class Archive
+{
+    public string? ArchiveName { get; set; }
+    public string? EventSourceArn { get; set; }
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+    public int? RetentionDays { get; set; }
+    public long? SizeBytes { get; set; }
+    public long? EventCount { get; set; }
+    public DateTime? CreationTime { get; set; }
+}
+
 internal class AwsVpcConfiguration
 {
     public List<string>? Subnets { get; set; } = [];
@@ -34,11 +46,48 @@ internal class BatchRetryStrategy
     public int? Attempts { get; set; }
 }
 
+internal class CancelReplayRequest
+{
+    public string? ReplayName { get; set; }
+}
+
+internal class CancelReplayResponse : AmazonWebServiceResponse
+{
+    public string? ReplayArn { get; set; }
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+}
+
 internal class CapacityProviderStrategyItem
 {
     public string? CapacityProvider { get; set; }
     public int? Weight { get; set; }
     public int? Base { get; set; }
+}
+
+internal class Condition
+{
+    public string? Type { get; set; }
+    public string? Key { get; set; }
+    public string? Value { get; set; }
+}
+
+internal class CreateArchiveRequest
+{
+    public string? ArchiveName { get; set; }
+    public string? EventSourceArn { get; set; }
+    public string? Description { get; set; }
+    public string? EventPattern { get; set; }
+    public int? RetentionDays { get; set; }
+    public string? KmsKeyIdentifier { get; set; }
+}
+
+internal class CreateArchiveResponse : AmazonWebServiceResponse
+{
+    public string? ArchiveArn { get; set; }
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+    public DateTime? CreationTime { get; set; }
 }
 
 internal class CreateEventBusRequest
@@ -66,6 +115,15 @@ internal class DeadLetterConfig
     public string? Arn { get; set; }
 }
 
+internal class DeleteArchiveRequest
+{
+    public string? ArchiveName { get; set; }
+}
+
+internal class DeleteArchiveResponse : AmazonWebServiceResponse
+{
+}
+
 internal class DeleteEventBusRequest
 {
     public string? Name { get; set; }
@@ -76,6 +134,27 @@ internal class DeleteRuleRequest
     public string? Name { get; set; }
     public string? EventBusName { get; set; }
     public bool? Force { get; set; }
+}
+
+internal class DescribeArchiveRequest
+{
+    public string? ArchiveName { get; set; }
+}
+
+internal class DescribeArchiveResponse : AmazonWebServiceResponse
+{
+    public string? ArchiveArn { get; set; }
+    public string? ArchiveName { get; set; }
+    public string? EventSourceArn { get; set; }
+    public string? Description { get; set; }
+    public string? EventPattern { get; set; }
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+    public string? KmsKeyIdentifier { get; set; }
+    public int? RetentionDays { get; set; }
+    public long? SizeBytes { get; set; }
+    public long? EventCount { get; set; }
+    public DateTime? CreationTime { get; set; }
 }
 
 internal class DescribeEventBusRequest
@@ -94,6 +173,27 @@ internal class DescribeEventBusResponse : AmazonWebServiceResponse
     public LogConfig? LogConfig { get; set; }
     public DateTime? CreationTime { get; set; }
     public DateTime? LastModifiedTime { get; set; }
+}
+
+internal class DescribeReplayRequest
+{
+    public string? ReplayName { get; set; }
+}
+
+internal class DescribeReplayResponse : AmazonWebServiceResponse
+{
+    public string? ReplayName { get; set; }
+    public string? ReplayArn { get; set; }
+    public string? Description { get; set; }
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+    public string? EventSourceArn { get; set; }
+    public ReplayDestination? Destination { get; set; }
+    public DateTime? EventStartTime { get; set; }
+    public DateTime? EventEndTime { get; set; }
+    public DateTime? EventLastReplayedTime { get; set; }
+    public DateTime? ReplayStartTime { get; set; }
+    public DateTime? ReplayEndTime { get; set; }
 }
 
 internal class DescribeRuleRequest
@@ -174,6 +274,21 @@ internal class KinesisParameters
     public string? PartitionKeyPath { get; set; }
 }
 
+internal class ListArchivesRequest
+{
+    public string? NamePrefix { get; set; }
+    public string? EventSourceArn { get; set; }
+    public string? State { get; set; }
+    public string? NextToken { get; set; }
+    public int? Limit { get; set; }
+}
+
+internal class ListArchivesResponse : AmazonWebServiceResponse
+{
+    public List<Archive>? Archives { get; set; } = [];
+    public string? NextToken { get; set; }
+}
+
 internal class ListEventBusesRequest
 {
     public string? NamePrefix { get; set; }
@@ -184,6 +299,21 @@ internal class ListEventBusesRequest
 internal class ListEventBusesResponse : AmazonWebServiceResponse
 {
     public List<EventBus>? EventBuses { get; set; } = [];
+    public string? NextToken { get; set; }
+}
+
+internal class ListReplaysRequest
+{
+    public string? NamePrefix { get; set; }
+    public string? State { get; set; }
+    public string? EventSourceArn { get; set; }
+    public string? NextToken { get; set; }
+    public int? Limit { get; set; }
+}
+
+internal class ListReplaysResponse : AmazonWebServiceResponse
+{
+    public List<Replay>? Replays { get; set; } = [];
     public string? NextToken { get; set; }
 }
 
@@ -213,6 +343,16 @@ internal class ListRulesResponse : AmazonWebServiceResponse
 {
     public List<Rule>? Rules { get; set; } = [];
     public string? NextToken { get; set; }
+}
+
+internal class ListTagsForResourceRequest
+{
+    public string? ResourceARN { get; set; }
+}
+
+internal class ListTagsForResourceResponse : AmazonWebServiceResponse
+{
+    public List<Tag>? Tags { get; set; } = [];
 }
 
 internal class ListTargetsByRuleRequest
@@ -282,6 +422,16 @@ internal class PutEventsResultEntry
     public string? ErrorMessage { get; set; }
 }
 
+internal class PutPermissionRequest
+{
+    public string? EventBusName { get; set; }
+    public string? Action { get; set; }
+    public string? Principal { get; set; }
+    public string? StatementId { get; set; }
+    public Condition? Condition { get; set; }
+    public string? Policy { get; set; }
+}
+
 internal class PutRuleRequest
 {
     public string? Name { get; set; }
@@ -330,6 +480,13 @@ internal class RedshiftDataParameters
     public List<string>? Sqls { get; set; } = [];
 }
 
+internal class RemovePermissionRequest
+{
+    public string? StatementId { get; set; }
+    public bool? RemoveAllPermissions { get; set; }
+    public string? EventBusName { get; set; }
+}
+
 internal class RemoveTargetsRequest
 {
     public string? Rule { get; set; }
@@ -349,6 +506,25 @@ internal class RemoveTargetsResultEntry
     public string? TargetId { get; set; }
     public string? ErrorCode { get; set; }
     public string? ErrorMessage { get; set; }
+}
+
+internal class Replay
+{
+    public string? ReplayName { get; set; }
+    public string? EventSourceArn { get; set; }
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+    public DateTime? EventStartTime { get; set; }
+    public DateTime? EventEndTime { get; set; }
+    public DateTime? EventLastReplayedTime { get; set; }
+    public DateTime? ReplayStartTime { get; set; }
+    public DateTime? ReplayEndTime { get; set; }
+}
+
+internal class ReplayDestination
+{
+    public string? Arn { get; set; }
+    public List<string>? FilterArns { get; set; } = [];
 }
 
 internal class RetryPolicy
@@ -397,10 +573,38 @@ internal class SqsParameters
     public string? MessageGroupId { get; set; }
 }
 
+internal class StartReplayRequest
+{
+    public string? ReplayName { get; set; }
+    public string? Description { get; set; }
+    public string? EventSourceArn { get; set; }
+    public DateTime? EventStartTime { get; set; }
+    public DateTime? EventEndTime { get; set; }
+    public ReplayDestination? Destination { get; set; }
+}
+
+internal class StartReplayResponse : AmazonWebServiceResponse
+{
+    public string? ReplayArn { get; set; }
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+    public DateTime? ReplayStartTime { get; set; }
+}
+
 internal class Tag
 {
     public string? Key { get; set; }
     public string? Value { get; set; }
+}
+
+internal class TagResourceRequest
+{
+    public string? ResourceARN { get; set; }
+    public List<Tag>? Tags { get; set; } = [];
+}
+
+internal class TagResourceResponse : AmazonWebServiceResponse
+{
 }
 
 internal class Target
@@ -435,6 +639,52 @@ internal class TestEventPatternResponse : AmazonWebServiceResponse
     public bool? Result { get; set; }
 }
 
+internal class UntagResourceRequest
+{
+    public string? ResourceARN { get; set; }
+    public List<string>? TagKeys { get; set; } = [];
+}
+
+internal class UntagResourceResponse : AmazonWebServiceResponse
+{
+}
+
+internal class UpdateArchiveRequest
+{
+    public string? ArchiveName { get; set; }
+    public string? Description { get; set; }
+    public string? EventPattern { get; set; }
+    public int? RetentionDays { get; set; }
+    public string? KmsKeyIdentifier { get; set; }
+}
+
+internal class UpdateArchiveResponse : AmazonWebServiceResponse
+{
+    public string? ArchiveArn { get; set; }
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+    public DateTime? CreationTime { get; set; }
+}
+
+internal class UpdateEventBusRequest
+{
+    public string? Name { get; set; }
+    public string? KmsKeyIdentifier { get; set; }
+    public string? Description { get; set; }
+    public DeadLetterConfig? DeadLetterConfig { get; set; }
+    public LogConfig? LogConfig { get; set; }
+}
+
+internal class UpdateEventBusResponse : AmazonWebServiceResponse
+{
+    public string? Arn { get; set; }
+    public string? Name { get; set; }
+    public string? KmsKeyIdentifier { get; set; }
+    public string? Description { get; set; }
+    public DeadLetterConfig? DeadLetterConfig { get; set; }
+    public LogConfig? LogConfig { get; set; }
+}
+
 internal class DeleteEventBusResponse : AmazonWebServiceResponse { }
 
 internal class DeleteRuleResponse : AmazonWebServiceResponse { }
@@ -442,4 +692,8 @@ internal class DeleteRuleResponse : AmazonWebServiceResponse { }
 internal class DisableRuleResponse : AmazonWebServiceResponse { }
 
 internal class EnableRuleResponse : AmazonWebServiceResponse { }
+
+internal class PutPermissionResponse : AmazonWebServiceResponse { }
+
+internal class RemovePermissionResponse : AmazonWebServiceResponse { }
 

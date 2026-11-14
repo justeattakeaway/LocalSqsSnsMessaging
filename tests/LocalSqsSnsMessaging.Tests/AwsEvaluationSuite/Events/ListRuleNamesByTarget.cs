@@ -18,7 +18,6 @@ public sealed class ListRuleNamesByTarget
     [Test]
     [DisplayName("events.list-rule-names-by-target")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeListing, "ListRuleNamesByTarget with no matching rule omits RuleNames instead of returning an empty list")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

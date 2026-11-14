@@ -11,12 +11,18 @@ internal sealed class JsonCodeGenerator
     private readonly string _serviceName;
     private readonly string _modelNamespace;
     private readonly JsonElement _shapes;
+    private readonly bool _writeEmptyResponseLists;
 
-    public JsonCodeGenerator(string serviceName, string modelNamespace, JsonElement shapes)
+    /// <param name="writeEmptyResponseLists">
+    /// True to write a response's top-level list members even when empty (<c>"Rules": []</c>), as
+    /// EventBridge does; SQS leaves them out.
+    /// </param>
+    public JsonCodeGenerator(string serviceName, string modelNamespace, JsonElement shapes, bool writeEmptyResponseLists = false)
     {
         _serviceName = serviceName;
         _modelNamespace = modelNamespace;
         _shapes = shapes;
+        _writeEmptyResponseLists = writeEmptyResponseLists;
     }
 
     public string GenerateSerializers(JsonElement operations)
@@ -183,7 +189,9 @@ internal sealed class JsonCodeGenerator
                 break;
 
             case "list":
-                code.AppendLine($"        if ({sourceVar}.{csharpPropertyName} != null && {sourceVar}.{csharpPropertyName}.Count > 0)");
+                code.AppendLine(_writeEmptyResponseLists
+                    ? $"        if ({sourceVar}.{csharpPropertyName} != null)"
+                    : $"        if ({sourceVar}.{csharpPropertyName} != null && {sourceVar}.{csharpPropertyName}.Count > 0)");
                 code.AppendLine("        {");
                 code.AppendLine($"            writer.WritePropertyName(\"{jsonPropertyName}\");");
                 code.AppendLine("            writer.WriteStartArray();");

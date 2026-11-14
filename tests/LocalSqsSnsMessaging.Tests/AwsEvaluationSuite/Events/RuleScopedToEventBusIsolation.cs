@@ -18,7 +18,6 @@ public sealed class RuleScopedToEventBusIsolation
     [Test]
     [DisplayName("events.rule-scoped-to-event-bus-isolation")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeListing, "ListRules on the default bus matching no rule omits the Rules member (KeyError 'Rules'); AWS returns \"Rules\": []")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

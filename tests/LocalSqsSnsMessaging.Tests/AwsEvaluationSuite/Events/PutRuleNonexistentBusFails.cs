@@ -17,7 +17,6 @@ public sealed class PutRuleNonexistentBusFails
     [Test]
     [DisplayName("events.put-rule-nonexistent-bus-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeListing, "ListRules matching no rule omits the Rules member (KeyError 'Rules'); AWS returns \"Rules\": []")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
