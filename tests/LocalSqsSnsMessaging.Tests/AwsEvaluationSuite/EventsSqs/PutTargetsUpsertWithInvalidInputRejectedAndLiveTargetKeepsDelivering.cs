@@ -23,7 +23,6 @@ public sealed class PutTargetsUpsertWithInvalidInputRejectedAndLiveTargetKeepsDe
     [Test]
     [DisplayName("events__sqs.put-targets-upsert-with-invalid-input-rejected-and-live-target-keeps-delivering")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeValidation, "PutTargets accepts a target whose Input is not JSON ('sim2real not json') instead of refusing it with ValidationException 'JSON syntax error in input for target t1: ...'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

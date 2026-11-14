@@ -37,7 +37,6 @@ public sealed class PutEventsRequestSizeAccountingIsAdditiveAndTimeCostsFourteen
     [Test]
     [DisplayName("events__sqs.put-events-request-size-accounting-is-additive-and-time-costs-fourteen-bytes")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeValidation, "PutEvents enforces no request-size limit: a single entry with a 1,200,000-byte Detail is accepted, where AWS refuses 'Total size of the entries in the request is over the limit.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

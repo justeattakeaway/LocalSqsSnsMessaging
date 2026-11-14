@@ -24,7 +24,6 @@ public sealed class EventbridgeInputTransformerMissingPathNotDelivered
     [Test]
     [DisplayName("events__sqs.eventbridge-input-transformer-missing-path-not-delivered")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeInput, "InputTransformer substitutes a string path value without its JSON quotes ({\"who\": alice, ...}), so even the control body is not the JSON the template describes and never matches")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

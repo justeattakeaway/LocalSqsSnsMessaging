@@ -22,7 +22,6 @@ public sealed class PutEventsMissingSourceEntryFails
     [Test]
     [DisplayName("events.put-events-missing-source-entry-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents accepts an entry with no Source instead of failing it with InvalidArgument")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

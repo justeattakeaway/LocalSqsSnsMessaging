@@ -17,7 +17,6 @@ public sealed class PutEventsDetailThatIsJsonButNotAnObjectRejected
     [Test]
     [DisplayName("events.put-events-detail-that-is-json-but-not-an-object-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents accepts array, number and string Details instead of failing each entry with MalformedDetail")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

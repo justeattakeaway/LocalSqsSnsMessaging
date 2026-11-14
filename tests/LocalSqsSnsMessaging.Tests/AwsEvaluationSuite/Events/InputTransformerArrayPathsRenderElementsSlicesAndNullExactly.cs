@@ -67,7 +67,6 @@ public sealed class InputTransformerArrayPathsRenderElementsSlicesAndNullExactly
     [Test]
     [DisplayName("events.input-transformer-array-paths-render-elements-slices-and-null-exactly")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeInput, "an InputPathsMap index past the end of the array ($.detail.items[7]) fails PutEvents with ArgumentOutOfRangeException instead of rendering empty")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

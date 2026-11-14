@@ -17,7 +17,6 @@ public sealed class PutEventsNonexistentBusSilentlyDropped
     [Test]
     [DisplayName("events.put-events-nonexistent-bus-silently-dropped")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents to a nonexistent EventBusName throws ResourceNotFoundException instead of accepting the entry with an EventId")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

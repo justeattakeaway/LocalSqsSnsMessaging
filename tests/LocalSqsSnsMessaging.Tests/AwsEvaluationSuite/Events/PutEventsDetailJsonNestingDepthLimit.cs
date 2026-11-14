@@ -27,7 +27,6 @@ public sealed class PutEventsDetailJsonNestingDepthLimit
     [Test]
     [DisplayName("events.put-events-detail-json-nesting-depth-limit")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents accepts a Detail nested 4096 levels deep; AWS refuses anything past its documented 1000-level limit")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

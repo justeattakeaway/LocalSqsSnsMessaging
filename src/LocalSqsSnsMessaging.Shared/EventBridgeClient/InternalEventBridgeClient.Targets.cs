@@ -12,6 +12,7 @@ internal sealed partial class InternalEventBridgeClient
         ArgumentNullException.ThrowIfNull(request);
 
         var rule = GetRule(request.EventBusName, request.Rule);
+        EventBridgeTargetInput.Validate(request.Targets);
         lock (rule.Targets)
         {
             foreach (var target in request.Targets ?? [])

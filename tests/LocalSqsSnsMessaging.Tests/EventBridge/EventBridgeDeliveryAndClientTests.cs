@@ -112,18 +112,20 @@ public sealed class EventBridgeDeliveryAndClientTests
     }
 
     [Test]
-    public async Task MalformedDetail_StillDeliversWithEmptyDetail()
+    public async Task MalformedDetail_FailsTheEntryAndIsNotDelivered()
     {
         var (eb, sqs, queueUrl, queueArn) = await SetupAsync();
         using var _1 = eb;
         using var _2 = sqs;
         await RuleWithTargetAsync(eb, new EventBridgeTarget { Id = "t1", Arn = queueArn });
 
-        await eb.PutEventsAsync(Event(detail: "not-json"));
+        var response = await eb.PutEventsAsync(Event(detail: "not-json"));
 
-        var msg = (await sqs.ReceiveMessageAsync(queueUrl)).Messages.ShouldHaveSingleItem();
-        using var doc = System.Text.Json.JsonDocument.Parse(msg.Body);
-        doc.RootElement.GetProperty("detail").GetRawText().ShouldBe("{}");
+        response.FailedEntryCount.ShouldBe(1);
+        var entry = response.Entries.ShouldHaveSingleItem();
+        entry.ErrorCode.ShouldBe("MalformedDetail");
+        entry.EventId.ShouldBeNull();
+        ((await sqs.ReceiveMessageAsync(queueUrl)).Messages ?? []).ShouldBeEmpty();
     }
 
     [Test]

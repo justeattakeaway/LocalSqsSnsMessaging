@@ -23,7 +23,6 @@ public sealed class EventbridgePuteventsPartialBatchDeliversValidEntryOnly
     [Test]
     [DisplayName("events__sqs.eventbridge-putevents-partial-batch-delivers-valid-entry-only")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents accepts an entry whose Detail is a JSON string scalar (FailedEntryCount 0, both entries get an EventId) instead of failing it with MalformedDetail 'Detail is malformed.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

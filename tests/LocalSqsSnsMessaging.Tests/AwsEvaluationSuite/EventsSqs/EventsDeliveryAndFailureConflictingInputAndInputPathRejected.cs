@@ -22,7 +22,6 @@ public sealed class EventsDeliveryAndFailureConflictingInputAndInputPathRejected
     [Test]
     [DisplayName("events__sqs.events-delivery-and-failure-conflicting-input-and-input-path-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeInput, "PutTargets accepts a target with both Input and InputPath instead of refusing it with ValidationException 'Only one of Input, InputPath, or InputTransformer must be provided for target t.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

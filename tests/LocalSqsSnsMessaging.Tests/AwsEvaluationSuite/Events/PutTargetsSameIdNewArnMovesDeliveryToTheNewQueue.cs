@@ -24,7 +24,6 @@ public sealed class PutTargetsSameIdNewArnMovesDeliveryToTheNewQueue
     [Test]
     [DisplayName("events.put-targets-same-id-new-arn-moves-delivery-to-the-new-queue")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeInput, "InputTransformer inserts a string path value into '{\"via\": \"queue-b\", \"marker\": <m>}' without its quotes, so queue B receives invalid JSON; AWS inserts the quoted JSON string")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

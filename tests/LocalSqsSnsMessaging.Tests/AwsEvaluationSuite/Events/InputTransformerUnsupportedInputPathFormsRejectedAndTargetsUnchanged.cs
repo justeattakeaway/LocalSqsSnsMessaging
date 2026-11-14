@@ -27,7 +27,6 @@ public sealed class InputTransformerUnsupportedInputPathFormsRejectedAndTargetsU
     [Test]
     [DisplayName("events.input-transformer-unsupported-input-path-forms-rejected-and-targets-unchanged")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeInput, "PutTargets accepts InputPath $.detail.items[-1] instead of refusing 'InputPath for target negative-index is invalid.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

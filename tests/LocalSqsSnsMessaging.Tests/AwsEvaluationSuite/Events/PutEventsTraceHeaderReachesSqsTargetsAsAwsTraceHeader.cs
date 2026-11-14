@@ -26,7 +26,6 @@ public sealed class PutEventsTraceHeaderReachesSqsTargetsAsAwsTraceHeader
     [Test]
     [DisplayName("events.put-events-trace-header-reaches-sqs-targets-as-aws-trace-header")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeInput, "a JSON InputTemplate splices a string path unquoted ({\"shaped\": traced-...), so the transformed delivery is not JSON")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

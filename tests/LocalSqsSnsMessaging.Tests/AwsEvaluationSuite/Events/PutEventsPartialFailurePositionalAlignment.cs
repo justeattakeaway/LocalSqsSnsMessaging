@@ -23,7 +23,6 @@ public sealed partial class PutEventsPartialFailurePositionalAlignment
     [Test]
     [DisplayName("events.put-events-partial-failure-positional-alignment")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents accepts entries with no Source or no DetailType: FailedEntryCount is 0 instead of 2")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

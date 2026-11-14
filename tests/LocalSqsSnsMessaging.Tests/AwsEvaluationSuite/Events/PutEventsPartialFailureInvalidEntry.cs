@@ -17,7 +17,6 @@ public sealed class PutEventsPartialFailureInvalidEntry
     [Test]
     [DisplayName("events.put-events-partial-failure-invalid-entry")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents accepts an entry with no Source instead of failing it with an ErrorCode")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

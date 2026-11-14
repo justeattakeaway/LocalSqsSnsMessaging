@@ -28,7 +28,6 @@ public sealed class EventsDeliveryAndFailureInputTransformerReservedVariablesRes
     [Test]
     [DisplayName("events__sqs.events-delivery-and-failure-input-transformer-reserved-variables-resolve-to-rule-and-event")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents refuses an entry whose Time is sent as an epoch-seconds number (the SDK's wire form) with InvalidOperationException 'The requested operation requires an element of type 'String', but the target element has type 'Number'.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

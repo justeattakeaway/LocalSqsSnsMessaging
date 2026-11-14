@@ -27,7 +27,6 @@ public sealed class SqsTargetMessageGroupIdJsonPathResolvesPerEvent
     [Test]
     [DisplayName("events.sqs-target-message-group-id-json-path-resolves-per-event")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeFifoTargets, "SqsParameters.MessageGroupId '$.detail.group' is used verbatim as the group id; AWS resolves the JSON path per event")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

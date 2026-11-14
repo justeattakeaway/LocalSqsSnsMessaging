@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Nodes;
 using LocalSqsSnsMessaging.EventBridge.Model;
 using SqsMessage = LocalSqsSnsMessaging.Sqs.Model.Message;
 
@@ -14,8 +13,8 @@ namespace LocalSqsSnsMessaging;
 /// </summary>
 internal static class EventBridgeEventDelivery
 {
-    /// <summary>Routes an envelope through the bus's rules and delivers to matched SQS targets.</summary>
-    public static void Route(EventBusResource eventBus, JsonObject envelope, InMemoryAwsBus bus)
+    /// <summary>Routes an event through the bus's rules and delivers to matched SQS targets.</summary>
+    public static void Route(EventBusResource eventBus, EventBridgeEvent @event, InMemoryAwsBus bus)
     {
         foreach (var rule in eventBus.Rules.Values)
         {
@@ -23,19 +22,19 @@ internal static class EventBridgeEventDelivery
             {
                 continue;
             }
-            if (!EventBridgeEventPattern.Matches(rule.EventPattern, envelope))
+            if (!EventBridgeEventPattern.Matches(rule.EventPattern, @event.Envelope))
             {
                 continue;
             }
 
             foreach (var target in rule.Targets)
             {
-                DeliverToTarget(target, envelope, bus);
+                DeliverToTarget(target, rule, @event, bus);
             }
         }
     }
 
-    private static void DeliverToTarget(Target target, JsonObject envelope, InMemoryAwsBus bus)
+    private static void DeliverToTarget(Target target, RuleResource rule, EventBridgeEvent @event, InMemoryAwsBus bus)
     {
         var arn = target.Arn;
 
@@ -50,7 +49,14 @@ internal static class EventBridgeEventDelivery
             return;
         }
 
-        var body = EventBridgeTargetInput.Resolve(target, envelope);
+        var payload = EventBridgeTargetInput.Render(target, rule, @event);
+        if (!payload.IsValidJson)
+        {
+            // Never sent: EventBridge dead-letters input that is not JSON (see EventBridgeTargetPayload).
+            return;
+        }
+
+        var body = payload.Body;
         var message = new SqsMessage
         {
             MessageId = Guid.NewGuid().ToString(),
@@ -59,10 +65,14 @@ internal static class EventBridgeEventDelivery
 #pragma warning disable CA5351, CA1308
         message.MD5OfBody = Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(body))).ToLowerInvariant();
 #pragma warning restore CA5351, CA1308
+        if (@event.TraceHeader is not null)
+        {
+            message.Attributes = new() { [InternalMessageSystemAttributeName.AWSTraceHeader] = @event.TraceHeader };
+        }
 
         if (queue.IsFifo)
         {
-            var groupId = target.SqsParameters?.MessageGroupId ?? target.Id ?? "eventbridge";
+            var groupId = EventBridgeTargetInput.ResolveMessageGroupId(target, @event.Envelope) ?? target.Id ?? "eventbridge";
             message.Attributes ??= [];
             message.Attributes["MessageGroupId"] = groupId;
             queue.MessageGroups.AddOrUpdate(groupId,

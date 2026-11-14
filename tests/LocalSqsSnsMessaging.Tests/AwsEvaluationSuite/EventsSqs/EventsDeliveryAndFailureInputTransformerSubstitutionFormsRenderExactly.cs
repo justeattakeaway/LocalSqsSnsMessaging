@@ -60,7 +60,6 @@ public sealed class EventsDeliveryAndFailureInputTransformerSubstitutionFormsRen
     [Test]
     [DisplayName("events__sqs.events-delivery-and-failure-input-transformer-substitution-forms-render-exactly")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeInput, "InputTransformer splices a string value into an unquoted <placeholder> without JSON quotes ('\"bare\":o-17'), so the rendered JSON template is not valid JSON")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

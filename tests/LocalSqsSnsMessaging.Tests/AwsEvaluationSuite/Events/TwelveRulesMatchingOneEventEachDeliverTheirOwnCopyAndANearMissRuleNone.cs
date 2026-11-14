@@ -49,7 +49,6 @@ public sealed class TwelveRulesMatchingOneEventEachDeliverTheirOwnCopyAndANearMi
     [Test]
     [DisplayName("events.twelve-rules-matching-one-event-each-deliver-their-own-copy-and-a-near-miss-rule-none")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeInput, "InputTransformer leaves the predefined variable <aws.events.rule-name> unsubstituted, so the delivered body ({\"rule\": <aws.events.rule-name>, ...}) is not JSON")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

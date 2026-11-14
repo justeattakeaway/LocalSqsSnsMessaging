@@ -16,7 +16,6 @@ public sealed class PutEventsMalformedDetailEntryFails
     [Test]
     [DisplayName("events.put-events-malformed-detail-entry-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents accepts a Detail that is not JSON instead of failing the entry with MalformedDetail 'Detail is malformed.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

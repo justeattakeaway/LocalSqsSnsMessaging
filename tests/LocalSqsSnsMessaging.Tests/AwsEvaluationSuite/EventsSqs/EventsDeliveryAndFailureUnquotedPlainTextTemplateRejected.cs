@@ -25,7 +25,6 @@ public sealed class EventsDeliveryAndFailureUnquotedPlainTextTemplateRejected
     [Test]
     [DisplayName("events__sqs.events-delivery-and-failure-unquoted-plain-text-template-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeInput, "PutTargets accepts a bare-sentence (non-JSON) InputTemplate instead of refusing it with ValidationException 'Invalid InputTemplate for target text : ...'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

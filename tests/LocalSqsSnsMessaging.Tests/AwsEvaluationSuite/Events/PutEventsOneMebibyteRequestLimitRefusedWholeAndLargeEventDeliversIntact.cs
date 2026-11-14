@@ -29,7 +29,6 @@ public sealed class PutEventsOneMebibyteRequestLimitRefusedWholeAndLargeEventDel
     [Test]
     [DisplayName("events.put-events-one-mebibyte-request-limit-refused-whole-and-large-event-delivers-intact")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents accepts an entry of 1 MiB + 1 byte instead of refusing the request with 'Total size of the entries in the request is over the limit.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
