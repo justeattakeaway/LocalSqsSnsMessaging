@@ -234,6 +234,38 @@ public sealed class ServerSmokeTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task Sqs_SenderId_IsTheSigningCallersUserId()
+    {
+        // The default client signs with access key "000000000000": the account's root user,
+        // whose user id is the account id. Any other access key signs as the bus's IAM user.
+        using var userClient = new AmazonSQSClient(
+            new BasicAWSCredentials("test", "fake"),
+            new AmazonSQSConfig
+            {
+                ServiceURL = $"http://localhost:{_port}",
+                MaxErrorRetry = 0
+            });
+        var queueUrl = (await _sqsClient!.CreateQueueAsync("sender-id-queue")).QueueUrl;
+
+        await _sqsClient.SendMessageAsync(queueUrl, "from root");
+        var fromRoot = (await _sqsClient.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageSystemAttributeNames = ["SenderId"]
+        })).Messages.ShouldHaveSingleItem();
+        fromRoot.Attributes["SenderId"].ShouldBe("000000000000");
+        await _sqsClient.DeleteMessageAsync(queueUrl, fromRoot.ReceiptHandle);
+
+        await userClient.SendMessageAsync(queueUrl, "from user");
+        var fromUser = (await _sqsClient.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageSystemAttributeNames = ["SenderId"]
+        })).Messages.ShouldHaveSingleItem();
+        fromUser.Attributes["SenderId"].ShouldBe("AIDAIOSFODNN7EXAMPLE");
+    }
+
+    [Test]
     public async Task Sqs_MultiAccount_ShouldIsolateQueues()
     {
         // Create a second SQS client with a different 12-digit account ID

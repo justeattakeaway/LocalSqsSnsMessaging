@@ -122,6 +122,12 @@ internal sealed class SqsQueueResource
     /// </summary>
     public int VisibleMessageCount => Messages.Count + MessageGroups.Values.Sum(group => group.Count);
     public string Arn => $"arn:aws:sqs:{Region}:{AccountId}:{Name}";
+
+    /// <summary>
+    /// Tells this queue apart from an earlier or later queue of the same name (and so the same ARN),
+    /// so a receipt handle from a deleted queue is not honoured by its successor.
+    /// </summary>
+    public string Incarnation { get; } = Guid.NewGuid().ToString("N");
     public SqsQueueResource? ErrorQueue { get; set; }
     public int? MaxReceiveCount { get; set; }
     public Dictionary<string, string>? Attributes { get; set; }

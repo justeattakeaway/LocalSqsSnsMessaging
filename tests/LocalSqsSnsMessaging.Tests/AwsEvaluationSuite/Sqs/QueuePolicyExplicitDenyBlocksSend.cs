@@ -28,7 +28,6 @@ public sealed class QueuePolicyExplicitDenyBlocksSend
     [Test]
     [DisplayName("sqs.queue-policy-explicit-deny-blocks-send")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Other, "an explicit Deny on sqs:SendMessage in the queue Policy is never enforced: the send still succeeds after 300s and 61 attempts")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

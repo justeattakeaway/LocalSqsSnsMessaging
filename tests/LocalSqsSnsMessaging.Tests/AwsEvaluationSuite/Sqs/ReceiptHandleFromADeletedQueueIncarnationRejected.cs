@@ -34,7 +34,6 @@ public sealed class ReceiptHandleFromADeletedQueueIncarnationRejected
     [Test]
     [DisplayName("sqs.receipt-handle-from-a-deleted-queue-incarnation-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ReceiptHandles, "DeleteMessage on a recreated queue with the old incarnation's handle is not refused with NonExistentQueue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -116,6 +116,14 @@ Console.WriteLine(message.Body); // Hello, World!
 
 All actions in this library that depend on delays or timeouts use the `TimeProvider` to control time, so you can also take advantage of this feature with features like visibility timeouts.
 
+### SQS callers, queue policies and SSE-KMS
+
+The library models no IAM, but SDK clients are answered according to how they sign their requests:
+
+- **`SenderId`.** A request signed with an access key is stamped with the bus's `CurrentUserId` (default `AIDAIOSFODNN7EXAMPLE`), as SQS stamps the sender's IAM user id. An access key that is a 12-digit account id signs as that account's root user, whose id is the account id. Unsigned requests, which is what `CreateSqsClient()` sends, keep the account id.
+- **Queue policies.** Explicit `Deny` statements in a queue's `Policy` are enforced for SDK clients and refused with `AccessDenied`, as SQS does. `Allow` statements are not evaluated, so a queue with no policy, or one that only allows, behaves as before. A statement whose condition uses an operator the library does not evaluate is skipped. As on SQS, a bare account-id principal reads back as `arn:aws:iam::<account>:root`, and setting `Policy` to `""` removes it.
+- **SSE-KMS.** A queue whose `KmsMasterKeyId` names a key id, a key ARN or an AWS-managed alias (`alias/aws/sqs`) sends normally. Any other alias must be listed in `bus.KmsKeyAliases`, or `SendMessage` fails with `KMS.NotFoundException` as it does on SQS for a missing alias. An unsigned request that the queue's policy only admits through a `"Principal": "*"` grant is anonymous, and is refused on an SSE-KMS queue.
+
 ### SNS filter policies
 
 Subscriptions honour [filter policies](https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html) on either the message attributes (the default) or, with `FilterPolicyScope` set to `MessageBody`, the JSON message body. The full grammar is supported: exact matches, `anything-but`, `prefix`, `suffix`, `equals-ignore-case`, `wildcard`, `cidr`, `numeric` ranges, `exists`, `$or`, and nested keys for body-scoped policies. Invalid policies are rejected with `InvalidParameterException`, as on AWS.

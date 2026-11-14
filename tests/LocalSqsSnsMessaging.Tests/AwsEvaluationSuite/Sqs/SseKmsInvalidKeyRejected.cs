@@ -25,7 +25,6 @@ public sealed partial class SseKmsInvalidKeyRejected
     [Test]
     [DisplayName("sqs.sse-kms-invalid-key-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Validation, "expected SendMessage to a queue with a nonexistent KmsMasterKeyId alias to fail with KMS.NotFoundException, but it succeeded")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

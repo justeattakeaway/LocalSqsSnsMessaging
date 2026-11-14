@@ -82,6 +82,31 @@ public sealed class InMemoryAwsBus
     /// </summary>
     public Uri? ServiceUrl { get; set; }
 
+    /// <summary>
+    /// Gets or initializes the IAM user id of the caller behind a signed SQS request, which SQS
+    /// reports as a message's <c>SenderId</c> (the <c>UserId</c> <c>sts:GetCallerIdentity</c> answers).
+    /// </summary>
+    /// <remarks>
+    /// The bus models no IAM users, so one id stands for every access key, except an access key
+    /// that is a 12-digit account id: that signs as the account's root user, whose user id is the
+    /// account id. Unsigned requests (as sent by <c>CreateSqsClient()</c>) report
+    /// <see cref="CurrentAccountId"/>.
+    /// </remarks>
+    /// <value>Defaults to <c>"AIDAIOSFODNN7EXAMPLE"</c>.</value>
+    public string CurrentUserId { get; init; } = "AIDAIOSFODNN7EXAMPLE";
+
+    /// <summary>
+    /// Gets the customer-managed KMS aliases that exist, for queues encrypted with
+    /// <c>KmsMasterKeyId</c>. Names may be given with or without the <c>alias/</c> prefix.
+    /// </summary>
+    /// <remarks>
+    /// The bus models no KMS keys. A queue whose <c>KmsMasterKeyId</c> is a key id or key ARN, or an
+    /// AWS-managed alias such as <c>alias/aws/sqs</c>, sends normally. A queue whose key is any
+    /// other alias refuses <c>SendMessage</c> with <c>KMS.NotFoundException</c>, as SQS does for a
+    /// missing alias, unless that alias is listed here.
+    /// </remarks>
+    public ISet<string> KmsKeyAliases { get; } = new HashSet<string>(StringComparer.Ordinal);
+
     private static readonly Lazy<HttpClient> DefaultHttpClient = new(() => new HttpClient());
     private HttpClient? _httpClient;
 

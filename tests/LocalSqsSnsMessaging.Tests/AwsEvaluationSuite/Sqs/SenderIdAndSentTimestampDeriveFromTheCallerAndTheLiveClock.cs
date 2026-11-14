@@ -30,7 +30,6 @@ public sealed class SenderIdAndSentTimestampDeriveFromTheCallerAndTheLiveClock
     [Test]
     [DisplayName("sqs.sender-id-and-sent-timestamp-derive-from-the-caller-and-the-live-clock")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Other, "SenderId is the caller's ACCOUNT id (000000000000); SQS documents it as the IAM user id or IAM role id of the sender, which is a distinct value")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

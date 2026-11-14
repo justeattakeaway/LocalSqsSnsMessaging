@@ -165,6 +165,13 @@ FIFO queues (.fifo suffix) have special handling:
 - Message group locks ensure ordering (`SqsQueueResource.MessageGroupLocks`)
 - Each message group has its own queue (`SqsQueueResource.MessageGroups`)
 
+### SQS Callers and Queue Policies
+
+The generated SQS handlers build `InternalSqsClient` with a `Caller` (`SqsCaller`: the SigV4 access key, source IP, TLS). A raw client has no `Caller` and is never subject to policies.
+- `SenderId` comes from `SqsCaller.SenderId` (signed: `bus.CurrentUserId`, or the account id for an account-id access key; unsigned: the account id)
+- `InternalSqsClient.Authorization.cs`: `Authorize(queue, action)` runs after each queue lookup and enforces explicit Deny statements only (`SqsQueuePolicy`); `EnsureKmsKeyExists` refuses sends to a queue whose KMS alias is unknown
+- Receipt handles carry the queue's `Incarnation`, so a handle from a deleted queue is refused by a same-name successor
+
 ### Exception Handling in HTTP Mode
 
 When using SDK clients (`CreateSqsClient`/`CreateSnsClient`), exceptions must include the `ErrorCode` property for the AWS SDK to deserialize them correctly.
