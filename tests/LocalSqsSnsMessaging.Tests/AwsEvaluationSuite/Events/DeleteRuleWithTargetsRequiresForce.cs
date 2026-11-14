@@ -18,7 +18,6 @@ public sealed class DeleteRuleWithTargetsRequiresForce
     [Test]
     [DisplayName("events.delete-rule-with-targets-requires-force")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTags, "TagResource is not supported (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

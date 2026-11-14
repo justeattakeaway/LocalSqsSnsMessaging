@@ -27,7 +27,6 @@ public sealed class PutTargetsRetryPolicyAboveDocumentedMaximaRejected
     [Test]
     [DisplayName("events.put-targets-retry-policy-above-documented-maxima-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeDeliveryFailures, "PutTargets accepts RetryPolicy MaximumRetryAttempts=186; AWS refuses values above 185 (and MaximumEventAgeInSeconds above 86400) with ValidationException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

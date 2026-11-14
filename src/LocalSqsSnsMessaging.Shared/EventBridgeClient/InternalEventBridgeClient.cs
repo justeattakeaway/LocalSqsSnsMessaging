@@ -47,7 +47,7 @@ internal sealed partial class InternalEventBridgeClient
             return rule;
         }
 
-        throw new InternalResourceNotFoundException($"Rule {ruleName} does not exist on EventBus {eventBus.Name}.");
+        throw RuleResource.NotFound(ruleName, eventBus.Name);
     }
 
     private static string ExtractBusName(string? nameOrArn)

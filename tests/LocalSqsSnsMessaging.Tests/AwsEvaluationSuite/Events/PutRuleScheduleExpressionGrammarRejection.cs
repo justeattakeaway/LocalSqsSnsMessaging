@@ -22,7 +22,6 @@ public sealed class PutRuleScheduleExpressionGrammarRejection
     [Test]
     [DisplayName("events.put-rule-schedule-expression-grammar-rejection")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeRules, "PutRule accepts a malformed ScheduleExpression ('rate(1 minutes)'); AWS refuses it with ValidationException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

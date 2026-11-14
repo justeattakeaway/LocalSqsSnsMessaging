@@ -19,7 +19,6 @@ public sealed class ListTargetsByRulePaginatesWithLimitAndNextToken
     [Test]
     [DisplayName("events.list-targets-by-rule-paginates-with-limit-and-next-token")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeListing, "ListTargetsByRule ignores Limit: Limit=2 over five targets returns one page of five instead of 2/2/1")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

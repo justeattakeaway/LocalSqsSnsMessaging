@@ -18,7 +18,6 @@ public sealed class PutTargetsDuplicateIdInOneRequestRejected
     [Test]
     [DisplayName("events.put-targets-duplicate-id-in-one-request-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTargets, "PutTargets naming the same Id twice in one request succeeds; AWS refuses it with ValidationException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

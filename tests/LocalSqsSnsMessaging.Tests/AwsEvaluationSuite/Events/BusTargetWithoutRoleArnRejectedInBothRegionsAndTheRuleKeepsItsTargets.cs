@@ -23,7 +23,6 @@ public sealed class BusTargetWithoutRoleArnRejectedInBothRegionsAndTheRuleKeepsI
     [Test]
     [DisplayName("events.bus-target-without-role-arn-rejected-in-both-regions-and-the-rule-keeps-its-targets")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeBusTargets, "PutTargets accepts an event bus target without a RoleArn instead of failing with ValidationException 'RoleArn is required for target <bus arn>.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

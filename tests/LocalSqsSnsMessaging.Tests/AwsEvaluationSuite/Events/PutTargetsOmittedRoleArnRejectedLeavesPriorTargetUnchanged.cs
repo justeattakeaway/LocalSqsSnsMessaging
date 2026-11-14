@@ -21,7 +21,6 @@ public sealed class PutTargetsOmittedRoleArnRejectedLeavesPriorTargetUnchanged
     [Test]
     [DisplayName("events.put-targets-omitted-role-arn-rejected-leaves-prior-target-unchanged")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTargets, "PutTargets accepts a Step Functions target without a RoleArn; AWS refuses it with 'RoleArn is required for target <arn>.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

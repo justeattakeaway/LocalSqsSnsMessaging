@@ -17,7 +17,6 @@ public sealed class PutTargetsMalformedArnRejectedAtomically
     [Test]
     [DisplayName("events.put-targets-malformed-arn-rejected-atomically")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTargets, "PutTargets accepts the target ARN 'not-a-valid-arn'; AWS refuses the whole call with ValidationException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

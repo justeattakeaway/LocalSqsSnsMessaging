@@ -18,7 +18,6 @@ public sealed class PutTargetsNewIdOnFullRuleRejectedWhileSameIdUpsertAccepted
     [Test]
     [DisplayName("events.put-targets-new-id-on-full-rule-rejected-while-same-id-upsert-accepted")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTargets, "PutTargets adding a sixth target Id to a rule with five succeeds; AWS refuses it with LimitExceededException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

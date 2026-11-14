@@ -20,7 +20,6 @@ public sealed class PutTargetsSnsFifoTopicTargetRejected
     [Test]
     [DisplayName("events.put-targets-sns-fifo-topic-target-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeSnsTargets, "PutTargets accepts a FIFO SNS topic target; AWS refuses it with 'SNS FIFO is not a supported service for a target.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

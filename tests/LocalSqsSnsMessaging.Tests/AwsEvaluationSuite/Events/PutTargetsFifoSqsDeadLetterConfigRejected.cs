@@ -22,7 +22,6 @@ public sealed class PutTargetsFifoSqsDeadLetterConfigRejected
     [Test]
     [DisplayName("events.put-targets-fifo-sqs-dead-letter-config-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeDeliveryFailures, "PutTargets accepts a DeadLetterConfig naming a FIFO queue; AWS refuses it with 'SQS FIFO is not supported by Dead Letter Queues.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -19,7 +19,6 @@ public sealed class ListRulesPaginationAndNamePrefixExactness
     [Test]
     [DisplayName("events.list-rules-pagination-and-name-prefix-exactness")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeListing, "ListRules ignores Limit: Limit=5 over twelve rules returns all twelve on one page")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

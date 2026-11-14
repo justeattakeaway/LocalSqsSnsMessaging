@@ -18,7 +18,6 @@ public sealed class ListRuleNamesByTargetPaginatesWithLimitAndNextToken
     [Test]
     [DisplayName("events.list-rule-names-by-target-paginates-with-limit-and-next-token")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeListing, "ListRuleNamesByTarget ignores Limit: Limit=3 over ten rules returns all ten on one page")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

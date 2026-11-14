@@ -11,12 +11,29 @@ internal sealed partial class InternalEventBridgeClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // A missing bus is reported before anything wrong with the rule itself.
+        var eventBus = ResolveBus(request.EventBusName);
+        var hasSchedule = !string.IsNullOrEmpty(request.ScheduleExpression);
+        if (string.IsNullOrEmpty(request.EventPattern) && !hasSchedule)
+        {
+            throw new InternalValidationException("Parameter(s) EventPattern or ScheduleExpression must be specified.");
+        }
+
+        if (hasSchedule && !EventBridgeScheduleExpression.IsValid(request.ScheduleExpression!))
+        {
+            throw new InternalValidationException("Parameter ScheduleExpression is not valid.");
+        }
+
         if (!string.IsNullOrEmpty(request.EventPattern) && !EventBridgeEventPattern.IsValid(request.EventPattern, out var error))
         {
             throw new InternalInvalidEventPatternException($"Event pattern is not valid. Reason: {error}");
         }
 
-        var eventBus = ResolveBus(request.EventBusName);
+        if (hasSchedule && !string.Equals(eventBus.Name, DefaultBusName, StringComparison.Ordinal))
+        {
+            throw new InternalValidationException("ScheduleExpression is supported only on the default event bus.");
+        }
+
         var arn = RuleArn(eventBus.Name, request.Name);
 
         eventBus.Rules.AddOrUpdate(request.Name,
@@ -34,6 +51,7 @@ internal sealed partial class InternalEventBridgeClient
             },
             (_, existing) =>
             {
+                // An update replaces every field it omits, and re-enables a disabled rule unless it says otherwise.
                 existing.EventPattern = request.EventPattern;
                 existing.ScheduleExpression = request.ScheduleExpression;
                 existing.State = request.State ?? "ENABLED";
@@ -50,8 +68,13 @@ internal sealed partial class InternalEventBridgeClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // Deleting a rule that does not exist succeeds. Force only waives the target check for a
+        // rule another service manages, which this bus never holds, so it is ignored.
         var eventBus = ResolveBus(request.EventBusName);
-        eventBus.Rules.TryRemove(request.Name, out _);
+        if (request.Name is not null && eventBus.Rules.TryGetValue(request.Name, out var rule))
+        {
+            rule.Delete(() => eventBus.Rules.TryRemove(rule.Name, out _));
+        }
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "DeleteRule");
         return Task.FromResult(new DeleteRuleResponse().SetCommonProperties());
@@ -98,9 +121,11 @@ internal sealed partial class InternalEventBridgeClient
         ArgumentNullException.ThrowIfNull(request);
 
         var eventBus = ResolveBus(request.EventBusName);
-        var rules = eventBus.Rules.Values
+        var matching = eventBus.Rules.Values
             .Where(r => string.IsNullOrEmpty(request.NamePrefix) || r.Name.StartsWith(request.NamePrefix, StringComparison.Ordinal))
             .OrderBy(r => r.Name, StringComparer.Ordinal)
+            .ToList();
+        var rules = EventBridgePage.Take(matching, request.Limit, request.NextToken, out var nextToken)
             .Select(r => new Rule
             {
                 Name = r.Name,
@@ -115,6 +140,6 @@ internal sealed partial class InternalEventBridgeClient
             .ToList();
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "ListRules");
-        return Task.FromResult(new ListRulesResponse { Rules = rules }.SetCommonProperties());
+        return Task.FromResult(new ListRulesResponse { Rules = rules, NextToken = nextToken }.SetCommonProperties());
     }
 }

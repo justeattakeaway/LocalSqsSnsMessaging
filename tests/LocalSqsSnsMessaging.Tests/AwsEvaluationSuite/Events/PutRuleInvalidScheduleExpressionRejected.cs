@@ -18,7 +18,6 @@ public sealed class PutRuleInvalidScheduleExpressionRejected
     [Test]
     [DisplayName("events.put-rule-invalid-schedule-expression-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeRules, "PutRule accepts ScheduleExpression 'rate(0 minutes)' instead of refusing it with 'Parameter ScheduleExpression is not valid.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

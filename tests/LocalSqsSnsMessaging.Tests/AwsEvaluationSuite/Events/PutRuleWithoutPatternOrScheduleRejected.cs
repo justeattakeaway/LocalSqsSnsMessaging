@@ -18,7 +18,6 @@ public sealed class PutRuleWithoutPatternOrScheduleRejected
     [Test]
     [DisplayName("events.put-rule-without-pattern-or-schedule-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeValidation, "PutRule with neither EventPattern nor ScheduleExpression succeeds; AWS refuses it with ValidationException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

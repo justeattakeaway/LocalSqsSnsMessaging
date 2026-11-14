@@ -19,7 +19,6 @@ public sealed class ScheduleRuleOnCustomBusRejected
     [Test]
     [DisplayName("events.schedule-rule-on-custom-bus-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeRules, "PutRule with a ScheduleExpression on a custom bus succeeds; AWS refuses it with ValidationException (schedules are default-bus only)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

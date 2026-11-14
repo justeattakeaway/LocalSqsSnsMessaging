@@ -17,7 +17,6 @@ public sealed class PutTargetsExceedsMaxLimit
     [Test]
     [DisplayName("events.put-targets-exceeds-max-limit")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeTargets, "PutTargets with 6 targets succeeds; AWS refuses more than 5 targets per rule with LimitExceededException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

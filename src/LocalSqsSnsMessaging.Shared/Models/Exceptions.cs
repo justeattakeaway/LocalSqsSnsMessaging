@@ -125,5 +125,16 @@ internal class InternalValidationException : AwsServiceException
     }
 }
 
+internal class InternalLimitExceededException : AwsServiceException
+{
+    /// <summary>EventBridge answers every exceeded quota with the same message.</summary>
+    public const string DefaultMessage = "The requested resource exceeds the maximum number allowed.";
+
+    public InternalLimitExceededException() : base(DefaultMessage)
+    {
+        ErrorCode = "LimitExceededException";
+    }
+}
+
 // Alias for SNS InternalBatchRequestTooLongException - same class works for both SQS and SNS
 // since the SQS one above is sufficient (both use the same error pattern)
