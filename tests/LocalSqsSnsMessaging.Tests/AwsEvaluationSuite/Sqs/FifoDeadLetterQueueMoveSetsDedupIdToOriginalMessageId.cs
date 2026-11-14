@@ -23,7 +23,6 @@ public sealed class FifoDeadLetterQueueMoveSetsDedupIdToOriginalMessageId
     [Test]
     [DisplayName("sqs.fifo-dead-letter-queue-move-sets-dedup-id-to-original-message-id")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "a message moved from a FIFO queue to its FIFO DLQ keeps its sent MessageDeduplicationId instead of the original MessageId")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

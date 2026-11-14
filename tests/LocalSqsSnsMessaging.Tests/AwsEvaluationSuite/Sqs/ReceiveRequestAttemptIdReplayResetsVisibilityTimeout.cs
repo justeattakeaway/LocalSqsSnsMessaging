@@ -25,7 +25,6 @@ public sealed class ReceiveRequestAttemptIdReplayResetsVisibilityTimeout
     [Test]
     [DisplayName("sqs.receive-request-attempt-id-replay-resets-visibility-timeout")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "a retry with the same ReceiveRequestAttemptId inside the visibility window must return the same message: got []")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -151,6 +151,11 @@ internal sealed class InternalSqsClient
     private static AwsServiceException? DeleteByReceiptHandle(SqsQueueResource queue, string? receiptHandle)
     {
         var state = ResolveReceiptHandle(queue, receiptHandle, out var messageId);
+        if (state is ReceiptHandleState.Current or ReceiptHandleState.Lapsed)
+        {
+            queue.MarkReceiveAttemptModified(receiptHandle);
+        }
+
         switch (state)
         {
             case ReceiptHandleState.Current:
@@ -202,6 +207,11 @@ internal sealed class InternalSqsClient
             && SqsRequestValidation.CheckVisibilityCap(visibilityTimeoutSeconds, _bus.TimeProvider.GetUtcNow() - receivedAt) is { } capError)
         {
             return capError;
+        }
+
+        if (state is ReceiptHandleState.Current or ReceiptHandleState.Lapsed)
+        {
+            queue.MarkReceiveAttemptModified(receiptHandle);
         }
 
         switch (state)
@@ -560,6 +570,12 @@ internal sealed class InternalSqsClient
         }
         else
         {
+            if (request.ReceiveRequestAttemptId is { } attemptId && TryReplayReceiveAttempt(queue, attemptId, visibilityTimeout) is { } replayed)
+            {
+                _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ReceiveMessage, queue.Arn);
+                return new ReceiveMessageResponse { Messages = replayed }.SetCommonProperties();
+            }
+
             messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, requestedSystemAttributes, requestedMessageAttributes);
 
             if ((messages is null || messages.Count == 0) && waitTime > TimeSpan.Zero)
@@ -600,6 +616,17 @@ internal sealed class InternalSqsClient
                     }
                 }
             }
+
+            if (request.ReceiveRequestAttemptId is { } newAttemptId && messages is { Count: > 0 })
+            {
+                ForgetExpiredReceiveAttempts(queue);
+                var attempt = new SqsQueueResource.ReceiveAttempt([.. messages.Select(CloneMessage)], _bus.TimeProvider.GetUtcNow());
+                queue.ReceiveAttempts[newAttemptId] = attempt;
+                foreach (var message in messages)
+                {
+                    queue.ReceiveAttemptsByReceiptHandle[message.ReceiptHandle!] = attempt;
+                }
+            }
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ReceiveMessage, queue.Arn);
@@ -618,6 +645,82 @@ internal sealed class InternalSqsClient
                     break;
                 }
             }
+        }
+    }
+
+    /// <summary>SQS honours a <c>ReceiveRequestAttemptId</c> for five minutes.</summary>
+    private static readonly TimeSpan ReceiveAttemptLifetime = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Replays the batch an earlier FIFO receive returned under <paramref name="attemptId"/>, with the
+    /// same receipt handles, restarting each message's visibility timeout.
+    /// </summary>
+    /// <returns>
+    /// The replayed batch, or <see langword="null"/> when there is nothing to replay (an unknown or
+    /// expired id, or a batch whose messages are no longer in flight), and the receive goes ahead
+    /// as a new one.
+    /// </returns>
+    /// <exception cref="AwsServiceException">One of the batch's messages was deleted or had its visibility changed.</exception>
+    private List<Message>? TryReplayReceiveAttempt(SqsQueueResource queue, string attemptId, TimeSpan visibilityTimeout)
+    {
+        if (!queue.ReceiveAttempts.TryGetValue(attemptId, out var attempt))
+        {
+            return null;
+        }
+
+        if (_bus.TimeProvider.GetUtcNow() - attempt.ReceivedAt >= ReceiveAttemptLifetime)
+        {
+            ForgetReceiveAttempt(queue, attemptId, attempt);
+            return null;
+        }
+
+        if (attempt.Modified)
+        {
+            throw SqsRequestValidation.InvalidParameterValue("ReceiveRequestAttemptId", attemptId,
+                "The receiveRequestAttemptId is not valid anymore since the receive call is not retryable.");
+        }
+
+        var inFlight = new List<SqsInflightMessageExpirationJob>(attempt.Batch.Count);
+        foreach (var message in attempt.Batch)
+        {
+            if (!queue.InFlightMessages.TryGetValue(message.ReceiptHandle!, out var entry))
+            {
+                // Its visibility timeout ran out: the messages are back on the queue.
+                ForgetReceiveAttempt(queue, attemptId, attempt);
+                return null;
+            }
+
+            inFlight.Add(entry.Item2);
+        }
+
+        foreach (var expirationJob in inFlight)
+        {
+            expirationJob.UpdateTimeout(visibilityTimeout);
+        }
+
+        return [.. attempt.Batch.Select(CloneMessage)];
+    }
+
+    private void ForgetExpiredReceiveAttempts(SqsQueueResource queue)
+    {
+        var now = _bus.TimeProvider.GetUtcNow();
+        foreach (var (attemptId, attempt) in queue.ReceiveAttempts)
+        {
+            if (now - attempt.ReceivedAt >= ReceiveAttemptLifetime)
+            {
+                ForgetReceiveAttempt(queue, attemptId, attempt);
+            }
+        }
+    }
+
+    private static void ForgetReceiveAttempt(SqsQueueResource queue, string attemptId, SqsQueueResource.ReceiveAttempt attempt)
+    {
+        // Removes the entry only if it is still this attempt (atomic on a ConcurrentDictionary).
+        ((ICollection<KeyValuePair<string, SqsQueueResource.ReceiveAttempt>>)queue.ReceiveAttempts)
+            .Remove(new KeyValuePair<string, SqsQueueResource.ReceiveAttempt>(attemptId, attempt));
+        foreach (var message in attempt.Batch)
+        {
+            queue.ReceiveAttemptsByReceiptHandle.TryRemove(message.ReceiptHandle!, out _);
         }
     }
 
@@ -658,6 +761,14 @@ internal sealed class InternalSqsClient
         {
             message.Attributes ??= [];
             message.Attributes[InternalMessageSystemAttributeName.DeadLetterQueueSourceArn] = queue.Arn;
+            if (queue.ErrorQueue.IsFifo)
+            {
+                // In a FIFO dead-letter queue the message is deduplicated by its original id, and
+                // its retention period starts over.
+                message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = message.MessageId!;
+                queue.ErrorQueue.RestartRetention(message, _bus.TimeProvider.GetUtcNow());
+            }
+
             queue.LatestReceiptHandles.TryRemove(message.MessageId!, out _);
             EnqueueMessage(queue.ErrorQueue, message);
             return false;
@@ -696,14 +807,18 @@ internal sealed class InternalSqsClient
     {
         List<Message>? messages = null;
 
-        foreach (var group in queue.MessageGroups)
+        // Start each receive at the next group in turn: always scanning from the same group would
+        // let one group that keeps being released (a visibility timeout of 0) starve the rest.
+        var groupIds = queue.MessageGroups.Keys.ToArray();
+        var start = groupIds.Length == 0 ? 0 : (int)((uint)queue.NextFifoReceiveStart() % (uint)groupIds.Length);
+        for (var i = 0; i < groupIds.Length; i++)
         {
             if (messages is not null && messages.Count >= maxMessages)
             {
                 break;
             }
 
-            var groupId = group.Key;
+            var groupId = groupIds[(start + i) % groupIds.Length];
             var groupLock = queue.MessageGroupLocks.GetOrAdd(groupId, _ => new object());
 
             lock (groupLock)
@@ -1490,6 +1605,8 @@ internal sealed class InternalSqsClient
         queue.DiscardDelayedMessages();
         queue.LatestReceiptHandles.Clear();
         queue.ClearDeduplication();
+        queue.ReceiveAttempts.Clear();
+        queue.ReceiveAttemptsByReceiptHandle.Clear();
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.PurgeQueue, queue.Arn);
         return Task.FromResult(new PurgeQueueResponse().SetCommonProperties());
@@ -1689,6 +1806,11 @@ internal sealed class InternalSqsClient
 
         queue.LastModifiedTimestamp = _bus.TimeProvider.GetUtcNow();
         UpdateQueueProperties(queue);
+        if (queue.IsFifo)
+        {
+            // A FIFO queue's delay applies to messages already waiting: a lower one may release them.
+            queue.ReleaseDueFifoMessages(_bus.TimeProvider);
+        }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.SetQueueAttributes, queue.Arn);
         return Task.FromResult(new SetQueueAttributesResponse

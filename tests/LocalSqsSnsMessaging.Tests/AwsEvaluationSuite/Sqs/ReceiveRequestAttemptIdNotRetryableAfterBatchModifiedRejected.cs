@@ -19,7 +19,6 @@ public sealed class ReceiveRequestAttemptIdNotRetryableAfterBatchModifiedRejecte
     [Test]
     [DisplayName("sqs.receive-request-attempt-id-not-retryable-after-batch-modified-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "ReceiveRequestAttemptId is ignored, so an unmodified batch never replays under its attempt id: got []")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

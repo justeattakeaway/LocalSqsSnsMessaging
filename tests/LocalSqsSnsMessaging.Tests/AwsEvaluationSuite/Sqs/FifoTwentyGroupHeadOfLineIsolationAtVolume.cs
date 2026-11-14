@@ -33,7 +33,6 @@ public sealed class FifoTwentyGroupHeadOfLineIsolationAtVolume
     [Test]
     [DisplayName("sqs.fifo-twenty-group-head-of-line-isolation-at-volume")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "never received a message for group 'g00' in up to 120 single receives")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

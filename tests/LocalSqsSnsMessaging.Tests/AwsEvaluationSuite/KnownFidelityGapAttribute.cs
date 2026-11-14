@@ -12,9 +12,6 @@ public enum FidelityGap
     /// <summary>Receipt-handle lifecycle (handles from a deleted queue incarnation).</summary>
     ReceiptHandles,
 
-    /// <summary>FIFO semantics (dedup, ReceiveRequestAttemptId, sequence numbers, ...).</summary>
-    Fifo,
-
     /// <summary>The bus serves a single region.</summary>
     MultiRegion,
 

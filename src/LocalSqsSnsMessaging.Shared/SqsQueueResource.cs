@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using LocalSqsSnsMessaging.Sqs.Model;
 
@@ -24,9 +25,31 @@ internal sealed class SqsQueueResource
     /// </summary>
     public bool IsExpired(Message message, DateTimeOffset now)
     {
+        if (_retentionRestarts.TryGetValue(message, out var restartedAt))
+        {
+            return (DateTimeOffset)restartedAt + MessageRetentionPeriod <= now;
+        }
+
         return message.Attributes?.TryGetValue("SentTimestamp", out var sentTimestamp) == true
                && long.TryParse(sentTimestamp, NumberStyles.None, NumberFormatInfo.InvariantInfo, out var sentMilliseconds)
                && DateTimeOffset.FromUnixTimeMilliseconds(sentMilliseconds) + MessageRetentionPeriod <= now;
+    }
+
+    /// <summary>Messages whose retention period counts from a later instant than their SentTimestamp.</summary>
+    private readonly ConditionalWeakTable<Message, object> _retentionRestarts = new();
+
+    /// <summary>
+    /// Counts <paramref name="message"/>'s retention from <paramref name="now"/> rather than from its
+    /// SentTimestamp, as SQS does for a message moved to a FIFO dead-letter queue.
+    /// </summary>
+    public void RestartRetention(Message message, DateTimeOffset now)
+    {
+#if NETSTANDARD2_0
+        _retentionRestarts.Remove(message);
+        _retentionRestarts.Add(message, now);
+#else
+        _retentionRestarts.AddOrUpdate(message, now);
+#endif
     }
 
     /// <summary>
@@ -88,7 +111,7 @@ internal sealed class SqsQueueResource
     /// <summary>Delayed FIFO messages per message group, in send order.</summary>
     private readonly Dictionary<string, Queue<DelayedFifoMessage>> _delayedFifoMessages = new(StringComparer.Ordinal);
 
-    private readonly record struct DelayedFifoMessage(Message Message, long Start, TimeSpan Delay);
+    private readonly record struct DelayedFifoMessage(Message Message, long Start);
 
     /// <summary>Messages sent with a delay that has not elapsed yet (<c>ApproximateNumberOfMessagesDelayed</c>).</summary>
     public int DelayedMessageCount => _delayedMessages.Count;
@@ -196,6 +219,38 @@ internal sealed class SqsQueueResource
     public Channel<bool> FifoMessageAvailableSignal { get; } = Channel.CreateBounded<bool>(
         new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
 
+    /// <summary>
+    /// A FIFO receive made under a <c>ReceiveRequestAttemptId</c>: the batch it returned, which a
+    /// retry with the same id replays until one of its messages is deleted or has its visibility
+    /// changed.
+    /// </summary>
+    internal sealed class ReceiveAttempt(List<Message> batch, DateTimeOffset receivedAt)
+    {
+        public List<Message> Batch { get; } = batch;
+        public DateTimeOffset ReceivedAt { get; } = receivedAt;
+        public bool Modified { get; set; }
+    }
+
+    /// <summary>FIFO receive attempts by <c>ReceiveRequestAttemptId</c>.</summary>
+    public ConcurrentDictionary<string, ReceiveAttempt> ReceiveAttempts { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>The receive attempt that handed out each receipt handle, for the handles of attempts still held.</summary>
+    public ConcurrentDictionary<string, ReceiveAttempt> ReceiveAttemptsByReceiptHandle { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Marks the receive attempt that handed out <paramref name="receiptHandle"/>, if any, as no longer retryable.</summary>
+    public void MarkReceiveAttemptModified(string? receiptHandle)
+    {
+        if (receiptHandle is not null && ReceiveAttemptsByReceiptHandle.TryGetValue(receiptHandle, out var attempt))
+        {
+            attempt.Modified = true;
+        }
+    }
+
+    private int _fifoReceiveStart;
+
+    /// <summary>A rotating start position for scanning message groups, one per FIFO receive.</summary>
+    public int NextFifoReceiveStart() => Interlocked.Increment(ref _fifoReceiveStart);
+
     public void SignalFifoMessageAvailable()
     {
         FifoMessageAvailableSignal.Writer.TryWrite(true);
@@ -249,7 +304,7 @@ internal sealed class SqsQueueResource
                     _delayedFifoMessages[fifoMessageGroupId] = pending;
                 }
 
-                pending.Enqueue(new DelayedFifoMessage(message, start, delay));
+                pending.Enqueue(new DelayedFifoMessage(message, start));
             }
         }
 
@@ -258,12 +313,14 @@ internal sealed class SqsQueueResource
         async Task EnqueueAfterDelayCore()
         {
             // Timers can fire a little early; a delayed message must never be visible before
-            // its full delay has elapsed.
+            // its full delay has elapsed. A FIFO queue's delay is whatever the queue's is now,
+            // so a change applies to messages already waiting.
             var remaining = delay;
             while (remaining > TimeSpan.Zero)
             {
                 await timeProvider.Delay(remaining).ConfigureAwait(false);
-                remaining = delay - timeProvider.GetElapsedTime(start);
+                var currentDelay = fifoMessageGroupId is null ? delay : TimeSpan.FromSeconds(DelaySeconds);
+                remaining = currentDelay - timeProvider.GetElapsedTime(start);
             }
 
             if (fifoMessageGroupId is not null)
@@ -275,6 +332,21 @@ internal sealed class SqsQueueResource
             {
                 Messages.Enqueue(message);
             }
+        }
+    }
+
+    /// <summary>Releases every group's delayed FIFO messages that are due, as after the queue's delay is lowered.</summary>
+    public void ReleaseDueFifoMessages(TimeProvider timeProvider)
+    {
+        List<string> groups;
+        lock (_delayedFifoMessages)
+        {
+            groups = [.. _delayedFifoMessages.Keys];
+        }
+
+        foreach (var group in groups)
+        {
+            ReleaseDueFifoMessages(group, timeProvider);
         }
     }
 
@@ -291,7 +363,8 @@ internal sealed class SqsQueueResource
                 return;
             }
 
-            while (pending.Count > 0 && timeProvider.GetElapsedTime(pending.Peek().Start) >= pending.Peek().Delay)
+            var delay = TimeSpan.FromSeconds(DelaySeconds);
+            while (pending.Count > 0 && timeProvider.GetElapsedTime(pending.Peek().Start) >= delay)
             {
                 var due = pending.Dequeue().Message;
                 // Gone already when the queue was purged while the message was still delayed.

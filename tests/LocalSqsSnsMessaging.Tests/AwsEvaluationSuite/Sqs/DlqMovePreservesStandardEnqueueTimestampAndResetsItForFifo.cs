@@ -40,7 +40,7 @@ public sealed class DlqMovePreservesStandardEnqueueTimestampAndResetsItForFifo
     [DisplayName("sqs.dlq-move-preserves-standard-enqueue-timestamp-and-resets-it-for-fifo")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [KnownFidelityGap(FidelityGap.Fifo, "a FIFO DLQ copy expires under the DLQ's 60s retention as though its enqueue timestamp had not reset on the move")]
+    [Category(FidelityContext.LongWaitCategory)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

@@ -33,7 +33,6 @@ public sealed class QueueDelayChangeIsRetroactiveForFifoButNotStandard
     [Test]
     [DisplayName("sqs.queue-delay-change-is-retroactive-for-fifo-but-not-standard")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Fifo, "lowering a FIFO queue's DelaySeconds does not release messages already waiting out the old delay")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
