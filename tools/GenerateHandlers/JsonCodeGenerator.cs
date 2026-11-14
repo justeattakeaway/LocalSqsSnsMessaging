@@ -185,7 +185,7 @@ internal sealed class JsonCodeGenerator
 
             case "timestamp":
                 code.AppendLine($"        if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
-                code.AppendLine($"            writer.WriteString(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}).ToString(\"O\"));");
+                code.AppendLine($"            Serialization.AwsJsonTimestamp.Write(writer, \"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                 break;
 
             case "list":
@@ -295,7 +295,7 @@ internal sealed class JsonCodeGenerator
                 break;
 
             case "timestamp":
-                code.AppendLine($"        if (root.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem) && {jsonPropertyName}Elem.TryGetDateTime(out var {jsonPropertyName}Val))");
+                code.AppendLine($"        if (root.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem) && Serialization.AwsJsonTimestamp.TryRead({jsonPropertyName}Elem, out var {jsonPropertyName}Val))");
                 code.AppendLine($"            request.{csharpPropertyName} = {jsonPropertyName}Val;");
                 break;
 
@@ -447,7 +447,7 @@ internal sealed class JsonCodeGenerator
 
                 case "timestamp":
                     code.AppendLine($"{indent}if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
-                    code.AppendLine($"{indent}    writer.WriteString(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}).ToString(\"O\"));");
+                    code.AppendLine($"{indent}    Serialization.AwsJsonTimestamp.Write(writer, \"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                     break;
 
                 case "map":
@@ -599,7 +599,7 @@ internal sealed class JsonCodeGenerator
                     break;
 
                 case "timestamp":
-                    code.AppendLine($"{indent}if ({sourceElement}.TryGetProperty(\"{jsonPropertyName}\", out var _e{v}) && _e{v}.TryGetDateTime(out var _dt{v}))");
+                    code.AppendLine($"{indent}if ({sourceElement}.TryGetProperty(\"{jsonPropertyName}\", out var _e{v}) && Serialization.AwsJsonTimestamp.TryRead(_e{v}, out var _dt{v}))");
                     code.AppendLine($"{indent}    {targetVar}.{csharpPropertyName} = _dt{v};");
                     break;
 

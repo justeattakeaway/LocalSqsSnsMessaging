@@ -101,7 +101,7 @@ internal static class EventBridgeJsonSerializers
 
         // CreationTime
         if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
-            writer.WriteString("CreationTime", SdkCompatibility.GetValue(response.CreationTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(response.CreationTime));
 
         writer.WriteEndObject();
         writer.Flush();
@@ -316,7 +316,7 @@ internal static class EventBridgeJsonSerializers
 
         // CreationTime
         if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
-            writer.WriteString("CreationTime", SdkCompatibility.GetValue(response.CreationTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(response.CreationTime));
 
         writer.WriteEndObject();
         writer.Flush();
@@ -368,11 +368,11 @@ internal static class EventBridgeJsonSerializers
 
         // CreationTime
         if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
-            writer.WriteString("CreationTime", SdkCompatibility.GetValue(response.CreationTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(response.CreationTime));
 
         // LastModifiedTime
         if (SdkCompatibility.HasNonDefaultValue(response.LastModifiedTime))
-            writer.WriteString("LastModifiedTime", SdkCompatibility.GetValue(response.LastModifiedTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "LastModifiedTime", SdkCompatibility.GetValue(response.LastModifiedTime));
 
         writer.WriteEndObject();
         writer.Flush();
@@ -425,23 +425,23 @@ internal static class EventBridgeJsonSerializers
 
         // EventStartTime
         if (SdkCompatibility.HasNonDefaultValue(response.EventStartTime))
-            writer.WriteString("EventStartTime", SdkCompatibility.GetValue(response.EventStartTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "EventStartTime", SdkCompatibility.GetValue(response.EventStartTime));
 
         // EventEndTime
         if (SdkCompatibility.HasNonDefaultValue(response.EventEndTime))
-            writer.WriteString("EventEndTime", SdkCompatibility.GetValue(response.EventEndTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "EventEndTime", SdkCompatibility.GetValue(response.EventEndTime));
 
         // EventLastReplayedTime
         if (SdkCompatibility.HasNonDefaultValue(response.EventLastReplayedTime))
-            writer.WriteString("EventLastReplayedTime", SdkCompatibility.GetValue(response.EventLastReplayedTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "EventLastReplayedTime", SdkCompatibility.GetValue(response.EventLastReplayedTime));
 
         // ReplayStartTime
         if (SdkCompatibility.HasNonDefaultValue(response.ReplayStartTime))
-            writer.WriteString("ReplayStartTime", SdkCompatibility.GetValue(response.ReplayStartTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "ReplayStartTime", SdkCompatibility.GetValue(response.ReplayStartTime));
 
         // ReplayEndTime
         if (SdkCompatibility.HasNonDefaultValue(response.ReplayEndTime))
-            writer.WriteString("ReplayEndTime", SdkCompatibility.GetValue(response.ReplayEndTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "ReplayEndTime", SdkCompatibility.GetValue(response.ReplayEndTime));
 
         writer.WriteEndObject();
         writer.Flush();
@@ -620,7 +620,7 @@ internal static class EventBridgeJsonSerializers
                 if (SdkCompatibility.HasNonDefaultValue(item.EventCount))
                     writer.WriteNumber("EventCount", SdkCompatibility.GetValue(item.EventCount));
                 if (SdkCompatibility.HasNonDefaultValue(item.CreationTime))
-                    writer.WriteString("CreationTime", SdkCompatibility.GetValue(item.CreationTime).ToString("O"));
+                    Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(item.CreationTime));
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -677,9 +677,9 @@ internal static class EventBridgeJsonSerializers
                 if (item.Policy != null)
                     writer.WriteString("Policy", item.Policy);
                 if (SdkCompatibility.HasNonDefaultValue(item.CreationTime))
-                    writer.WriteString("CreationTime", SdkCompatibility.GetValue(item.CreationTime).ToString("O"));
+                    Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(item.CreationTime));
                 if (SdkCompatibility.HasNonDefaultValue(item.LastModifiedTime))
-                    writer.WriteString("LastModifiedTime", SdkCompatibility.GetValue(item.LastModifiedTime).ToString("O"));
+                    Serialization.AwsJsonTimestamp.Write(writer, "LastModifiedTime", SdkCompatibility.GetValue(item.LastModifiedTime));
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -744,15 +744,15 @@ internal static class EventBridgeJsonSerializers
                 if (item.StateReason != null)
                     writer.WriteString("StateReason", item.StateReason);
                 if (SdkCompatibility.HasNonDefaultValue(item.EventStartTime))
-                    writer.WriteString("EventStartTime", SdkCompatibility.GetValue(item.EventStartTime).ToString("O"));
+                    Serialization.AwsJsonTimestamp.Write(writer, "EventStartTime", SdkCompatibility.GetValue(item.EventStartTime));
                 if (SdkCompatibility.HasNonDefaultValue(item.EventEndTime))
-                    writer.WriteString("EventEndTime", SdkCompatibility.GetValue(item.EventEndTime).ToString("O"));
+                    Serialization.AwsJsonTimestamp.Write(writer, "EventEndTime", SdkCompatibility.GetValue(item.EventEndTime));
                 if (SdkCompatibility.HasNonDefaultValue(item.EventLastReplayedTime))
-                    writer.WriteString("EventLastReplayedTime", SdkCompatibility.GetValue(item.EventLastReplayedTime).ToString("O"));
+                    Serialization.AwsJsonTimestamp.Write(writer, "EventLastReplayedTime", SdkCompatibility.GetValue(item.EventLastReplayedTime));
                 if (SdkCompatibility.HasNonDefaultValue(item.ReplayStartTime))
-                    writer.WriteString("ReplayStartTime", SdkCompatibility.GetValue(item.ReplayStartTime).ToString("O"));
+                    Serialization.AwsJsonTimestamp.Write(writer, "ReplayStartTime", SdkCompatibility.GetValue(item.ReplayStartTime));
                 if (SdkCompatibility.HasNonDefaultValue(item.ReplayEndTime))
-                    writer.WriteString("ReplayEndTime", SdkCompatibility.GetValue(item.ReplayEndTime).ToString("O"));
+                    Serialization.AwsJsonTimestamp.Write(writer, "ReplayEndTime", SdkCompatibility.GetValue(item.ReplayEndTime));
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -1318,7 +1318,7 @@ internal static class EventBridgeJsonSerializers
             foreach (var item in EntriesElem.EnumerateArray())
             {
                 var entry3 = new PutEventsRequestEntry();
-                if (item.TryGetProperty("Time", out var _e4) && _e4.TryGetDateTime(out var _dt4))
+                if (item.TryGetProperty("Time", out var _e4) && Serialization.AwsJsonTimestamp.TryRead(_e4, out var _dt4))
                     entry3.Time = _dt4;
                 if (item.TryGetProperty("Source", out var _e5))
                     entry3.Source = _e5.GetString();
@@ -1943,11 +1943,11 @@ internal static class EventBridgeJsonSerializers
             request.EventSourceArn = EventSourceArnElem.GetString();
 
         // EventStartTime
-        if (root.TryGetProperty("EventStartTime", out var EventStartTimeElem) && EventStartTimeElem.TryGetDateTime(out var EventStartTimeVal))
+        if (root.TryGetProperty("EventStartTime", out var EventStartTimeElem) && Serialization.AwsJsonTimestamp.TryRead(EventStartTimeElem, out var EventStartTimeVal))
             request.EventStartTime = EventStartTimeVal;
 
         // EventEndTime
-        if (root.TryGetProperty("EventEndTime", out var EventEndTimeElem) && EventEndTimeElem.TryGetDateTime(out var EventEndTimeVal))
+        if (root.TryGetProperty("EventEndTime", out var EventEndTimeElem) && Serialization.AwsJsonTimestamp.TryRead(EventEndTimeElem, out var EventEndTimeVal))
             request.EventEndTime = EventEndTimeVal;
 
         // Destination
@@ -1975,7 +1975,7 @@ internal static class EventBridgeJsonSerializers
 
         // ReplayStartTime
         if (SdkCompatibility.HasNonDefaultValue(response.ReplayStartTime))
-            writer.WriteString("ReplayStartTime", SdkCompatibility.GetValue(response.ReplayStartTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "ReplayStartTime", SdkCompatibility.GetValue(response.ReplayStartTime));
 
         writer.WriteEndObject();
         writer.Flush();
@@ -2128,7 +2128,7 @@ internal static class EventBridgeJsonSerializers
 
         // CreationTime
         if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
-            writer.WriteString("CreationTime", SdkCompatibility.GetValue(response.CreationTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(response.CreationTime));
 
         writer.WriteEndObject();
         writer.Flush();

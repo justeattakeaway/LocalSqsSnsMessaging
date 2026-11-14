@@ -26,7 +26,6 @@ public sealed class PutEventsTimeResourcesAndEventIdCarriedIntoTheDeliveredEnvel
     [Test]
     [DisplayName("events__sqs.put-events-time-resources-and-event-id-carried-into-the-delivered-envelope")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgePutEvents, "PutEvents of an entry with a Time fails with InvalidOperationException 'requires an element of type String, but the target element has type Number': the SDK sends Time as epoch seconds and the library only reads a string")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
