@@ -20,7 +20,6 @@ public sealed class SubscribeInvalidFilterPolicyFails
     [Test]
     [DisplayName("sns.subscribe-invalid-filter-policy-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "a filter policy that isn't JSON is refused without SNS's 'failed to parse JSON. Unrecognized token ...' message")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

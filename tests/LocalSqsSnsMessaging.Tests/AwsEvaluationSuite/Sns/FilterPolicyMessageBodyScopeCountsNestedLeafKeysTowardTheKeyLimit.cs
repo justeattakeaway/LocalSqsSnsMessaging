@@ -22,7 +22,6 @@ public sealed class FilterPolicyMessageBodyScopeCountsNestedLeafKeysTowardTheKey
     [Test]
     [DisplayName("sns.filter-policy-message-body-scope-counts-nested-leaf-keys-toward-the-key-limit")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "a MessageBody-scoped filter policy with more than five nested leaf keys is accepted")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

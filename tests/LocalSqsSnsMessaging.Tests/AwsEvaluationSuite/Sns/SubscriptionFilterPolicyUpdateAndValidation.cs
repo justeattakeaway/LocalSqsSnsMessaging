@@ -17,7 +17,6 @@ public sealed class SubscriptionFilterPolicyUpdateAndValidation
     [Test]
     [DisplayName("sns.subscription-filter-policy-update-and-validation")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "a malformed filter policy is refused with a different message from SNS's")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -8,10 +8,19 @@ namespace LocalSqsSnsMessaging;
 /// Validation and evaluation of SNS subscription filter policies.
 /// See https://docs.aws.amazon.com/sns/latest/dg/sns-subscription-filter-policies.html
 /// </summary>
-internal static class SnsFilterPolicy
+internal static partial class SnsFilterPolicy
 {
     public const string MessageAttributesScope = "MessageAttributes";
     public const string MessageBodyScope = "MessageBody";
+
+    /// <summary>The most leaf keys one rule of a filter policy may have.</summary>
+    private const int MaxKeys = 5;
+
+    /// <summary>The most value combinations a filter policy may have.</summary>
+    private const int MaxCombinations = 150;
+
+    /// <summary>The deepest a <see cref="MessageBodyScope"/> filter policy may nest.</summary>
+    private const int MaxNestingDepth = 5;
 
     /// <summary>
     /// Parses a filter policy string. Returns <see langword="null"/> for an empty policy (no
@@ -27,9 +36,9 @@ internal static class SnsFilterPolicy
 
         try
         {
-            return JsonNode.Parse(policy!) as JsonObject;
+            return PolicyTextReader.Read(policy!) as JsonObject;
         }
-        catch (JsonException)
+        catch (InternalInvalidParameterException)
         {
             return null;
         }
@@ -42,8 +51,15 @@ internal static class SnsFilterPolicy
 
     /// <summary>
     /// Validates a filter policy for the given scope, throwing <see cref="InternalInvalidParameterException"/>
-    /// with an AWS-style message when it is malformed. An empty policy is valid and means "no filter".
+    /// with SNS's message when it is malformed. An empty policy, or <c>{}</c>, is valid and means "no filter".
     /// </summary>
+    /// <remarks>
+    /// SNS checks a policy in stages, and so does this: the text must be JSON; its compact form must
+    /// follow the filter grammar (operators and their operands, reported with the position reached);
+    /// a <see cref="MessageAttributesScope"/> policy must be flat; and once <c>$or</c> branches are
+    /// expanded, no rule may have more than <see cref="MaxKeys"/> leaf keys or the policy more than
+    /// <see cref="MaxCombinations"/> value combinations.
+    /// </remarks>
     public static void Validate(string? policy, string scope)
     {
         if (string.IsNullOrWhiteSpace(policy))
@@ -51,183 +67,48 @@ internal static class SnsFilterPolicy
             return;
         }
 
-        JsonNode? root;
-        try
+        var document = PolicyTextReader.Read(policy!);
+        if (document is JsonObject { Count: 0 })
         {
-            root = JsonNode.Parse(policy!);
-        }
-        catch (JsonException)
-        {
-            throw new InternalInvalidParameterException("Invalid parameter: FilterPolicy: Filter policy is not valid JSON");
+            return;
         }
 
-        if (root is not JsonObject obj)
+        var compiled = PolicyGrammar.Compile(WriteCompact(document));
+
+        if (compiled.IsNested && !string.Equals(scope, MessageBodyScope, StringComparison.Ordinal))
         {
-            throw new InternalInvalidParameterException("Invalid parameter: FilterPolicy: Filter policy must be a JSON object");
+            throw new InternalInvalidParameterException(
+                $"Invalid parameter: Filter policy scope {MessageAttributesScope} does not support nested filter policy");
         }
 
-        var allowNesting = string.Equals(scope, MessageBodyScope, StringComparison.Ordinal);
-        ValidateObject(obj, allowNesting, depth: 1);
-    }
-
-    private static void ValidateObject(JsonObject obj, bool allowNesting, int depth)
-    {
-        foreach (var (key, value) in obj)
+        if (compiled.Rules.Any(rule => rule.Count > MaxKeys))
         {
-            if (string.Equals(key, "$or", StringComparison.Ordinal))
+            throw Invalid($"Filter policy can not have more than {MaxKeys} keys");
+        }
+
+        // Each rule contributes the product, over its leaf keys, of the key's value count times its
+        // nesting depth; $or branches are separate rules, so their contributions add up.
+        long combinations = 0;
+        foreach (var rule in compiled.Rules)
+        {
+            long product = 1;
+            foreach (var (values, depth) in rule.Values)
             {
-                if (value is not JsonArray orArray || orArray.Count == 0 || orArray.Any(x => x is not JsonObject))
-                {
-                    throw new InternalInvalidParameterException("Invalid parameter: FilterPolicy: \"$or\" must be an array of objects");
-                }
-                foreach (var branch in orArray)
-                {
-                    ValidateObject((JsonObject)branch!, allowNesting, depth);
-                }
-                continue;
+                product = Math.Min(product * values * depth, MaxCombinations + 1);
             }
+            combinations += product;
+        }
 
-            switch (value)
-            {
-                case JsonArray candidates:
-                    if (candidates.Count == 0)
-                    {
-                        throw new InternalInvalidParameterException($"Invalid parameter: FilterPolicy: Empty arrays are not allowed (\"{key}\")");
-                    }
-                    foreach (var candidate in candidates)
-                    {
-                        ValidateCandidate(key, candidate);
-                    }
-                    break;
+        if (combinations > MaxCombinations)
+        {
+            throw Invalid("Filter policy is too complex");
+        }
 
-                case JsonObject nested:
-                    if (!allowNesting)
-                    {
-                        throw new InternalInvalidParameterException(
-                            $"Invalid parameter: FilterPolicy: Filter policy scope {MessageAttributesScope} does not support nested filter policy (\"{key}\")");
-                    }
-                    if (depth >= 5)
-                    {
-                        throw new InternalInvalidParameterException("Invalid parameter: FilterPolicy: Filter policy can only have up to 5 levels of nesting");
-                    }
-                    ValidateObject(nested, allowNesting, depth + 1);
-                    break;
-
-                default:
-                    throw new InternalInvalidParameterException($"Invalid parameter: FilterPolicy: \"{key}\" must have an array or object value");
-            }
+        if (compiled.Rules.Any(rule => rule.Values.Any(leaf => leaf.Depth > MaxNestingDepth)))
+        {
+            throw Invalid($"Filter policy can only have up to {MaxNestingDepth} levels of nesting");
         }
     }
-
-    private static void ValidateCandidate(string key, JsonNode? candidate)
-    {
-        switch (candidate)
-        {
-            case JsonObject op:
-                if (op.Count != 1)
-                {
-                    throw Invalid($"Only one operator is allowed per object (\"{key}\")");
-                }
-                ValidateOperator(key, op.First().Key, op.First().Value);
-                break;
-
-            case JsonArray:
-                throw Invalid($"Nested arrays are not allowed (\"{key}\")");
-        }
-    }
-
-    // Each operator's operand has a fixed shape; a policy that parses but has a malformed operand
-    // would otherwise be stored and then silently match more (or less) than intended.
-    private static void ValidateOperator(string key, string name, JsonNode? operand)
-    {
-        switch (name)
-        {
-            case "exists":
-                if (!IsBool(operand))
-                {
-                    throw Invalid($"\"exists\" must be true or false (\"{key}\")");
-                }
-                break;
-
-            case "prefix":
-            case "suffix":
-                var ignoreCase = operand is JsonObject affix && affix.Count == 1 &&
-                                 affix.TryGetPropertyValue("equals-ignore-case", out var affixValue) && IsString(affixValue);
-                if (!IsString(operand) && !ignoreCase)
-                {
-                    throw Invalid($"\"{name}\" must be a string (\"{key}\")");
-                }
-                break;
-
-            case "equals-ignore-case":
-            case "wildcard":
-            case "cidr":
-                if (!IsString(operand))
-                {
-                    throw Invalid($"\"{name}\" must be a string (\"{key}\")");
-                }
-                break;
-
-            case "numeric":
-                ValidateNumeric(key, operand);
-                break;
-
-            case "anything-but":
-                ValidateAnythingBut(key, operand);
-                break;
-
-            default:
-                throw Invalid($"Unrecognized match type {name} (\"{key}\")");
-        }
-    }
-
-    private static void ValidateNumeric(string key, JsonNode? operand)
-    {
-        // Either a single comparison ["<op>", n] or a range ["> or >=", low, "< or <=", high].
-        if (operand is not JsonArray spec || (spec.Count != 2 && spec.Count != 4))
-        {
-            throw Invalid($"\"numeric\" must be an operator followed by a number, or a range of two (\"{key}\")");
-        }
-
-        for (var i = 0; i < spec.Count; i += 2)
-        {
-            if (!IsString(spec[i]) || spec[i]!.GetValue<string>() is not ("=" or "!=" or "<" or "<=" or ">" or ">=") || !IsNumber(spec[i + 1]))
-            {
-                throw Invalid($"\"numeric\" must be an operator followed by a number (\"{key}\")");
-            }
-        }
-
-        if (spec.Count == 4 &&
-            (spec[0]!.GetValue<string>() is not (">" or ">=") || spec[2]!.GetValue<string>() is not ("<" or "<=")))
-        {
-            throw Invalid($"\"numeric\" range must be a lower bound followed by an upper bound (\"{key}\")");
-        }
-    }
-
-    private static void ValidateAnythingBut(string key, JsonNode? operand)
-    {
-        switch (operand)
-        {
-            case JsonValue when IsString(operand) || IsNumber(operand):
-                return;
-
-            case JsonArray values when values.Count > 0 && values.All(v => IsString(v) || IsNumber(v)):
-                return;
-
-            case JsonObject inner when inner.Count == 1 &&
-                                       inner.First().Key is "prefix" or "suffix" or "equals-ignore-case" or "wildcard" &&
-                                       (IsString(inner.First().Value) ||
-                                        inner.First().Value is JsonArray strings && strings.Count > 0 && strings.All(IsString)):
-                return;
-
-            default:
-                throw Invalid($"\"anything-but\" must be a value, a list of values, or a prefix/suffix/equals-ignore-case/wildcard operator (\"{key}\")");
-        }
-    }
-
-    private static bool IsString(JsonNode? node) => node is JsonValue v && v.GetValueKind() == JsonValueKind.String;
-    private static bool IsNumber(JsonNode? node) => node is JsonValue v && v.GetValueKind() == JsonValueKind.Number;
-    private static bool IsBool(JsonNode? node) => node is JsonValue v && v.GetValueKind() is JsonValueKind.True or JsonValueKind.False;
 
     private static InternalInvalidParameterException Invalid(string message) =>
         new($"Invalid parameter: FilterPolicy: {message}");

@@ -18,7 +18,6 @@ public sealed class FilterPolicyScopeConstrainsPolicyShape
     [Test]
     [DisplayName("sns.filter-policy-scope-constrains-policy-shape")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "a nested policy under MessageAttributes scope is refused with 'Invalid parameter: FilterPolicy: Filter policy scope ...' instead of 'Invalid parameter: Filter policy scope ...'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

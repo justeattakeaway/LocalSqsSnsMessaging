@@ -22,7 +22,6 @@ public sealed class FilterPolicyOperatorVocabularyRoundTrip
     [Test]
     [DisplayName("sns.filter-policy-operator-vocabulary-round-trip")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "Subscribe accepts a filter policy using an operator SNS doesn't support")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -20,7 +20,6 @@ public sealed class FilterPolicyScopeSwitchAwayFromMessageBodyRejectedWhilePolic
     [Test]
     [DisplayName("sns.filter-policy-scope-switch-away-from-message-body-rejected-while-policy-is-nested")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "switching a nested policy to MessageAttributes scope is refused with 'Invalid parameter: FilterPolicy: Filter policy scope ...' instead of 'Invalid parameter: Filter policy scope ...'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

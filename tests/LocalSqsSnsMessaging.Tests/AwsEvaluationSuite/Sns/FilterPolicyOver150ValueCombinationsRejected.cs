@@ -22,7 +22,6 @@ public sealed class FilterPolicyOver150ValueCombinationsRejected
     [Test]
     [DisplayName("sns.filter-policy-over-150-value-combinations-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsFilterPolicy, "a filter policy with more than 150 value combinations is accepted instead of refused as too complex")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -15,8 +15,6 @@ public enum FidelityGap
     /// <summary>SNS: PublishBatch validation and per-entry results.</summary>
     SnsBatch,
 
-    /// <summary>SNS: subscription filter policy evaluation and validation.</summary>
-    SnsFilterPolicy,
 
     /// <summary>SNS topics and subscriptions are not regional yet (planned as separate work).</summary>
     SnsRegions,
