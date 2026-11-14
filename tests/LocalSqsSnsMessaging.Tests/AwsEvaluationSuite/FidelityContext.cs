@@ -85,6 +85,7 @@ public sealed class FidelityContext : IAsyncDisposable
     private readonly System.Diagnostics.Stopwatch _realClock = System.Diagnostics.Stopwatch.StartNew();
     private long _lastActivityTicks;
     private int _requestsInFlight;
+    private int _concurrentSections;
 
     public FidelityContext(int budgetMilliseconds = BudgetMilliseconds, CancellationToken cancellationToken = default)
     {
@@ -291,6 +292,31 @@ public sealed class FidelityContext : IAsyncDisposable
         return client;
     }
 
+    /// <summary>
+    /// Marks a section where the check runs workers concurrently, as the Python check does with
+    /// threads. Inside it, every request pauses as concurrent requests do, even when it happens to
+    /// be the only one in flight: on a busy thread pool the other workers may not have been
+    /// scheduled yet, and one worker could otherwise finish the whole job alone.
+    /// </summary>
+    public IDisposable Concurrently()
+    {
+        Interlocked.Increment(ref _concurrentSections);
+        return new ConcurrentSection(this);
+    }
+
+    private sealed class ConcurrentSection(FidelityContext context) : IDisposable
+    {
+        private int _disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                Interlocked.Decrement(ref context._concurrentSections);
+            }
+        }
+    }
+
     /// <summary><c>ctx.unique_name(prefix)</c>: the prefix plus 12 random hex characters.</summary>
     public static string UniqueName(string prefix = "sim2real-") => prefix + Guid.NewGuid().ToString("N")[..12];
 
@@ -490,7 +516,8 @@ public sealed class FidelityContext : IAsyncDisposable
         {
             context.MarkActivity();
             context.Time.Advance(RequestLatency);
-            var concurrent = Interlocked.Increment(ref context._requestsInFlight) > 1;
+            var concurrent = Interlocked.Increment(ref context._requestsInFlight) > 1
+                || Volatile.Read(ref context._concurrentSections) > 0;
             try
             {
                 if (concurrent)
@@ -498,7 +525,7 @@ public sealed class FidelityContext : IAsyncDisposable
                     // Against SQS, concurrent calls overlap because each takes real time on the
                     // network. In memory a call takes microseconds, so one caller could finish a
                     // whole loop before another got a thread: pause briefly so they take turns.
-                    // Calls made one after another never pay this.
+                    // Calls made one after another, outside a Concurrently() section, never pay this.
                     await Task.Delay(1, cancellationToken);
                 }
 

@@ -149,7 +149,10 @@ so the whole suite takes seconds:
   (no request starting or finishing, no delay starting or ending) for 10 ms of real time, so it
   never moves under a check that is between two steps.
 - **Request latency:** every request costs 1 ms of virtual time, so a polling loop with no wait
-  in it still reaches its deadline.
+  in it still reaches its deadline. Concurrent requests also pause briefly in real time, so
+  concurrent workers take turns; a check whose workers must interleave (Python threads) runs
+  them inside `ctx.Concurrently()`, where every request pauses even if the thread pool hasn't
+  scheduled the other workers yet.
 - **Budgets and timeouts:** the runner's per-check budgets (`ctx.time_left()`) are in virtual
   time. Each test's `[Timeout]` is real time, and only stops a hung check.
 

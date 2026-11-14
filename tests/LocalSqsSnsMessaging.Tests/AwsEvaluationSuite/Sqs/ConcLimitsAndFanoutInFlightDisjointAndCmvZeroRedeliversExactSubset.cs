@@ -107,7 +107,13 @@ public sealed class ConcLimitsAndFanoutInFlightDisjointAndCmvZeroRedeliversExact
                 return mine;
             }
 
-            await Task.WhenAll(Enumerable.Range(0, Receivers).Select(r => Task.Run(() => Receiver(r))));
+            // The receivers are Python threads: make each call cost real time, so they take turns
+            // even when the thread pool is slow to schedule some of them.
+            using (ctx.Concurrently())
+            {
+                await Task.WhenAll(Enumerable.Range(0, Receivers).Select(r => Task.Run(() => Receiver(r))));
+            }
+
             return seen;
         }
 
