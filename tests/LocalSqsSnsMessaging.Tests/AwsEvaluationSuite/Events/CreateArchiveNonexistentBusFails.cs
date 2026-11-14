@@ -17,7 +17,6 @@ public sealed class CreateArchiveNonexistentBusFails
     [Test]
     [DisplayName("events.create-archive-nonexistent-bus-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not supported (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

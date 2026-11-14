@@ -71,6 +71,12 @@ public enum FidelityGap
 
     /// <summary>EventBridge is not regional yet (planned as separate work, with SNS regions).</summary>
     EventBridgeRegions,
+
+    /// <summary>
+    /// The check's own waits outlast the runner's 60-second budget for an emulator, so it fails
+    /// against any emulator, however fast; against AWS it runs with a longer budget.
+    /// </summary>
+    EmulatorBudget,
 }
 
 /// <summary>

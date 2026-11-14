@@ -16,7 +16,6 @@ public sealed class StartReplayInvalidSourceRejected
     [Test]
     [DisplayName("events.start-replay-invalid-source-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not supported (NotSupportedException); AWS creates the archive the control replay runs against")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -48,27 +48,48 @@ internal static class EventBridgeEventDelivery
     /// <param name="eventBus">The bus the event was put on.</param>
     /// <param name="event">The event.</param>
     /// <param name="bus">The bus that owns the targets' resources.</param>
-    public static void Route(EventBusResource eventBus, EventBridgeEvent @event, InMemoryAwsBus bus) =>
-        Route(eventBus, @event, forwarded: false, bus);
+    /// <param name="ruleFilter">Limits routing to the rules it accepts (a replay's FilterArns); null routes through every rule.</param>
+    public static void Route(EventBusResource eventBus, EventBridgeEvent @event, InMemoryAwsBus bus, Func<RuleResource, bool>? ruleFilter = null) =>
+        Route(eventBus, @event, forwarded: false, bus, ruleFilter);
 
     /// <param name="forwarded">
     /// Whether the event reached <paramref name="eventBus"/> from another bus. EventBridge forwards
     /// an event between buses only once, so a forwarded event skips event bus targets.
     /// </param>
-    private static void Route(EventBusResource eventBus, EventBridgeEvent @event, bool forwarded, InMemoryAwsBus bus)
+    private static void Route(EventBusResource eventBus, EventBridgeEvent @event, bool forwarded, InMemoryAwsBus bus, Func<RuleResource, bool>? ruleFilter = null)
     {
         foreach (var rule in eventBus.Rules.Values)
         {
-            if (!rule.IsEnabled || !EventBridgeEventPattern.Matches(rule.EventPattern, @event.Envelope))
+            if (!rule.IsEnabled
+                || (ruleFilter is not null && !ruleFilter(rule))
+                || !EventBridgeEventPattern.Matches(rule.EventPattern, @event.Envelope))
             {
                 continue;
             }
 
-            // A snapshot: PutTargets and RemoveTargets replace the list rather than change it.
-            foreach (var target in rule.Targets)
-            {
-                DeliverToTarget(new Delivery(rule, target, @event, forwarded), bus);
-            }
+            DeliverToRule(rule, @event, forwarded, bus);
+        }
+    }
+
+    /// <summary>
+    /// Delivers an event a rule has matched (or, for a scheduled rule, produced) to the rule's
+    /// targets; an archive's managed rule stores it in the archive instead.
+    /// </summary>
+    public static void DeliverToRule(RuleResource rule, EventBridgeEvent @event, InMemoryAwsBus bus) =>
+        DeliverToRule(rule, @event, forwarded: false, bus);
+
+    private static void DeliverToRule(RuleResource rule, EventBridgeEvent @event, bool forwarded, InMemoryAwsBus bus)
+    {
+        if (rule.Archive is { } archive)
+        {
+            archive.Store(@event.Envelope);
+            return;
+        }
+
+        // A snapshot: PutTargets and RemoveTargets replace the list rather than change it.
+        foreach (var target in rule.Targets)
+        {
+            DeliverToTarget(new Delivery(rule, target, @event, forwarded), bus);
         }
     }
 

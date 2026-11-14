@@ -24,7 +24,7 @@ public sealed class EventsArchiveReplayRuleMatchingReplayNameExistsFalseIsNotRed
     [Test]
     [DisplayName("events__sqs.events-archive-replay-rule-matching-replay-name-exists-false-is-not-redelivered")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not implemented: it fails with NotSupportedException")]
+    [KnownFidelityGap(FidelityGap.EmulatorBudget, "Its settle loops and four 8-10 s drains use up the 60 s budget before the archive poll, whose bound is then 0 s, so it never probes the archive")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

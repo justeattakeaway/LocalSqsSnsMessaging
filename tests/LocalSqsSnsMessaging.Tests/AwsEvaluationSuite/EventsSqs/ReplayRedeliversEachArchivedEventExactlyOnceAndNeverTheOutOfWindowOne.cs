@@ -124,7 +124,6 @@ public sealed class ReplayRedeliversEachArchivedEventExactlyOnceAndNeverTheOutOf
     [Test]
     [DisplayName("events__sqs.replay-redelivers-each-archived-event-exactly-once-and-never-the-out-of-window-one")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not implemented: it fails with NotSupportedException, so no archive or replay exists")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

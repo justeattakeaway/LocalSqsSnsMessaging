@@ -20,7 +20,6 @@ public sealed class ListArchivesFiltersByPrefixAndSource
     [Test]
     [DisplayName("events.list-archives-filters-by-prefix-and-source")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not implemented (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

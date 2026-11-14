@@ -15,7 +15,6 @@ public sealed class ReplayReachesCompleted
     [Test]
     [DisplayName("events.replay-reaches-completed")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not supported (NotSupportedException); AWS creates the archive and runs the replay to COMPLETED")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

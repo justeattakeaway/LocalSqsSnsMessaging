@@ -21,6 +21,15 @@ internal sealed class RuleResource
     public string? Description { get; set; }
     public string? RoleArn { get; set; }
 
+    /// <summary>The service that manages the rule (for an archive's rule); null for a customer's rule.</summary>
+    public string? ManagedBy { get; init; }
+
+    /// <summary>The archive this rule feeds, for the managed rule EventBridge creates for each archive.</summary>
+    public ArchiveResource? Archive { get; init; }
+
+    /// <summary>The job firing the rule's ScheduleExpression, while it has one.</summary>
+    public ScheduledRuleJob? Schedule { get; set; }
+
     public bool IsEnabled => string.Equals(State, "ENABLED", StringComparison.Ordinal);
 
     /// <summary>The rule's tags, set when the rule is created (a PutRule that updates it ignores Tags).</summary>
@@ -83,11 +92,13 @@ internal sealed class RuleResource
     /// Marks the rule deleted and runs <paramref name="remove"/> to drop it from its bus, unless it
     /// still has targets: EventBridge refuses to delete those with <c>ValidationException</c>.
     /// </summary>
-    public void Delete(Action remove)
+    /// <param name="remove">Drops the rule from its bus.</param>
+    /// <param name="ignoreTargets">Delete it even with targets: a managed rule deleted with <c>Force</c>.</param>
+    public void Delete(Action remove, bool ignoreTargets = false)
     {
         lock (_targetsGate)
         {
-            if (Targets.Count > 0)
+            if (Targets.Count > 0 && !ignoreTargets)
             {
                 throw new InternalValidationException("Rule can't be deleted since it has targets.");
             }

@@ -20,7 +20,6 @@ public sealed class DeleteArchiveNotBlockedByInFlightReplayAndStartReplayOnItRef
     [Test]
     [DisplayName("events.delete-archive-not-blocked-by-in-flight-replay-and-start-replay-on-it-refused")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not supported (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

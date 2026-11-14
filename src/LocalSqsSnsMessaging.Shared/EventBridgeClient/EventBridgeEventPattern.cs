@@ -40,6 +40,19 @@ internal static class EventBridgeEventPattern
     }
 
     /// <summary>
+    /// Validates an archive's event pattern, throwing <see cref="InternalInvalidEventPatternException"/>
+    /// with EventBridge's message when it is malformed. The pattern becomes the archive's managed
+    /// rule's, so it is read as a rule's is. An archive without a pattern archives every event.
+    /// </summary>
+    public static void ValidateArchivePattern(string? pattern)
+    {
+        if (!string.IsNullOrEmpty(pattern))
+        {
+            Validate(pattern!, orFallback: true);
+        }
+    }
+
+    /// <summary>
     /// Validates the event pattern <c>TestEventPattern</c> was given, throwing
     /// <see cref="InternalInvalidEventPatternException"/> with EventBridge's message when it is malformed.
     /// </summary>

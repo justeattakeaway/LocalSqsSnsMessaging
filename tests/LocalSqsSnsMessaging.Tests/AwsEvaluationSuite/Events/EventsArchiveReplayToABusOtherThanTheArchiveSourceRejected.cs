@@ -20,7 +20,6 @@ public sealed class EventsArchiveReplayToABusOtherThanTheArchiveSourceRejected
     [Test]
     [DisplayName("events.events-archive-replay-to-a-bus-other-than-the-archive-source-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not supported (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

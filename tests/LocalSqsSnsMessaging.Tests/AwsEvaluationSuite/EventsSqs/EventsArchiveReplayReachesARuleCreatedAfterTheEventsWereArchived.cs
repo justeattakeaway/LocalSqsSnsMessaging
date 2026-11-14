@@ -25,7 +25,6 @@ public sealed class EventsArchiveReplayReachesARuleCreatedAfterTheEventsWereArch
     [Test]
     [DisplayName("events__sqs.events-archive-replay-reaches-a-rule-created-after-the-events-were-archived")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not implemented: it fails with NotSupportedException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

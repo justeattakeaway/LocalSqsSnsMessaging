@@ -18,7 +18,6 @@ public sealed class E2eBusRuleArchiveReplayRedeliversEvent
     [Test]
     [DisplayName("events.e2e-bus-rule-archive-replay-redelivers-event")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not supported (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

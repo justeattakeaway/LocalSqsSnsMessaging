@@ -21,7 +21,6 @@ public sealed class EventsCreateArchiveWithAnInvalidEventPatternRejected
     [Test]
     [DisplayName("events.events-create-archive-with-an-invalid-event-pattern-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not implemented (NotSupportedException), so the invalid-pattern refusal and the control archive never happen")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

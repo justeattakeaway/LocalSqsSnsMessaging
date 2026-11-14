@@ -25,7 +25,6 @@ public sealed class EventsArchiveReplayDoesNotRedeliverToARuleOutsideFilterArns
     [Test]
     [DisplayName("events__sqs.events-archive-replay-does-not-redeliver-to-a-rule-outside-filter-arns")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not implemented: it fails with NotSupportedException")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

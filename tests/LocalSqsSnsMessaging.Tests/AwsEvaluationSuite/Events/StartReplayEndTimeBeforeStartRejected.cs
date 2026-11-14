@@ -17,7 +17,6 @@ public sealed class StartReplayEndTimeBeforeStartRejected
     [Test]
     [DisplayName("events.start-replay-end-time-before-start-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not supported (NotSupportedException); AWS creates the archive the replays run against")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

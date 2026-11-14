@@ -11,7 +11,7 @@ internal sealed partial class InternalEventBridgeClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        ResolveTags(request.ResourceARN).Add(request.Tags);
+        ResolveTags(request.ResourceARN, write: true).Add(request.Tags);
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "TagResource", request.ResourceARN);
         return Task.FromResult(new TagResourceResponse().SetCommonProperties());
@@ -21,7 +21,7 @@ internal sealed partial class InternalEventBridgeClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        ResolveTags(request.ResourceARN).Remove(request.TagKeys);
+        ResolveTags(request.ResourceARN, write: true).Remove(request.TagKeys);
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "UntagResource", request.ResourceARN);
         return Task.FromResult(new UntagResourceResponse().SetCommonProperties());
@@ -31,7 +31,7 @@ internal sealed partial class InternalEventBridgeClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var tags = ResolveTags(request.ResourceARN).ToList();
+        var tags = ResolveTags(request.ResourceARN, write: false).ToList();
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "ListTagsForResource", request.ResourceARN);
         return Task.FromResult(new ListTagsForResourceResponse { Tags = tags }.SetCommonProperties());
@@ -41,7 +41,11 @@ internal sealed partial class InternalEventBridgeClient
     /// The tags of the event bus (<c>...:event-bus/name</c>) or rule (<c>...:rule/name</c> on the
     /// default bus, <c>...:rule/bus/name</c> on a custom bus) that <paramref name="arn"/> names.
     /// </summary>
-    private EventBridgeTagSet ResolveTags(string? arn)
+    /// <param name="arn">The resource's ARN.</param>
+    /// <param name="write">
+    /// Whether the caller changes the tags, which a rule EventBridge manages (an archive's) refuses.
+    /// </param>
+    private EventBridgeTagSet ResolveTags(string? arn, bool write)
     {
         var parts = (arn ?? "").Split([':'], 6);
         if (parts.Length < 6 || !string.Equals(parts[0], "arn", StringComparison.Ordinal)
@@ -70,6 +74,11 @@ internal sealed partial class InternalEventBridgeClient
             if (!string.Equals(rule.Arn, arn, StringComparison.Ordinal))
             {
                 throw new InternalResourceNotFoundException($"Rule {rule.Name} does not exist on EventBus {rule.EventBusName}.");
+            }
+
+            if (write && rule.ManagedBy is not null)
+            {
+                throw ManagedRuleError($"Tag related operations on the managed rule {rule.Name} is not allowed.");
             }
 
             return rule.Tags;

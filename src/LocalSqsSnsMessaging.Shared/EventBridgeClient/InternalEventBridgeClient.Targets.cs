@@ -15,6 +15,7 @@ internal sealed partial class InternalEventBridgeClient
         var targets = request.Targets ?? [];
         EventBridgeTargetValidation.Validate(targets);
         var rule = GetRule(request.EventBusName, request.Rule);
+        ThrowIfManagedRule(rule);
         EventBridgeTargetInput.Validate(targets);
         rule.PutTargets(targets);
 
@@ -32,6 +33,7 @@ internal sealed partial class InternalEventBridgeClient
 
         // Ids the rule does not hold are ignored, not reported as failed entries.
         var rule = GetRule(request.EventBusName, request.Rule);
+        ThrowIfManagedRule(rule, request.Force);
         rule.RemoveTargets(request.Ids ?? []);
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "RemoveTargets", rule.Arn);

@@ -28,7 +28,6 @@ public sealed class EventsRateScheduleFiresRepeatedlyWithTheConfiguredPeriod
     [DisplayName("events__sqs.events-rate-schedule-fires-repeatedly-with-the-configured-period")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
-    [KnownFidelityGap(FidelityGap.EventBridgeSchedules, "A rate(1 minute) rule is accepted but never fires: no scheduled event reaches its SQS target in 300 s, where AWS delivers one a minute")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

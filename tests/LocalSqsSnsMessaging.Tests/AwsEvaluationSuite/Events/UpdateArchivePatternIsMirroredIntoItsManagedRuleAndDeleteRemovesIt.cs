@@ -25,7 +25,6 @@ public sealed class UpdateArchivePatternIsMirroredIntoItsManagedRuleAndDeleteRem
     [Test]
     [DisplayName("events.update-archive-pattern-is-mirrored-into-its-managed-rule-and-delete-removes-it")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not implemented: it fails with NotSupportedException \"EventBridge operation 'CreateArchive' is not supported.\"")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -19,7 +19,6 @@ public sealed class EventsArchiveStoresOnlyTheEventsMatchingItsEventPattern
     [Test]
     [DisplayName("events.events-archive-stores-only-the-events-matching-its-event-pattern")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not supported (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

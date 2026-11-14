@@ -23,7 +23,6 @@ public sealed class CancelReplayInFlightReachesCancelledAndStaysTerminal
     [Test]
     [DisplayName("events.cancel-replay-in-flight-reaches-cancelled-and-stays-terminal")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not supported (NotSupportedException)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

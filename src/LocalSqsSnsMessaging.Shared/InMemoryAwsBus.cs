@@ -222,6 +222,18 @@ public sealed class InMemoryAwsBus
     internal ConcurrentDictionary<string, EventBusResource> EventBuses { get; } = [];
 
     /// <summary>
+    /// Gets the collection of EventBridge archives.
+    /// </summary>
+    /// <value>A thread-safe dictionary of archives, keyed by archive name.</value>
+    internal ConcurrentDictionary<string, ArchiveResource> EventBridgeArchives { get; } = [];
+
+    /// <summary>
+    /// Gets the collection of EventBridge replays (EventBridge keeps finished replays too).
+    /// </summary>
+    /// <value>A thread-safe dictionary of replays, keyed by replay name.</value>
+    internal ConcurrentDictionary<string, ReplayResource> EventBridgeReplays { get; } = [];
+
+    /// <summary>
     /// Records an API operation if usage tracking is enabled.
     /// </summary>
     /// <param name="service">The AWS service name (e.g., "sqs" or "sns").</param>

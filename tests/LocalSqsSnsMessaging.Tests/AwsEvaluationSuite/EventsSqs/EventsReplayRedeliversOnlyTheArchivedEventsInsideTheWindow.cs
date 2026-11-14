@@ -26,7 +26,6 @@ public sealed class EventsReplayRedeliversOnlyTheArchivedEventsInsideTheWindow
     [Test]
     [DisplayName("events__sqs.events-replay-redelivers-only-the-archived-events-inside-the-window")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeArchives, "CreateArchive is not implemented: it fails with NotSupportedException, so no archive or replay exists")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -32,8 +32,12 @@ internal sealed partial class InternalEventBridgeClient
         }
 
         var arn = RuleArn(eventBus.Name, request.Name);
+        if (eventBus.Rules.TryGetValue(request.Name, out var current))
+        {
+            ThrowIfManagedRule(current);
+        }
 
-        eventBus.Rules.AddOrUpdate(request.Name,
+        var rule = eventBus.Rules.AddOrUpdate(request.Name,
             _ => new RuleResource
             {
                 Name = request.Name,
@@ -56,6 +60,7 @@ internal sealed partial class InternalEventBridgeClient
                 existing.RoleArn = request.RoleArn;
                 return existing;
             });
+        ApplySchedule(rule);
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "PutRule", arn);
         return Task.FromResult(new PutRuleResponse { RuleArn = arn }.SetCommonProperties());
@@ -65,12 +70,14 @@ internal sealed partial class InternalEventBridgeClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        // Deleting a rule that does not exist succeeds. Force only waives the target check for a
-        // rule another service manages, which this bus never holds, so it is ignored.
+        // Deleting a rule that does not exist succeeds. A rule another service manages (an archive's)
+        // can be deleted only with Force, which also waives the check that it has no targets.
         var eventBus = ResolveBus(request.EventBusName);
         if (request.Name is not null && eventBus.Rules.TryGetValue(request.Name, out var rule))
         {
-            rule.Delete(() => eventBus.Rules.TryRemove(rule.Name, out _));
+            ThrowIfManagedRule(rule, request.Force);
+            rule.Delete(() => eventBus.Rules.TryRemove(rule.Name, out _), ignoreTargets: rule.ManagedBy is not null);
+            rule.Schedule?.Dispose();
         }
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "DeleteRule");
@@ -93,6 +100,7 @@ internal sealed partial class InternalEventBridgeClient
             State = rule.State,
             Description = rule.Description,
             RoleArn = rule.RoleArn,
+            ManagedBy = rule.ManagedBy,
             EventBusName = rule.EventBusName
         }.SetCommonProperties());
     }
@@ -100,7 +108,9 @@ internal sealed partial class InternalEventBridgeClient
     public Task<EnableRuleResponse> EnableRuleAsync(EnableRuleRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        GetRule(request.EventBusName, request.Name).State = "ENABLED";
+        var rule = GetRule(request.EventBusName, request.Name);
+        ThrowIfManagedRule(rule);
+        rule.State = "ENABLED";
         _bus.RecordOperation(AwsServiceName.EventBridge, "EnableRule");
         return Task.FromResult(new EnableRuleResponse().SetCommonProperties());
     }
@@ -108,7 +118,9 @@ internal sealed partial class InternalEventBridgeClient
     public Task<DisableRuleResponse> DisableRuleAsync(DisableRuleRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        GetRule(request.EventBusName, request.Name).State = "DISABLED";
+        var rule = GetRule(request.EventBusName, request.Name);
+        ThrowIfManagedRule(rule);
+        rule.State = "DISABLED";
         _bus.RecordOperation(AwsServiceName.EventBridge, "DisableRule");
         return Task.FromResult(new DisableRuleResponse().SetCommonProperties());
     }
@@ -132,6 +144,7 @@ internal sealed partial class InternalEventBridgeClient
                 Description = r.Description,
                 ScheduleExpression = r.ScheduleExpression,
                 RoleArn = r.RoleArn,
+                ManagedBy = r.ManagedBy,
                 EventBusName = r.EventBusName
             })
             .ToList();
