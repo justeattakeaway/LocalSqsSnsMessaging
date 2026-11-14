@@ -44,6 +44,12 @@ GenerateJsonProtocolHandler(
     "LocalSqsSnsMessaging.Sqs.Model",
     outputDir);
 
+// Generate SQS's second wire protocol: SQS is awsQueryCompatible and still serves AWS Query
+GenerateSqsQueryProtocol(
+    Path.Combine(serviceModelsDir, "sqs-2012-11-05.normal.json"),
+    "LocalSqsSnsMessaging.Sqs.Model",
+    outputDir);
+
 // Generate SNS handler (Query protocol)
 GenerateQueryProtocolHandler(
     Path.Combine(serviceModelsDir, "sns-2010-03-31.normal.json"),
@@ -362,6 +368,23 @@ static void GenerateJsonHttpContextHandler(string serviceName, string modelNames
 
     var outputPath = Path.Combine(outputDir, $"{serviceName}OperationHandler.HttpContext.g.cs");
     File.WriteAllText(outputPath, code.ToString());
+}
+
+static void GenerateSqsQueryProtocol(string modelPath, string modelNamespace, string outputDir)
+{
+    Console.WriteLine("  Processing Sqs (Query protocol)...");
+
+    var json = File.ReadAllText(modelPath);
+    using var doc = JsonDocument.Parse(json);
+    var root = doc.RootElement;
+    var operations = root.GetProperty("operations");
+
+    // The JSON model carries no xmlNamespace; this is the one SQS has always answered Query in.
+    var generator = new SqsQueryCodeGenerator(modelNamespace, "http://queue.amazonaws.com/doc/2012-11-05/", root.GetProperty("shapes"));
+    File.WriteAllText(Path.Combine(outputDir, "SqsQuerySerializers.g.cs"), generator.GenerateSerializers(operations));
+    File.WriteAllText(Path.Combine(outputDir, "SqsQueryOperationHandler.g.cs"), SqsQueryCodeGenerator.GenerateDispatcher(operations));
+
+    Console.WriteLine("    Generated Query protocol dispatcher and serializers for Sqs");
 }
 
 static void GenerateQueryProtocolHandler(string modelPath, string serviceName, string modelNamespace, string outputDir)

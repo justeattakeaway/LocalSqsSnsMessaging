@@ -52,7 +52,6 @@ public sealed class QueryAndJsonProtocolClientsShareOneQueue
     [Test]
     [DisplayName("sqs.query-and-json-protocol-clients-share-one-queue")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Protocol, "SQS Query-protocol (form-encoded) requests get a JSON error, not XML: not well-formed (invalid token): line 1, column 0")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
