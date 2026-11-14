@@ -11,12 +11,18 @@ internal sealed class JsonCodeGenerator
     private readonly string _serviceName;
     private readonly string _modelNamespace;
     private readonly JsonElement _shapes;
+    private readonly bool _writeEmptyResponseLists;
 
-    public JsonCodeGenerator(string serviceName, string modelNamespace, JsonElement shapes)
+    /// <param name="writeEmptyResponseLists">
+    /// True to write a response's top-level list members even when empty (<c>"Rules": []</c>), as
+    /// EventBridge does; SQS leaves them out.
+    /// </param>
+    public JsonCodeGenerator(string serviceName, string modelNamespace, JsonElement shapes, bool writeEmptyResponseLists = false)
     {
         _serviceName = serviceName;
         _modelNamespace = modelNamespace;
         _shapes = shapes;
+        _writeEmptyResponseLists = writeEmptyResponseLists;
     }
 
     public string GenerateSerializers(JsonElement operations)
@@ -179,11 +185,13 @@ internal sealed class JsonCodeGenerator
 
             case "timestamp":
                 code.AppendLine($"        if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
-                code.AppendLine($"            writer.WriteString(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}).ToString(\"O\"));");
+                code.AppendLine($"            Serialization.AwsJsonTimestamp.Write(writer, \"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                 break;
 
             case "list":
-                code.AppendLine($"        if ({sourceVar}.{csharpPropertyName} != null && {sourceVar}.{csharpPropertyName}.Count > 0)");
+                code.AppendLine(_writeEmptyResponseLists
+                    ? $"        if ({sourceVar}.{csharpPropertyName} != null)"
+                    : $"        if ({sourceVar}.{csharpPropertyName} != null && {sourceVar}.{csharpPropertyName}.Count > 0)");
                 code.AppendLine("        {");
                 code.AppendLine($"            writer.WritePropertyName(\"{jsonPropertyName}\");");
                 code.AppendLine("            writer.WriteStartArray();");
@@ -244,7 +252,13 @@ internal sealed class JsonCodeGenerator
                 break;
 
             case "structure":
-                code.AppendLine($"        // TODO: Implement structure serialization for {csharpPropertyName} ({shapeName})");
+                code.AppendLine($"        if ({sourceVar}.{csharpPropertyName} != null)");
+                code.AppendLine("        {");
+                code.AppendLine($"            writer.WritePropertyName(\"{jsonPropertyName}\");");
+                code.AppendLine("            writer.WriteStartObject();");
+                GenerateStructureMembers(code, shapeName, $"{sourceVar}.{csharpPropertyName}", "            ");
+                code.AppendLine("            writer.WriteEndObject();");
+                code.AppendLine("        }");
                 break;
 
             default:
@@ -287,7 +301,7 @@ internal sealed class JsonCodeGenerator
                 break;
 
             case "timestamp":
-                code.AppendLine($"        if (root.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem) && {jsonPropertyName}Elem.TryGetDateTime(out var {jsonPropertyName}Val))");
+                code.AppendLine($"        if (root.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem) && Serialization.AwsJsonTimestamp.TryRead({jsonPropertyName}Elem, out var {jsonPropertyName}Val))");
                 code.AppendLine($"            request.{csharpPropertyName} = {jsonPropertyName}Val;");
                 break;
 
@@ -361,7 +375,12 @@ internal sealed class JsonCodeGenerator
                 break;
 
             case "structure":
-                code.AppendLine($"        // TODO: Implement structure deserialization for {csharpPropertyName} ({shapeName})");
+                code.AppendLine($"        if (root.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem) && {jsonPropertyName}Elem.ValueKind == JsonValueKind.Object)");
+                code.AppendLine("        {");
+                code.AppendLine($"            var {jsonPropertyName}Val = new {shapeName}();");
+                GenerateInlineStructureDeserialization(code, shapeName, $"{jsonPropertyName}Elem", $"{jsonPropertyName}Val", "            ");
+                code.AppendLine($"            request.{csharpPropertyName} = {jsonPropertyName}Val;");
+                code.AppendLine("        }");
                 break;
 
             default:
@@ -439,7 +458,7 @@ internal sealed class JsonCodeGenerator
 
                 case "timestamp":
                     code.AppendLine($"{indent}if (SdkCompatibility.HasNonDefaultValue({sourceVar}.{csharpPropertyName}))");
-                    code.AppendLine($"{indent}    writer.WriteString(\"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}).ToString(\"O\"));");
+                    code.AppendLine($"{indent}    Serialization.AwsJsonTimestamp.Write(writer, \"{jsonPropertyName}\", SdkCompatibility.GetValue({sourceVar}.{csharpPropertyName}));");
                     break;
 
                 case "map":
@@ -591,7 +610,7 @@ internal sealed class JsonCodeGenerator
                     break;
 
                 case "timestamp":
-                    code.AppendLine($"{indent}if ({sourceElement}.TryGetProperty(\"{jsonPropertyName}\", out var _e{v}) && _e{v}.TryGetDateTime(out var _dt{v}))");
+                    code.AppendLine($"{indent}if ({sourceElement}.TryGetProperty(\"{jsonPropertyName}\", out var _e{v}) && Serialization.AwsJsonTimestamp.TryRead(_e{v}, out var _dt{v}))");
                     code.AppendLine($"{indent}    {targetVar}.{csharpPropertyName} = _dt{v};");
                     break;
 

@@ -57,17 +57,19 @@ GenerateQueryProtocolHandler(
     "LocalSqsSnsMessaging.Sns.Model",
     outputDir);
 
-// Generate EventBridge handler (JSON protocol, json 1.1)
+// Generate EventBridge handler (JSON protocol, json 1.1). EventBridge answers an empty list as
+// "Rules": [] rather than leaving the member out.
 GenerateJsonProtocolHandler(
     Path.Combine(serviceModelsDir, "eventbridge-2015-10-07.normal.json"),
     "EventBridge",
     "LocalSqsSnsMessaging.EventBridge.Model",
-    outputDir);
+    outputDir,
+    writeEmptyResponseLists: true);
 
 Console.WriteLine("Code generation completed successfully!");
 return 0;
 
-static void GenerateJsonProtocolHandler(string modelPath, string serviceName, string modelNamespace, string outputDir)
+static void GenerateJsonProtocolHandler(string modelPath, string serviceName, string modelNamespace, string outputDir, bool writeEmptyResponseLists = false)
 {
     Console.WriteLine($"  Processing {serviceName} (JSON protocol)...");
 
@@ -90,7 +92,7 @@ static void GenerateJsonProtocolHandler(string modelPath, string serviceName, st
     GenerateJsonHttpContextHandler(serviceName, modelNamespace, operations, outputDir, contentType, errorPrefix);
 
     // Generate the serializers using the new generator
-    var generator = new JsonCodeGenerator(serviceName, modelNamespace, shapes);
+    var generator = new JsonCodeGenerator(serviceName, modelNamespace, shapes, writeEmptyResponseLists);
     var serializersCode = generator.GenerateSerializers(operations);
 
     var outputPath = Path.Combine(outputDir, $"{serviceName}JsonSerializers.g.cs");
@@ -213,7 +215,8 @@ static void GenerateJsonHandler(string serviceName, string modelNamespace, JsonE
     code.AppendLine("        var errorJson = $$\"\"\"");
     code.AppendLine("        {");
     code.AppendLine("            \"__type\": \"{{errorType}}\",");
-    code.AppendLine("            \"message\": \"{{errorMessage.Replace(\"\\\"\", \"\\\\\\\"\", StringComparison.Ordinal)}}\"");
+    // A message may hold quotes, backslashes and newlines (EventBridge quotes the pattern it refuses).
+    code.AppendLine("            \"message\": \"{{System.Text.Json.JsonEncodedText.Encode(errorMessage, System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping)}}\"");
     code.AppendLine("        }");
     code.AppendLine("        \"\"\";");
     code.AppendLine();
@@ -360,7 +363,8 @@ static void GenerateJsonHttpContextHandler(string serviceName, string modelNames
     code.AppendLine("        var errorJson = $$\"\"\"");
     code.AppendLine("        {");
     code.AppendLine("            \"__type\": \"{{errorType}}\",");
-    code.AppendLine("            \"message\": \"{{errorMessage.Replace(\"\\\"\", \"\\\\\\\"\", StringComparison.Ordinal)}}\"");
+    // A message may hold quotes, backslashes and newlines (EventBridge quotes the pattern it refuses).
+    code.AppendLine("            \"message\": \"{{System.Text.Json.JsonEncodedText.Encode(errorMessage, System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping)}}\"");
     code.AppendLine("        }");
     code.AppendLine("        \"\"\";");
     code.AppendLine();

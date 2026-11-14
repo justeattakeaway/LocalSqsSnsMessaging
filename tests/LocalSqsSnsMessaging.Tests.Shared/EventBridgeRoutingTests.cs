@@ -184,14 +184,14 @@ public abstract class EventBridgeRoutingTests : WaitingTestBase
         var match = await EventBridge.TestEventPatternAsync(new TestEventPatternRequest
         {
             EventPattern = """{"detail":{"state":["running"]}}""",
-            Event = """{"id":"1","account":"123","source":"x","detail-type":"y","detail":{"state":"running"}}"""
+            Event = """{"id":"1","account":"123","source":"x","detail-type":"y","time":"2024-01-01T00:00:00Z","region":"us-east-1","detail":{"state":"running"}}"""
         }, cancellationToken);
         match.Result.ShouldBe(true);
 
         var noMatch = await EventBridge.TestEventPatternAsync(new TestEventPatternRequest
         {
             EventPattern = """{"detail":{"state":["stopped"]}}""",
-            Event = """{"id":"1","account":"123","source":"x","detail-type":"y","detail":{"state":"running"}}"""
+            Event = """{"id":"1","account":"123","source":"x","detail-type":"y","time":"2024-01-01T00:00:00Z","region":"us-east-1","detail":{"state":"running"}}"""
         }, cancellationToken);
         noMatch.Result.ShouldBe(false);
     }

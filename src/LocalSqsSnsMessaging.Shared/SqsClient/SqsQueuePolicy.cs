@@ -10,6 +10,7 @@ namespace LocalSqsSnsMessaging;
 /// library enforces. For callers, only explicit <c>Deny</c> statements are enforced; <c>Allow</c>
 /// statements are never needed, because every caller acts for the account that owns the queues.
 /// Deliveries by AWS services are evaluated by <see cref="AdmitsServiceDelivery"/>.
+/// EventBridge evaluates event bus policies the same way (<see cref="RequestContext.ActionPrefix"/>).
 /// </summary>
 /// <remarks>
 /// A statement is applied only when every part of it is understood. One whose condition uses an
@@ -26,8 +27,11 @@ internal static partial class SqsQueuePolicy
     private static readonly string[] PrincipalKeys = ["Principal", "NotPrincipal"];
 
     /// <summary>What the request is, as policy evaluation sees it.</summary>
-    /// <param name="Action">The SQS action, without the <c>sqs:</c> prefix (e.g. <c>SendMessage</c>).</param>
-    /// <param name="Resource">The queue's ARN.</param>
+    /// <param name="Action">
+    /// The SQS action, without the <c>sqs:</c> prefix (e.g. <c>SendMessage</c>), or another service's
+    /// action with its prefix (e.g. <c>sns:Publish</c>, to evaluate a topic's policy).
+    /// </param>
+    /// <param name="Resource">The queue's (or other resource's) ARN.</param>
     /// <param name="PrincipalAccount">The caller's account, or <see langword="null"/> for an anonymous caller.</param>
     /// <param name="PrincipalArn">The caller's ARN, or <see langword="null"/> for an anonymous caller.</param>
     /// <param name="SourceIp">Where the request came from, when known.</param>
@@ -52,6 +56,16 @@ internal static partial class SqsQueuePolicy
 
         /// <summary>The account that owns <see cref="SourceArn"/> (<c>aws:SourceAccount</c>).</summary>
         public string? SourceAccount { get; init; }
+
+        /// <summary>The service prefix policies name the action with: <c>sqs</c>, or <c>events</c> for an event bus.</summary>
+        public string ActionPrefix { get; init; } = "sqs";
+
+        /// <summary>
+        /// The request's service-specific condition keys (e.g. <c>events:source</c>), in a dictionary that
+        /// ignores case as IAM does. A key that is neither here nor a global key the library models makes
+        /// its statement unevaluable.
+        /// </summary>
+        public IReadOnlyDictionary<string, string?>? ServiceKeys { get; init; }
 
         public bool IsAnonymous => PrincipalAccount is null && Service is null;
     }
@@ -159,8 +173,8 @@ internal static partial class SqsQueuePolicy
             ? MatchesPrincipal(p, request)
             : statement["NotPrincipal"] is { } np ? !MatchesPrincipal(np, request) : false;
         var action = statement["Action"] is { } a
-            ? MatchesAny(a, $"sqs:{request.Action}", StringComparison.OrdinalIgnoreCase)
-            : statement["NotAction"] is { } na ? !MatchesAny(na, $"sqs:{request.Action}", StringComparison.OrdinalIgnoreCase) : false;
+            ? MatchesAny(a, $"{request.ActionPrefix}:{request.Action}", StringComparison.OrdinalIgnoreCase)
+            : statement["NotAction"] is { } na ? !MatchesAny(na, $"{request.ActionPrefix}:{request.Action}", StringComparison.OrdinalIgnoreCase) : false;
         var resource = statement["Resource"] is { } r
             ? MatchesAny(r, request.Resource, StringComparison.Ordinal)
             : statement["NotResource"] is not { } nr || !MatchesAny(nr, request.Resource, StringComparison.Ordinal);
@@ -346,7 +360,7 @@ internal static partial class SqsQueuePolicy
                 return true;
             default:
                 value = null;
-                return false;
+                return request.ServiceKeys?.TryGetValue(key, out value) == true;
         }
     }
 

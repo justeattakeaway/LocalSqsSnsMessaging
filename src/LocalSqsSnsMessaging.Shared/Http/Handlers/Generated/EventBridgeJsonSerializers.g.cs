@@ -15,6 +15,98 @@ namespace LocalSqsSnsMessaging.Http.Handlers;
 /// </summary>
 internal static class EventBridgeJsonSerializers
 {
+    internal static CancelReplayRequest DeserializeCancelReplayRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new CancelReplayRequest();
+
+        // ReplayName
+        if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
+            request.ReplayName = ReplayNameElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeCancelReplayResponse(CancelReplayResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ReplayArn
+        if (response.ReplayArn != null)
+            writer.WriteString("ReplayArn", response.ReplayArn);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static CreateArchiveRequest DeserializeCreateArchiveRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new CreateArchiveRequest();
+
+        // ArchiveName
+        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+            request.ArchiveName = ArchiveNameElem.GetString();
+
+        // EventSourceArn
+        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+            request.EventSourceArn = EventSourceArnElem.GetString();
+
+        // Description
+        if (root.TryGetProperty("Description", out var DescriptionElem))
+            request.Description = DescriptionElem.GetString();
+
+        // EventPattern
+        if (root.TryGetProperty("EventPattern", out var EventPatternElem))
+            request.EventPattern = EventPatternElem.GetString();
+
+        // RetentionDays
+        if (root.TryGetProperty("RetentionDays", out var RetentionDaysElem) && RetentionDaysElem.TryGetInt32(out var RetentionDaysVal))
+            request.RetentionDays = RetentionDaysVal;
+
+        // KmsKeyIdentifier
+        if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
+            request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeCreateArchiveResponse(CreateArchiveResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ArchiveArn
+        if (response.ArchiveArn != null)
+            writer.WriteString("ArchiveArn", response.ArchiveArn);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        // CreationTime
+        if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
+            Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(response.CreationTime));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
     internal static CreateEventBusRequest DeserializeCreateEventBusRequest(Stream stream)
     {
         using var doc = JsonDocument.Parse(stream);
@@ -38,10 +130,24 @@ internal static class EventBridgeJsonSerializers
             request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
 
         // DeadLetterConfig
-        // TODO: Implement structure deserialization for DeadLetterConfig (DeadLetterConfig)
+        if (root.TryGetProperty("DeadLetterConfig", out var DeadLetterConfigElem) && DeadLetterConfigElem.ValueKind == JsonValueKind.Object)
+        {
+            var DeadLetterConfigVal = new DeadLetterConfig();
+            if (DeadLetterConfigElem.TryGetProperty("Arn", out var _e0))
+                DeadLetterConfigVal.Arn = _e0.GetString();
+            request.DeadLetterConfig = DeadLetterConfigVal;
+        }
 
         // LogConfig
-        // TODO: Implement structure deserialization for LogConfig (LogConfig)
+        if (root.TryGetProperty("LogConfig", out var LogConfigElem) && LogConfigElem.ValueKind == JsonValueKind.Object)
+        {
+            var LogConfigVal = new LogConfig();
+            if (LogConfigElem.TryGetProperty("IncludeDetail", out var _e1))
+                LogConfigVal.IncludeDetail = _e1.GetString();
+            if (LogConfigElem.TryGetProperty("Level", out var _e2))
+                LogConfigVal.Level = _e2.GetString();
+            request.LogConfig = LogConfigVal;
+        }
 
         // Tags
         if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
@@ -49,12 +155,12 @@ internal static class EventBridgeJsonSerializers
             request.Tags = new List<Tag>();
             foreach (var item in TagsElem.EnumerateArray())
             {
-                var entry0 = new Tag();
-                if (item.TryGetProperty("Key", out var _e1))
-                    entry0.Key = _e1.GetString();
-                if (item.TryGetProperty("Value", out var _e2))
-                    entry0.Value = _e2.GetString();
-                request.Tags.Add(entry0);
+                var entry3 = new Tag();
+                if (item.TryGetProperty("Key", out var _e4))
+                    entry3.Key = _e4.GetString();
+                if (item.TryGetProperty("Value", out var _e5))
+                    entry3.Value = _e5.GetString();
+                request.Tags.Add(entry3);
             }
         }
 
@@ -79,10 +185,48 @@ internal static class EventBridgeJsonSerializers
             writer.WriteString("KmsKeyIdentifier", response.KmsKeyIdentifier);
 
         // DeadLetterConfig
-        // TODO: Implement structure serialization for DeadLetterConfig (DeadLetterConfig)
+        if (response.DeadLetterConfig != null)
+        {
+            writer.WritePropertyName("DeadLetterConfig");
+            writer.WriteStartObject();
+            if (response.DeadLetterConfig.Arn != null)
+                writer.WriteString("Arn", response.DeadLetterConfig.Arn);
+            writer.WriteEndObject();
+        }
 
         // LogConfig
-        // TODO: Implement structure serialization for LogConfig (LogConfig)
+        if (response.LogConfig != null)
+        {
+            writer.WritePropertyName("LogConfig");
+            writer.WriteStartObject();
+            if (response.LogConfig.IncludeDetail != null)
+                writer.WriteString("IncludeDetail", response.LogConfig.IncludeDetail);
+            if (response.LogConfig.Level != null)
+                writer.WriteString("Level", response.LogConfig.Level);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static DeleteArchiveRequest DeserializeDeleteArchiveRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new DeleteArchiveRequest();
+
+        // ArchiveName
+        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+            request.ArchiveName = ArchiveNameElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeDeleteArchiveResponse(DeleteArchiveResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
 
         writer.WriteEndObject();
         writer.Flush();
@@ -138,6 +282,76 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
+    internal static DescribeArchiveRequest DeserializeDescribeArchiveRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new DescribeArchiveRequest();
+
+        // ArchiveName
+        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+            request.ArchiveName = ArchiveNameElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeDescribeArchiveResponse(DescribeArchiveResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ArchiveArn
+        if (response.ArchiveArn != null)
+            writer.WriteString("ArchiveArn", response.ArchiveArn);
+
+        // ArchiveName
+        if (response.ArchiveName != null)
+            writer.WriteString("ArchiveName", response.ArchiveName);
+
+        // EventSourceArn
+        if (response.EventSourceArn != null)
+            writer.WriteString("EventSourceArn", response.EventSourceArn);
+
+        // Description
+        if (response.Description != null)
+            writer.WriteString("Description", response.Description);
+
+        // EventPattern
+        if (response.EventPattern != null)
+            writer.WriteString("EventPattern", response.EventPattern);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        // KmsKeyIdentifier
+        if (response.KmsKeyIdentifier != null)
+            writer.WriteString("KmsKeyIdentifier", response.KmsKeyIdentifier);
+
+        // RetentionDays
+        if (SdkCompatibility.HasNonDefaultValue(response.RetentionDays))
+            writer.WriteNumber("RetentionDays", SdkCompatibility.GetValue(response.RetentionDays));
+
+        // SizeBytes
+        if (SdkCompatibility.HasNonDefaultValue(response.SizeBytes))
+            writer.WriteNumber("SizeBytes", SdkCompatibility.GetValue(response.SizeBytes));
+
+        // EventCount
+        if (SdkCompatibility.HasNonDefaultValue(response.EventCount))
+            writer.WriteNumber("EventCount", SdkCompatibility.GetValue(response.EventCount));
+
+        // CreationTime
+        if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
+            Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(response.CreationTime));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
     internal static DescribeEventBusRequest DeserializeDescribeEventBusRequest(Stream stream)
     {
         using var doc = JsonDocument.Parse(stream);
@@ -173,22 +387,124 @@ internal static class EventBridgeJsonSerializers
             writer.WriteString("KmsKeyIdentifier", response.KmsKeyIdentifier);
 
         // DeadLetterConfig
-        // TODO: Implement structure serialization for DeadLetterConfig (DeadLetterConfig)
+        if (response.DeadLetterConfig != null)
+        {
+            writer.WritePropertyName("DeadLetterConfig");
+            writer.WriteStartObject();
+            if (response.DeadLetterConfig.Arn != null)
+                writer.WriteString("Arn", response.DeadLetterConfig.Arn);
+            writer.WriteEndObject();
+        }
 
         // Policy
         if (response.Policy != null)
             writer.WriteString("Policy", response.Policy);
 
         // LogConfig
-        // TODO: Implement structure serialization for LogConfig (LogConfig)
+        if (response.LogConfig != null)
+        {
+            writer.WritePropertyName("LogConfig");
+            writer.WriteStartObject();
+            if (response.LogConfig.IncludeDetail != null)
+                writer.WriteString("IncludeDetail", response.LogConfig.IncludeDetail);
+            if (response.LogConfig.Level != null)
+                writer.WriteString("Level", response.LogConfig.Level);
+            writer.WriteEndObject();
+        }
 
         // CreationTime
         if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
-            writer.WriteString("CreationTime", SdkCompatibility.GetValue(response.CreationTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(response.CreationTime));
 
         // LastModifiedTime
         if (SdkCompatibility.HasNonDefaultValue(response.LastModifiedTime))
-            writer.WriteString("LastModifiedTime", SdkCompatibility.GetValue(response.LastModifiedTime).ToString("O"));
+            Serialization.AwsJsonTimestamp.Write(writer, "LastModifiedTime", SdkCompatibility.GetValue(response.LastModifiedTime));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static DescribeReplayRequest DeserializeDescribeReplayRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new DescribeReplayRequest();
+
+        // ReplayName
+        if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
+            request.ReplayName = ReplayNameElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeDescribeReplayResponse(DescribeReplayResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ReplayName
+        if (response.ReplayName != null)
+            writer.WriteString("ReplayName", response.ReplayName);
+
+        // ReplayArn
+        if (response.ReplayArn != null)
+            writer.WriteString("ReplayArn", response.ReplayArn);
+
+        // Description
+        if (response.Description != null)
+            writer.WriteString("Description", response.Description);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        // EventSourceArn
+        if (response.EventSourceArn != null)
+            writer.WriteString("EventSourceArn", response.EventSourceArn);
+
+        // Destination
+        if (response.Destination != null)
+        {
+            writer.WritePropertyName("Destination");
+            writer.WriteStartObject();
+            if (response.Destination.Arn != null)
+                writer.WriteString("Arn", response.Destination.Arn);
+            if (response.Destination.FilterArns != null && response.Destination.FilterArns.Count > 0)
+            {
+                writer.WritePropertyName("FilterArns");
+                writer.WriteStartArray();
+                foreach (var item0 in response.Destination.FilterArns)
+                {
+                    writer.WriteStringValue(item0);
+                }
+                writer.WriteEndArray();
+            }
+            writer.WriteEndObject();
+        }
+
+        // EventStartTime
+        if (SdkCompatibility.HasNonDefaultValue(response.EventStartTime))
+            Serialization.AwsJsonTimestamp.Write(writer, "EventStartTime", SdkCompatibility.GetValue(response.EventStartTime));
+
+        // EventEndTime
+        if (SdkCompatibility.HasNonDefaultValue(response.EventEndTime))
+            Serialization.AwsJsonTimestamp.Write(writer, "EventEndTime", SdkCompatibility.GetValue(response.EventEndTime));
+
+        // EventLastReplayedTime
+        if (SdkCompatibility.HasNonDefaultValue(response.EventLastReplayedTime))
+            Serialization.AwsJsonTimestamp.Write(writer, "EventLastReplayedTime", SdkCompatibility.GetValue(response.EventLastReplayedTime));
+
+        // ReplayStartTime
+        if (SdkCompatibility.HasNonDefaultValue(response.ReplayStartTime))
+            Serialization.AwsJsonTimestamp.Write(writer, "ReplayStartTime", SdkCompatibility.GetValue(response.ReplayStartTime));
+
+        // ReplayEndTime
+        if (SdkCompatibility.HasNonDefaultValue(response.ReplayEndTime))
+            Serialization.AwsJsonTimestamp.Write(writer, "ReplayEndTime", SdkCompatibility.GetValue(response.ReplayEndTime));
 
         writer.WriteEndObject();
         writer.Flush();
@@ -310,6 +626,77 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
+    internal static ListArchivesRequest DeserializeListArchivesRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new ListArchivesRequest();
+
+        // NamePrefix
+        if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
+            request.NamePrefix = NamePrefixElem.GetString();
+
+        // EventSourceArn
+        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+            request.EventSourceArn = EventSourceArnElem.GetString();
+
+        // State
+        if (root.TryGetProperty("State", out var StateElem))
+            request.State = StateElem.GetString();
+
+        // NextToken
+        if (root.TryGetProperty("NextToken", out var NextTokenElem))
+            request.NextToken = NextTokenElem.GetString();
+
+        // Limit
+        if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
+            request.Limit = LimitVal;
+
+        return request;
+    }
+
+    internal static void SerializeListArchivesResponse(ListArchivesResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // Archives
+        if (response.Archives != null)
+        {
+            writer.WritePropertyName("Archives");
+            writer.WriteStartArray();
+            foreach (var item in response.Archives)
+            {
+                writer.WriteStartObject();
+                if (item.ArchiveName != null)
+                    writer.WriteString("ArchiveName", item.ArchiveName);
+                if (item.EventSourceArn != null)
+                    writer.WriteString("EventSourceArn", item.EventSourceArn);
+                if (item.State != null)
+                    writer.WriteString("State", item.State);
+                if (item.StateReason != null)
+                    writer.WriteString("StateReason", item.StateReason);
+                if (SdkCompatibility.HasNonDefaultValue(item.RetentionDays))
+                    writer.WriteNumber("RetentionDays", SdkCompatibility.GetValue(item.RetentionDays));
+                if (SdkCompatibility.HasNonDefaultValue(item.SizeBytes))
+                    writer.WriteNumber("SizeBytes", SdkCompatibility.GetValue(item.SizeBytes));
+                if (SdkCompatibility.HasNonDefaultValue(item.EventCount))
+                    writer.WriteNumber("EventCount", SdkCompatibility.GetValue(item.EventCount));
+                if (SdkCompatibility.HasNonDefaultValue(item.CreationTime))
+                    Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(item.CreationTime));
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+
+        // NextToken
+        if (response.NextToken != null)
+            writer.WriteString("NextToken", response.NextToken);
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
     internal static ListEventBusesRequest DeserializeListEventBusesRequest(Stream stream)
     {
         using var doc = JsonDocument.Parse(stream);
@@ -337,7 +724,7 @@ internal static class EventBridgeJsonSerializers
         writer.WriteStartObject();
 
         // EventBuses
-        if (response.EventBuses != null && response.EventBuses.Count > 0)
+        if (response.EventBuses != null)
         {
             writer.WritePropertyName("EventBuses");
             writer.WriteStartArray();
@@ -353,9 +740,82 @@ internal static class EventBridgeJsonSerializers
                 if (item.Policy != null)
                     writer.WriteString("Policy", item.Policy);
                 if (SdkCompatibility.HasNonDefaultValue(item.CreationTime))
-                    writer.WriteString("CreationTime", SdkCompatibility.GetValue(item.CreationTime).ToString("O"));
+                    Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(item.CreationTime));
                 if (SdkCompatibility.HasNonDefaultValue(item.LastModifiedTime))
-                    writer.WriteString("LastModifiedTime", SdkCompatibility.GetValue(item.LastModifiedTime).ToString("O"));
+                    Serialization.AwsJsonTimestamp.Write(writer, "LastModifiedTime", SdkCompatibility.GetValue(item.LastModifiedTime));
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+
+        // NextToken
+        if (response.NextToken != null)
+            writer.WriteString("NextToken", response.NextToken);
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static ListReplaysRequest DeserializeListReplaysRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new ListReplaysRequest();
+
+        // NamePrefix
+        if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
+            request.NamePrefix = NamePrefixElem.GetString();
+
+        // State
+        if (root.TryGetProperty("State", out var StateElem))
+            request.State = StateElem.GetString();
+
+        // EventSourceArn
+        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+            request.EventSourceArn = EventSourceArnElem.GetString();
+
+        // NextToken
+        if (root.TryGetProperty("NextToken", out var NextTokenElem))
+            request.NextToken = NextTokenElem.GetString();
+
+        // Limit
+        if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
+            request.Limit = LimitVal;
+
+        return request;
+    }
+
+    internal static void SerializeListReplaysResponse(ListReplaysResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // Replays
+        if (response.Replays != null)
+        {
+            writer.WritePropertyName("Replays");
+            writer.WriteStartArray();
+            foreach (var item in response.Replays)
+            {
+                writer.WriteStartObject();
+                if (item.ReplayName != null)
+                    writer.WriteString("ReplayName", item.ReplayName);
+                if (item.EventSourceArn != null)
+                    writer.WriteString("EventSourceArn", item.EventSourceArn);
+                if (item.State != null)
+                    writer.WriteString("State", item.State);
+                if (item.StateReason != null)
+                    writer.WriteString("StateReason", item.StateReason);
+                if (SdkCompatibility.HasNonDefaultValue(item.EventStartTime))
+                    Serialization.AwsJsonTimestamp.Write(writer, "EventStartTime", SdkCompatibility.GetValue(item.EventStartTime));
+                if (SdkCompatibility.HasNonDefaultValue(item.EventEndTime))
+                    Serialization.AwsJsonTimestamp.Write(writer, "EventEndTime", SdkCompatibility.GetValue(item.EventEndTime));
+                if (SdkCompatibility.HasNonDefaultValue(item.EventLastReplayedTime))
+                    Serialization.AwsJsonTimestamp.Write(writer, "EventLastReplayedTime", SdkCompatibility.GetValue(item.EventLastReplayedTime));
+                if (SdkCompatibility.HasNonDefaultValue(item.ReplayStartTime))
+                    Serialization.AwsJsonTimestamp.Write(writer, "ReplayStartTime", SdkCompatibility.GetValue(item.ReplayStartTime));
+                if (SdkCompatibility.HasNonDefaultValue(item.ReplayEndTime))
+                    Serialization.AwsJsonTimestamp.Write(writer, "ReplayEndTime", SdkCompatibility.GetValue(item.ReplayEndTime));
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
@@ -400,7 +860,7 @@ internal static class EventBridgeJsonSerializers
         writer.WriteStartObject();
 
         // RuleNames
-        if (response.RuleNames != null && response.RuleNames.Count > 0)
+        if (response.RuleNames != null)
         {
             writer.WritePropertyName("RuleNames");
             writer.WriteStartArray();
@@ -450,7 +910,7 @@ internal static class EventBridgeJsonSerializers
         writer.WriteStartObject();
 
         // Rules
-        if (response.Rules != null && response.Rules.Count > 0)
+        if (response.Rules != null)
         {
             writer.WritePropertyName("Rules");
             writer.WriteStartArray();
@@ -488,6 +948,45 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
+    internal static ListTagsForResourceRequest DeserializeListTagsForResourceRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new ListTagsForResourceRequest();
+
+        // ResourceARN
+        if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
+            request.ResourceARN = ResourceARNElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeListTagsForResourceResponse(ListTagsForResourceResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // Tags
+        if (response.Tags != null)
+        {
+            writer.WritePropertyName("Tags");
+            writer.WriteStartArray();
+            foreach (var item in response.Tags)
+            {
+                writer.WriteStartObject();
+                if (item.Key != null)
+                    writer.WriteString("Key", item.Key);
+                if (item.Value != null)
+                    writer.WriteString("Value", item.Value);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
     internal static ListTargetsByRuleRequest DeserializeListTargetsByRuleRequest(Stream stream)
     {
         using var doc = JsonDocument.Parse(stream);
@@ -519,7 +1018,7 @@ internal static class EventBridgeJsonSerializers
         writer.WriteStartObject();
 
         // Targets
-        if (response.Targets != null && response.Targets.Count > 0)
+        if (response.Targets != null)
         {
             writer.WritePropertyName("Targets");
             writer.WriteStartArray();
@@ -881,28 +1380,28 @@ internal static class EventBridgeJsonSerializers
             request.Entries = new List<PutEventsRequestEntry>();
             foreach (var item in EntriesElem.EnumerateArray())
             {
-                var entry3 = new PutEventsRequestEntry();
-                if (item.TryGetProperty("Time", out var _e4) && _e4.TryGetDateTime(out var _dt4))
-                    entry3.Time = _dt4;
-                if (item.TryGetProperty("Source", out var _e5))
-                    entry3.Source = _e5.GetString();
-                if (item.TryGetProperty("Resources", out var _e6) && _e6.ValueKind == JsonValueKind.Array)
+                var entry6 = new PutEventsRequestEntry();
+                if (item.TryGetProperty("Time", out var _e7) && Serialization.AwsJsonTimestamp.TryRead(_e7, out var _dt7))
+                    entry6.Time = _dt7;
+                if (item.TryGetProperty("Source", out var _e8))
+                    entry6.Source = _e8.GetString();
+                if (item.TryGetProperty("Resources", out var _e9) && _e9.ValueKind == JsonValueKind.Array)
                 {
-                    entry3.Resources = new List<string>();
-                    foreach (var _li6 in _e6.EnumerateArray())
+                    entry6.Resources = new List<string>();
+                    foreach (var _li9 in _e9.EnumerateArray())
                     {
-                        entry3.Resources.Add(_li6.GetString()!);
+                        entry6.Resources.Add(_li9.GetString()!);
                     }
                 }
-                if (item.TryGetProperty("DetailType", out var _e7))
-                    entry3.DetailType = _e7.GetString();
-                if (item.TryGetProperty("Detail", out var _e8))
-                    entry3.Detail = _e8.GetString();
-                if (item.TryGetProperty("EventBusName", out var _e9))
-                    entry3.EventBusName = _e9.GetString();
-                if (item.TryGetProperty("TraceHeader", out var _e10))
-                    entry3.TraceHeader = _e10.GetString();
-                request.Entries.Add(entry3);
+                if (item.TryGetProperty("DetailType", out var _e10))
+                    entry6.DetailType = _e10.GetString();
+                if (item.TryGetProperty("Detail", out var _e11))
+                    entry6.Detail = _e11.GetString();
+                if (item.TryGetProperty("EventBusName", out var _e12))
+                    entry6.EventBusName = _e12.GetString();
+                if (item.TryGetProperty("TraceHeader", out var _e13))
+                    entry6.TraceHeader = _e13.GetString();
+                request.Entries.Add(entry6);
             }
         }
 
@@ -923,7 +1422,7 @@ internal static class EventBridgeJsonSerializers
             writer.WriteNumber("FailedEntryCount", SdkCompatibility.GetValue(response.FailedEntryCount));
 
         // Entries
-        if (response.Entries != null && response.Entries.Count > 0)
+        if (response.Entries != null)
         {
             writer.WritePropertyName("Entries");
             writer.WriteStartArray();
@@ -941,6 +1440,56 @@ internal static class EventBridgeJsonSerializers
             writer.WriteEndArray();
         }
 
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static PutPermissionRequest DeserializePutPermissionRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new PutPermissionRequest();
+
+        // EventBusName
+        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+            request.EventBusName = EventBusNameElem.GetString();
+
+        // Action
+        if (root.TryGetProperty("Action", out var ActionElem))
+            request.Action = ActionElem.GetString();
+
+        // Principal
+        if (root.TryGetProperty("Principal", out var PrincipalElem))
+            request.Principal = PrincipalElem.GetString();
+
+        // StatementId
+        if (root.TryGetProperty("StatementId", out var StatementIdElem))
+            request.StatementId = StatementIdElem.GetString();
+
+        // Condition
+        if (root.TryGetProperty("Condition", out var ConditionElem) && ConditionElem.ValueKind == JsonValueKind.Object)
+        {
+            var ConditionVal = new Condition();
+            if (ConditionElem.TryGetProperty("Type", out var _e14))
+                ConditionVal.Type = _e14.GetString();
+            if (ConditionElem.TryGetProperty("Key", out var _e15))
+                ConditionVal.Key = _e15.GetString();
+            if (ConditionElem.TryGetProperty("Value", out var _e16))
+                ConditionVal.Value = _e16.GetString();
+            request.Condition = ConditionVal;
+        }
+
+        // Policy
+        if (root.TryGetProperty("Policy", out var PolicyElem))
+            request.Policy = PolicyElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializePutPermissionResponse(PutPermissionResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
     }
@@ -981,12 +1530,12 @@ internal static class EventBridgeJsonSerializers
             request.Tags = new List<Tag>();
             foreach (var item in TagsElem.EnumerateArray())
             {
-                var entry11 = new Tag();
-                if (item.TryGetProperty("Key", out var _e12))
-                    entry11.Key = _e12.GetString();
-                if (item.TryGetProperty("Value", out var _e13))
-                    entry11.Value = _e13.GetString();
-                request.Tags.Add(entry11);
+                var entry17 = new Tag();
+                if (item.TryGetProperty("Key", out var _e18))
+                    entry17.Key = _e18.GetString();
+                if (item.TryGetProperty("Value", out var _e19))
+                    entry17.Value = _e19.GetString();
+                request.Tags.Add(entry17);
             }
         }
 
@@ -1030,294 +1579,294 @@ internal static class EventBridgeJsonSerializers
             request.Targets = new List<Target>();
             foreach (var item in TargetsElem.EnumerateArray())
             {
-                var entry14 = new Target();
-                if (item.TryGetProperty("Id", out var _e15))
-                    entry14.Id = _e15.GetString();
-                if (item.TryGetProperty("Arn", out var _e16))
-                    entry14.Arn = _e16.GetString();
-                if (item.TryGetProperty("RoleArn", out var _e17))
-                    entry14.RoleArn = _e17.GetString();
-                if (item.TryGetProperty("Input", out var _e18))
-                    entry14.Input = _e18.GetString();
-                if (item.TryGetProperty("InputPath", out var _e19))
-                    entry14.InputPath = _e19.GetString();
-                if (item.TryGetProperty("InputTransformer", out var _e20) && _e20.ValueKind == JsonValueKind.Object)
+                var entry20 = new Target();
+                if (item.TryGetProperty("Id", out var _e21))
+                    entry20.Id = _e21.GetString();
+                if (item.TryGetProperty("Arn", out var _e22))
+                    entry20.Arn = _e22.GetString();
+                if (item.TryGetProperty("RoleArn", out var _e23))
+                    entry20.RoleArn = _e23.GetString();
+                if (item.TryGetProperty("Input", out var _e24))
+                    entry20.Input = _e24.GetString();
+                if (item.TryGetProperty("InputPath", out var _e25))
+                    entry20.InputPath = _e25.GetString();
+                if (item.TryGetProperty("InputTransformer", out var _e26) && _e26.ValueKind == JsonValueKind.Object)
                 {
-                    var _ns20 = new InputTransformer();
-                    if (_e20.TryGetProperty("InputPathsMap", out var _e21) && _e21.ValueKind == JsonValueKind.Object)
+                    var _ns26 = new InputTransformer();
+                    if (_e26.TryGetProperty("InputPathsMap", out var _e27) && _e27.ValueKind == JsonValueKind.Object)
                     {
-                        _ns20.InputPathsMap = new Dictionary<string, string>();
-                        foreach (var _p21 in _e21.EnumerateObject())
+                        _ns26.InputPathsMap = new Dictionary<string, string>();
+                        foreach (var _p27 in _e27.EnumerateObject())
                         {
-                            _ns20.InputPathsMap[_p21.Name] = _p21.Value.GetString()!;
+                            _ns26.InputPathsMap[_p27.Name] = _p27.Value.GetString()!;
                         }
                     }
-                    if (_e20.TryGetProperty("InputTemplate", out var _e22))
-                        _ns20.InputTemplate = _e22.GetString();
-                    entry14.InputTransformer = _ns20;
+                    if (_e26.TryGetProperty("InputTemplate", out var _e28))
+                        _ns26.InputTemplate = _e28.GetString();
+                    entry20.InputTransformer = _ns26;
                 }
-                if (item.TryGetProperty("KinesisParameters", out var _e23) && _e23.ValueKind == JsonValueKind.Object)
+                if (item.TryGetProperty("KinesisParameters", out var _e29) && _e29.ValueKind == JsonValueKind.Object)
                 {
-                    var _ns23 = new KinesisParameters();
-                    if (_e23.TryGetProperty("PartitionKeyPath", out var _e24))
-                        _ns23.PartitionKeyPath = _e24.GetString();
-                    entry14.KinesisParameters = _ns23;
+                    var _ns29 = new KinesisParameters();
+                    if (_e29.TryGetProperty("PartitionKeyPath", out var _e30))
+                        _ns29.PartitionKeyPath = _e30.GetString();
+                    entry20.KinesisParameters = _ns29;
                 }
-                if (item.TryGetProperty("RunCommandParameters", out var _e25) && _e25.ValueKind == JsonValueKind.Object)
+                if (item.TryGetProperty("RunCommandParameters", out var _e31) && _e31.ValueKind == JsonValueKind.Object)
                 {
-                    var _ns25 = new RunCommandParameters();
-                    if (_e25.TryGetProperty("RunCommandTargets", out var _e26) && _e26.ValueKind == JsonValueKind.Array)
+                    var _ns31 = new RunCommandParameters();
+                    if (_e31.TryGetProperty("RunCommandTargets", out var _e32) && _e32.ValueKind == JsonValueKind.Array)
                     {
-                        _ns25.RunCommandTargets = new List<RunCommandTarget>();
-                        foreach (var _li26 in _e26.EnumerateArray())
+                        _ns31.RunCommandTargets = new List<RunCommandTarget>();
+                        foreach (var _li32 in _e32.EnumerateArray())
                         {
-                            var _le26 = new RunCommandTarget();
-                            if (_li26.TryGetProperty("Key", out var _e27))
-                                _le26.Key = _e27.GetString();
-                            if (_li26.TryGetProperty("Values", out var _e28) && _e28.ValueKind == JsonValueKind.Array)
+                            var _le32 = new RunCommandTarget();
+                            if (_li32.TryGetProperty("Key", out var _e33))
+                                _le32.Key = _e33.GetString();
+                            if (_li32.TryGetProperty("Values", out var _e34) && _e34.ValueKind == JsonValueKind.Array)
                             {
-                                _le26.Values = new List<string>();
-                                foreach (var _li28 in _e28.EnumerateArray())
+                                _le32.Values = new List<string>();
+                                foreach (var _li34 in _e34.EnumerateArray())
                                 {
-                                    _le26.Values.Add(_li28.GetString()!);
+                                    _le32.Values.Add(_li34.GetString()!);
                                 }
                             }
-                            _ns25.RunCommandTargets.Add(_le26);
+                            _ns31.RunCommandTargets.Add(_le32);
                         }
                     }
-                    entry14.RunCommandParameters = _ns25;
+                    entry20.RunCommandParameters = _ns31;
                 }
-                if (item.TryGetProperty("EcsParameters", out var _e29) && _e29.ValueKind == JsonValueKind.Object)
+                if (item.TryGetProperty("EcsParameters", out var _e35) && _e35.ValueKind == JsonValueKind.Object)
                 {
-                    var _ns29 = new EcsParameters();
-                    if (_e29.TryGetProperty("TaskDefinitionArn", out var _e30))
-                        _ns29.TaskDefinitionArn = _e30.GetString();
-                    if (_e29.TryGetProperty("TaskCount", out var _e31) && _e31.TryGetInt32(out var _i31))
-                        _ns29.TaskCount = _i31;
-                    if (_e29.TryGetProperty("LaunchType", out var _e32))
-                        _ns29.LaunchType = _e32.GetString();
-                    if (_e29.TryGetProperty("NetworkConfiguration", out var _e33) && _e33.ValueKind == JsonValueKind.Object)
+                    var _ns35 = new EcsParameters();
+                    if (_e35.TryGetProperty("TaskDefinitionArn", out var _e36))
+                        _ns35.TaskDefinitionArn = _e36.GetString();
+                    if (_e35.TryGetProperty("TaskCount", out var _e37) && _e37.TryGetInt32(out var _i37))
+                        _ns35.TaskCount = _i37;
+                    if (_e35.TryGetProperty("LaunchType", out var _e38))
+                        _ns35.LaunchType = _e38.GetString();
+                    if (_e35.TryGetProperty("NetworkConfiguration", out var _e39) && _e39.ValueKind == JsonValueKind.Object)
                     {
-                        var _ns33 = new NetworkConfiguration();
-                        if (_e33.TryGetProperty("awsvpcConfiguration", out var _e34) && _e34.ValueKind == JsonValueKind.Object)
+                        var _ns39 = new NetworkConfiguration();
+                        if (_e39.TryGetProperty("awsvpcConfiguration", out var _e40) && _e40.ValueKind == JsonValueKind.Object)
                         {
-                            var _ns34 = new AwsVpcConfiguration();
-                            if (_e34.TryGetProperty("Subnets", out var _e35) && _e35.ValueKind == JsonValueKind.Array)
+                            var _ns40 = new AwsVpcConfiguration();
+                            if (_e40.TryGetProperty("Subnets", out var _e41) && _e41.ValueKind == JsonValueKind.Array)
                             {
-                                _ns34.Subnets = new List<string>();
-                                foreach (var _li35 in _e35.EnumerateArray())
+                                _ns40.Subnets = new List<string>();
+                                foreach (var _li41 in _e41.EnumerateArray())
                                 {
-                                    _ns34.Subnets.Add(_li35.GetString()!);
+                                    _ns40.Subnets.Add(_li41.GetString()!);
                                 }
                             }
-                            if (_e34.TryGetProperty("SecurityGroups", out var _e36) && _e36.ValueKind == JsonValueKind.Array)
+                            if (_e40.TryGetProperty("SecurityGroups", out var _e42) && _e42.ValueKind == JsonValueKind.Array)
                             {
-                                _ns34.SecurityGroups = new List<string>();
-                                foreach (var _li36 in _e36.EnumerateArray())
+                                _ns40.SecurityGroups = new List<string>();
+                                foreach (var _li42 in _e42.EnumerateArray())
                                 {
-                                    _ns34.SecurityGroups.Add(_li36.GetString()!);
+                                    _ns40.SecurityGroups.Add(_li42.GetString()!);
                                 }
                             }
-                            if (_e34.TryGetProperty("AssignPublicIp", out var _e37))
-                                _ns34.AssignPublicIp = _e37.GetString();
-                            _ns33.AwsvpcConfiguration = _ns34;
+                            if (_e40.TryGetProperty("AssignPublicIp", out var _e43))
+                                _ns40.AssignPublicIp = _e43.GetString();
+                            _ns39.AwsvpcConfiguration = _ns40;
                         }
-                        _ns29.NetworkConfiguration = _ns33;
+                        _ns35.NetworkConfiguration = _ns39;
                     }
-                    if (_e29.TryGetProperty("PlatformVersion", out var _e38))
-                        _ns29.PlatformVersion = _e38.GetString();
-                    if (_e29.TryGetProperty("Group", out var _e39))
-                        _ns29.Group = _e39.GetString();
-                    if (_e29.TryGetProperty("CapacityProviderStrategy", out var _e40) && _e40.ValueKind == JsonValueKind.Array)
+                    if (_e35.TryGetProperty("PlatformVersion", out var _e44))
+                        _ns35.PlatformVersion = _e44.GetString();
+                    if (_e35.TryGetProperty("Group", out var _e45))
+                        _ns35.Group = _e45.GetString();
+                    if (_e35.TryGetProperty("CapacityProviderStrategy", out var _e46) && _e46.ValueKind == JsonValueKind.Array)
                     {
-                        _ns29.CapacityProviderStrategy = new List<CapacityProviderStrategyItem>();
-                        foreach (var _li40 in _e40.EnumerateArray())
-                        {
-                            var _le40 = new CapacityProviderStrategyItem();
-                            if (_li40.TryGetProperty("capacityProvider", out var _e41))
-                                _le40.CapacityProvider = _e41.GetString();
-                            if (_li40.TryGetProperty("weight", out var _e42) && _e42.TryGetInt32(out var _i42))
-                                _le40.Weight = _i42;
-                            if (_li40.TryGetProperty("base", out var _e43) && _e43.TryGetInt32(out var _i43))
-                                _le40.Base = _i43;
-                            _ns29.CapacityProviderStrategy.Add(_le40);
-                        }
-                    }
-                    if (_e29.TryGetProperty("EnableECSManagedTags", out var _e44))
-                        _ns29.EnableECSManagedTags = _e44.GetBoolean();
-                    if (_e29.TryGetProperty("EnableExecuteCommand", out var _e45))
-                        _ns29.EnableExecuteCommand = _e45.GetBoolean();
-                    if (_e29.TryGetProperty("PlacementConstraints", out var _e46) && _e46.ValueKind == JsonValueKind.Array)
-                    {
-                        _ns29.PlacementConstraints = new List<PlacementConstraint>();
+                        _ns35.CapacityProviderStrategy = new List<CapacityProviderStrategyItem>();
                         foreach (var _li46 in _e46.EnumerateArray())
                         {
-                            var _le46 = new PlacementConstraint();
-                            if (_li46.TryGetProperty("type", out var _e47))
-                                _le46.Type = _e47.GetString();
-                            if (_li46.TryGetProperty("expression", out var _e48))
-                                _le46.Expression = _e48.GetString();
-                            _ns29.PlacementConstraints.Add(_le46);
+                            var _le46 = new CapacityProviderStrategyItem();
+                            if (_li46.TryGetProperty("capacityProvider", out var _e47))
+                                _le46.CapacityProvider = _e47.GetString();
+                            if (_li46.TryGetProperty("weight", out var _e48) && _e48.TryGetInt32(out var _i48))
+                                _le46.Weight = _i48;
+                            if (_li46.TryGetProperty("base", out var _e49) && _e49.TryGetInt32(out var _i49))
+                                _le46.Base = _i49;
+                            _ns35.CapacityProviderStrategy.Add(_le46);
                         }
                     }
-                    if (_e29.TryGetProperty("PlacementStrategy", out var _e49) && _e49.ValueKind == JsonValueKind.Array)
+                    if (_e35.TryGetProperty("EnableECSManagedTags", out var _e50))
+                        _ns35.EnableECSManagedTags = _e50.GetBoolean();
+                    if (_e35.TryGetProperty("EnableExecuteCommand", out var _e51))
+                        _ns35.EnableExecuteCommand = _e51.GetBoolean();
+                    if (_e35.TryGetProperty("PlacementConstraints", out var _e52) && _e52.ValueKind == JsonValueKind.Array)
                     {
-                        _ns29.PlacementStrategy = new List<PlacementStrategy>();
-                        foreach (var _li49 in _e49.EnumerateArray())
+                        _ns35.PlacementConstraints = new List<PlacementConstraint>();
+                        foreach (var _li52 in _e52.EnumerateArray())
                         {
-                            var _le49 = new PlacementStrategy();
-                            if (_li49.TryGetProperty("type", out var _e50))
-                                _le49.Type = _e50.GetString();
-                            if (_li49.TryGetProperty("field", out var _e51))
-                                _le49.Field = _e51.GetString();
-                            _ns29.PlacementStrategy.Add(_le49);
+                            var _le52 = new PlacementConstraint();
+                            if (_li52.TryGetProperty("type", out var _e53))
+                                _le52.Type = _e53.GetString();
+                            if (_li52.TryGetProperty("expression", out var _e54))
+                                _le52.Expression = _e54.GetString();
+                            _ns35.PlacementConstraints.Add(_le52);
                         }
                     }
-                    if (_e29.TryGetProperty("PropagateTags", out var _e52))
-                        _ns29.PropagateTags = _e52.GetString();
-                    if (_e29.TryGetProperty("ReferenceId", out var _e53))
-                        _ns29.ReferenceId = _e53.GetString();
-                    if (_e29.TryGetProperty("Tags", out var _e54) && _e54.ValueKind == JsonValueKind.Array)
+                    if (_e35.TryGetProperty("PlacementStrategy", out var _e55) && _e55.ValueKind == JsonValueKind.Array)
                     {
-                        _ns29.Tags = new List<Tag>();
-                        foreach (var _li54 in _e54.EnumerateArray())
+                        _ns35.PlacementStrategy = new List<PlacementStrategy>();
+                        foreach (var _li55 in _e55.EnumerateArray())
                         {
-                            var _le54 = new Tag();
-                            if (_li54.TryGetProperty("Key", out var _e55))
-                                _le54.Key = _e55.GetString();
-                            if (_li54.TryGetProperty("Value", out var _e56))
-                                _le54.Value = _e56.GetString();
-                            _ns29.Tags.Add(_le54);
+                            var _le55 = new PlacementStrategy();
+                            if (_li55.TryGetProperty("type", out var _e56))
+                                _le55.Type = _e56.GetString();
+                            if (_li55.TryGetProperty("field", out var _e57))
+                                _le55.Field = _e57.GetString();
+                            _ns35.PlacementStrategy.Add(_le55);
                         }
                     }
-                    entry14.EcsParameters = _ns29;
-                }
-                if (item.TryGetProperty("BatchParameters", out var _e57) && _e57.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns57 = new BatchParameters();
-                    if (_e57.TryGetProperty("JobDefinition", out var _e58))
-                        _ns57.JobDefinition = _e58.GetString();
-                    if (_e57.TryGetProperty("JobName", out var _e59))
-                        _ns57.JobName = _e59.GetString();
-                    if (_e57.TryGetProperty("ArrayProperties", out var _e60) && _e60.ValueKind == JsonValueKind.Object)
+                    if (_e35.TryGetProperty("PropagateTags", out var _e58))
+                        _ns35.PropagateTags = _e58.GetString();
+                    if (_e35.TryGetProperty("ReferenceId", out var _e59))
+                        _ns35.ReferenceId = _e59.GetString();
+                    if (_e35.TryGetProperty("Tags", out var _e60) && _e60.ValueKind == JsonValueKind.Array)
                     {
-                        var _ns60 = new BatchArrayProperties();
-                        if (_e60.TryGetProperty("Size", out var _e61) && _e61.TryGetInt32(out var _i61))
-                            _ns60.Size = _i61;
-                        _ns57.ArrayProperties = _ns60;
-                    }
-                    if (_e57.TryGetProperty("RetryStrategy", out var _e62) && _e62.ValueKind == JsonValueKind.Object)
-                    {
-                        var _ns62 = new BatchRetryStrategy();
-                        if (_e62.TryGetProperty("Attempts", out var _e63) && _e63.TryGetInt32(out var _i63))
-                            _ns62.Attempts = _i63;
-                        _ns57.RetryStrategy = _ns62;
-                    }
-                    entry14.BatchParameters = _ns57;
-                }
-                if (item.TryGetProperty("SqsParameters", out var _e64) && _e64.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns64 = new SqsParameters();
-                    if (_e64.TryGetProperty("MessageGroupId", out var _e65))
-                        _ns64.MessageGroupId = _e65.GetString();
-                    entry14.SqsParameters = _ns64;
-                }
-                if (item.TryGetProperty("HttpParameters", out var _e66) && _e66.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns66 = new HttpParameters();
-                    if (_e66.TryGetProperty("PathParameterValues", out var _e67) && _e67.ValueKind == JsonValueKind.Array)
-                    {
-                        _ns66.PathParameterValues = new List<string>();
-                        foreach (var _li67 in _e67.EnumerateArray())
+                        _ns35.Tags = new List<Tag>();
+                        foreach (var _li60 in _e60.EnumerateArray())
                         {
-                            _ns66.PathParameterValues.Add(_li67.GetString()!);
+                            var _le60 = new Tag();
+                            if (_li60.TryGetProperty("Key", out var _e61))
+                                _le60.Key = _e61.GetString();
+                            if (_li60.TryGetProperty("Value", out var _e62))
+                                _le60.Value = _e62.GetString();
+                            _ns35.Tags.Add(_le60);
                         }
                     }
-                    if (_e66.TryGetProperty("HeaderParameters", out var _e68) && _e68.ValueKind == JsonValueKind.Object)
+                    entry20.EcsParameters = _ns35;
+                }
+                if (item.TryGetProperty("BatchParameters", out var _e63) && _e63.ValueKind == JsonValueKind.Object)
+                {
+                    var _ns63 = new BatchParameters();
+                    if (_e63.TryGetProperty("JobDefinition", out var _e64))
+                        _ns63.JobDefinition = _e64.GetString();
+                    if (_e63.TryGetProperty("JobName", out var _e65))
+                        _ns63.JobName = _e65.GetString();
+                    if (_e63.TryGetProperty("ArrayProperties", out var _e66) && _e66.ValueKind == JsonValueKind.Object)
                     {
-                        _ns66.HeaderParameters = new Dictionary<string, string>();
-                        foreach (var _p68 in _e68.EnumerateObject())
-                        {
-                            _ns66.HeaderParameters[_p68.Name] = _p68.Value.GetString()!;
-                        }
+                        var _ns66 = new BatchArrayProperties();
+                        if (_e66.TryGetProperty("Size", out var _e67) && _e67.TryGetInt32(out var _i67))
+                            _ns66.Size = _i67;
+                        _ns63.ArrayProperties = _ns66;
                     }
-                    if (_e66.TryGetProperty("QueryStringParameters", out var _e69) && _e69.ValueKind == JsonValueKind.Object)
+                    if (_e63.TryGetProperty("RetryStrategy", out var _e68) && _e68.ValueKind == JsonValueKind.Object)
                     {
-                        _ns66.QueryStringParameters = new Dictionary<string, string>();
-                        foreach (var _p69 in _e69.EnumerateObject())
-                        {
-                            _ns66.QueryStringParameters[_p69.Name] = _p69.Value.GetString()!;
-                        }
+                        var _ns68 = new BatchRetryStrategy();
+                        if (_e68.TryGetProperty("Attempts", out var _e69) && _e69.TryGetInt32(out var _i69))
+                            _ns68.Attempts = _i69;
+                        _ns63.RetryStrategy = _ns68;
                     }
-                    entry14.HttpParameters = _ns66;
+                    entry20.BatchParameters = _ns63;
                 }
-                if (item.TryGetProperty("RedshiftDataParameters", out var _e70) && _e70.ValueKind == JsonValueKind.Object)
+                if (item.TryGetProperty("SqsParameters", out var _e70) && _e70.ValueKind == JsonValueKind.Object)
                 {
-                    var _ns70 = new RedshiftDataParameters();
-                    if (_e70.TryGetProperty("SecretManagerArn", out var _e71))
-                        _ns70.SecretManagerArn = _e71.GetString();
-                    if (_e70.TryGetProperty("Database", out var _e72))
-                        _ns70.Database = _e72.GetString();
-                    if (_e70.TryGetProperty("DbUser", out var _e73))
-                        _ns70.DbUser = _e73.GetString();
-                    if (_e70.TryGetProperty("Sql", out var _e74))
-                        _ns70.Sql = _e74.GetString();
-                    if (_e70.TryGetProperty("StatementName", out var _e75))
-                        _ns70.StatementName = _e75.GetString();
-                    if (_e70.TryGetProperty("WithEvent", out var _e76))
-                        _ns70.WithEvent = _e76.GetBoolean();
-                    if (_e70.TryGetProperty("Sqls", out var _e77) && _e77.ValueKind == JsonValueKind.Array)
+                    var _ns70 = new SqsParameters();
+                    if (_e70.TryGetProperty("MessageGroupId", out var _e71))
+                        _ns70.MessageGroupId = _e71.GetString();
+                    entry20.SqsParameters = _ns70;
+                }
+                if (item.TryGetProperty("HttpParameters", out var _e72) && _e72.ValueKind == JsonValueKind.Object)
+                {
+                    var _ns72 = new HttpParameters();
+                    if (_e72.TryGetProperty("PathParameterValues", out var _e73) && _e73.ValueKind == JsonValueKind.Array)
                     {
-                        _ns70.Sqls = new List<string>();
-                        foreach (var _li77 in _e77.EnumerateArray())
+                        _ns72.PathParameterValues = new List<string>();
+                        foreach (var _li73 in _e73.EnumerateArray())
                         {
-                            _ns70.Sqls.Add(_li77.GetString()!);
+                            _ns72.PathParameterValues.Add(_li73.GetString()!);
                         }
                     }
-                    entry14.RedshiftDataParameters = _ns70;
-                }
-                if (item.TryGetProperty("SageMakerPipelineParameters", out var _e78) && _e78.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns78 = new SageMakerPipelineParameters();
-                    if (_e78.TryGetProperty("PipelineParameterList", out var _e79) && _e79.ValueKind == JsonValueKind.Array)
+                    if (_e72.TryGetProperty("HeaderParameters", out var _e74) && _e74.ValueKind == JsonValueKind.Object)
                     {
-                        _ns78.PipelineParameterList = new List<SageMakerPipelineParameter>();
-                        foreach (var _li79 in _e79.EnumerateArray())
+                        _ns72.HeaderParameters = new Dictionary<string, string>();
+                        foreach (var _p74 in _e74.EnumerateObject())
                         {
-                            var _le79 = new SageMakerPipelineParameter();
-                            if (_li79.TryGetProperty("Name", out var _e80))
-                                _le79.Name = _e80.GetString();
-                            if (_li79.TryGetProperty("Value", out var _e81))
-                                _le79.Value = _e81.GetString();
-                            _ns78.PipelineParameterList.Add(_le79);
+                            _ns72.HeaderParameters[_p74.Name] = _p74.Value.GetString()!;
                         }
                     }
-                    entry14.SageMakerPipelineParameters = _ns78;
+                    if (_e72.TryGetProperty("QueryStringParameters", out var _e75) && _e75.ValueKind == JsonValueKind.Object)
+                    {
+                        _ns72.QueryStringParameters = new Dictionary<string, string>();
+                        foreach (var _p75 in _e75.EnumerateObject())
+                        {
+                            _ns72.QueryStringParameters[_p75.Name] = _p75.Value.GetString()!;
+                        }
+                    }
+                    entry20.HttpParameters = _ns72;
                 }
-                if (item.TryGetProperty("DeadLetterConfig", out var _e82) && _e82.ValueKind == JsonValueKind.Object)
+                if (item.TryGetProperty("RedshiftDataParameters", out var _e76) && _e76.ValueKind == JsonValueKind.Object)
                 {
-                    var _ns82 = new DeadLetterConfig();
-                    if (_e82.TryGetProperty("Arn", out var _e83))
-                        _ns82.Arn = _e83.GetString();
-                    entry14.DeadLetterConfig = _ns82;
+                    var _ns76 = new RedshiftDataParameters();
+                    if (_e76.TryGetProperty("SecretManagerArn", out var _e77))
+                        _ns76.SecretManagerArn = _e77.GetString();
+                    if (_e76.TryGetProperty("Database", out var _e78))
+                        _ns76.Database = _e78.GetString();
+                    if (_e76.TryGetProperty("DbUser", out var _e79))
+                        _ns76.DbUser = _e79.GetString();
+                    if (_e76.TryGetProperty("Sql", out var _e80))
+                        _ns76.Sql = _e80.GetString();
+                    if (_e76.TryGetProperty("StatementName", out var _e81))
+                        _ns76.StatementName = _e81.GetString();
+                    if (_e76.TryGetProperty("WithEvent", out var _e82))
+                        _ns76.WithEvent = _e82.GetBoolean();
+                    if (_e76.TryGetProperty("Sqls", out var _e83) && _e83.ValueKind == JsonValueKind.Array)
+                    {
+                        _ns76.Sqls = new List<string>();
+                        foreach (var _li83 in _e83.EnumerateArray())
+                        {
+                            _ns76.Sqls.Add(_li83.GetString()!);
+                        }
+                    }
+                    entry20.RedshiftDataParameters = _ns76;
                 }
-                if (item.TryGetProperty("RetryPolicy", out var _e84) && _e84.ValueKind == JsonValueKind.Object)
+                if (item.TryGetProperty("SageMakerPipelineParameters", out var _e84) && _e84.ValueKind == JsonValueKind.Object)
                 {
-                    var _ns84 = new RetryPolicy();
-                    if (_e84.TryGetProperty("MaximumRetryAttempts", out var _e85) && _e85.TryGetInt32(out var _i85))
-                        _ns84.MaximumRetryAttempts = _i85;
-                    if (_e84.TryGetProperty("MaximumEventAgeInSeconds", out var _e86) && _e86.TryGetInt32(out var _i86))
-                        _ns84.MaximumEventAgeInSeconds = _i86;
-                    entry14.RetryPolicy = _ns84;
+                    var _ns84 = new SageMakerPipelineParameters();
+                    if (_e84.TryGetProperty("PipelineParameterList", out var _e85) && _e85.ValueKind == JsonValueKind.Array)
+                    {
+                        _ns84.PipelineParameterList = new List<SageMakerPipelineParameter>();
+                        foreach (var _li85 in _e85.EnumerateArray())
+                        {
+                            var _le85 = new SageMakerPipelineParameter();
+                            if (_li85.TryGetProperty("Name", out var _e86))
+                                _le85.Name = _e86.GetString();
+                            if (_li85.TryGetProperty("Value", out var _e87))
+                                _le85.Value = _e87.GetString();
+                            _ns84.PipelineParameterList.Add(_le85);
+                        }
+                    }
+                    entry20.SageMakerPipelineParameters = _ns84;
                 }
-                if (item.TryGetProperty("AppSyncParameters", out var _e87) && _e87.ValueKind == JsonValueKind.Object)
+                if (item.TryGetProperty("DeadLetterConfig", out var _e88) && _e88.ValueKind == JsonValueKind.Object)
                 {
-                    var _ns87 = new AppSyncParameters();
-                    if (_e87.TryGetProperty("GraphQLOperation", out var _e88))
-                        _ns87.GraphQLOperation = _e88.GetString();
-                    entry14.AppSyncParameters = _ns87;
+                    var _ns88 = new DeadLetterConfig();
+                    if (_e88.TryGetProperty("Arn", out var _e89))
+                        _ns88.Arn = _e89.GetString();
+                    entry20.DeadLetterConfig = _ns88;
                 }
-                request.Targets.Add(entry14);
+                if (item.TryGetProperty("RetryPolicy", out var _e90) && _e90.ValueKind == JsonValueKind.Object)
+                {
+                    var _ns90 = new RetryPolicy();
+                    if (_e90.TryGetProperty("MaximumRetryAttempts", out var _e91) && _e91.TryGetInt32(out var _i91))
+                        _ns90.MaximumRetryAttempts = _i91;
+                    if (_e90.TryGetProperty("MaximumEventAgeInSeconds", out var _e92) && _e92.TryGetInt32(out var _i92))
+                        _ns90.MaximumEventAgeInSeconds = _i92;
+                    entry20.RetryPolicy = _ns90;
+                }
+                if (item.TryGetProperty("AppSyncParameters", out var _e93) && _e93.ValueKind == JsonValueKind.Object)
+                {
+                    var _ns93 = new AppSyncParameters();
+                    if (_e93.TryGetProperty("GraphQLOperation", out var _e94))
+                        _ns93.GraphQLOperation = _e94.GetString();
+                    entry20.AppSyncParameters = _ns93;
+                }
+                request.Targets.Add(entry20);
             }
         }
 
@@ -1334,7 +1883,7 @@ internal static class EventBridgeJsonSerializers
             writer.WriteNumber("FailedEntryCount", SdkCompatibility.GetValue(response.FailedEntryCount));
 
         // FailedEntries
-        if (response.FailedEntries != null && response.FailedEntries.Count > 0)
+        if (response.FailedEntries != null)
         {
             writer.WritePropertyName("FailedEntries");
             writer.WriteStartArray();
@@ -1352,6 +1901,35 @@ internal static class EventBridgeJsonSerializers
             writer.WriteEndArray();
         }
 
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static RemovePermissionRequest DeserializeRemovePermissionRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new RemovePermissionRequest();
+
+        // StatementId
+        if (root.TryGetProperty("StatementId", out var StatementIdElem))
+            request.StatementId = StatementIdElem.GetString();
+
+        // RemoveAllPermissions
+        if (root.TryGetProperty("RemoveAllPermissions", out var RemoveAllPermissionsElem) && RemoveAllPermissionsElem.ValueKind == JsonValueKind.True || RemoveAllPermissionsElem.ValueKind == JsonValueKind.False)
+            request.RemoveAllPermissions = RemoveAllPermissionsElem.GetBoolean();
+
+        // EventBusName
+        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+            request.EventBusName = EventBusNameElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeRemovePermissionResponse(RemovePermissionResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
         writer.WriteEndObject();
         writer.Flush();
     }
@@ -1397,7 +1975,7 @@ internal static class EventBridgeJsonSerializers
             writer.WriteNumber("FailedEntryCount", SdkCompatibility.GetValue(response.FailedEntryCount));
 
         // FailedEntries
-        if (response.FailedEntries != null && response.FailedEntries.Count > 0)
+        if (response.FailedEntries != null)
         {
             writer.WritePropertyName("FailedEntries");
             writer.WriteStartArray();
@@ -1414,6 +1992,114 @@ internal static class EventBridgeJsonSerializers
             }
             writer.WriteEndArray();
         }
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static StartReplayRequest DeserializeStartReplayRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new StartReplayRequest();
+
+        // ReplayName
+        if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
+            request.ReplayName = ReplayNameElem.GetString();
+
+        // Description
+        if (root.TryGetProperty("Description", out var DescriptionElem))
+            request.Description = DescriptionElem.GetString();
+
+        // EventSourceArn
+        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+            request.EventSourceArn = EventSourceArnElem.GetString();
+
+        // EventStartTime
+        if (root.TryGetProperty("EventStartTime", out var EventStartTimeElem) && Serialization.AwsJsonTimestamp.TryRead(EventStartTimeElem, out var EventStartTimeVal))
+            request.EventStartTime = EventStartTimeVal;
+
+        // EventEndTime
+        if (root.TryGetProperty("EventEndTime", out var EventEndTimeElem) && Serialization.AwsJsonTimestamp.TryRead(EventEndTimeElem, out var EventEndTimeVal))
+            request.EventEndTime = EventEndTimeVal;
+
+        // Destination
+        if (root.TryGetProperty("Destination", out var DestinationElem) && DestinationElem.ValueKind == JsonValueKind.Object)
+        {
+            var DestinationVal = new ReplayDestination();
+            if (DestinationElem.TryGetProperty("Arn", out var _e95))
+                DestinationVal.Arn = _e95.GetString();
+            if (DestinationElem.TryGetProperty("FilterArns", out var _e96) && _e96.ValueKind == JsonValueKind.Array)
+            {
+                DestinationVal.FilterArns = new List<string>();
+                foreach (var _li96 in _e96.EnumerateArray())
+                {
+                    DestinationVal.FilterArns.Add(_li96.GetString()!);
+                }
+            }
+            request.Destination = DestinationVal;
+        }
+
+        return request;
+    }
+
+    internal static void SerializeStartReplayResponse(StartReplayResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ReplayArn
+        if (response.ReplayArn != null)
+            writer.WriteString("ReplayArn", response.ReplayArn);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        // ReplayStartTime
+        if (SdkCompatibility.HasNonDefaultValue(response.ReplayStartTime))
+            Serialization.AwsJsonTimestamp.Write(writer, "ReplayStartTime", SdkCompatibility.GetValue(response.ReplayStartTime));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static TagResourceRequest DeserializeTagResourceRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new TagResourceRequest();
+
+        // ResourceARN
+        if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
+            request.ResourceARN = ResourceARNElem.GetString();
+
+        // Tags
+        if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
+        {
+            request.Tags = new List<Tag>();
+            foreach (var item in TagsElem.EnumerateArray())
+            {
+                var entry97 = new Tag();
+                if (item.TryGetProperty("Key", out var _e98))
+                    entry97.Key = _e98.GetString();
+                if (item.TryGetProperty("Value", out var _e99))
+                    entry97.Value = _e99.GetString();
+                request.Tags.Add(entry97);
+            }
+        }
+
+        return request;
+    }
+
+    internal static void SerializeTagResourceResponse(TagResourceResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
 
         writer.WriteEndObject();
         writer.Flush();
@@ -1444,6 +2130,180 @@ internal static class EventBridgeJsonSerializers
         // Result
         if (SdkCompatibility.HasNonDefaultValue(response.Result))
             writer.WriteBoolean("Result", SdkCompatibility.GetValue(response.Result));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static UntagResourceRequest DeserializeUntagResourceRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new UntagResourceRequest();
+
+        // ResourceARN
+        if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
+            request.ResourceARN = ResourceARNElem.GetString();
+
+        // TagKeys
+        if (root.TryGetProperty("TagKeys", out var TagKeysElem) && TagKeysElem.ValueKind == JsonValueKind.Array)
+        {
+            request.TagKeys = new List<string>();
+            foreach (var item in TagKeysElem.EnumerateArray())
+            {
+                request.TagKeys.Add(item.GetString()!);
+            }
+        }
+
+        return request;
+    }
+
+    internal static void SerializeUntagResourceResponse(UntagResourceResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static UpdateArchiveRequest DeserializeUpdateArchiveRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new UpdateArchiveRequest();
+
+        // ArchiveName
+        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+            request.ArchiveName = ArchiveNameElem.GetString();
+
+        // Description
+        if (root.TryGetProperty("Description", out var DescriptionElem))
+            request.Description = DescriptionElem.GetString();
+
+        // EventPattern
+        if (root.TryGetProperty("EventPattern", out var EventPatternElem))
+            request.EventPattern = EventPatternElem.GetString();
+
+        // RetentionDays
+        if (root.TryGetProperty("RetentionDays", out var RetentionDaysElem) && RetentionDaysElem.TryGetInt32(out var RetentionDaysVal))
+            request.RetentionDays = RetentionDaysVal;
+
+        // KmsKeyIdentifier
+        if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
+            request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
+
+        return request;
+    }
+
+    internal static void SerializeUpdateArchiveResponse(UpdateArchiveResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // ArchiveArn
+        if (response.ArchiveArn != null)
+            writer.WriteString("ArchiveArn", response.ArchiveArn);
+
+        // State
+        if (response.State != null)
+            writer.WriteString("State", response.State);
+
+        // StateReason
+        if (response.StateReason != null)
+            writer.WriteString("StateReason", response.StateReason);
+
+        // CreationTime
+        if (SdkCompatibility.HasNonDefaultValue(response.CreationTime))
+            Serialization.AwsJsonTimestamp.Write(writer, "CreationTime", SdkCompatibility.GetValue(response.CreationTime));
+
+        writer.WriteEndObject();
+        writer.Flush();
+    }
+
+    internal static UpdateEventBusRequest DeserializeUpdateEventBusRequest(Stream stream)
+    {
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement;
+        var request = new UpdateEventBusRequest();
+
+        // Name
+        if (root.TryGetProperty("Name", out var NameElem))
+            request.Name = NameElem.GetString();
+
+        // KmsKeyIdentifier
+        if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
+            request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
+
+        // Description
+        if (root.TryGetProperty("Description", out var DescriptionElem))
+            request.Description = DescriptionElem.GetString();
+
+        // DeadLetterConfig
+        if (root.TryGetProperty("DeadLetterConfig", out var DeadLetterConfigElem) && DeadLetterConfigElem.ValueKind == JsonValueKind.Object)
+        {
+            var DeadLetterConfigVal = new DeadLetterConfig();
+            if (DeadLetterConfigElem.TryGetProperty("Arn", out var _e100))
+                DeadLetterConfigVal.Arn = _e100.GetString();
+            request.DeadLetterConfig = DeadLetterConfigVal;
+        }
+
+        // LogConfig
+        if (root.TryGetProperty("LogConfig", out var LogConfigElem) && LogConfigElem.ValueKind == JsonValueKind.Object)
+        {
+            var LogConfigVal = new LogConfig();
+            if (LogConfigElem.TryGetProperty("IncludeDetail", out var _e101))
+                LogConfigVal.IncludeDetail = _e101.GetString();
+            if (LogConfigElem.TryGetProperty("Level", out var _e102))
+                LogConfigVal.Level = _e102.GetString();
+            request.LogConfig = LogConfigVal;
+        }
+
+        return request;
+    }
+
+    internal static void SerializeUpdateEventBusResponse(UpdateEventBusResponse response, IBufferWriter<byte> bufferWriter)
+    {
+        using var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { SkipValidation = true });
+        writer.WriteStartObject();
+
+        // Arn
+        if (response.Arn != null)
+            writer.WriteString("Arn", response.Arn);
+
+        // Name
+        if (response.Name != null)
+            writer.WriteString("Name", response.Name);
+
+        // KmsKeyIdentifier
+        if (response.KmsKeyIdentifier != null)
+            writer.WriteString("KmsKeyIdentifier", response.KmsKeyIdentifier);
+
+        // Description
+        if (response.Description != null)
+            writer.WriteString("Description", response.Description);
+
+        // DeadLetterConfig
+        if (response.DeadLetterConfig != null)
+        {
+            writer.WritePropertyName("DeadLetterConfig");
+            writer.WriteStartObject();
+            if (response.DeadLetterConfig.Arn != null)
+                writer.WriteString("Arn", response.DeadLetterConfig.Arn);
+            writer.WriteEndObject();
+        }
+
+        // LogConfig
+        if (response.LogConfig != null)
+        {
+            writer.WritePropertyName("LogConfig");
+            writer.WriteStartObject();
+            if (response.LogConfig.IncludeDetail != null)
+                writer.WriteString("IncludeDetail", response.LogConfig.IncludeDetail);
+            if (response.LogConfig.Level != null)
+                writer.WriteString("Level", response.LogConfig.Level);
+            writer.WriteEndObject();
+        }
 
         writer.WriteEndObject();
         writer.Flush();

@@ -28,8 +28,17 @@ internal static partial class EventBridgeOperationHandler
 
         switch (operationName)
         {
+            case "CancelReplay":
+                await HandleHttpContextCancelReplayAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
+            case "CreateArchive":
+                await HandleHttpContextCreateArchiveAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
             case "CreateEventBus":
                 await HandleHttpContextCreateEventBusAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
+            case "DeleteArchive":
+                await HandleHttpContextDeleteArchiveAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
             case "DeleteEventBus":
                 await HandleHttpContextDeleteEventBusAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
@@ -37,8 +46,14 @@ internal static partial class EventBridgeOperationHandler
             case "DeleteRule":
                 await HandleHttpContextDeleteRuleAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
+            case "DescribeArchive":
+                await HandleHttpContextDescribeArchiveAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
             case "DescribeEventBus":
                 await HandleHttpContextDescribeEventBusAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
+            case "DescribeReplay":
+                await HandleHttpContextDescribeReplayAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
             case "DescribeRule":
                 await HandleHttpContextDescribeRuleAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
@@ -49,8 +64,14 @@ internal static partial class EventBridgeOperationHandler
             case "EnableRule":
                 await HandleHttpContextEnableRuleAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
+            case "ListArchives":
+                await HandleHttpContextListArchivesAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
             case "ListEventBuses":
                 await HandleHttpContextListEventBusesAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
+            case "ListReplays":
+                await HandleHttpContextListReplaysAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
             case "ListRuleNamesByTarget":
                 await HandleHttpContextListRuleNamesByTargetAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
@@ -58,11 +79,17 @@ internal static partial class EventBridgeOperationHandler
             case "ListRules":
                 await HandleHttpContextListRulesAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
+            case "ListTagsForResource":
+                await HandleHttpContextListTagsForResourceAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
             case "ListTargetsByRule":
                 await HandleHttpContextListTargetsByRuleAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
             case "PutEvents":
                 await HandleHttpContextPutEventsAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
+            case "PutPermission":
+                await HandleHttpContextPutPermissionAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
             case "PutRule":
                 await HandleHttpContextPutRuleAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
@@ -70,14 +97,90 @@ internal static partial class EventBridgeOperationHandler
             case "PutTargets":
                 await HandleHttpContextPutTargetsAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
+            case "RemovePermission":
+                await HandleHttpContextRemovePermissionAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
             case "RemoveTargets":
                 await HandleHttpContextRemoveTargetsAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
+            case "StartReplay":
+                await HandleHttpContextStartReplayAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
+            case "TagResource":
+                await HandleHttpContextTagResourceAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
             case "TestEventPattern":
                 await HandleHttpContextTestEventPatternAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
                 break;
+            case "UntagResource":
+                await HandleHttpContextUntagResourceAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
+            case "UpdateArchive":
+                await HandleHttpContextUpdateArchiveAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
+            case "UpdateEventBus":
+                await HandleHttpContextUpdateEventBusAsync(context, requestBody, requestBodyLength, client, cancellationToken).ConfigureAwait(false);
+                break;
             default:
                 throw new NotSupportedException($"EventBridge operation '{operationName}' is not supported.");
+        }
+    }
+
+    private static async Task HandleHttpContextCancelReplayAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeCancelReplayRequest(requestStream);
+            var result = await client.CancelReplayAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeCancelReplayResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task HandleHttpContextCreateArchiveAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeCreateArchiveRequest(requestStream);
+            var result = await client.CreateArchiveAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeCreateArchiveResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -98,6 +201,35 @@ internal static partial class EventBridgeOperationHandler
             context.Response.ContentType = "application/x-amz-json-1.1";
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             EventBridgeJsonSerializers.SerializeCreateEventBusResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task HandleHttpContextDeleteArchiveAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeDeleteArchiveRequest(requestStream);
+            var result = await client.DeleteArchiveAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeDeleteArchiveResponse(result, pooledBuffer.Writer);
             await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -168,6 +300,35 @@ internal static partial class EventBridgeOperationHandler
         }
     }
 
+    private static async Task HandleHttpContextDescribeArchiveAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeDescribeArchiveRequest(requestStream);
+            var result = await client.DescribeArchiveAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeDescribeArchiveResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private static async Task HandleHttpContextDescribeEventBusAsync(
         HttpContext context,
         byte[] requestBody,
@@ -185,6 +346,35 @@ internal static partial class EventBridgeOperationHandler
             context.Response.ContentType = "application/x-amz-json-1.1";
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             EventBridgeJsonSerializers.SerializeDescribeEventBusResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task HandleHttpContextDescribeReplayAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeDescribeReplayRequest(requestStream);
+            var result = await client.DescribeReplayAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeDescribeReplayResponse(result, pooledBuffer.Writer);
             await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -284,6 +474,35 @@ internal static partial class EventBridgeOperationHandler
         }
     }
 
+    private static async Task HandleHttpContextListArchivesAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeListArchivesRequest(requestStream);
+            var result = await client.ListArchivesAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeListArchivesResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private static async Task HandleHttpContextListEventBusesAsync(
         HttpContext context,
         byte[] requestBody,
@@ -301,6 +520,35 @@ internal static partial class EventBridgeOperationHandler
             context.Response.ContentType = "application/x-amz-json-1.1";
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             EventBridgeJsonSerializers.SerializeListEventBusesResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task HandleHttpContextListReplaysAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeListReplaysRequest(requestStream);
+            var result = await client.ListReplaysAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeListReplaysResponse(result, pooledBuffer.Writer);
             await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -371,6 +619,35 @@ internal static partial class EventBridgeOperationHandler
         }
     }
 
+    private static async Task HandleHttpContextListTagsForResourceAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeListTagsForResourceRequest(requestStream);
+            var result = await client.ListTagsForResourceAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeListTagsForResourceResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private static async Task HandleHttpContextListTargetsByRuleAsync(
         HttpContext context,
         byte[] requestBody,
@@ -417,6 +694,35 @@ internal static partial class EventBridgeOperationHandler
             context.Response.ContentType = "application/x-amz-json-1.1";
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             EventBridgeJsonSerializers.SerializePutEventsResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task HandleHttpContextPutPermissionAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializePutPermissionRequest(requestStream);
+            var result = await client.PutPermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializePutPermissionResponse(result, pooledBuffer.Writer);
             await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -487,6 +793,35 @@ internal static partial class EventBridgeOperationHandler
         }
     }
 
+    private static async Task HandleHttpContextRemovePermissionAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeRemovePermissionRequest(requestStream);
+            var result = await client.RemovePermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeRemovePermissionResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private static async Task HandleHttpContextRemoveTargetsAsync(
         HttpContext context,
         byte[] requestBody,
@@ -504,6 +839,64 @@ internal static partial class EventBridgeOperationHandler
             context.Response.ContentType = "application/x-amz-json-1.1";
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
             EventBridgeJsonSerializers.SerializeRemoveTargetsResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task HandleHttpContextStartReplayAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeStartReplayRequest(requestStream);
+            var result = await client.StartReplayAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeStartReplayResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task HandleHttpContextTagResourceAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeTagResourceRequest(requestStream);
+            var result = await client.TagResourceAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeTagResourceResponse(result, pooledBuffer.Writer);
             await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -545,6 +938,93 @@ internal static partial class EventBridgeOperationHandler
         }
     }
 
+    private static async Task HandleHttpContextUntagResourceAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeUntagResourceRequest(requestStream);
+            var result = await client.UntagResourceAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeUntagResourceResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task HandleHttpContextUpdateArchiveAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeUpdateArchiveRequest(requestStream);
+            var result = await client.UpdateArchiveAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeUpdateArchiveResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task HandleHttpContextUpdateEventBusAsync(
+        HttpContext context,
+        byte[] requestBody,
+        int requestBodyLength,
+        InternalEventBridgeClient client,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
+            var requestObject = EventBridgeJsonSerializers.DeserializeUpdateEventBusRequest(requestStream);
+            var result = await client.UpdateEventBusAsync(requestObject, cancellationToken).ConfigureAwait(false);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/x-amz-json-1.1";
+            using var pooledBuffer = PooledArrayBufferWriter.Rent();
+            EventBridgeJsonSerializers.SerializeUpdateEventBusResponse(result, pooledBuffer.Writer);
+            await context.Response.Body.WriteAsync(pooledBuffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AwsServiceException ex)
+        {
+            await WriteJsonErrorResponseAsync(context, ex, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private static async Task WriteJsonErrorResponseAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
     {
         string errorCode;
@@ -572,7 +1052,7 @@ internal static partial class EventBridgeOperationHandler
         var errorJson = $$"""
         {
             "__type": "{{errorType}}",
-            "message": "{{errorMessage.Replace("\"", "\\\"", StringComparison.Ordinal)}}"
+            "message": "{{System.Text.Json.JsonEncodedText.Encode(errorMessage, System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping)}}"
         }
         """;
 

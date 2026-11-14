@@ -127,10 +127,116 @@ public sealed class EventBridgeEventPatternTests
     [Test]
     public async Task InvalidPattern_IsDetected()
     {
-        EventBridgeEventPattern.IsValid("not json", out _).ShouldBeFalse();
-        EventBridgeEventPattern.IsValid("""["array"]""", out _).ShouldBeFalse();
-        EventBridgeEventPattern.IsValid("", out _).ShouldBeFalse();
-        EventBridgeEventPattern.IsValid("""{"source":["a"]}""", out _).ShouldBeTrue();
+        Should.Throw<InternalInvalidEventPatternException>(() => EventBridgeEventPattern.ValidateTestPattern("not json"));
+        Should.Throw<InternalInvalidEventPatternException>(() => EventBridgeEventPattern.ValidateTestPattern("""["array"]"""));
+        Should.Throw<InternalInvalidEventPatternException>(() => EventBridgeEventPattern.ValidateTestPattern(""));
+        Should.NotThrow(() => EventBridgeEventPattern.ValidateTestPattern("""{"source":["a"]}"""));
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task InvalidPattern_ReportsTheReasonAndPositionInTheTextAsSent()
+    {
+        const string pattern = "{\n  \"source\": \"a\"\n}";
+        Should.Throw<InternalInvalidEventPatternException>(() => EventBridgeEventPattern.ValidateTestPattern(pattern))
+            .Message.ShouldBe($"Event pattern is not valid. Reason: \"source\" must be an object or an array\n at [Source: (String)\"{pattern}\"; line: 2, column: 14]");
+
+        Should.Throw<InternalInvalidEventPatternException>(() => EventBridgeEventPattern.ValidateTestPattern("{not json"))
+            .Message.ShouldBe("Event pattern is not valid. Reason: Unexpected character ('n' (code 110)): was expecting double-quote to start field name\n at [Source: (String)\"{not json\"; line: 1, column: 2]");
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task RulePattern_LongerThanTheLimit_IsRefused()
+    {
+        var pattern = $$"""{"source":["{{new string('y', EventBridgeEventPattern.MaxRulePatternLength - 15)}}"]}""";
+        Should.NotThrow(() => EventBridgeEventPattern.ValidateRulePattern("r", pattern));
+        Should.Throw<InternalInvalidEventPatternException>(() => EventBridgeEventPattern.ValidateRulePattern("r", pattern + " "))
+            .Message.ShouldBe("Parameter EventPattern for rule r exceeds limit of 2048.");
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task OneBranchOr_IsReadAsAFieldNameByPutRuleOnly()
+    {
+        const string pattern = """{"$or":[{"detail":{"k":["zz"]}}]}""";
+        Should.Throw<InternalInvalidEventPatternException>(() => EventBridgeEventPattern.ValidateRulePattern("r", pattern))
+            .Message.ShouldStartWith("Event pattern is not valid. Reason: Unrecognized match type detail");
+        Should.Throw<InternalInvalidEventPatternException>(() => EventBridgeEventPattern.ValidateTestPattern(pattern))
+            .Message.ShouldStartWith("Event pattern is not valid. Reason: There must have at least 2 Objects in $or relationship.");
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task NestedPattern_MatchesTheFlattenedPath()
+    {
+        const string pattern = """{"detail":{"o":{"p":["v"]}}}""";
+        Match(pattern, """{"detail":{"o":{"p":"v"}}}""").ShouldBeTrue();
+        Match(pattern, """{"detail":{"o.p":"v"}}""").ShouldBeTrue();
+        Match(pattern, """{"detail":{"o":[{"p":"v"}]}}""").ShouldBeTrue();
+        Match(pattern, """{"detail":{"p":"v"}}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task ArrayField_MatchesWhenAnyElementMatches_NestedArraysIncluded()
+    {
+        Match("""{"detail":{"xs":["b"]}}""", """{"detail":{"xs":[["b"]]}}""").ShouldBeTrue();
+        Match("""{"detail":{"xs":["b"]}}""", """{"detail":{"xs":[]}}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Exists_TreatsObjectsAndEmptyArraysAsAbsent()
+    {
+        const string exists = """{"detail":{"k":[{"exists":true}]}}""";
+        const string absent = """{"detail":{"k":[{"exists":false}]}}""";
+        Match(exists, """{"detail":{"k":{"a":1}}}""").ShouldBeFalse();
+        Match(absent, """{"detail":{"k":{}}}""").ShouldBeTrue();
+        Match(absent, """{"detail":{"k":[]}}""").ShouldBeTrue();
+        Match(exists, """{"detail":{"k":null}}""").ShouldBeTrue();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task ExistsFalse_MatchesWhenAnIntermediateParentIsMissing()
+    {
+        Match("""{"detail":{"order":{"customer":[{"exists":false}]}}}""", """{"detail":{}}""").ShouldBeTrue();
+        Match("""{"detail":{"order":{"customer":[{"exists":true}]}}}""", """{"detail":{}}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task AnythingBut_OverAnArray_MatchesWhenAnyElementEscapes()
+    {
+        const string pattern = """{"detail":{"tags":[{"anything-but":["blocked","banned"]}]}}""";
+        Match(pattern, """{"detail":{"tags":["a","blocked"]}}""").ShouldBeTrue();
+        Match(pattern, """{"detail":{"tags":["blocked","banned"]}}""").ShouldBeFalse();
+        Match(pattern, """{"detail":{"tags":[]}}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task KeysWithinOneArrayOfObjects_MustMatchTheSameElement()
+    {
+        const string pattern = """{"detail":{"people":{"first":["Anna"],"last":["Jones"]}}}""";
+        Match(pattern, """{"detail":{"people":[{"first":"Anna","last":"Smith"},{"first":"John","last":"Jones"}]}}""").ShouldBeFalse();
+        Match(pattern, """{"detail":{"people":[{"first":"John","last":"Smith"},{"first":"Anna","last":"Jones"}]}}""").ShouldBeTrue();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Wildcard_EscapedStar_IsLiteral()
+    {
+        Match("""{"source":[{"wildcard":"a\\*b"}]}""", """{"source":"a*b"}""").ShouldBeTrue();
+        Match("""{"source":[{"wildcard":"a\\*b"}]}""", """{"source":"axb"}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Cidr_ShorthandAddress_DoesNotMatch()
+    {
+        Match("""{"detail":{"ip":[{"cidr":"10.0.0.0/24"}]}}""", """{"detail":{"ip":"10.0.0"}}""").ShouldBeFalse();
         await Task.CompletedTask;
     }
 
@@ -199,6 +305,33 @@ public sealed class EventBridgeEventPatternTests
     public async Task MissingField_WithLiteralCandidate_DoesNotMatch()
     {
         Match("""{"detail":{"absent":["x"]}}""", """{"detail":{"present":"y"}}""").ShouldBeFalse();
+        await Task.CompletedTask;
+    }
+    [Test]
+    public async Task ArrayConsistency_KeysInUnrelatedArrays_DoNotMultiplyTheSearch()
+    {
+        // a, b and c each match every element of their own array; x and y then fail because they lie
+        // in different elements of items. Trying every (a, b, c) combination first took n^3 steps.
+        const int n = 1000;
+        var values = $"[{string.Join(",", Enumerable.Range(0, n))}]";
+        var pattern = """{"a":[{"exists":true}],"b":[{"exists":true}],"c":[{"exists":true}],"items":{"x":[1],"y":[2]}}""";
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        Match(pattern, $$"""{"a":{{values}},"b":{{values}},"c":{{values}},"items":[{"x":1},{"y":2}]}""").ShouldBeFalse();
+        Match(pattern, $$"""{"a":{{values}},"b":{{values}},"c":{{values}},"items":[{"x":1,"y":2}]}""").ShouldBeTrue();
+
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task ArrayConsistency_StillRequiresTheSameElementOfASharedOuterArray()
+    {
+        // Values in their own inner arrays are interchangeable only within one element of items.
+        var pattern = """{"items":{"tags":["t"],"sku":["abc"]}}""";
+
+        Match(pattern, """{"items":[{"tags":["t","u"],"sku":"xyz"},{"tags":["v"],"sku":"abc"}]}""").ShouldBeFalse();
+        Match(pattern, """{"items":[{"tags":["v"],"sku":"xyz"},{"tags":["u","t"],"sku":"abc"}]}""").ShouldBeTrue();
         await Task.CompletedTask;
     }
 }

@@ -76,6 +76,10 @@ public class SnsFilterPolicyTests
     [Arguments("""{"ref": [null]}""", """{"ref": null}""", true)]
     [Arguments("""{"order": {"status": ["shipped"]}}""", "not json", false)]
     [Arguments("""{"order": {"status": ["shipped"]}}""", """["shipped"]""", false)]
+    // Event Ruler takes a repeated key's last value; the body is still matched, not an error.
+    [Arguments("""{"order": {"status": ["shipped"]}}""", """{"order": {"status": "placed", "status": "shipped"}}""", true)]
+    [Arguments("""{"order": {"status": ["placed"]}}""", """{"order": {"status": "placed", "status": "shipped"}}""", false)]
+    [Arguments("""{"order": {"status": ["shipped"]}}""", """{"order": {"status": "shipped"}, "x": {"k": 1, "k": 2}}""", true)]
     public void BodyScope_MatchesAgainstJsonBody(string policy, string body, bool expected)
     {
         var subscription = Subscription(policy, SnsFilterPolicy.MessageBodyScope);

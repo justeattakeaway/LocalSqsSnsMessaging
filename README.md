@@ -19,7 +19,7 @@ It comes in three flavours that all share the same in-memory bus:
 | --- | --- |
 | **SQS** | Standard and FIFO queues, long polling, visibility timeouts, delays, message attributes, batch operations, redrive policies and dead-letter queues, message move tasks (redrive from a DLQ), fair queues (per-message-group deduplication), queue tags. |
 | **SNS** | Topics (standard and FIFO), `sqs` and `http`/`https` subscriptions, raw message delivery, [filter policies](#sns-filter-policies) on message attributes or the message body, [HTTP/S delivery](#sns-httphttps-subscriptions) with the confirmation handshake, retries and delivery policies, [subscription dead-letter queues](#sns-subscription-dead-letter-queues), topic attributes, permissions and tags. |
-| **EventBridge** | Event buses, rules with [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html), targets, `PutEvents` routing to SQS targets, input transformers, `TestEventPattern`. See [EventBridge](#eventbridge). |
+| **EventBridge** | Event buses, rules with [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html), `PutEvents` routing to SQS (standard and FIFO), SNS and event bus targets, input transformers, target dead-letter queues, scheduled rules, archives and replays, tags, `TestEventPattern`. See [EventBridge](#eventbridge). |
 
 Operations that don't make sense in memory (SMS, mobile push, platform applications, data protection policies) throw `NotSupportedException`.
 
@@ -196,7 +196,7 @@ await sns.SubscribeAsync(new SubscribeRequest(topicArn, "https", "https://localh
 
 ### EventBridge
 
-The bus also emulates EventBridge, which is enough to test code built on [AWS.Messaging](https://github.com/awslabs/aws-dotnet-messaging) or anything else that publishes events and consumes them from SQS. Rules match on the full [event pattern grammar](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html); matched events are delivered to SQS targets (other target types are accepted but skipped), with support for `Input`, `InputPath` and `InputTransformer`.
+The bus also emulates EventBridge, which is enough to test code built on [AWS.Messaging](https://github.com/awslabs/aws-dotnet-messaging) or anything else that publishes events and consumes them from SQS. Rules match on the full [event pattern grammar](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html); matched events are delivered to SQS queues, SNS topics and other event buses (other target types are accepted but skipped), with support for `Input`, `InputPath` and `InputTransformer`. A delivery that fails goes to the target's dead-letter queue, rules with a `ScheduleExpression` fire on the bus's `TimeProvider`, and archives record events that a replay can deliver again.
 
 ```csharp
 using Amazon.EventBridge.Model;
