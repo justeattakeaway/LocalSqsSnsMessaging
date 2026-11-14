@@ -1046,7 +1046,7 @@ internal static partial class EventBridgeOperationHandler
         var errorJson = $$"""
         {
             "__type": "{{errorType}}",
-            "message": "{{errorMessage.Replace("\"", "\\\"", StringComparison.Ordinal)}}"
+            "message": "{{System.Text.Json.JsonEncodedText.Encode(errorMessage, System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping)}}"
         }
         """;
 

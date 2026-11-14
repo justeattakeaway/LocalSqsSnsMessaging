@@ -215,7 +215,8 @@ static void GenerateJsonHandler(string serviceName, string modelNamespace, JsonE
     code.AppendLine("        var errorJson = $$\"\"\"");
     code.AppendLine("        {");
     code.AppendLine("            \"__type\": \"{{errorType}}\",");
-    code.AppendLine("            \"message\": \"{{errorMessage.Replace(\"\\\"\", \"\\\\\\\"\", StringComparison.Ordinal)}}\"");
+    // A message may hold quotes, backslashes and newlines (EventBridge quotes the pattern it refuses).
+    code.AppendLine("            \"message\": \"{{System.Text.Json.JsonEncodedText.Encode(errorMessage, System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping)}}\"");
     code.AppendLine("        }");
     code.AppendLine("        \"\"\";");
     code.AppendLine();
@@ -362,7 +363,8 @@ static void GenerateJsonHttpContextHandler(string serviceName, string modelNames
     code.AppendLine("        var errorJson = $$\"\"\"");
     code.AppendLine("        {");
     code.AppendLine("            \"__type\": \"{{errorType}}\",");
-    code.AppendLine("            \"message\": \"{{errorMessage.Replace(\"\\\"\", \"\\\\\\\"\", StringComparison.Ordinal)}}\"");
+    // A message may hold quotes, backslashes and newlines (EventBridge quotes the pattern it refuses).
+    code.AppendLine("            \"message\": \"{{System.Text.Json.JsonEncodedText.Encode(errorMessage, System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping)}}\"");
     code.AppendLine("        }");
     code.AppendLine("        \"\"\";");
     code.AppendLine();

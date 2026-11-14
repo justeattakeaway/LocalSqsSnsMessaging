@@ -797,7 +797,7 @@ internal static partial class SqsOperationHandler
         var errorJson = $$"""
         {
             "__type": "{{errorType}}",
-            "message": "{{errorMessage.Replace("\"", "\\\"", StringComparison.Ordinal)}}"
+            "message": "{{System.Text.Json.JsonEncodedText.Encode(errorMessage, System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping)}}"
         }
         """;
 
