@@ -1,6 +1,6 @@
-# AWS emulator evaluation suite (SQS and SNS)
+# AWS emulator evaluation suite (SQS, SNS and EventBridge)
 
-These are C# ports of the SQS and SNS checks in AWS's
+These are C# ports of the SQS, SNS and EventBridge checks in AWS's
 [emulator evaluation suite](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1),
 pinned at commit `4df2823`. Each upstream `check_<name>.py` was verified against real AWS. Each one
 becomes one test file here, with the same steps, waits and assertion messages, so the two can be
@@ -11,11 +11,13 @@ compared side by side:
 | [`behavioral/sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/sqs) | `Sqs/<Name>.cs` | `sqs.<id>` |
 | [`behavioral/sns/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/sns) | `Sns/<Name>.cs` | `sns.<id>` |
 | [`behavioral/sns__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/sns__sqs) | `SnsSqs/<Name>.cs` | `sns__sqs.<id>` |
+| [`behavioral/events/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/events) | `Events/<Name>.cs` | `events.<id>` |
+| [`behavioral/events__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/events__sqs) | `EventsSqs/<Name>.cs` | `events__sqs.<id>` |
 
 - **Same verdicts:** each test gets the same verdict the Python check got when it was run with boto3
   against `LocalSqsSnsMessaging.Server`.
-- **Real AWS clients:** tests use real `AmazonSQSClient`s and `AmazonSimpleNotificationServiceClient`s
-  over the in-memory HTTP handler, through `FidelityContext`, the C# version of the Python `ctx`.
+- **Real AWS clients:** tests use real `AmazonSQSClient`s, `AmazonSimpleNotificationServiceClient`s and
+  `AmazonEventBridgeClient`s over the in-memory HTTP handler, through `FidelityContext`, the C# version of the Python `ctx`.
 - **Exactly the check's requests:** the test run's SDK tracing adds trace context to every request
   (a `traceparent` message attribute on Publish, an `AWSTraceHeader` on SendMessage), which boto3
   doesn't, so `FidelityContext` turns that off for the whole check.
@@ -23,9 +25,10 @@ compared side by side:
   the library's two strict modes, `IsolateRegions` and `KmsKeyAliases`, so it serves each region's
   queues separately and refuses unknown KMS aliases, as AWS does.
 - **Left out:** checks that also need IAM, KMS, CloudFormation, CloudWatch, Lambda or STS role
-  assumption are not ported, nor SNS checks about protocols other than SQS (see below). A check
-  that only reads the account id from `sts:GetCallerIdentity` is ported, with `ctx.Account` (and
-  `ctx.CallerArn`, the account's root user) in its place.
+  assumption are not ported, nor SNS checks about protocols other than SQS, nor EventBridge checks
+  about targets and features the library doesn't emulate (see below). A check that only reads the
+  account id from `sts:GetCallerIdentity` is ported, with `ctx.Account` (and `ctx.CallerArn`, the
+  account's root user) in its place.
 
 ## SNS scope
 
@@ -50,6 +53,56 @@ Checks that need SNS to be regional (a topic per region, a regional endpoint ref
 region's topic ARN) are ported but stay known gaps (`FidelityGap.SnsRegions`): making SNS topics and
 subscriptions regional is planned as separate work.
 
+## EventBridge scope
+
+The EventBridge ports cover EventBridge as a message router in front of SQS and SNS: event buses,
+rules, event patterns and TestEventPattern, PutEvents and its validation and partial failures,
+targets to SQS (standard and FIFO), SNS and other event buses, Input, InputPath and
+InputTransformer, target dead-letter queues and retry policies, bus resource policies, tags,
+archives and replays, scheduled rules, listing and pagination, and error codes: 186 of the 296
+checks in `behavioral/events`, `behavioral/events__sqs`, the `events__iam__*` directories and the
+`eventbridgev2*` directories.
+
+Archives and replays are ported (31 checks): they are self-contained, need nothing outside the bus,
+and run on the bus's clock like everything else.
+
+IAM is not emulated, and the checks that touch it were decided one by one:
+
+- **IAM only as setup** (5 checks): a check that creates a role only to put its ARN on a rule or
+  target, and really asserts what EventBridge does with it, is ported. The port uses
+  `ctx.RoleArn(name)`, a well-formed role ARN the bus stores and echoes but never assumes; the
+  Python run's front proxy answers the IAM calls with a stub. Two of these also call
+  `ec2:DescribeRegions` to pick a second region: the port uses `us-east-1`, as that call answers for
+  `us-west-2`.
+- **Resource policies** (queue and topic policies naming `events.amazonaws.com`, bus policies from
+  PutPermission): ported. What the library enforces is described with each gap.
+- **IAM enforcement** (8 checks): a check that assumes a role and grades what the role's own
+  policies allow (a missing `iam:PassRole`, an identity-policy condition, a role denied by an
+  explicit Deny) is not ported.
+
+These 110 checks are not ported:
+
+- **EventBridge v2** (`eventbridgev2`, `eventbridgev2__iam__sqs`, `eventbridgev2__iam__sns__sqs`): a newer, separate API with buses addressed by ARN, subscribers, event sources, JSONata transformers and `PutRawEvents`, not the `events` API this library emulates (40): `eventbridgev2.create-event-bus-name-collision-different-token-rejected`, `eventbridgev2.create-event-bus-same-client-token-is-idempotent`, `eventbridgev2.create-subscriber-client-token-replay-idempotent-and-mismatch-rejected`, `eventbridgev2.delete-event-bus-blocked-by-event-source-until-revoked`, `eventbridgev2.delete-event-bus-with-subscriber-rejected-until-removed`, `eventbridgev2.event-bus-create-describe-list-delete-lifecycle`, `eventbridgev2.event-bus-tags-do-not-propagate-to-subscribers-or-event-sources`, `eventbridgev2.event-source-lifecycle-against-active-bus`, `eventbridgev2.point-in-time-starting-point-outside-allowed-range-rejected`, `eventbridgev2.put-events-partial-failure-reports-per-entry-error`, `eventbridgev2.recreated-event-bus-same-name-gets-new-identifier`, `eventbridgev2.resource-policy-conflicting-revision-rejected`, `eventbridgev2.resource-policy-put-get-list-round-trip`, `eventbridgev2.revoke-resource-marks-subscriber-terminal-and-outlives-bus-deletion`, `eventbridgev2.subscriber-name-collision-on-same-bus-rejected-but-allowed-on-another`, `eventbridgev2.subscriber-put-events-delivers-to-sqs`, `eventbridgev2.tag-resource-and-list-tags-round-trip`, `eventbridgev2__iam__sns__sqs.role-without-sns-publish-dead-letters-and-topic-receives-nothing`, `eventbridgev2__iam__sns__sqs.sns-topic-target-publishes-one-event-per-message`, `eventbridgev2__iam__sqs.dead-letter-record-names-access-denied-when-role-cannot-reach-target`, `eventbridgev2__iam__sqs.detail-pattern-matches-put-events-envelope-not-raw-payload`, `eventbridgev2__iam__sqs.event-bus-target-forwards-as-new-event-with-evaluated-metadata`, `eventbridgev2__iam__sqs.fifo-subscriber-delivers-event-group-in-publish-order`, `eventbridgev2__iam__sqs.horizon-subscriber-replays-retained-events-marked-replay`, `eventbridgev2__iam__sqs.jsonata-transformer-reads-octet-stream-data-as-base64`, `eventbridgev2__iam__sqs.jsonata-transformer-string-unquoted-and-object-serialized`, `eventbridgev2__iam__sqs.put-events-content-based-deduplication-suppresses-resend`, `eventbridgev2__iam__sqs.put-events-envelope-carries-resources-time-and-region`, `eventbridgev2__iam__sqs.put-events-explicit-deduplication-id-suppresses-repeat`, `eventbridgev2__iam__sqs.put-events-reserved-aws-source-refused-and-never-delivered`, `eventbridgev2__iam__sqs.put-raw-events-invalid-json-and-open-format-refused-per-entry`, `eventbridgev2__iam__sqs.raw-transformer-delivers-payload-as-sent-and-bytes-as-base64`, `eventbridgev2__iam__sqs.sequence-numbers-increase-with-ingestion-and-match-delivery`, `eventbridgev2__iam__sqs.sqs-message-attributes-evaluate-jsonata-and-keep-binary-literal`, `eventbridgev2__iam__sqs.subscriber-filters-combine-with-and-across-scopes`, `eventbridgev2__iam__sqs.subscriber-on-failure-configuration-writes-dead-letter-record-to-sqs`, `eventbridgev2__iam__sqs.system-metadata-content-type-filter-routes-by-content-type`, `eventbridgev2__iam__sqs.update-subscriber-replaces-filter-configuration-whole`, `eventbridgev2__iam__sqs.update-subscriber-transformer-applies-to-later-events`, `eventbridgev2__iam__sqs.with-metadata-transformer-delivers-full-event-with-string-system-metadata`.
+- **IAM role and identity-policy enforcement**: each assumes an IAM role (`sts:AssumeRole`) and grades what that role's policies allow (8): `events.bus-policy-role-statement-admits-put-events-but-account-statement-leaves-bare-role-denied`, `events.identity-explicit-deny-overrides-a-bus-policy-allow-naming-the-same-role`, `events.identity-policy-events-source-condition-denies-put-events-for-any-other-source`, `events.policy-scoped-to-one-bus-rules-denies-put-targets-on-the-same-rule-name-on-another-bus`, `events.put-targets-with-role-arn-denied-without-iam-pass-role-until-granted`, `events.resource-tag-condition-scopes-disable-rule-to-rules-carrying-the-tag`, `events__iam__sns__sqs__sts.put-targets-target-arn-condition-restricts-to-sqs`, `events__iam__sts.put-rule-source-conditions-gate-the-event-pattern`.
+- **API destinations and connections** (HTTP targets, some behind Lambda function URLs) (22): `events.api-destination-4xx-dead-letters-without-retry-while-5xx-is-retried-until-its-retry-attempts-are-used-up`, `events.api-destination-api-key-connection-adds-its-key-and-parameters-and-its-values-win-over-the-targets`, `events.api-destination-basic-connection-sends-the-basic-authorization-header-with-the-destinations-method-and-the-bare-envelope`, `events.api-destination-invocation-rate-limit-maximum-is-enforced`, `events.api-destination-lifecycle`, `events.api-destination-oauth-connection-fetches-a-client-credentials-token-and-sends-it-as-the-bearer-header`, `events.api-destination-rate-limit-defers-a-burst-it-cannot-absorb-and-still-delivers-every-event`, `events.api-destination-state-follows-connection-deauthorize-and-reauthorize`, `events.create-api-destination-accepts-non-url-endpoint`, `events.create-api-destination-invalid-endpoint-pattern-rejected`, `events.create-api-destination-requires-existing-connection`, `events.create-connection-missing-auth-parameters-rejected`, `events.create-connection-state-transition`, `events.deauthorize-connection-state-transition`, `events.delete-connection-eventually-not-found`, `events.delete-connection-in-use-by-api-destination-allowed`, `events.describe-connection-redacts-secret-auth-material`, `events.list-connections-filters-are-mutually-exclusive`, `events.oauth-connection-non-https-authorization-endpoint-rejected`, `events.oauth-connection-with-unreachable-endpoint-deauthorizes-and-its-destination-is-inactive`, `events.update-connection-authorization-type`, `events__sqs.api-destination-timeout-retries-are-bounded-by-maximum-retry-attempts`.
+- **Global endpoints** (Route 53 health checks, failover and replication) (12): `events.concurrent-update-endpoint-conflict-detected`, `events.create-endpoint-duplicate-name-blocked`, `events.create-endpoint-malformed-routing-config-rejected`, `events.delete-endpoint-nonexistent-not-found`, `events.describe-endpoint-nonexistent-not-found`, `events.endpoint-failover-routing-config-managed`, `events.endpoint-lifecycle-create-active-delete-404`, `events.endpoint-routing-config-round-trip`, `events.put-events-endpoint-id-delivers-to-primary-and-replicates-to-secondary`, `events.put-events-endpoint-id-with-unrelated-event-bus-name-rejected`, `events.update-endpoint-changes-routing-config`, `events.update-endpoint-nonexistent-not-found`.
+- **Partner event sources** (SaaS partner accounts) (12): `events.activate-deactivate-event-source-state-transition`, `events.activate-event-source-nonexistent-not-found`, `events.concurrent-activate-event-source-conflict-detected`, `events.deactivate-event-source-nonexistent-not-found`, `events.delete-partner-event-source-disabled-operation-blocked`, `events.describe-event-source-nonexistent-not-found`, `events.describe-partner-event-source-nonexistent-not-found`, `events.e2e-partner-event-source-activation-to-ingestion-flow`, `events.list-partner-event-source-accounts-unknown-source-not-found`, `events.list-partner-event-sources-disabled-account-denied`, `events.partner-event-source-lifecycle-create-rejected-non-partner`, `events.put-partner-events-non-partner-account-denied`.
+- **Lambda targets** (3): `events.lambda-target-function-error-is-retried-by-lambda-and-never-dead-lettered-by-the-rule`, `events.lambda-target-is-invoked-asynchronously-and-its-on-success-destination-records-the-envelope`, `events__sqs.throttled-lambda-target-is-one-successful-attempt-with-no-retry-and-no-dlq`.
+- **Step Functions targets** (1): `events.express-and-standard-state-machine-targets-start-with-the-envelope-as-input-named-after-the-event-id`.
+- **Kinesis targets** (1): `events.kinesis-partition-key-path-renders-numbers-and-objects-as-json-and-an-absent-field-as-empty-object`.
+- **CloudWatch Logs targets** (1): `events.log-group-target-dead-letters-events-timed-too-old-or-too-far-ahead-while-a-current-event-is-written`.
+- **KMS keys** (customer-managed keys on buses, queues and topics) (5): `events.cmk-encrypted-bus-delivers-put-events-to-sqs-target`, `events.cmk-without-events-grant-rejected-on-create-and-update`, `events.disabled-bus-key-stops-delivery-dead-letters-encrypted-events-until-reenabled`, `events.sns-target-on-a-kms-encrypted-topic-dead-letters-as-no-permissions-until-the-key-policy-grants-events`, `events.sqs-target-encrypted-with-a-key-events-cannot-use-dead-letters-until-the-key-policy-grants-it`.
+- **CloudFormation stacks** (5): `events.deploy-cfn-bus-target-with-a-stack-created-execution-role-forwards-events-to-the-destination-bus`, `events.deploy-cfn-event-bus-policy-admits-the-named-role-and-a-stack-update-removing-it-denies-again`, `events.deploy-cfn-schedule-rule-fires-into-its-target-and-a-stack-update-disabling-it-stops-firing`, `events.deploy-cfn-target-dead-letter-config-captures-undeliverable-events-until-a-stack-update-adds-the-queue-policy`, `events.deploy-eventbus-rule-target-cfn-then-put-events-delivers`.
+
+Checks that need EventBridge to be regional (a bus per region, cross-region bus targets) are ported
+but stay known gaps (`FidelityGap.EventBridgeRegions`): EventBridge is regional only in a planned
+follow-up, together with SNS.
+
+One port passes although its Python check failed against the server:
+`events__sqs.custom-bus-fanout-is-at-least-once-and-order-independent`. Its own waits add up to
+about 57 seconds, and the server's real request latency pushed it past the runner's 60-second budget.
+On virtual time it finishes inside the budget, and every assertion holds.
+
 ## Known gaps
 
 A check we don't pass yet carries `[KnownFidelityGap(FidelityGap.X, "why")]` and is skipped, so the
@@ -60,7 +113,7 @@ suite stays green. To work on a gap, run the skipped tests too:
 LOCALSQSSNS_RUN_KNOWN_GAPS=1 dotnet run --project tests/LocalSqsSnsMessaging.Tests -c Release -- \
   --treenode-filter "/*/LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.*/*/*"
 
-# One service: .Sqs, .Sns or .SnsSqs
+# One service: .Sqs, .Sns, .SnsSqs, .Events or .EventsSqs
 LOCALSQSSNS_RUN_KNOWN_GAPS=1 dotnet run --project tests/LocalSqsSnsMessaging.Tests -c Release -- \
   --treenode-filter "/*/LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.Sns/*/*"
 
@@ -92,6 +145,8 @@ so the whole suite takes seconds:
 
 SNS runs on the same clock: deliveries to SQS happen during the Publish, and a FIFO topic's
 five-minute deduplication window and its message archive are measured on the bus's clock.
+EventBridge does too: deliveries happen during PutEvents, and the clock drives retries, replays and
+scheduled rules.
 
 Write new waits with `FidelityTime`, never `Task.Delay` or `Stopwatch`: a real wait doesn't
 move the bus's clock, so whatever it waits for never happens.

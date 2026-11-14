@@ -1,3 +1,4 @@
+using Amazon.EventBridge;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
@@ -13,10 +14,10 @@ namespace LocalSqsSnsMessaging.Tests.AwsEvaluationSuite;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Clients are real <see cref="AmazonSQSClient"/> and <see cref="AmazonSimpleNotificationServiceClient"/>
-/// instances wired to the bus through <see cref="InMemoryAwsHttpMessageHandler"/>, so every call goes
-/// through the same JSON-protocol (SQS) or Query-protocol (SNS) serialization a production SDK client
-/// would use.
+/// Clients are real <see cref="AmazonSQSClient"/>, <see cref="AmazonSimpleNotificationServiceClient"/> and
+/// <see cref="AmazonEventBridgeClient"/> instances wired to the bus through
+/// <see cref="InMemoryAwsHttpMessageHandler"/>, so every call goes through the same JSON-protocol (SQS,
+/// EventBridge) or Query-protocol (SNS) serialization a production SDK client would use.
 /// </para>
 /// <para>
 /// Each check runs on virtual time: the bus's clock is a <see cref="FakeTimeProvider"/>, and the
@@ -71,12 +72,14 @@ public sealed class FidelityContext : IAsyncDisposable
     private readonly List<Func<Task>> _cleanups = [];
     private readonly Dictionary<string, AmazonSQSClient> _clients = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AmazonSimpleNotificationServiceClient> _snsClients = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, AmazonEventBridgeClient> _eventsClients = new(StringComparer.Ordinal);
     private readonly FidelityStopwatch _clock;
     private readonly TimeSpan _budget;
     private readonly CancellationTokenSource _stopPump = new();
     private readonly Task _pump;
     private readonly RequestLatencyHandler _handler;
     private readonly RequestLatencyHandler _snsHandler;
+    private readonly RequestLatencyHandler _eventsHandler;
     private readonly IDisposable _noTraceContext;
     private readonly Dictionary<object, DateTimeOffset> _delayDeadlines = [];
     private readonly System.Diagnostics.Stopwatch _realClock = System.Diagnostics.Stopwatch.StartNew();
@@ -99,6 +102,7 @@ public sealed class FidelityContext : IAsyncDisposable
         };
         _handler = new RequestLatencyHandler(this, AwsServiceType.Sqs);
         _snsHandler = new RequestLatencyHandler(this, AwsServiceType.Sns);
+        _eventsHandler = new RequestLatencyHandler(this, AwsServiceType.EventBridge);
         CurrentContext.Value = this;
 
         // boto3 sends no trace context. The test run's SDK tracing would otherwise add a traceparent
@@ -192,6 +196,43 @@ public sealed class FidelityContext : IAsyncDisposable
         return client;
     }
 
+    /// <summary><c>ctx.client("events")</c>: the default EventBridge client, in <see cref="Region"/>.</summary>
+    public AmazonEventBridgeClient Events => EventsClient();
+
+    /// <summary>
+    /// <c>ctx.client("events", region=...)</c>. Clients are cached per combination, like the runner's.
+    /// Every client talks to this context's single bus.
+    /// </summary>
+    /// <param name="region">The client's signing region; defaults to <see cref="Region"/>.</param>
+    /// <param name="serviceUrl">An endpoint override.</param>
+    public AmazonEventBridgeClient EventsClient(string? region = null, string? serviceUrl = null)
+    {
+        region ??= Region;
+        serviceUrl ??= $"https://events.{region}.amazonaws.com";
+        var key = $"{region}|{serviceUrl}";
+        if (_eventsClients.TryGetValue(key, out var existing))
+        {
+            return existing;
+        }
+
+        var config = new AmazonEventBridgeConfig
+        {
+            ServiceURL = serviceUrl,
+            AuthenticationRegion = region,
+            MaxErrorRetry = 0,
+            HttpClientFactory = new VirtualTimeHttpClientFactory(_eventsHandler),
+        };
+        var client = new AmazonEventBridgeClient(new BasicAWSCredentials("test", "test"), config);
+        _eventsClients[key] = client;
+        return client;
+    }
+
+    /// <summary>
+    /// A role ARN for a check that creates an IAM role only to put its ARN on a rule or target. The
+    /// bus models no IAM: it accepts any well-formed role ARN and never assumes it.
+    /// </summary>
+    public string RoleArn(string roleName) => $"arn:aws:iam::{Account}:role/{roleName}";
+
     /// <summary>
     /// <c>ctx.client("sts").get_caller_identity()["Arn"]</c>: the bus models no IAM users, so every
     /// signed caller is the account's root user (as the Python run's STS shim answers).
@@ -225,12 +266,17 @@ public sealed class FidelityContext : IAsyncDisposable
     }
 
     /// <summary>
-    /// An <see cref="HttpClient"/> that sends raw HTTP requests straight to the bus's SQS handler,
-    /// for checks that POST hand-built requests instead of using an SDK client.
+    /// An <see cref="HttpClient"/> that sends raw HTTP requests straight to the bus's handler for
+    /// <paramref name="service"/>, for checks that POST hand-built requests instead of using an SDK client.
     /// </summary>
     public HttpClient RawHttpClient(AwsServiceType service = AwsServiceType.Sqs)
     {
-        var host = service == AwsServiceType.Sns ? "sns" : "sqs";
+        var host = service switch
+        {
+            AwsServiceType.Sns => "sns",
+            AwsServiceType.EventBridge => "events",
+            _ => "sqs",
+        };
 #pragma warning disable CA2000 // The HttpClient owns and disposes the handler.
         var client = new HttpClient(new RequestLatencyHandler(this, service))
 #pragma warning restore CA2000
@@ -417,11 +463,17 @@ public sealed class FidelityContext : IAsyncDisposable
             client.Dispose();
         }
 
+        foreach (var client in _eventsClients.Values)
+        {
+            client.Dispose();
+        }
+
         await _stopPump.CancelAsync();
         await _pump;
         _stopPump.Dispose();
         _handler.Dispose();
         _snsHandler.Dispose();
+        _eventsHandler.Dispose();
         _noTraceContext.Dispose();
     }
 
