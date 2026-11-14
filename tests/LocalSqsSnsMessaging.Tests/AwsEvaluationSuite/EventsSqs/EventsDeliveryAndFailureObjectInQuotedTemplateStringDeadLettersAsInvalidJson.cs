@@ -35,7 +35,6 @@ public sealed class EventsDeliveryAndFailureObjectInQuotedTemplateStringDeadLett
     [Test]
     [DisplayName("events__sqs.events-delivery-and-failure-object-in-quoted-template-string-dead-letters-as-invalid-json")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeDeliveryFailures, "Target DeadLetterConfig is not honoured: an InputTransformer rendering invalid JSON is never dead-lettered with ERROR_CODE=INVALID_JSON")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

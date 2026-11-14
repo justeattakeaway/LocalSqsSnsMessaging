@@ -22,7 +22,6 @@ public sealed class EventsDeliveryAndFailureDeletedQueueTargetDeadLettersNoResou
     [Test]
     [DisplayName("events__sqs.events-delivery-and-failure-deleted-queue-target-dead-letters-no-resource-while-sibling-delivers")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeDeliveryFailures, "Target DeadLetterConfig is not honoured: an event for a target whose queue was deleted is dropped instead of being dead-lettered with ERROR_CODE=NO_RESOURCE")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

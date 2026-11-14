@@ -29,7 +29,6 @@ public sealed class SnsTargetPublishesTheCompactEnvelopeAndAPlainTextTemplateKee
     [Test]
     [DisplayName("events.sns-target-publishes-the-compact-envelope-and-a-plain-text-template-keeps-its-quotes")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeSnsTargets, "a rule's SNS topic targets publish nothing (only SQS targets are delivered); AWS publishes one notification per target")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

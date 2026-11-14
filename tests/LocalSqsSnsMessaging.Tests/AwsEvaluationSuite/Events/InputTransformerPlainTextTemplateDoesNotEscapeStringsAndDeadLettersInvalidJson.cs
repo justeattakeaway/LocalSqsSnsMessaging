@@ -53,7 +53,6 @@ public sealed class InputTransformerPlainTextTemplateDoesNotEscapeStringsAndDead
     [Test]
     [DisplayName("events.input-transformer-plain-text-template-does-not-escape-strings-and-dead-letters-invalid-json")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeInput, "a JSON InputTemplate splices a string path unquoted ({\"m\": esc-...), so the JSON target's body is not JSON")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

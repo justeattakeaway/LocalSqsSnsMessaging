@@ -37,7 +37,6 @@ public sealed class BusToBusForwardingHappensOnceAndPreservesTheEnvelope
     [Test]
     [DisplayName("events__sqs.bus-to-bus-forwarding-happens-once-and-preserves-the-envelope")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.EventBridgeBusTargets, "A rule whose target is another event bus never forwards: the B->C control event never reaches the queue on bus C's rule")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

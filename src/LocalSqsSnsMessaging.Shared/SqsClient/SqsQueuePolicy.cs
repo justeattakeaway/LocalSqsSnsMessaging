@@ -27,8 +27,11 @@ internal static partial class SqsQueuePolicy
     private static readonly string[] PrincipalKeys = ["Principal", "NotPrincipal"];
 
     /// <summary>What the request is, as policy evaluation sees it.</summary>
-    /// <param name="Action">The SQS action, without the <c>sqs:</c> prefix (e.g. <c>SendMessage</c>).</param>
-    /// <param name="Resource">The queue's ARN.</param>
+    /// <param name="Action">
+    /// The SQS action, without the <c>sqs:</c> prefix (e.g. <c>SendMessage</c>), or another service's
+    /// action with its prefix (e.g. <c>sns:Publish</c>, to evaluate a topic's policy).
+    /// </param>
+    /// <param name="Resource">The queue's (or other resource's) ARN.</param>
     /// <param name="PrincipalAccount">The caller's account, or <see langword="null"/> for an anonymous caller.</param>
     /// <param name="PrincipalArn">The caller's ARN, or <see langword="null"/> for an anonymous caller.</param>
     /// <param name="SourceIp">Where the request came from, when known.</param>
