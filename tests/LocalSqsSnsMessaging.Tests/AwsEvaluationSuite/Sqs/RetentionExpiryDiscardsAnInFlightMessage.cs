@@ -27,7 +27,7 @@ public sealed class RetentionExpiryDiscardsAnInFlightMessage
     [Test]
     [DisplayName("sqs.retention-expiry-discards-an-in-flight-message")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Other, "a message older than MessageRetentionPeriod=60s came back after its 90s visibility timeout; it expired while in flight")]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

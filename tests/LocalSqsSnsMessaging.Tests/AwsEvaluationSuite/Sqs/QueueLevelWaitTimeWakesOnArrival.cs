@@ -22,7 +22,6 @@ public sealed class QueueLevelWaitTimeWakesOnArrival
     [Test]
     [DisplayName("sqs.queue-level-wait-time-wakes-on-arrival")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueueDelayAndWait, "the queue-level long poll returned no message")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

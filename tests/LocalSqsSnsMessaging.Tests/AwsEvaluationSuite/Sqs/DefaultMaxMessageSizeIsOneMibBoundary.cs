@@ -25,7 +25,7 @@ public sealed class DefaultMaxMessageSizeIsOneMibBoundary
     [Test]
     [DisplayName("sqs.default-max-message-size-is-one-mib-boundary")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DefaultAttributes, "GetQueueAttributes omits the default MaximumMessageSize (KeyError 'MaximumMessageSize')")]
+    [KnownFidelityGap(FidelityGap.Validation, "a 1048577-byte body is refused with code SqsService, not InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

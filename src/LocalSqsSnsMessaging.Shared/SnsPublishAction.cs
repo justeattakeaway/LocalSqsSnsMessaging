@@ -212,7 +212,16 @@ internal sealed class SnsPublishAction
     {
         if (!queue.IsFifo)
         {
-            queue.Messages.Enqueue(sqsMessage);
+            // SQS applies the subscribed queue's DelaySeconds to messages SNS delivers, too.
+            if (queue.DelaySeconds > 0)
+            {
+                queue.EnqueueAfterDelay(sqsMessage, TimeSpan.FromSeconds(queue.DelaySeconds), _bus.TimeProvider);
+            }
+            else
+            {
+                queue.Messages.Enqueue(sqsMessage);
+            }
+
             return;
         }
 

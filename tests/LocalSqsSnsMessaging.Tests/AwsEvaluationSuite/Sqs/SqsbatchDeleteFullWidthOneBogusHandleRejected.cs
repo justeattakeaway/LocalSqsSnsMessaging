@@ -42,6 +42,7 @@ public sealed class SqsbatchDeleteFullWidthOneBogusHandleRejected
     [Test]
     [DisplayName("sqs.sqsbatch-delete-full-width-one-bogus-handle-rejected")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     [KnownFidelityGap(FidelityGap.ErrorMessageText, "Failed['d7'].Message is 'Receipt handle AQEBsim2real-not-a-real-receipt-handle-0000000000 is invalid.', expected 'The input receipt handle is invalid.'")]
     public async Task Run(CancellationToken cancellationToken)
     {

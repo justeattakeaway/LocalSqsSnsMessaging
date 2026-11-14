@@ -25,6 +25,7 @@ public sealed class ServerSideMessageRetentionAutoExpunge
     [Test]
     [DisplayName("sqs.server-side-message-retention-auto-expunge")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

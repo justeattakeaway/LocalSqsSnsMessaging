@@ -25,7 +25,6 @@ public sealed class ConcLimitsAndFanoutInFlightDisjointAndCmvZeroRedeliversExact
     [Test]
     [DisplayName("sqs.conc-limits-and-fanout-in-flight-disjoint-and-cmv-zero-redelivers-exact-subset")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.LegacyReceiveAttributeNames, "ReceiveMessage with legacy AttributeNames=[ApproximateReceiveCount] returns no Attributes (KeyError 'Attributes')")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

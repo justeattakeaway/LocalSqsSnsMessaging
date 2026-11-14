@@ -58,7 +58,7 @@ public sealed class MessageRetentionPeriodExpiresUndeletedMessage
     [Test]
     [DisplayName("sqs.message-retention-period-expires-undeleted-message")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DefaultAttributes, "the control queue must carry the DEFAULT four-day retention or it is not a control: MessageRetentionPeriod=None")]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

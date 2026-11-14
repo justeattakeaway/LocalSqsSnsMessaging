@@ -14,6 +14,78 @@ internal sealed class SqsQueueResource
     public required string AccountId { get; init; }
     public bool IsFifo => Name.EndsWith(".fifo", StringComparison.OrdinalIgnoreCase);
     public TimeSpan VisibilityTimeout { get; set; }
+
+    /// <summary>The queue's <c>MessageRetentionPeriod</c>: how long after it was sent a message is discarded.</summary>
+    public TimeSpan MessageRetentionPeriod { get; set; } = TimeSpan.FromDays(4);
+
+    /// <summary>
+    /// Whether <paramref name="message"/> has outlived <see cref="MessageRetentionPeriod"/>, counted
+    /// from its <c>SentTimestamp</c>. Retention applies wherever the message is, in flight included.
+    /// </summary>
+    public bool IsExpired(Message message, DateTimeOffset now)
+    {
+        return message.Attributes?.TryGetValue("SentTimestamp", out var sentTimestamp) == true
+               && long.TryParse(sentTimestamp, NumberStyles.None, NumberFormatInfo.InvariantInfo, out var sentMilliseconds)
+               && DateTimeOffset.FromUnixTimeMilliseconds(sentMilliseconds) + MessageRetentionPeriod <= now;
+    }
+
+    /// <summary>
+    /// Discards every message that has outlived the retention period, waiting or in flight, so the
+    /// approximate counters stop reporting them. Delivery checks expiry per message as well, so
+    /// this only needs to run before the counters are read.
+    /// </summary>
+    public void RemoveExpiredMessages(DateTimeOffset now)
+    {
+        Messages.RemoveWhere(message => IsExpired(message, now));
+
+        foreach (var groupId in MessageGroups.Keys)
+        {
+            var groupLock = MessageGroupLocks.GetOrAdd(groupId, _ => new object());
+            lock (groupLock)
+            {
+                if (MessageGroups.TryGetValue(groupId, out var groupQueue) && groupQueue.Any(message => IsExpired(message, now)))
+                {
+                    MessageGroups[groupId] = new ConcurrentQueue<Message>(groupQueue.Where(message => !IsExpired(message, now)));
+                }
+            }
+        }
+
+        foreach (var (receiptHandle, (message, expirationJob)) in InFlightMessages)
+        {
+            if (IsExpired(message, now) && InFlightMessages.TryRemove(receiptHandle, out _))
+            {
+                expirationJob.Dispose();
+                if (IsFifo)
+                {
+                    ReleaseDeletedFifoMessage(message);
+                }
+            }
+        }
+    }
+
+    /// <summary>The queue's <c>DelaySeconds</c>: the delay applied to a message sent without its own.</summary>
+    public int DelaySeconds { get; set; }
+
+    /// <summary>The queue's <c>ReceiveMessageWaitTimeSeconds</c>: the long-poll wait of a receive that sets none.</summary>
+    public TimeSpan ReceiveMessageWaitTime { get; set; }
+
+    public DateTimeOffset CreatedTimestamp { get; init; }
+    public DateTimeOffset LastModifiedTimestamp { get; set; }
+
+    /// <summary>
+    /// Messages sent with a delay that has not elapsed yet. A message leaves the set when its delay
+    /// ends and it becomes visible, or when a purge discards it first.
+    /// </summary>
+    private readonly ConcurrentDictionary<Message, byte> _delayedMessages = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>Messages sent with a delay that has not elapsed yet (<c>ApproximateNumberOfMessagesDelayed</c>).</summary>
+    public int DelayedMessageCount => _delayedMessages.Count;
+
+    /// <summary>
+    /// Visible messages (<c>ApproximateNumberOfMessages</c>): the standard-queue store plus, for FIFO
+    /// queues, every message waiting in a message group.
+    /// </summary>
+    public int VisibleMessageCount => Messages.Count + MessageGroups.Values.Sum(group => group.Count);
     public string Arn => $"arn:aws:sqs:{Region}:{AccountId}:{Name}";
     public SqsQueueResource? ErrorQueue { get; set; }
     public int? MaxReceiveCount { get; set; }
@@ -81,6 +153,47 @@ internal sealed class SqsQueueResource
 
         SignalFifoMessageAvailable();
     }
+
+    /// <summary>
+    /// Makes <paramref name="message"/> visible once <paramref name="delay"/> has elapsed, counting it as
+    /// delayed until then. A FIFO message (non-null <paramref name="fifoMessageGroupId"/>) joins its group.
+    /// </summary>
+    public void EnqueueAfterDelay(Message message, TimeSpan delay, TimeProvider timeProvider, string? fifoMessageGroupId = null)
+    {
+        _delayedMessages.TryAdd(message, 0);
+        var start = timeProvider.GetTimestamp();
+        _ = EnqueueAfterDelayCore();
+
+        async Task EnqueueAfterDelayCore()
+        {
+            // Timers can fire a little early; a delayed message must never be visible before
+            // its full delay has elapsed.
+            var remaining = delay;
+            while (remaining > TimeSpan.Zero)
+            {
+                await timeProvider.Delay(remaining).ConfigureAwait(false);
+                remaining = delay - timeProvider.GetElapsedTime(start);
+            }
+
+            // Gone already when the queue was purged while the message was still delayed.
+            if (!_delayedMessages.TryRemove(message, out _))
+            {
+                return;
+            }
+
+            if (fifoMessageGroupId is null)
+            {
+                Messages.Enqueue(message);
+            }
+            else
+            {
+                EnqueueFifoMessage(fifoMessageGroupId, message);
+            }
+        }
+    }
+
+    /// <summary>Discards every message still waiting out its delay, as <c>PurgeQueue</c> does.</summary>
+    public void DiscardDelayedMessages() => _delayedMessages.Clear();
 
     /// <summary>
     /// Makes an in-flight message visible again (visibility timeout expired, or visibility

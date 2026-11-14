@@ -39,7 +39,7 @@ public sealed class QueueDelaySecondsAttributeBoundsRejected
     [Test]
     [DisplayName("sqs.queue-delay-seconds-attribute-bounds-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DefaultAttributes, "GetQueueAttributes on a fresh queue omits the default DelaySeconds, so the response has no Attributes: KeyError 'Attributes'")]
+    [KnownFidelityGap(FidelityGap.Validation, "SetQueueAttributes accepts an out-of-range DelaySeconds")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

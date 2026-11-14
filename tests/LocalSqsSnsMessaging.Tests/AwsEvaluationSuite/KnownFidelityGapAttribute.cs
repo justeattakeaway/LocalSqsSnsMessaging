@@ -9,15 +9,6 @@ public enum FidelityGap
     /// <summary>No <c>x-amzn-query-error</c> header, so SDKs see <c>QueueDoesNotExist</c> rather than <c>AWS.SimpleQueueService.NonExistentQueue</c>.</summary>
     QueryErrorCodes,
 
-    /// <summary><c>GetQueueAttributes</c> omits defaults (<c>VisibilityTimeout</c>, <c>MaximumMessageSize</c>, ...).</summary>
-    DefaultAttributes,
-
-    /// <summary>Queue-level <c>DelaySeconds</c> and <c>ReceiveMessageWaitTimeSeconds</c> are ignored.</summary>
-    QueueDelayAndWait,
-
-    /// <summary><c>ReceiveMessage</c> ignores the legacy <c>AttributeNames</c> parameter.</summary>
-    LegacyReceiveAttributeNames,
-
     /// <summary><c>MD5OfMessageAttributes</c> is never computed.</summary>
     MessageAttributesMd5,
 

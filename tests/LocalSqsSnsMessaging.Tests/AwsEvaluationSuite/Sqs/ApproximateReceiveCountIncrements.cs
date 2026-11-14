@@ -18,7 +18,6 @@ public sealed class ApproximateReceiveCountIncrements
     [Test]
     [DisplayName("sqs.approximate-receive-count-increments")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.LegacyReceiveAttributeNames, "ReceiveMessage with legacy AttributeNames=[ApproximateReceiveCount] returns no Attributes (KeyError 'Attributes')")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

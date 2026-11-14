@@ -20,6 +20,7 @@ public sealed class ChangeMessageVisibilityExtends
     [Test]
     [DisplayName("sqs.change-message-visibility-extends")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

@@ -17,7 +17,7 @@ public sealed class MessageRetentionPeriodExpiresOldMessages
     [Test]
     [DisplayName("sqs.message-retention-period-expires-old-messages")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Other, "message was not expired by the retention period within the expected window (last consecutive_clean=0)")]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

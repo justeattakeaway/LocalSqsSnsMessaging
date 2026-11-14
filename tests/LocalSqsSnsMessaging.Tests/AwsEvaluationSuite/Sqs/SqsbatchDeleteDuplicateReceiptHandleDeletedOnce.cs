@@ -31,6 +31,7 @@ public sealed class SqsbatchDeleteDuplicateReceiptHandleDeletedOnce
     [Test]
     [DisplayName("sqs.sqsbatch-delete-duplicate-receipt-handle-deleted-once")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     [KnownFidelityGap(FidelityGap.Batch, "Successful Ids ['dup-a'], expected both duplicate entries ['dup-a', 'dup-b']: a redundant delete of an already-deleted message is idempotent, not a failure")]
     public async Task Run(CancellationToken cancellationToken)
     {

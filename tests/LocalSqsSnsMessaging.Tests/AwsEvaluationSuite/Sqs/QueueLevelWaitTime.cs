@@ -20,7 +20,7 @@ public sealed class QueueLevelWaitTime
     [Test]
     [DisplayName("sqs.queue-level-wait-time")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueueDelayAndWait, "receive returned at once; queue-level ReceiveMessageWaitTimeSeconds=2 was not honored")]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

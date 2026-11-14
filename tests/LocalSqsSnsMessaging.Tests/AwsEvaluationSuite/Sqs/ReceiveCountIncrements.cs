@@ -15,7 +15,6 @@ public sealed class ReceiveCountIncrements
     [Test]
     [DisplayName("sqs.receive-count-increments")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.LegacyReceiveAttributeNames, "expected ApproximateReceiveCount=1, got None")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

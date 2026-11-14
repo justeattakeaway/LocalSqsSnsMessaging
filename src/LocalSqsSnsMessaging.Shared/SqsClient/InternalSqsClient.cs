@@ -115,6 +115,7 @@ internal sealed class InternalSqsClient
             ? TimeSpan.FromSeconds(int.Parse(visibilityTimeout, NumberFormatInfo.InvariantInfo))
             : TimeSpan.FromSeconds(30);
 
+        var now = _bus.TimeProvider.GetUtcNow();
         var queue = new SqsQueueResource
         {
             Name = request.QueueName!,
@@ -122,6 +123,8 @@ internal sealed class InternalSqsClient
             AccountId = _bus.CurrentAccountId,
             Url = queueUrl,
             VisibilityTimeout = visibilityTimeoutParsed,
+            CreatedTimestamp = now,
+            LastModifiedTimestamp = now,
             Attributes = []
         };
 
@@ -134,6 +137,7 @@ internal sealed class InternalSqsClient
 
             queue.Attributes[requestAttribute.Key] = requestAttribute.Value;
         }
+        AddDefaultAttributes(queue);
         queue.Attributes.Add("QueueArn", queue.Arn);
         UpdateQueueProperties(queue);
         _bus.Queues.TryAdd(request.QueueName!, queue);
@@ -146,6 +150,38 @@ internal sealed class InternalSqsClient
         };
 
         return Task.FromResult(response.SetCommonProperties());
+    }
+
+    /// <summary>
+    /// Fills in the attributes real SQS reports for a queue that was created without them, so
+    /// <c>GetQueueAttributes</c> returns its defaults rather than omitting them.
+    /// </summary>
+    private static void AddDefaultAttributes(SqsQueueResource queue)
+    {
+        var attributes = queue.Attributes!;
+        attributes.TryAdd(InternalQueueAttributeName.DelaySeconds, "0");
+        attributes.TryAdd(InternalQueueAttributeName.MaximumMessageSize, "1048576");
+        attributes.TryAdd(InternalQueueAttributeName.MessageRetentionPeriod, "345600");
+        attributes.TryAdd(InternalQueueAttributeName.ReceiveMessageWaitTimeSeconds, "0");
+        attributes.TryAdd(InternalQueueAttributeName.VisibilityTimeout, "30");
+
+        if (attributes.ContainsKey(InternalQueueAttributeName.KmsMasterKeyId))
+        {
+            attributes.TryAdd(InternalQueueAttributeName.KmsDataKeyReusePeriodSeconds, "300");
+            attributes.TryAdd(InternalQueueAttributeName.SqsManagedSseEnabled, "false");
+        }
+        else
+        {
+            attributes.TryAdd(InternalQueueAttributeName.SqsManagedSseEnabled, "true");
+        }
+
+        if (queue.IsFifo)
+        {
+            attributes.TryAdd(InternalQueueAttributeName.FifoQueue, "true");
+            attributes.TryAdd(InternalQueueAttributeName.ContentBasedDeduplication, "false");
+            attributes.TryAdd(InternalQueueAttributeName.DeduplicationScope, "queue");
+            attributes.TryAdd(InternalQueueAttributeName.FifoThroughputLimit, "perQueue");
+        }
     }
 
     public Task<DeleteMessageResponse> DeleteMessageAsync(DeleteMessageRequest request,
@@ -223,9 +259,15 @@ internal sealed class InternalSqsClient
         }
 
         List<Message>? messages = null;
-        var waitTime = TimeSpan.FromSeconds(request.WaitTimeSeconds.GetValueOrDefault());
-        var visibilityTimeout =
-            request.VisibilityTimeout.GetValueOrDefault() > 0 ? TimeSpan.FromSeconds(request.VisibilityTimeout.GetValueOrDefault()) : queue.VisibilityTimeout;
+        // A receive that names no wait time or visibility timeout takes the queue's; an explicit
+        // zero is honoured (a short poll, or a message that is visible again immediately).
+        var waitTime = request.WaitTimeSeconds is { } requestWaitTime
+            ? TimeSpan.FromSeconds(requestWaitTime)
+            : queue.ReceiveMessageWaitTime;
+        var visibilityTimeout = request.VisibilityTimeout is { } requestVisibilityTimeout
+            ? TimeSpan.FromSeconds(requestVisibilityTimeout)
+            : queue.VisibilityTimeout;
+        var requestedSystemAttributes = GetRequestedSystemAttributes(request);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -264,13 +306,13 @@ internal sealed class InternalSqsClient
                     // Handed to this receive alone; no other consumer raced us for it. If it
                     // was due for the dead-letter queue instead of delivery, the next loop
                     // iteration goes back to waiting.
-                    ReceiveMessageImpl(handedMessage, ref messages, queue, visibilityTimeout, request.MessageSystemAttributeNames);
+                    ReceiveMessageImpl(handedMessage, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
                 }
             }
         }
         else
         {
-            messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, request.MessageSystemAttributeNames);
+            messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, requestedSystemAttributes);
 
             if ((messages is null || messages.Count == 0) && waitTime > TimeSpan.Zero)
             {
@@ -302,7 +344,7 @@ internal sealed class InternalSqsClient
                     {
                     }
 
-                    messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, request.MessageSystemAttributeNames);
+                    messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, requestedSystemAttributes);
 
                     if (linkedToken.IsCancellationRequested)
                     {
@@ -322,7 +364,7 @@ internal sealed class InternalSqsClient
         {
             while (queue.Messages.TryDequeue(out var message))
             {
-                ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, request.MessageSystemAttributeNames);
+                ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
                 if (messages is not null && messages.Count >= (request.MaxNumberOfMessages ?? 1))
                 {
                     break;
@@ -331,12 +373,37 @@ internal sealed class InternalSqsClient
         }
     }
 
+    /// <summary>
+    /// The system attributes a receive asked for: <c>MessageSystemAttributeNames</c> together with
+    /// the deprecated <c>AttributeNames</c>, which SQS still honours.
+    /// </summary>
+    private static List<string>? GetRequestedSystemAttributes(ReceiveMessageRequest request)
+    {
+        if (request.AttributeNames is not { Count: > 0 } legacyNames)
+        {
+            return request.MessageSystemAttributeNames;
+        }
+
+        if (request.MessageSystemAttributeNames is not { Count: > 0 } systemNames)
+        {
+            return legacyNames;
+        }
+
+        return [.. systemNames.Union(legacyNames, StringComparer.Ordinal)];
+    }
+
     /// <returns>
     /// <see langword="true"/> when the message was delivered to the caller (and is now
     /// in flight); <see langword="false"/> when it was routed to the dead-letter queue.
     /// </returns>
     private bool ReceiveMessageImpl(Message message, ref List<Message>? messages, SqsQueueResource queue, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes)
     {
+        if (queue.IsExpired(message, _bus.TimeProvider.GetUtcNow()))
+        {
+            // Past the queue's retention period: discarded instead of delivered.
+            return false;
+        }
+
         if (IsAtMaxReceiveCount(message, queue) && queue.ErrorQueue is not null)
         {
             message.Attributes ??= [];
@@ -364,8 +431,11 @@ internal sealed class InternalSqsClient
         messages ??= [];
         messages.Add(clonedMessage);
 
-        queue.InFlightMessages[receiptHandle] = (message,
-            new SqsInflightMessageExpirationJob(receiptHandle, queue, visibilityTimeout, _bus.TimeProvider));
+        // Register the message as in flight before its visibility timer can fire: with a zero
+        // timeout the timer runs straight away and must find the message to return it.
+        var expirationJob = new SqsInflightMessageExpirationJob(receiptHandle, queue, Timeout.InfiniteTimeSpan, _bus.TimeProvider);
+        queue.InFlightMessages[receiptHandle] = (message, expirationJob);
+        expirationJob.UpdateTimeout(visibilityTimeout);
         return true;
     }
 
@@ -520,7 +590,7 @@ internal sealed class InternalSqsClient
             }
 
             if (!TryEnqueueFifoMessage(queue, message, request.MessageGroupId,
-                    request.MessageDeduplicationId, request.MessageBody!, out var existingMessageId))
+                    request.MessageDeduplicationId, request.MessageBody!, _bus.TimeProvider, out var existingMessageId))
             {
                 return Task.FromResult(new SendMessageResponse
                 {
@@ -531,12 +601,17 @@ internal sealed class InternalSqsClient
         }
         else
         {
-            var delaySeconds = request.DelaySeconds.GetValueOrDefault();
+            // A message's own DelaySeconds overrides the queue's, in either direction.
+            var delaySeconds = request.DelaySeconds ?? queue.DelaySeconds;
             if (delaySeconds > 0)
             {
-                message.Attributes ??= [];
-                message.Attributes["DelaySeconds"] = delaySeconds.ToString(NumberFormatInfo.InvariantInfo);
-                _ = SendDelayedMessageAsync(queue, message, delaySeconds);
+                if (request.DelaySeconds > 0)
+                {
+                    message.Attributes ??= [];
+                    message.Attributes["DelaySeconds"] = delaySeconds.ToString(NumberFormatInfo.InvariantInfo);
+                }
+
+                queue.EnqueueAfterDelay(message, TimeSpan.FromSeconds(delaySeconds), _bus.TimeProvider);
             }
             else
             {
@@ -607,7 +682,7 @@ internal sealed class InternalSqsClient
     /// originally carried the deduplication id.
     /// </returns>
     private static bool TryEnqueueFifoMessage(SqsQueueResource queue, Message message, string messageGroupId,
-        string? messageDeduplicationId, string messageBody, out string existingMessageId)
+        string? messageDeduplicationId, string messageBody, TimeProvider timeProvider, out string existingMessageId)
     {
         message.Attributes ??= [];
         message.Attributes["MessageGroupId"] = messageGroupId;
@@ -640,7 +715,18 @@ internal sealed class InternalSqsClient
             }
         }
 
-        queue.EnqueueFifoMessage(messageGroupId, message);
+        if (queue.DelaySeconds > 0)
+        {
+            // FIFO queues only support a queue-level delay. The sequence number is fixed at send
+            // time, as in SQS, not when the delay ends.
+            message.Attributes["SequenceNumber"] = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
+            queue.EnqueueAfterDelay(message, TimeSpan.FromSeconds(queue.DelaySeconds), timeProvider, messageGroupId);
+        }
+        else
+        {
+            queue.EnqueueFifoMessage(messageGroupId, message);
+        }
+
         existingMessageId = message.MessageId!;
         return true;
     }
@@ -722,12 +808,6 @@ internal sealed class InternalSqsClient
 #pragma warning restore CA1308
 
         return message;
-    }
-
-    private async Task SendDelayedMessageAsync(SqsQueueResource queue, Message message, int delaySeconds)
-    {
-        await _bus.TimeProvider.Delay(TimeSpan.FromSeconds(delaySeconds)).ConfigureAwait(true);
-        queue.Messages.Enqueue(message);
     }
 
     public Task<CancelMessageMoveTaskResponse> CancelMessageMoveTaskAsync(CancelMessageMoveTaskRequest request,
@@ -882,6 +962,10 @@ internal sealed class InternalSqsClient
             throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
         }
 
+        // Expired messages are otherwise only dropped when a receive reaches them; sweep them
+        // now so the approximate counters don't keep reporting them.
+        queue.RemoveExpiredMessages(_bus.TimeProvider.GetUtcNow());
+
         var attributes = new Dictionary<string, string>();
         var attributeNames = request.AttributeNames ?? [];
 
@@ -919,6 +1003,21 @@ internal sealed class InternalSqsClient
             queue.VisibilityTimeout = TimeSpan.FromSeconds(int.Parse(visibilityTimeout, NumberFormatInfo.InvariantInfo));
         }
 
+        if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.MessageRetentionPeriod, out var retentionSeconds) == true)
+        {
+            queue.MessageRetentionPeriod = TimeSpan.FromSeconds(int.Parse(retentionSeconds, NumberFormatInfo.InvariantInfo));
+        }
+
+        if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.DelaySeconds, out var delaySeconds) == true)
+        {
+            queue.DelaySeconds = int.Parse(delaySeconds, NumberFormatInfo.InvariantInfo);
+        }
+
+        if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.ReceiveMessageWaitTimeSeconds, out var waitTimeSeconds) == true)
+        {
+            queue.ReceiveMessageWaitTime = TimeSpan.FromSeconds(int.Parse(waitTimeSeconds, NumberFormatInfo.InvariantInfo));
+        }
+
         ExtractRedrivePolicy(queue);
     }
 
@@ -926,29 +1025,36 @@ internal sealed class InternalSqsClient
     {
         return attributeName == InternalQueueAttributeName.ApproximateNumberOfMessages
                || attributeName == InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible
-               || attributeName == InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed;
+               || attributeName == InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed
+               || attributeName == InternalQueueAttributeName.CreatedTimestamp
+               || attributeName == InternalQueueAttributeName.LastModifiedTimestamp;
     }
 
     private static void AddComputedAttributes(SqsQueueResource queue, Dictionary<string, string> attributes)
     {
-        attributes[InternalQueueAttributeName.ApproximateNumberOfMessages] = queue.Messages.Count.ToString(NumberFormatInfo.InvariantInfo);
-        attributes[InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible] = queue.InFlightMessages.Count.ToString(NumberFormatInfo.InvariantInfo);
-        attributes[InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed] = "0";
+        AddComputedAttribute(queue, InternalQueueAttributeName.ApproximateNumberOfMessages, attributes);
+        AddComputedAttribute(queue, InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible, attributes);
+        AddComputedAttribute(queue, InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed, attributes);
+        AddComputedAttribute(queue, InternalQueueAttributeName.CreatedTimestamp, attributes);
+        AddComputedAttribute(queue, InternalQueueAttributeName.LastModifiedTimestamp, attributes);
     }
 
     private static void AddComputedAttribute(SqsQueueResource queue, string attributeName, Dictionary<string, string> attributes)
     {
-        if (attributeName == InternalQueueAttributeName.ApproximateNumberOfMessages)
+        long? value = attributeName switch
         {
-            attributes[attributeName] = queue.Messages.Count.ToString(NumberFormatInfo.InvariantInfo);
-        }
-        else if (attributeName == InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible)
+            InternalQueueAttributeName.ApproximateNumberOfMessages => queue.VisibleMessageCount,
+            InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible => queue.InFlightMessages.Count,
+            InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed => queue.DelayedMessageCount,
+            // Epoch seconds, as SQS reports them.
+            InternalQueueAttributeName.CreatedTimestamp => queue.CreatedTimestamp.ToUnixTimeSeconds(),
+            InternalQueueAttributeName.LastModifiedTimestamp => queue.LastModifiedTimestamp.ToUnixTimeSeconds(),
+            _ => null,
+        };
+
+        if (value is not null)
         {
-            attributes[attributeName] = queue.InFlightMessages.Count.ToString(NumberFormatInfo.InvariantInfo);
-        }
-        else if (attributeName == InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed)
-        {
-            attributes[attributeName] = "0";
+            attributes[attributeName] = value.Value.ToString(NumberFormatInfo.InvariantInfo);
         }
     }
 
@@ -1113,6 +1219,7 @@ internal sealed class InternalSqsClient
         // FIFO messages live in per-group queues rather than the channel.
         queue.MessageGroups.Clear();
         queue.InFlightGroupCounts.Clear();
+        queue.DiscardDelayedMessages();
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.PurgeQueue, queue.Arn);
         return Task.FromResult(new PurgeQueueResponse().SetCommonProperties());
@@ -1218,18 +1325,22 @@ internal sealed class InternalSqsClient
                 // A duplicate is still reported as successful (matching real SQS), but carries the
                 // id of the message that originally claimed the deduplication id.
                 if (!TryEnqueueFifoMessage(queue, message, entry.MessageGroupId,
-                        entry.MessageDeduplicationId, entry.MessageBody!, out var existingMessageId))
+                        entry.MessageDeduplicationId, entry.MessageBody!, _bus.TimeProvider, out var existingMessageId))
                 {
                     reportedMessageId = existingMessageId;
                 }
             }
             else
             {
-                var entryDelaySeconds = entry.DelaySeconds.GetValueOrDefault();
+                var entryDelaySeconds = entry.DelaySeconds ?? queue.DelaySeconds;
                 if (entryDelaySeconds > 0)
                 {
-                    message.Attributes!["DelaySeconds"] = entryDelaySeconds.ToString(NumberFormatInfo.InvariantInfo);
-                    _ = SendDelayedMessageAsync(queue, message, entryDelaySeconds);
+                    if (entry.DelaySeconds > 0)
+                    {
+                        message.Attributes!["DelaySeconds"] = entryDelaySeconds.ToString(NumberFormatInfo.InvariantInfo);
+                    }
+
+                    queue.EnqueueAfterDelay(message, TimeSpan.FromSeconds(entryDelaySeconds), _bus.TimeProvider);
                 }
                 else
                 {
@@ -1267,6 +1378,7 @@ internal sealed class InternalSqsClient
             queue.Attributes[key] = value;
         }
 
+        queue.LastModifiedTimestamp = _bus.TimeProvider.GetUtcNow();
         UpdateQueueProperties(queue);
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.SetQueueAttributes, queue.Arn);

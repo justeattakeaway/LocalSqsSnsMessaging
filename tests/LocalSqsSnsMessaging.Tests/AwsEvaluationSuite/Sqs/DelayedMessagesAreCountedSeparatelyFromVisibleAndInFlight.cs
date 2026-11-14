@@ -46,7 +46,7 @@ public sealed class DelayedMessagesAreCountedSeparatelyFromVisibleAndInFlight
     [Test]
     [DisplayName("sqs.delayed-messages-are-counted-separately-from-visible-and-in-flight")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DefaultAttributes, "GetQueueAttributes omits the default DelaySeconds (KeyError 'DelaySeconds')")]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

@@ -55,7 +55,6 @@ public sealed class PerMessageDelaySecondsOverridesQueueDelayBothDirections
     [Test]
     [DisplayName("sqs.per-message-delay-seconds-overrides-queue-delay-both-directions")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DefaultAttributes, "the undelayed queue must carry the DEFAULT DelaySeconds=0: None")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

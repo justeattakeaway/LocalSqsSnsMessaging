@@ -28,6 +28,7 @@ public sealed class FifoGroupNaturalVisibilityExpiryKeepsGroupHeldAndRedeliversS
     [Test]
     [DisplayName("sqs.fifo-group-natural-visibility-expiry-keeps-group-held-and-redelivers-same-head")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

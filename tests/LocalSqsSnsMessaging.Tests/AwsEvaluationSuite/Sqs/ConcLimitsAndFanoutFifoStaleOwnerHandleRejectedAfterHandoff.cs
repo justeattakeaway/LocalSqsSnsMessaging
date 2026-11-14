@@ -24,7 +24,7 @@ public sealed class ConcLimitsAndFanoutFifoStaleOwnerHandleRejectedAfterHandoff
     [Test]
     [DisplayName("sqs.conc-limits-and-fanout-fifo-stale-owner-handle-rejected-after-handoff")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.LegacyReceiveAttributeNames, "ReceiveMessage with legacy AttributeNames=[ApproximateReceiveCount] returns no Attributes (KeyError 'Attributes')")]
+    [KnownFidelityGap(FidelityGap.ReceiptHandles, "a stale owner's DeleteMessage is refused with ReceiptHandleIsInvalid, not InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

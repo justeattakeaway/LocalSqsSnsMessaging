@@ -29,6 +29,7 @@ public sealed class VisibilityTimeoutShortenAndReceiveOverride
     [Test]
     [DisplayName("sqs.visibility-timeout-shorten-and-receive-override")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

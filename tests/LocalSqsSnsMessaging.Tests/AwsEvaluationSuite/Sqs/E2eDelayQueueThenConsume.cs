@@ -17,7 +17,6 @@ public sealed class E2eDelayQueueThenConsume
     [Test]
     [DisplayName("sqs.e2e-delay-queue-then-consume")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueueDelayAndWait, "queue-level DelaySeconds=8 is ignored: the message became visible before DelaySeconds elapsed")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

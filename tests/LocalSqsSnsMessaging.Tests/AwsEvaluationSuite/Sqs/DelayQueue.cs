@@ -19,7 +19,7 @@ public sealed class DelayQueue
     [Test]
     [DisplayName("sqs.delay-queue")]
     [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueueDelayAndWait, "queue-level DelaySeconds=2 is ignored: the message is receivable immediately after send")]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);

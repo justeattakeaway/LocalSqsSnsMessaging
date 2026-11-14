@@ -9,10 +9,13 @@ internal sealed class SqsInflightMessageExpirationJob : IDisposable
         public SqsQueueResource Queue { get; }
         public string ReceiptHandle { get; }
 
-        public TimerState(SqsQueueResource queue, string receiptHandle)
+        public TimeProvider TimeProvider { get; }
+
+        public TimerState(SqsQueueResource queue, string receiptHandle, TimeProvider timeProvider)
         {
             Queue = queue;
             ReceiptHandle = receiptHandle;
+            TimeProvider = timeProvider;
         }
     }
 
@@ -20,7 +23,8 @@ internal sealed class SqsInflightMessageExpirationJob : IDisposable
     {
         var state = new TimerState(
             queue ?? throw new ArgumentNullException(nameof(queue)),
-            receiptHandle ?? throw new ArgumentNullException(nameof(receiptHandle))
+            receiptHandle ?? throw new ArgumentNullException(nameof(receiptHandle)),
+            timeProvider
         );
 
         _timer = timeProvider.CreateTimer(VisibilityTimeoutCallback, state, timeout, Timeout.InfiniteTimeSpan);
@@ -37,7 +41,20 @@ internal sealed class SqsInflightMessageExpirationJob : IDisposable
         if (timerState.Queue.InFlightMessages.TryRemove(timerState.ReceiptHandle, out var inFlightMessage))
         {
             var (message, inFlightExpireCallback) = inFlightMessage;
-            timerState.Queue.ReturnInFlightMessage(message);
+            if (timerState.Queue.IsExpired(message, timerState.TimeProvider.GetUtcNow()))
+            {
+                // Retention runs from the send, so a message can expire while in flight; it is
+                // discarded rather than made visible again.
+                if (timerState.Queue.IsFifo)
+                {
+                    timerState.Queue.ReleaseDeletedFifoMessage(message);
+                }
+            }
+            else
+            {
+                timerState.Queue.ReturnInFlightMessage(message);
+            }
+
             inFlightExpireCallback.Dispose();
         }
     }

@@ -29,5 +29,9 @@ LOCALSQSSNS_RUN_KNOWN_GAPS=1 dotnet run --project tests/LocalSqsSnsMessaging.Tes
   --treenode-filter "/*/*/QueueLevelWaitTime/*"
 ```
 
+Checks that wait out a real AWS period (for example the 60 s minimum `MessageRetentionPeriod`)
+are in the `TimeBased` category. Leave them out for a fast loop:
+`--treenode-filter "/**[Category!=TimeBased]"`.
+
 When a fix makes a skipped test pass, delete its attribute. To find every test for one root cause,
 grep for its `FidelityGap` value: `grep -l "FidelityGap.DefaultAttributes" Sqs/*.cs`.
