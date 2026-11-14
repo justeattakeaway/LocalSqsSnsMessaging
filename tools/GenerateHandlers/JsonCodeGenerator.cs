@@ -252,7 +252,13 @@ internal sealed class JsonCodeGenerator
                 break;
 
             case "structure":
-                code.AppendLine($"        // TODO: Implement structure serialization for {csharpPropertyName} ({shapeName})");
+                code.AppendLine($"        if ({sourceVar}.{csharpPropertyName} != null)");
+                code.AppendLine("        {");
+                code.AppendLine($"            writer.WritePropertyName(\"{jsonPropertyName}\");");
+                code.AppendLine("            writer.WriteStartObject();");
+                GenerateStructureMembers(code, shapeName, $"{sourceVar}.{csharpPropertyName}", "            ");
+                code.AppendLine("            writer.WriteEndObject();");
+                code.AppendLine("        }");
                 break;
 
             default:
@@ -369,7 +375,12 @@ internal sealed class JsonCodeGenerator
                 break;
 
             case "structure":
-                code.AppendLine($"        // TODO: Implement structure deserialization for {csharpPropertyName} ({shapeName})");
+                code.AppendLine($"        if (root.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem) && {jsonPropertyName}Elem.ValueKind == JsonValueKind.Object)");
+                code.AppendLine("        {");
+                code.AppendLine($"            var {jsonPropertyName}Val = new {shapeName}();");
+                GenerateInlineStructureDeserialization(code, shapeName, $"{jsonPropertyName}Elem", $"{jsonPropertyName}Val", "            ");
+                code.AppendLine($"            request.{csharpPropertyName} = {jsonPropertyName}Val;");
+                code.AppendLine("        }");
                 break;
 
             default:
