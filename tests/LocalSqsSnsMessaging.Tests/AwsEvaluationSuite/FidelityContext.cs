@@ -58,8 +58,8 @@ public sealed class FidelityContext : IAsyncDisposable
 
     /// <summary>
     /// How long, in real time, the check must have been quiet (no request starting or finishing, no
-    /// delay starting) before the pump moves the clock. A check between two steps is not waiting
-    /// on time, and moving the clock under it would make its next step land late.
+    /// delay starting or ending) before the pump moves the clock. A check between two steps is not
+    /// waiting on time, and moving the clock under it would make its next step land late.
     /// </summary>
     public static readonly TimeSpan PumpQuietPeriod = TimeSpan.FromMilliseconds(10);
 
@@ -272,7 +272,13 @@ public sealed class FidelityContext : IAsyncDisposable
 
         try
         {
-            using var timer = Time.CreateTimer(_ => due.TrySetResult(), null, delay, Timeout.InfiniteTimeSpan);
+            // The check acts as soon as its delay ends: hold the clock for it, as for a request, so the
+            // pump doesn't move time on before a busy thread pool has run the continuation.
+            using var timer = Time.CreateTimer(_ =>
+            {
+                MarkActivity();
+                due.TrySetResult();
+            }, null, delay, Timeout.InfiniteTimeSpan);
             await using var registration = cancellationToken.Register(() => due.TrySetCanceled(cancellationToken));
             await due.Task;
         }
