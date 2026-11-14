@@ -142,7 +142,6 @@ public sealed class QueueMovesABatchOfExactMessagesAndTheDeletedQueueRefusesBatc
     [Test]
     [DisplayName("sqs.queue-moves-a-batch-of-exact-messages-and-the-deleted-queue-refuses-batch-calls")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "GetQueueAttributes on the deleted queue: expected AWS.SimpleQueueService.NonExistentQueue, got 'QueueDoesNotExist' after 40s")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

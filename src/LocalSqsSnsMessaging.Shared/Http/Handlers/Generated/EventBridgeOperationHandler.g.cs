@@ -570,10 +570,11 @@ internal static partial class EventBridgeOperationHandler
         }
         """;
 
-        return new HttpResponseMessage(statusCode)
+        var response = new HttpResponseMessage(statusCode)
         {
             Content = new StringContent(errorJson, Encoding.UTF8, "application/x-amz-json-1.1")
         };
+        return response;
     }
 }
 

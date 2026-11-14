@@ -16,7 +16,6 @@ public sealed class CliSqsNonexistentQueueError
     [Test]
     [DisplayName("sqs.cli-sqs-nonexistent-queue-error")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "SendMessage to a missing queue fails with QueueDoesNotExist, not AWS.SimpleQueueService.NonExistentQueue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

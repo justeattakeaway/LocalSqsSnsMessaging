@@ -792,6 +792,7 @@ internal static partial class SqsOperationHandler
 
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/x-amz-json-1.0";
+        context.Response.Headers[SqsQueryCompatibleErrors.HeaderName] = SqsQueryCompatibleErrors.HeaderValue(errorCode, (System.Net.HttpStatusCode)statusCode);
 
         var errorJson = $$"""
         {

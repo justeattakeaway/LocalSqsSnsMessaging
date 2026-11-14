@@ -19,7 +19,6 @@ public sealed class FifoContentBasedDedupIgnoresAttributes
     [Test]
     [DisplayName("sqs.fifo-content-based-dedup-ignores-attributes")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MessageAttributesMd5, "SendMessage did not echo MD5OfMessageAttributes (None, None); cannot establish that the two requests differed")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

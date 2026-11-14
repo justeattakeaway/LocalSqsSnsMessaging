@@ -21,7 +21,6 @@ public sealed class ChangeMessageVisibilityBatchRepeatedReceiptHandleLastEntryWi
     [Test]
     [DisplayName("sqs.change-message-visibility-batch-repeated-receipt-handle-last-entry-wins")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Batch, "after a CMV batch that extends then releases one receipt handle, DeleteMessage with that handle fails with ReceiptHandleIsInvalid")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

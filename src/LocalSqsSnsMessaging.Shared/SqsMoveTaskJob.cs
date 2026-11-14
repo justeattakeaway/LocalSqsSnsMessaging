@@ -14,50 +14,70 @@ internal sealed class SqsMoveTaskJob : IDisposable
     private static void MoveMessages(object? state)
     {
         var (sourceQueue, destinationQueue, bus, rateLimitPerSecond, taskHandle) = ((SqsQueueResource, SqsQueueResource?, InMemoryAwsBus, int?, string))state!;
-        var messagesMoveThisIteration = 0;
-        while (sourceQueue.Messages.TryDequeue(out var message))
+        if (!bus.MoveTasks.TryGetValue(taskHandle, out var moveTask) || moveTask.Status != MoveTaskStatus.Running)
         {
-            if (rateLimitPerSecond is not null && messagesMoveThisIteration >= rateLimitPerSecond)
-                break;
+            return;
+        }
 
-            var newMessage = CloneNewMessage(message);
-            if (destinationQueue is not null)
+        var messagesMovedThisIteration = 0;
+        string? failureReason = null;
+
+        // Check the rate limit before taking a message, so none is dequeued and then left behind.
+        while ((rateLimitPerSecond is null || messagesMovedThisIteration < rateLimitPerSecond)
+               && sourceQueue.Messages.TryDequeue(out var message))
+        {
+            var targetQueue = destinationQueue;
+            if (targetQueue is null
+                && !(message.Attributes?.TryGetValue(InternalMessageSystemAttributeName.DeadLetterQueueSourceArn, out var deadLetterSourceArn) == true
+                     && bus.Queues.TryGetValue(GetQueueNameFromArn(deadLetterSourceArn), out targetQueue)))
             {
-                destinationQueue.Messages.Enqueue(newMessage);
+                // A message that was not dead-lettered from a queue (sent to the DLQ directly, or
+                // its source deleted) has nowhere to go back to: SQS fails the task and leaves the
+                // message where it is.
+                sourceQueue.Messages.Enqueue(message);
+                failureReason = "CouldNotDetermineMessageSource";
+                break;
+            }
+
+            var newMessage = CloneNewMessage(message, bus.TimeProvider);
+            if (targetQueue!.IsFifo && newMessage.Attributes?.TryGetValue("MessageGroupId", out var groupId) == true && !string.IsNullOrEmpty(groupId))
+            {
+                targetQueue.EnqueueFifoMessage(groupId, newMessage);
             }
             else
             {
-                if (message.Attributes?.TryGetValue(InternalMessageSystemAttributeName.DeadLetterQueueSourceArn, out var deadLetterSourceArn) == true)
-                {
-                    var deadLetterSourceQueueName = GetQueueNameFromArn(deadLetterSourceArn);
-                    if (!bus.Queues.TryGetValue(deadLetterSourceQueueName, out var deadLetterSourceQueue))
-                    {
-                        continue;
-                    }
-                    deadLetterSourceQueue.Messages.Enqueue(newMessage);
-                }
+                targetQueue.Messages.Enqueue(newMessage);
             }
-            messagesMoveThisIteration++;
+
+            messagesMovedThisIteration++;
         }
 
-        if (bus.MoveTasks.TryGetValue(taskHandle, out var moveTask))
-        {
-            moveTask.ApproximateNumberOfMessagesMoved += messagesMoveThisIteration;
-            moveTask.ApproximateNumberOfMessagesToMove -= messagesMoveThisIteration;
+        moveTask.ApproximateNumberOfMessagesMoved += messagesMovedThisIteration;
 
-            if (moveTask.ApproximateNumberOfMessagesToMove <= 0)
-            {
-                moveTask.Status = MoveTaskStatus.Completed;
-                moveTask.MoveTaskJob.Dispose();
-            }
+        if (failureReason is not null)
+        {
+            moveTask.Status = MoveTaskStatus.Failed;
+            moveTask.FailureReason = failureReason;
+            moveTask.MoveTaskJob.Dispose();
+        }
+        else if (moveTask.ApproximateNumberOfMessagesMoved >= moveTask.ApproximateNumberOfMessagesToMove
+                 || (sourceQueue.Messages.Count == 0 && sourceQueue.InFlightMessages.IsEmpty))
+        {
+            // ApproximateNumberOfMessagesToMove stays at the count the task started with, as in SQS.
+            moveTask.Status = MoveTaskStatus.Completed;
+            moveTask.MoveTaskJob.Dispose();
         }
     }
 
-    private static Message CloneNewMessage(Message source)
+    /// <summary>
+    /// The copy a move task delivers: SQS gives a redriven message a new MessageId and SentTimestamp
+    /// and restarts its receive count.
+    /// </summary>
+    private static Message CloneNewMessage(Message source, TimeProvider timeProvider)
     {
         var newMessage = new Message
         {
-            MessageId = source.MessageId,
+            MessageId = Guid.NewGuid().ToString(),
             Body = source.Body,
             MD5OfBody = source.MD5OfBody,
             Attributes = source.Attributes.ToInitializedDictionary(),
@@ -67,7 +87,10 @@ internal sealed class SqsMoveTaskJob : IDisposable
 
         newMessage.Attributes?.Remove(InternalMessageSystemAttributeName.ApproximateFirstReceiveTimestamp);
         newMessage.Attributes?.Remove(InternalMessageSystemAttributeName.ApproximateReceiveCount);
-        newMessage.Attributes?.Remove(InternalMessageSystemAttributeName.SentTimestamp);
+        newMessage.Attributes?.Remove("SequenceNumber");
+        newMessage.Attributes ??= [];
+        newMessage.Attributes[InternalMessageSystemAttributeName.SentTimestamp] =
+            timeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
         return newMessage;
     }
 

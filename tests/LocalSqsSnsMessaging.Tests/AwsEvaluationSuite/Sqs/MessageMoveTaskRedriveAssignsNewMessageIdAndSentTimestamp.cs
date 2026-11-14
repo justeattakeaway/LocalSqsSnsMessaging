@@ -103,7 +103,6 @@ public sealed class MessageMoveTaskRedriveAssignsNewMessageIdAndSentTimestamp
     [Test]
     [DisplayName("sqs.message-move-task-redrive-assigns-new-message-id-and-sent-timestamp")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "move task never reaches a terminal status: condition not met within 54s; last value Status=RUNNING")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -54,6 +54,7 @@ internal sealed class SqsQueueResource
         {
             if (IsExpired(message, now) && InFlightMessages.TryRemove(receiptHandle, out _))
             {
+                LatestReceiptHandles.TryRemove(message.MessageId!, out _);
                 expirationJob.Dispose();
                 if (IsFifo)
                 {
@@ -91,11 +92,67 @@ internal sealed class SqsQueueResource
     public int? MaxReceiveCount { get; set; }
     public Dictionary<string, string>? Attributes { get; set; }
     public Dictionary<string, string>? Tags { get; set; }
+
+    /// <summary>Guards <see cref="Tags"/>: concurrent TagQueue/UntagQueue calls must not lose updates.</summary>
+    public object TagsLock { get; } = new();
     public SqsMessageStore Messages { get; } = new();
+
+    /// <summary>
+    /// The receipt handle each message was most recently received with, by MessageId. Only that
+    /// handle can act on the message: after its visibility timeout lapses it still re-hides or
+    /// deletes it, while an older handle is stale. The entry goes when the message leaves the queue.
+    /// </summary>
+    public ConcurrentDictionary<string, string> LatestReceiptHandles { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Takes a visible (waiting, not in flight) message out of the queue by id, so a lapsed receipt
+    /// handle can delete or re-hide it.
+    /// </summary>
+    public bool TryTakeVisibleMessage(string messageId, out Message? message)
+    {
+        Message? found = null;
+        Messages.RemoveWhere(candidate =>
+        {
+            if (found is null && candidate.MessageId == messageId)
+            {
+                found = candidate;
+                return true;
+            }
+
+            return false;
+        });
+
+        if (found is null && IsFifo)
+        {
+            foreach (var groupId in MessageGroups.Keys)
+            {
+                var groupLock = MessageGroupLocks.GetOrAdd(groupId, _ => new object());
+                lock (groupLock)
+                {
+                    if (MessageGroups.TryGetValue(groupId, out var groupQueue)
+                        && groupQueue.FirstOrDefault(candidate => candidate.MessageId == messageId) is { } match)
+                    {
+                        MessageGroups[groupId] = new ConcurrentQueue<Message>(groupQueue.Where(candidate => !ReferenceEquals(candidate, match)));
+                        found = match;
+                        break;
+                    }
+                }
+            }
+        }
+
+        message = found;
+        return found is not null;
+    }
     public ConcurrentDictionary<string, (Message, SqsInflightMessageExpirationJob)> InFlightMessages { get; } = new();
     public ConcurrentDictionary<string, ConcurrentQueue<Message>> MessageGroups { get; } = new();
     public ConcurrentDictionary<string, object> MessageGroupLocks { get; } = new();
     public ConcurrentDictionary<string, string> DeduplicationIds { get; } = new();
+
+    /// <summary>
+    /// The SequenceNumber each FIFO message was assigned at send, by MessageId, so a deduplicated
+    /// re-send can report the original's, as SQS does.
+    /// </summary>
+    public ConcurrentDictionary<string, string> SequenceNumbersByMessageId { get; } = new(StringComparer.Ordinal);
     public ConcurrentDictionary<string, ConcurrentDictionary<string, string>> MessageGroupDeduplicationIds { get; } = new();
 
     /// <summary>

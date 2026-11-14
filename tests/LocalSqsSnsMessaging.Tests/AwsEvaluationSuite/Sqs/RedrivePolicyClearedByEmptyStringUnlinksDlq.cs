@@ -23,7 +23,6 @@ public sealed class RedrivePolicyClearedByEmptyStringUnlinksDlq
     [Test]
     [DisplayName("sqs.redrive-policy-cleared-by-empty-string-unlinks-dlq")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "ListDeadLetterSourceQueues never lists the linked sources, so the 90s poll outlasts the 60s budget")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

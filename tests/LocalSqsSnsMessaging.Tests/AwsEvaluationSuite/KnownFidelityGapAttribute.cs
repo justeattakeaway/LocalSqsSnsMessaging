@@ -6,12 +6,6 @@ namespace LocalSqsSnsMessaging.Tests.AwsEvaluationSuite;
 /// </summary>
 public enum FidelityGap
 {
-    /// <summary>No <c>x-amzn-query-error</c> header, so SDKs see <c>QueueDoesNotExist</c> rather than <c>AWS.SimpleQueueService.NonExistentQueue</c>.</summary>
-    QueryErrorCodes,
-
-    /// <summary><c>MD5OfMessageAttributes</c> is never computed.</summary>
-    MessageAttributesMd5,
-
     /// <summary>Message move tasks never report a terminal status, and validation differs.</summary>
     MoveTasks,
 

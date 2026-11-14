@@ -20,7 +20,6 @@ public sealed class CliSqsCreateSendReceiveDelete
     [Test]
     [DisplayName("sqs.cli-sqs-create-send-receive-delete")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "Expected NonExistentQueue reading deleted queue, got: QueueDoesNotExist")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

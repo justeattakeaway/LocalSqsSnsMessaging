@@ -17,10 +17,6 @@ public sealed class ConcurrentTagQueueNoLostUpdates
     [Test]
     [DisplayName("sqs.concurrent-tag-queue-no-lost-updates")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    // Flaky against the server (the Python check failed in one of two runs); in-process the eight
-    // TagQueue calls really overlap and InternalSqsClient.TagQueueAsync races every time
-    // ('queue.Tags ??= []' and unsynchronized Dictionary writes).
-    [KnownFidelityGap(FidelityGap.Tags, "concurrent TagQueue calls lose tags: TagQueueAsync's 'queue.Tags ??= []' and Dictionary writes are unsynchronized")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

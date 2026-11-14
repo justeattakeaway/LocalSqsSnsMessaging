@@ -20,7 +20,6 @@ public sealed class NonexistentQueue
     [Test]
     [DisplayName("sqs.nonexistent-queue")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "expected AWS.SimpleQueueService.NonExistentQueue, got QueueDoesNotExist")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

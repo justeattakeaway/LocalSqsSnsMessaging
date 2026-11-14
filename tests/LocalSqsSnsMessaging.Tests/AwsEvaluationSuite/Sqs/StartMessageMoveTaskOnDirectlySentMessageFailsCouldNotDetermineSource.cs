@@ -27,7 +27,6 @@ public sealed class StartMessageMoveTaskOnDirectlySentMessageFailsCouldNotDeterm
     [Test]
     [DisplayName("sqs.start-message-move-task-on-directly-sent-message-fails-could-not-determine-source")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "a move task with no DestinationArn over a directly-sent message stays RUNNING instead of settling FAILED (CouldNotDetermineMessageSource)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -29,7 +29,6 @@ public sealed class RedrivenMessageRestartsItsReceiveCountAndDeadLettersAgainAtM
     [Test]
     [DisplayName("sqs.redriven-message-restarts-its-receive-count-and-dead-letters-again-at-maxreceivecount")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "the message move task never leaves RUNNING within 40s")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

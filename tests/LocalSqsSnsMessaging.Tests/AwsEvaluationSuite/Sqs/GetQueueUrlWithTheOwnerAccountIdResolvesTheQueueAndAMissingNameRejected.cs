@@ -22,7 +22,6 @@ public sealed class GetQueueUrlWithTheOwnerAccountIdResolvesTheQueueAndAMissingN
     [Test]
     [DisplayName("sqs.get-queue-url-with-the-owner-account-id-resolves-the-queue-and-a-missing-name-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "GetQueueUrl for a missing name: got QueueDoesNotExist: 'Queue sim2real-behav-q-missing-... does not exist.'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

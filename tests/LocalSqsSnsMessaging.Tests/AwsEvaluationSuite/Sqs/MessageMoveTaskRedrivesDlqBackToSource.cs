@@ -17,11 +17,14 @@ public sealed class MessageMoveTaskRedrivesDlqBackToSource
     /// </summary>
     [Test]
     [DisplayName("sqs.message-move-task-redrives-dlq-back-to-source")]
-    [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "Check timed out after 60.0s")]
+    // The move task has to wait out the DLQ copy's 30s visibility timeout, so this check spends ~53s
+    // of the runner's 60s budget; under a fully parallel test run that headroom isn't enough. It gets
+    // the real-time budget instead; what it asserts is unchanged.
+    [Timeout(FidelityContext.RealTimeBudgetMilliseconds)]
+    [Category(ApplyDefaultCategoryAttribute.TimeBasedCategoryName)]
     public async Task Run(CancellationToken cancellationToken)
     {
-        await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
+        await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);
         var sqs = ctx.Sqs;
         var dlqUrl = (await sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = FidelityContext.UniqueName("sim2real-sqs-mmt-dlq-") })).QueueUrl;
         ctx.OnCleanup(() => sqs.DeleteQueueAsync(dlqUrl));

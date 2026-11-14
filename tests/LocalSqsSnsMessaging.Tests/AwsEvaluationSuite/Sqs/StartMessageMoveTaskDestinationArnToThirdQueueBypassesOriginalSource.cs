@@ -23,7 +23,6 @@ public sealed class StartMessageMoveTaskDestinationArnToThirdQueueBypassesOrigin
     [Test]
     [DisplayName("sqs.start-message-move-task-destination-arn-to-third-queue-bypasses-original-source")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "the move task never reports a terminal status, so the check runs out of its 60s budget")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -18,7 +18,6 @@ public sealed class E2eDlqRedriveFullCycle
     [Test]
     [DisplayName("sqs.e2e-dlq-redrive-full-cycle")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "the move task never reports COMPLETED in ListMessageMoveTasks, so the check runs out its 60s budget")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

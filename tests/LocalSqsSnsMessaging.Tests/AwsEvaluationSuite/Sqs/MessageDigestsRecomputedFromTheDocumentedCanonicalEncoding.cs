@@ -144,7 +144,6 @@ public sealed class MessageDigestsRecomputedFromTheDocumentedCanonicalEncoding
     [Test]
     [DisplayName("sqs.message-digests-recomputed-from-the-documented-canonical-encoding")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MessageAttributesMd5, "MD5OfMessageAttributes does not match the documented canonical encoding of ['alpha', 'mid', 'zeta']: expected 215db4f5bea33de9ca671a922f158f57, got None")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

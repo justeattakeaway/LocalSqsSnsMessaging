@@ -25,7 +25,6 @@ public sealed class ConcurrentCreateQueueSameNameConvergesToOneQueue
     [Test]
     [DisplayName("sqs.concurrent-create-queue-same-name-converges-to-one-queue")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Tags, "the raced queue carries tags {}, expected {'sim2real': 'concurrent-create-queue-same-name-converges-to-one-queue'}")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

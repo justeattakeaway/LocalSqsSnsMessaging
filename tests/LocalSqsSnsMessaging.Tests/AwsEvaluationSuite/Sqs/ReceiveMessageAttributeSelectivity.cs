@@ -22,7 +22,6 @@ public sealed class ReceiveMessageAttributeSelectivity
     [Test]
     [DisplayName("sqs.receive-message-attribute-selectivity")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MessageAttributesMd5, "SendMessage with message attributes returns no MD5OfMessageAttributes ('MD5OfMessageAttributes' KeyError)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

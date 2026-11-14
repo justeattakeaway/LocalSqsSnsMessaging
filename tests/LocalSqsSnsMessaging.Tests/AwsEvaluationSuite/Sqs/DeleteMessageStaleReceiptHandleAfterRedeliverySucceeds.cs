@@ -23,7 +23,6 @@ public sealed class DeleteMessageStaleReceiptHandleAfterRedeliverySucceeds
     [Test]
     [DisplayName("sqs.delete-message-stale-receipt-handle-after-redelivery-succeeds")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ReceiptHandles, "DeleteMessage with the first-receive handle of a redelivered message is refused with ReceiptHandleIsInvalid")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

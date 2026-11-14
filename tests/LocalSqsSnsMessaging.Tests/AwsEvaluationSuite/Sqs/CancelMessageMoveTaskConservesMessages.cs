@@ -32,7 +32,6 @@ public sealed class CancelMessageMoveTaskConservesMessages
     [Test]
     [DisplayName("sqs.cancel-message-move-task-conserves-messages")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "a cancelled move task never settles on a terminal status; the check times out after 60s")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

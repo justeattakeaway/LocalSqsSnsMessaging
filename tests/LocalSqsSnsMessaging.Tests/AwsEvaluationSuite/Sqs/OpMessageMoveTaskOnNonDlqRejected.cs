@@ -61,7 +61,6 @@ public sealed class OpMessageMoveTaskOnNonDlqRejected
     [Test]
     [DisplayName("sqs.op-message-move-task-on-non-dlq-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "got {'Message': 'Source queue is not a dead letter queue.', 'Code': 'InvalidOperationException'}")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

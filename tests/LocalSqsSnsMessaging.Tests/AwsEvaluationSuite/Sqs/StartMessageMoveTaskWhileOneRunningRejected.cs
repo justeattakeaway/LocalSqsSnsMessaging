@@ -28,7 +28,6 @@ public sealed class StartMessageMoveTaskWhileOneRunningRejected
     [Test]
     [DisplayName("sqs.start-message-move-task-while-one-running-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "a second start on a busy source gave code 'UnsupportedOperation', expected InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

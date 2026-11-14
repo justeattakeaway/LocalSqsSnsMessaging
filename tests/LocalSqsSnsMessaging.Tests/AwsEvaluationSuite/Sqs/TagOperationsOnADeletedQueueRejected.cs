@@ -26,7 +26,6 @@ public sealed class TagOperationsOnADeletedQueueRejected
     [Test]
     [DisplayName("sqs.tag-operations-on-a-deleted-queue-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Tags, "the queue to be deleted did not carry its tags beforehand (CreateQueue drops tags)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

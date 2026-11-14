@@ -74,7 +74,6 @@ public sealed class OperationsFailAfterDelete
     [Test]
     [DisplayName("sqs.operations-fail-after-delete")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "expected AWS.SimpleQueueService.NonExistentQueue, got {'Message': 'Queue not found', 'Code': 'QueueDoesNotExist'}")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

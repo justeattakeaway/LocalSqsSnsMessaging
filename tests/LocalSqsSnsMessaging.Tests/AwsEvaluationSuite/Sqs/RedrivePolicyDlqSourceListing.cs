@@ -19,7 +19,6 @@ public sealed class RedrivePolicyDlqSourceListing
     [Test]
     [DisplayName("sqs.redrive-policy-dlq-source-listing")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "ListDeadLetterSourceQueues never lists the source, so the 180s poll outlasts the 60s budget")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

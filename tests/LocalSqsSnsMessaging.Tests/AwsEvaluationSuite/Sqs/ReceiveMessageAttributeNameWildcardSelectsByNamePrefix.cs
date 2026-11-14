@@ -31,7 +31,6 @@ public sealed class ReceiveMessageAttributeNameWildcardSelectsByNamePrefix
     [Test]
     [DisplayName("sqs.receive-message-attribute-name-wildcard-selects-by-name-prefix")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Other, "MessageAttributeNames=['order.*'] returned every attribute instead of selecting by case-sensitive name prefix")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

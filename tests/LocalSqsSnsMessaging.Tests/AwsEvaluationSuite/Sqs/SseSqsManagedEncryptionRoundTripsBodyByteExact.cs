@@ -38,7 +38,6 @@ public sealed class SseSqsManagedEncryptionRoundTripsBodyByteExact
     [Test]
     [DisplayName("sqs.sse-sqs-managed-encryption-round-trips-body-byte-exact")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MessageAttributesMd5, "SendMessage's response has no MD5OfMessageAttributes (KeyError 'MD5OfMessageAttributes')")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

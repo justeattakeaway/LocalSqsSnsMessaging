@@ -116,7 +116,6 @@ public sealed class QueueMovesAnExactMessageAndTheDeletedQueueIsGone
     [Test]
     [DisplayName("sqs.queue-moves-an-exact-message-and-the-deleted-queue-is-gone")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "Check timed out after 60.0s (the deleted queue answers QueueDoesNotExist, never AWS.SimpleQueueService.NonExistentQueue)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

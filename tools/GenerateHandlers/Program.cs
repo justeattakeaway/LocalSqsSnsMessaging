@@ -207,10 +207,16 @@ static void GenerateJsonHandler(string serviceName, string modelNamespace, JsonE
     code.AppendLine("        }");
     code.AppendLine("        \"\"\";");
     code.AppendLine();
-    code.AppendLine("        return new HttpResponseMessage(statusCode)");
+    code.AppendLine("        var response = new HttpResponseMessage(statusCode)");
     code.AppendLine("        {");
     code.AppendLine($"            Content = new StringContent(errorJson, Encoding.UTF8, \"{contentType}\")");
     code.AppendLine("        };");
+    if (serviceName == "Sqs")
+    {
+        // SQS is awsQueryCompatible: SDKs read the Query-protocol error code from this header.
+        code.AppendLine("        response.Headers.TryAddWithoutValidation(SqsQueryCompatibleErrors.HeaderName, SqsQueryCompatibleErrors.HeaderValue(errorCode, statusCode));");
+    }
+    code.AppendLine("        return response;");
     code.AppendLine("    }");
 
     code.AppendLine("}");
@@ -333,6 +339,11 @@ static void GenerateJsonHttpContextHandler(string serviceName, string modelNames
     code.AppendLine();
     code.AppendLine("        context.Response.StatusCode = statusCode;");
     code.AppendLine("        context.Response.ContentType = \"application/x-amz-json-1.0\";");
+    if (serviceName == "Sqs")
+    {
+        // SQS is awsQueryCompatible: SDKs read the Query-protocol error code from this header.
+        code.AppendLine("        context.Response.Headers[SqsQueryCompatibleErrors.HeaderName] = SqsQueryCompatibleErrors.HeaderValue(errorCode, (System.Net.HttpStatusCode)statusCode);");
+    }
     code.AppendLine();
     code.AppendLine("        var errorJson = $$\"\"\"");
     code.AppendLine("        {");

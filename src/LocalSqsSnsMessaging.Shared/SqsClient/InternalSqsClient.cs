@@ -36,45 +36,73 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
 
-        if (!IsReceiptHandleValid(request.ReceiptHandle!, queue.Arn))
+        var error = ChangeVisibilityByReceiptHandle(queue, request.ReceiptHandle,
+            TimeSpan.FromSeconds(request.VisibilityTimeout.GetValueOrDefault()));
+        if (error is not null)
         {
-            throw new InternalReceiptHandleIsInvalidException($"Receipt handle {request.ReceiptHandle} is invalid.");
-        }
-
-        if (queue.InFlightMessages.TryGetValue(request.ReceiptHandle!, out var inFlightInfo))
-        {
-            var (message, expirationHandler) = inFlightInfo;
-            var visibilityTimeout = TimeSpan.FromSeconds(request.VisibilityTimeout.GetValueOrDefault());
-
-            if (visibilityTimeout == TimeSpan.Zero)
-            {
-                if (queue.InFlightMessages.TryRemove(request.ReceiptHandle!, out var removedInfo))
-                {
-                    removedInfo.Item2.Dispose();
-                    // Same path as visibility-timeout expiry: for FIFO queues the message is
-                    // re-inserted at its original position in the group (not appended) and
-                    // the group's in-flight slot is released.
-                    queue.ReturnInFlightMessage(message);
-                }
-            }
-            else
-            {
-                expirationHandler.UpdateTimeout(visibilityTimeout);
-            }
-
-            _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ChangeMessageVisibility, queue.Arn);
-            return Task.FromResult(new ChangeMessageVisibilityResponse().SetCommonProperties());
+            throw error;
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ChangeMessageVisibility, queue.Arn);
         return Task.FromResult(new ChangeMessageVisibilityResponse().SetCommonProperties());
     }
 
-    private static bool IsReceiptHandleValid(string receiptHandle, string queueArn)
+    /// <summary>What a receipt handle refers to on a queue, as SQS distinguishes it.</summary>
+    private enum ReceiptHandleState
     {
+        /// <summary>The message is in flight under this handle.</summary>
+        Current,
+
+        /// <summary>The handle is the message's latest, but its visibility timeout lapsed: the message is visible again.</summary>
+        Lapsed,
+
+        /// <summary>The message has been received again since, under a newer handle.</summary>
+        Stale,
+
+        /// <summary>The handle was minted by this queue, but its message is no longer here (deleted, expired, moved).</summary>
+        Gone,
+
+        /// <summary>Not a handle this queue minted.</summary>
+        Invalid,
+    }
+
+    private static ReceiptHandleState ResolveReceiptHandle(SqsQueueResource queue, string? receiptHandle, out string? messageId)
+    {
+        messageId = null;
+        if (receiptHandle is null)
+        {
+            return ReceiptHandleState.Invalid;
+        }
+
+        if (queue.InFlightMessages.ContainsKey(receiptHandle))
+        {
+            return ReceiptHandleState.Current;
+        }
+
+        if (!TryParseReceiptHandle(receiptHandle, out var queueArn, out messageId)
+            || !queueArn.Equals(queue.Arn, StringComparison.OrdinalIgnoreCase))
+        {
+            return ReceiptHandleState.Invalid;
+        }
+
+        if (!queue.LatestReceiptHandles.TryGetValue(messageId, out var latestReceiptHandle))
+        {
+            return ReceiptHandleState.Gone;
+        }
+
+        return string.Equals(latestReceiptHandle, receiptHandle, StringComparison.Ordinal)
+            ? ReceiptHandleState.Lapsed
+            : ReceiptHandleState.Stale;
+    }
+
+    /// <summary>Reads the queue ARN and MessageId out of a receipt handle minted by <see cref="CreateReceiptHandle"/>.</summary>
+    private static bool TryParseReceiptHandle(string receiptHandle, out string queueArn, out string messageId)
+    {
+        queueArn = string.Empty;
+        messageId = string.Empty;
 #if NETSTANDARD2_0
         byte[] buffer;
         try
@@ -95,12 +123,116 @@ internal sealed class InternalSqsClient
         }
         var decoded = Encoding.UTF8.GetString(buffer[..written]);
 #endif
-        var parts = decoded.Split(' ');
-        return parts switch
+        if (decoded.Split(' ') is not [_, var arn, var id, _])
         {
-            [_, var secondItem, _, _] => secondItem.Equals(queueArn, StringComparison.OrdinalIgnoreCase),
-            _ => false
-        };
+            return false;
+        }
+
+        queueArn = arn;
+        messageId = id;
+        return true;
+    }
+
+    private static InternalInvalidParameterValueException ExpiredReceiptHandle(string receiptHandle) =>
+        new($"Value {receiptHandle} for parameter ReceiptHandle is invalid. Reason: The receipt handle has expired.");
+
+    /// <summary>
+    /// Deletes the message a receipt handle refers to, following SQS: the current or lapsed handle
+    /// deletes it; a handle whose message is already gone succeeds; a stale handle succeeds without
+    /// deleting on a standard queue and is refused on a FIFO queue.
+    /// </summary>
+    /// <returns>The error to report, or <see langword="null"/> on success.</returns>
+    private static AwsServiceException? DeleteByReceiptHandle(SqsQueueResource queue, string? receiptHandle)
+    {
+        switch (ResolveReceiptHandle(queue, receiptHandle, out var messageId))
+        {
+            case ReceiptHandleState.Current:
+                if (queue.InFlightMessages.TryRemove(receiptHandle!, out var inFlightInfo))
+                {
+                    var (message, expirationHandler) = inFlightInfo;
+                    queue.LatestReceiptHandles.TryRemove(message.MessageId!, out _);
+                    FinalizeDeletedMessage(queue, message, expirationHandler);
+                }
+
+                return null;
+            case ReceiptHandleState.Lapsed:
+                if (queue.TryTakeVisibleMessage(messageId!, out var visibleMessage))
+                {
+                    queue.LatestReceiptHandles.TryRemove(messageId!, out _);
+                    if (queue.IsFifo && visibleMessage!.Attributes?.TryGetValue(InternalMessageSystemAttributeName.MessageDeduplicationId, out var deduplicationId) == true)
+                    {
+                        queue.DeduplicationIds.TryRemove(deduplicationId, out _);
+                    }
+                }
+
+                return null;
+            case ReceiptHandleState.Stale:
+                return queue.IsFifo ? ExpiredReceiptHandle(receiptHandle!) : null;
+            case ReceiptHandleState.Gone:
+                return null;
+            default:
+                return new InternalReceiptHandleIsInvalidException($"Receipt handle {receiptHandle} is invalid.");
+        }
+    }
+
+    /// <summary>
+    /// Changes the visibility of the message a receipt handle refers to, following SQS: the current
+    /// handle changes it; a lapsed handle re-hides the visible message; a stale handle, or one whose
+    /// message is gone, is refused.
+    /// </summary>
+    /// <returns>The error to report, or <see langword="null"/> on success.</returns>
+    private AwsServiceException? ChangeVisibilityByReceiptHandle(SqsQueueResource queue, string? receiptHandle, TimeSpan visibilityTimeout)
+    {
+        switch (ResolveReceiptHandle(queue, receiptHandle, out var messageId))
+        {
+            case ReceiptHandleState.Current:
+                if (queue.InFlightMessages.TryGetValue(receiptHandle!, out var inFlightInfo))
+                {
+                    var (message, expirationHandler) = inFlightInfo;
+                    if (visibilityTimeout == TimeSpan.Zero)
+                    {
+                        if (queue.InFlightMessages.TryRemove(receiptHandle!, out var removedInfo))
+                        {
+                            removedInfo.Item2.Dispose();
+                            // Same path as visibility-timeout expiry: for FIFO queues the message is
+                            // re-inserted at its original position in the group (not appended) and
+                            // the group's in-flight slot is released.
+                            queue.ReturnInFlightMessage(message);
+                        }
+                    }
+                    else
+                    {
+                        expirationHandler.UpdateTimeout(visibilityTimeout);
+                    }
+                }
+
+                return null;
+            case ReceiptHandleState.Lapsed:
+                if (visibilityTimeout > TimeSpan.Zero && queue.TryTakeVisibleMessage(messageId!, out var visibleMessage))
+                {
+                    // The handle is still the message's latest, so it hides the message again.
+                    var expirationJob = new SqsInflightMessageExpirationJob(receiptHandle!, queue, Timeout.InfiniteTimeSpan, _bus.TimeProvider);
+                    if (queue.IsFifo && visibleMessage!.Attributes?.TryGetValue("MessageGroupId", out var groupId) == true)
+                    {
+                        lock (queue.MessageGroupLocks.GetOrAdd(groupId, _ => new object()))
+                        {
+                            queue.InFlightGroupCounts.AddOrUpdate(groupId, 1, (_, count) => count + 1);
+                        }
+                    }
+
+                    queue.InFlightMessages[receiptHandle!] = (visibleMessage!, expirationJob);
+                    expirationJob.UpdateTimeout(visibilityTimeout);
+                }
+
+                return null;
+            case ReceiptHandleState.Stale:
+                return ExpiredReceiptHandle(receiptHandle!);
+            case ReceiptHandleState.Gone:
+                return new InternalInvalidParameterValueException(
+                    $"Value {receiptHandle} for parameter ReceiptHandle is invalid. Reason: Message does not exist or is not available for visibility timeout change.");
+            default:
+                return new InternalReceiptHandleIsInvalidException($"Receipt handle {receiptHandle} is invalid.");
+        }
     }
 
     public Task<CreateQueueResponse> CreateQueueAsync(CreateQueueRequest request,
@@ -125,7 +257,8 @@ internal sealed class InternalSqsClient
             VisibilityTimeout = visibilityTimeoutParsed,
             CreatedTimestamp = now,
             LastModifiedTimestamp = now,
-            Attributes = []
+            Attributes = [],
+            Tags = request.Tags is { Count: > 0 } tags ? new Dictionary<string, string>(tags) : null
         };
 
         foreach (var requestAttribute in request.Attributes ?? [])
@@ -192,19 +325,17 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
 
-        if (queue.InFlightMessages.TryRemove(request.ReceiptHandle!, out var inFlightInfo))
+        var error = DeleteByReceiptHandle(queue, request.ReceiptHandle);
+        if (error is not null)
         {
-            var (message, expirationHandler) = inFlightInfo;
-            FinalizeDeletedMessage(queue, message, expirationHandler);
-
-            _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.DeleteMessage, queue.Arn);
-            return Task.FromResult(new DeleteMessageResponse().SetCommonProperties());
+            throw error;
         }
 
-        throw new InternalReceiptHandleIsInvalidException($"Receipt handle {request.ReceiptHandle} is invalid.");
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.DeleteMessage, queue.Arn);
+        return Task.FromResult(new DeleteMessageResponse().SetCommonProperties());
     }
 
     /// <summary>
@@ -223,6 +354,7 @@ internal sealed class InternalSqsClient
         }
 
         queue.ReleaseDeletedFifoMessage(message);
+        queue.SequenceNumbersByMessageId.TryRemove(message.MessageId!, out _);
 
         if (message.Attributes!.TryGetValue("MessageDeduplicationId", out var deduplicationId))
         {
@@ -236,9 +368,12 @@ internal sealed class InternalSqsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
-        _bus.Queues.TryRemove(queueName, out var removedQueue);
-        var queueArn = removedQueue?.Arn ?? $"arn:aws:sqs:{_bus.CurrentRegion}:{_bus.CurrentAccountId}:{queueName}";
-        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.DeleteQueue, queueArn);
+        if (!_bus.Queues.TryRemove(queueName, out var removedQueue))
+        {
+            throw new InternalQueueDoesNotExistException();
+        }
+
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.DeleteQueue, removedQueue.Arn);
         return Task.FromResult(new DeleteQueueResponse().SetCommonProperties());
     }
 
@@ -255,7 +390,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException ($"Queue '{queueName}' does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
 
         List<Message>? messages = null;
@@ -268,6 +403,7 @@ internal sealed class InternalSqsClient
             ? TimeSpan.FromSeconds(requestVisibilityTimeout)
             : queue.VisibilityTimeout;
         var requestedSystemAttributes = GetRequestedSystemAttributes(request);
+        var requestedMessageAttributes = request.MessageAttributeNames;
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -306,13 +442,13 @@ internal sealed class InternalSqsClient
                     // Handed to this receive alone; no other consumer raced us for it. If it
                     // was due for the dead-letter queue instead of delivery, the next loop
                     // iteration goes back to waiting.
-                    ReceiveMessageImpl(handedMessage, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
+                    ReceiveMessageImpl(handedMessage, ref messages, queue, visibilityTimeout, requestedSystemAttributes, requestedMessageAttributes);
                 }
             }
         }
         else
         {
-            messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, requestedSystemAttributes);
+            messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, requestedSystemAttributes, requestedMessageAttributes);
 
             if ((messages is null || messages.Count == 0) && waitTime > TimeSpan.Zero)
             {
@@ -344,7 +480,7 @@ internal sealed class InternalSqsClient
                     {
                     }
 
-                    messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, requestedSystemAttributes);
+                    messages = ReceiveFifoMessages(queue, request.MaxNumberOfMessages ?? 1, visibilityTimeout, requestedSystemAttributes, requestedMessageAttributes);
 
                     if (linkedToken.IsCancellationRequested)
                     {
@@ -364,7 +500,7 @@ internal sealed class InternalSqsClient
         {
             while (queue.Messages.TryDequeue(out var message))
             {
-                ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes);
+                ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes, requestedMessageAttributes);
                 if (messages is not null && messages.Count >= (request.MaxNumberOfMessages ?? 1))
                 {
                     break;
@@ -396,11 +532,12 @@ internal sealed class InternalSqsClient
     /// <see langword="true"/> when the message was delivered to the caller (and is now
     /// in flight); <see langword="false"/> when it was routed to the dead-letter queue.
     /// </returns>
-    private bool ReceiveMessageImpl(Message message, ref List<Message>? messages, SqsQueueResource queue, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes)
+    private bool ReceiveMessageImpl(Message message, ref List<Message>? messages, SqsQueueResource queue, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes, List<string>? requestedMessageAttributes)
     {
         if (queue.IsExpired(message, _bus.TimeProvider.GetUtcNow()))
         {
             // Past the queue's retention period: discarded instead of delivered.
+            queue.LatestReceiptHandles.TryRemove(message.MessageId!, out _);
             return false;
         }
 
@@ -408,6 +545,7 @@ internal sealed class InternalSqsClient
         {
             message.Attributes ??= [];
             message.Attributes[InternalMessageSystemAttributeName.DeadLetterQueueSourceArn] = queue.Arn;
+            queue.LatestReceiptHandles.TryRemove(message.MessageId!, out _);
             EnqueueMessage(queue.ErrorQueue, message);
             return false;
         }
@@ -426,6 +564,7 @@ internal sealed class InternalSqsClient
 
         var clonedMessage = CloneMessage(message);
         FilterSystemAttributes(clonedMessage, requestedSystemAttributes);
+        FilterMessageAttributes(clonedMessage, requestedMessageAttributes);
         var receiptHandle = CreateReceiptHandle(message, queue);
         clonedMessage.ReceiptHandle = receiptHandle;
         messages ??= [];
@@ -434,12 +573,13 @@ internal sealed class InternalSqsClient
         // Register the message as in flight before its visibility timer can fire: with a zero
         // timeout the timer runs straight away and must find the message to return it.
         var expirationJob = new SqsInflightMessageExpirationJob(receiptHandle, queue, Timeout.InfiniteTimeSpan, _bus.TimeProvider);
+        queue.LatestReceiptHandles[message.MessageId!] = receiptHandle;
         queue.InFlightMessages[receiptHandle] = (message, expirationJob);
         expirationJob.UpdateTimeout(visibilityTimeout);
         return true;
     }
 
-    private List<Message>? ReceiveFifoMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes)
+    private List<Message>? ReceiveFifoMessages(SqsQueueResource queue, int maxMessages, TimeSpan visibilityTimeout, List<string>? requestedSystemAttributes, List<string>? requestedMessageAttributes)
     {
         List<Message>? messages = null;
 
@@ -473,7 +613,7 @@ internal sealed class InternalSqsClient
 
                 while (groupQueue.TryDequeue(out var message))
                 {
-                    if (ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes))
+                    if (ReceiveMessageImpl(message, ref messages, queue, visibilityTimeout, requestedSystemAttributes, requestedMessageAttributes))
                     {
                         queue.InFlightGroupCounts.AddOrUpdate(groupId, 1, (_, count) => count + 1);
                     }
@@ -536,6 +676,40 @@ internal sealed class InternalSqsClient
         message.Attributes[InternalMessageSystemAttributeName.ApproximateReceiveCount] = newCount;
     }
 
+    /// <summary>
+    /// Keeps only the message attributes the receive asked for, as SQS does: none unless named,
+    /// all for <c>All</c> or <c>.*</c>, names starting with the prefix for <c>prefix.*</c>, and
+    /// otherwise exact (case-sensitive) names. The digest covers just the attributes returned.
+    /// </summary>
+    private static void FilterMessageAttributes(Message message, List<string>? requestedMessageAttributes)
+    {
+        if (message.MessageAttributes is { Count: > 0 } attributes && requestedMessageAttributes is { Count: > 0 })
+        {
+            var returnAll = requestedMessageAttributes.Exists(name => name is "All" or ".*");
+            message.MessageAttributes = returnAll
+                ? attributes
+                : attributes
+                    .Where(attribute => requestedMessageAttributes.Exists(name => MatchesAttributeName(name, attribute.Key)))
+                    .ToDictionary();
+        }
+        else
+        {
+            message.MessageAttributes = null;
+        }
+
+        if (message.MessageAttributes is { Count: 0 })
+        {
+            message.MessageAttributes = null;
+        }
+
+        message.MD5OfMessageAttributes = SqsMessageAttributeDigest.Compute(message.MessageAttributes);
+
+        static bool MatchesAttributeName(string requested, string attributeName) =>
+            requested.EndsWith(".*", StringComparison.Ordinal)
+                ? attributeName.StartsWith(requested[..^2], StringComparison.Ordinal)
+                : string.Equals(requested, attributeName, StringComparison.Ordinal);
+    }
+
     private static void FilterSystemAttributes(Message message, List<string>? requestedSystemAttributes)
     {
         if (requestedSystemAttributes is null || requestedSystemAttributes.Count == 0)
@@ -570,7 +744,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException("Queue not found");
+            throw new InternalQueueDoesNotExistException();
         }
 
         var message = CreateMessage(request.MessageBody!, request.MessageAttributes, request.MessageSystemAttributes);
@@ -595,7 +769,10 @@ internal sealed class InternalSqsClient
                 return Task.FromResult(new SendMessageResponse
                 {
                     MessageId = existingMessageId,
-                    MD5OfMessageBody = message.MD5OfBody
+                    SequenceNumber = queue.SequenceNumbersByMessageId.GetValueOrDefault(existingMessageId),
+                    MD5OfMessageBody = message.MD5OfBody,
+                    MD5OfMessageAttributes = SqsMessageAttributeDigest.Compute(request.MessageAttributes),
+                    MD5OfMessageSystemAttributes = SqsMessageAttributeDigest.Compute(request.MessageSystemAttributes)
                 }.SetCommonProperties());
             }
         }
@@ -624,6 +801,8 @@ internal sealed class InternalSqsClient
         {
             MessageId = message.MessageId,
             MD5OfMessageBody = message.MD5OfBody,
+            MD5OfMessageAttributes = SqsMessageAttributeDigest.Compute(request.MessageAttributes),
+            MD5OfMessageSystemAttributes = SqsMessageAttributeDigest.Compute(request.MessageSystemAttributes),
             SequenceNumber = message.Attributes?.GetValueOrDefault("SequenceNumber")
         }.SetCommonProperties());
     }
@@ -695,6 +874,10 @@ internal sealed class InternalSqsClient
 
         message.Attributes[InternalMessageSystemAttributeName.MessageDeduplicationId] = deduplicationId;
 
+        // The sequence number is fixed at send time, as in SQS (not when a delay ends).
+        var sequenceNumber = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
+        message.Attributes["SequenceNumber"] = sequenceNumber;
+
         if (IsFairQueue(queue))
         {
             var groupDeduplicationIds = queue.MessageGroupDeduplicationIds.GetOrAdd(
@@ -715,11 +898,10 @@ internal sealed class InternalSqsClient
             }
         }
 
+        queue.SequenceNumbersByMessageId[message.MessageId!] = sequenceNumber;
         if (queue.DelaySeconds > 0)
         {
-            // FIFO queues only support a queue-level delay. The sequence number is fixed at send
-            // time, as in SQS, not when the delay ends.
-            message.Attributes["SequenceNumber"] = FifoSequenceNumber.Next().ToString(NumberFormatInfo.InvariantInfo);
+            // FIFO queues only support a queue-level delay.
             queue.EnqueueAfterDelay(message, TimeSpan.FromSeconds(queue.DelaySeconds), timeProvider, messageGroupId);
         }
         else
@@ -839,7 +1021,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
 
         var response = new ChangeMessageVisibilityBatchResponse
@@ -850,39 +1032,23 @@ internal sealed class InternalSqsClient
 
         foreach (var entry in request.Entries!)
         {
-            try
+            var error = ChangeVisibilityByReceiptHandle(queue, entry.ReceiptHandle,
+                TimeSpan.FromSeconds(entry.VisibilityTimeout.GetValueOrDefault()));
+            if (error is null)
             {
-                if (queue.InFlightMessages.TryGetValue(entry.ReceiptHandle!, out var message))
+                response.Successful.Add(new ChangeMessageVisibilityBatchResultEntry
                 {
-                    var (_, inFlightExpireCallback) = message;
-                    inFlightExpireCallback.UpdateTimeout(TimeSpan.FromSeconds(entry.VisibilityTimeout.GetValueOrDefault()));
-
-                    response.Successful.Add(new ChangeMessageVisibilityBatchResultEntry
-                    {
-                        Id = entry.Id
-                    });
-                }
-                else
-                {
-                    response.Failed.Add(new BatchResultErrorEntry
-                    {
-                        Id = entry.Id,
-                        Code = "ReceiptHandleIsInvalid",
-                        Message = $"Receipt handle {entry.ReceiptHandle} is invalid.",
-                        SenderFault = true
-                    });
-                }
+                    Id = entry.Id
+                });
             }
-#pragma warning disable CA1031
-            catch (Exception ex)
-#pragma warning restore CA1031
+            else
             {
                 response.Failed.Add(new BatchResultErrorEntry
                 {
                     Id = entry.Id,
-                    Code = "InternalError",
-                    Message = ex.Message,
-                    SenderFault = false
+                    Code = error.ErrorCode,
+                    Message = error.Message,
+                    SenderFault = true
                 });
             }
         }
@@ -899,7 +1065,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
 
         var response = new DeleteMessageBatchResponse
@@ -910,39 +1076,22 @@ internal sealed class InternalSqsClient
 
         foreach (var entry in request.Entries!)
         {
-            try
+            var error = DeleteByReceiptHandle(queue, entry.ReceiptHandle);
+            if (error is null)
             {
-                if (queue.InFlightMessages.TryRemove(entry.ReceiptHandle!, out var inFlightInfo))
+                response.Successful.Add(new DeleteMessageBatchResultEntry
                 {
-                    var (message, expirationHandler) = inFlightInfo;
-                    FinalizeDeletedMessage(queue, message, expirationHandler);
-
-                    response.Successful.Add(new DeleteMessageBatchResultEntry
-                    {
-                        Id = entry.Id
-                    });
-                }
-                else
-                {
-                    response.Failed.Add(new BatchResultErrorEntry
-                    {
-                        Id = entry.Id,
-                        Code = "ReceiptHandleIsInvalid",
-                        Message = $"Receipt handle {entry.ReceiptHandle} is invalid.",
-                        SenderFault = true
-                    });
-                }
+                    Id = entry.Id
+                });
             }
-#pragma warning disable CA1031
-            catch (Exception ex)
-#pragma warning restore CA1031
+            else
             {
                 response.Failed.Add(new BatchResultErrorEntry
                 {
                     Id = entry.Id,
-                    Code = "InternalError",
-                    Message = ex.Message,
-                    SenderFault = false
+                    Code = error.ErrorCode,
+                    Message = error.Message,
+                    SenderFault = true
                 });
             }
         }
@@ -959,7 +1108,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
 
         // Expired messages are otherwise only dropped when a receive reaches them; sweep them
@@ -1080,7 +1229,7 @@ internal sealed class InternalSqsClient
 
         if (!_bus.Queues.TryGetValue(request.QueueName!, out var queue))
         {
-            throw new InternalQueueDoesNotExistException($"Queue {request.QueueName} does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.GetQueueUrl, queue.Arn);
         return Task.FromResult(new GetQueueUrlResponse { QueueUrl = queue.Url }.SetCommonProperties());
@@ -1092,9 +1241,14 @@ internal sealed class InternalSqsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var deadLetterQueueArn = request.QueueUrl;
+        var deadLetterQueueName = GetQueueNameFromUrl(request.QueueUrl!);
+        if (!_bus.Queues.TryGetValue(deadLetterQueueName, out var deadLetterQueue))
+        {
+            throw new InternalQueueDoesNotExistException();
+        }
+
         var deadLetterSourceQueues = _bus.Queues.Values
-            .Where(q => q.ErrorQueue?.Arn == deadLetterQueueArn)
+            .Where(q => q.ErrorQueue?.Arn == deadLetterQueue.Arn)
             .Select(q => q.Url)
             .OrderBy(url => url)
             .ToList();
@@ -1124,15 +1278,20 @@ internal sealed class InternalSqsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // Most recent first; SQS returns only the latest task unless MaxResults asks for more.
         var tasks = _bus.MoveTasks.Values
             .Where(t => t.SourceQueue.Arn.Equals(request.SourceArn, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(t => t.Sequence)
+            .Take(request.MaxResults ?? 1)
             .Select(t => new ListMessageMoveTasksResultEntry
             {
                 TaskHandle = t.TaskHandle,
                 SourceArn = t.SourceQueue.Arn,
                 DestinationArn = t.DestinationQueue?.Arn,
                 MaxNumberOfMessagesPerSecond = t.MaxNumberOfMessagesPerSecond,
-                Status = MoveTaskStatus.Running,
+                Status = t.Status,
+                FailureReason = t.FailureReason,
+                StartedTimestamp = t.StartedTimestamp,
                 ApproximateNumberOfMessagesMoved = t.ApproximateNumberOfMessagesMoved,
                 ApproximateNumberOfMessagesToMove = t.ApproximateNumberOfMessagesToMove
             });
@@ -1151,7 +1310,7 @@ internal sealed class InternalSqsClient
 
         var allQueues = _bus.Queues
             .Values
-            .Where(q => string.IsNullOrEmpty(request.QueueNamePrefix) || q.Name.StartsWith(request.QueueNamePrefix, StringComparison.OrdinalIgnoreCase))
+            .Where(q => string.IsNullOrEmpty(request.QueueNamePrefix) || q.Name.StartsWith(request.QueueNamePrefix, StringComparison.Ordinal))
             .Select(q => q.Url)
             .OrderBy(url => url)
             .ToList();
@@ -1184,13 +1343,19 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException("Queue not found.");
+            throw new InternalQueueDoesNotExistException();
+        }
+
+        Dictionary<string, string>? tags;
+        lock (queue.TagsLock)
+        {
+            tags = queue.Tags.ToInitializedDictionary();
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.ListQueueTags, queue.Arn);
         return Task.FromResult(new ListQueueTagsResponse
         {
-            Tags = queue.Tags.ToInitializedDictionary()
+            Tags = tags
         }.SetCommonProperties());
     }
 
@@ -1202,7 +1367,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
 
         queue.Messages.Clear();
@@ -1220,6 +1385,7 @@ internal sealed class InternalSqsClient
         queue.MessageGroups.Clear();
         queue.InFlightGroupCounts.Clear();
         queue.DiscardDelayedMessages();
+        queue.LatestReceiptHandles.Clear();
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.PurgeQueue, queue.Arn);
         return Task.FromResult(new PurgeQueueResponse().SetCommonProperties());
@@ -1233,7 +1399,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
 
         if (queue.Attributes?.TryGetValue("Policy", out var policyJson) != true)
@@ -1283,7 +1449,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
 
         var response = new SendMessageBatchResponse
@@ -1297,7 +1463,7 @@ internal sealed class InternalSqsClient
         if (totalSize > MaxMessageSize)
         {
             throw new InternalBatchRequestTooLongException(
-                $"Batch size ({totalSize} bytes) exceeds the maximum allowed size ({MaxMessageSize} bytes)");
+                $"Batch requests cannot be longer than {MaxMessageSize} bytes. You have sent {totalSize} bytes.");
         }
 
         foreach (var entry in request.Entries)
@@ -1328,6 +1494,7 @@ internal sealed class InternalSqsClient
                         entry.MessageDeduplicationId, entry.MessageBody!, _bus.TimeProvider, out var existingMessageId))
                 {
                     reportedMessageId = existingMessageId;
+                    message.Attributes!["SequenceNumber"] = queue.SequenceNumbersByMessageId.GetValueOrDefault(existingMessageId)!;
                 }
             }
             else
@@ -1353,6 +1520,8 @@ internal sealed class InternalSqsClient
                 Id = entry.Id,
                 MessageId = reportedMessageId,
                 MD5OfMessageBody = message.MD5OfBody,
+                MD5OfMessageAttributes = SqsMessageAttributeDigest.Compute(entry.MessageAttributes),
+                MD5OfMessageSystemAttributes = SqsMessageAttributeDigest.Compute(entry.MessageSystemAttributes),
                 SequenceNumber = message.Attributes?.GetValueOrDefault("SequenceNumber")
             });
         }
@@ -1369,7 +1538,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException($"Queue {request.QueueUrl} does not exist.");
+            throw new InternalQueueDoesNotExistException();
         }
 
         queue.Attributes ??= [];
@@ -1390,6 +1559,16 @@ internal sealed class InternalSqsClient
 
     private void ExtractRedrivePolicy(SqsQueueResource queue)
     {
+        if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.RedrivePolicy, out var emptyPolicy) == true
+            && string.IsNullOrEmpty(emptyPolicy))
+        {
+            // An empty RedrivePolicy unlinks the dead-letter queue.
+            queue.Attributes.Remove(InternalQueueAttributeName.RedrivePolicy);
+            queue.ErrorQueue = null;
+            queue.MaxReceiveCount = null;
+            return;
+        }
+
         if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.RedrivePolicy, out var redrivePolicy) == true)
         {
             var policy = JsonDocument.Parse(redrivePolicy);
@@ -1419,6 +1598,13 @@ internal sealed class InternalSqsClient
 
                 queue.ErrorQueue = errorQueue;
                 queue.MaxReceiveCount = maxReceiveCount;
+
+                // SQS stores the policy normalised: compact JSON with a numeric maxReceiveCount.
+                queue.Attributes[InternalQueueAttributeName.RedrivePolicy] = new JsonObject
+                {
+                    ["deadLetterTargetArn"] = deadLetterTargetArn,
+                    ["maxReceiveCount"] = maxReceiveCount
+                }.ToJsonString();
             }
         }
     }
@@ -1437,7 +1623,8 @@ internal sealed class InternalSqsClient
         if (_bus.MoveTasks.Values
                 .Any(t => t.SourceQueue.Arn.Equals(request.SourceArn, StringComparison.OrdinalIgnoreCase) && t.Status == MoveTaskStatus.Running))
         {
-            throw new InternalUnsupportedOperationException("Move task already running for the source queue.");
+            throw new InternalInvalidParameterValueException(
+                "There is already a task running. Only one active task is allowed for a source queue arn at a given time.");
         }
 
         var deadLetterQueues =
@@ -1447,7 +1634,7 @@ internal sealed class InternalSqsClient
 
         if (!deadLetterQueues.Contains(sourceQueue.Arn))
         {
-            throw new InvalidOperationException("Source queue is not a dead letter queue.");
+            throw new InternalInvalidParameterValueException("Source queue must be configured as a Dead Letter Queue.");
         }
 
         SqsQueueResource? destinationQueue = null;
@@ -1464,7 +1651,8 @@ internal sealed class InternalSqsClient
             }
         }
 
-        var approximateNumberOfMessages = sourceQueue.Messages.Count;
+        // In-flight messages count too: the task moves them once they become visible again.
+        var approximateNumberOfMessages = sourceQueue.Messages.Count + sourceQueue.InFlightMessages.Count;
 
         var taskHandle = Guid.NewGuid().ToString();
         var moveTask = new SqsMoveTask
@@ -1476,7 +1664,8 @@ internal sealed class InternalSqsClient
             ApproximateNumberOfMessagesMoved = 0,
             ApproximateNumberOfMessagesToMove = approximateNumberOfMessages,
             MoveTaskJob = new SqsMoveTaskJob(_bus.TimeProvider, sourceQueue, destinationQueue, _bus, request.MaxNumberOfMessagesPerSecond, taskHandle),
-            Status = MoveTaskStatus.Running
+            Status = MoveTaskStatus.Running,
+            StartedTimestamp = _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds()
         };
 
         _bus.MoveTasks.TryAdd(moveTask.TaskHandle, moveTask);
@@ -1495,7 +1684,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException("Queue not found.");
+            throw new InternalQueueDoesNotExistException();
         }
 
         foreach (var tag in request.Tags ?? [])
@@ -1507,9 +1696,15 @@ internal sealed class InternalSqsClient
                 // that wouldn't have passed against the real service.
                 throw new SqsServiceException("the parameter 'value' may not be null");
             }
+        }
 
-            queue.Tags ??= [];
-            queue.Tags[tag.Key] = tag.Value;
+        lock (queue.TagsLock)
+        {
+            foreach (var tag in request.Tags ?? [])
+            {
+                queue.Tags ??= [];
+                queue.Tags[tag.Key] = tag.Value;
+            }
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.TagQueue, queue.Arn);
@@ -1524,12 +1719,15 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException("Queue not found.");
+            throw new InternalQueueDoesNotExistException();
         }
 
-        foreach (var tagKey in request.TagKeys ?? [])
+        lock (queue.TagsLock)
         {
-            queue.Tags?.Remove(tagKey);
+            foreach (var tagKey in request.TagKeys ?? [])
+            {
+                queue.Tags?.Remove(tagKey);
+            }
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.UntagQueue, queue.Arn);
@@ -1544,7 +1742,7 @@ internal sealed class InternalSqsClient
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
         if (!_bus.Queues.TryGetValue(queueName, out var queue))
         {
-            throw new InternalQueueDoesNotExistException("Queue not found.");
+            throw new InternalQueueDoesNotExistException();
         }
 
         JsonObject policy;

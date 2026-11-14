@@ -21,7 +21,6 @@ public sealed class DeleteMessageRepeatedWithTheSameReceiptHandleSucceeds
     [Test]
     [DisplayName("sqs.delete-message-repeated-with-the-same-receipt-handle-succeeds")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ReceiptHandles, "a second DeleteMessage with an already-used receipt handle is refused with ReceiptHandleIsInvalid")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

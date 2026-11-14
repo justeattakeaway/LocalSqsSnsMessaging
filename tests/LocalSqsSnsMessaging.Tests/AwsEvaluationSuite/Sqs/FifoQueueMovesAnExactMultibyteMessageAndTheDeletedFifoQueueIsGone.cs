@@ -35,7 +35,6 @@ public sealed class FifoQueueMovesAnExactMultibyteMessageAndTheDeletedFifoQueueI
     [Test]
     [DisplayName("sqs.fifo-queue-moves-an-exact-multibyte-message-and-the-deleted-fifo-queue-is-gone")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "GetQueueUrl for the deleted FIFO queue: expected AWS.SimpleQueueService.NonExistentQueue, got 'QueueDoesNotExist' after 40s")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

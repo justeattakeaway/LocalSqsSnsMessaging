@@ -21,7 +21,6 @@ public sealed class Md5OfMessageAttributes
     [Test]
     [DisplayName("sqs.md5-of-message-attributes")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MessageAttributesMd5, "MD5OfMessageAttributes on send: expected 'aa235556208daf7d7b07d0775d52dd74' (SQS's own digest algorithm), got None")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

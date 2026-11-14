@@ -22,6 +22,13 @@ internal class AwsServiceException : Exception
 
 internal class InternalQueueDoesNotExistException : AwsServiceException
 {
+    /// <summary>SQS answers every missing queue with the same message, whatever the operation.</summary>
+    public const string DefaultMessage = "The specified queue does not exist.";
+
+    public InternalQueueDoesNotExistException() : this(DefaultMessage)
+    {
+    }
+
     public InternalQueueDoesNotExistException(string message) : base(message)
     {
         ErrorCode = "QueueDoesNotExist";
@@ -33,6 +40,14 @@ internal class InternalReceiptHandleIsInvalidException : AwsServiceException
     public InternalReceiptHandleIsInvalidException(string message) : base(message)
     {
         ErrorCode = "ReceiptHandleIsInvalid";
+    }
+}
+
+internal class InternalInvalidParameterValueException : AwsServiceException
+{
+    public InternalInvalidParameterValueException(string message) : base(message)
+    {
+        ErrorCode = "InvalidParameterValue";
     }
 }
 

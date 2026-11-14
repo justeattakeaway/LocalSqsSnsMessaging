@@ -18,7 +18,6 @@ public sealed class TagQueueMergePreservesExistingTags
     [Test]
     [DisplayName("sqs.tag-queue-merge-preserves-existing-tags")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.Tags, "tags passed to CreateQueue are dropped: ListQueueTags read {}")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

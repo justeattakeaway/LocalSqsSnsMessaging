@@ -21,7 +21,6 @@ public sealed class MessageAttributesRoundTripWithMd5
     [Test]
     [DisplayName("sqs.message-attributes-round-trip-with-md5")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MessageAttributesMd5, "MD5OfMessageAttributes on send is None, expected the canonical digest '449eb38d855e790ba68995ae92338d6c'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

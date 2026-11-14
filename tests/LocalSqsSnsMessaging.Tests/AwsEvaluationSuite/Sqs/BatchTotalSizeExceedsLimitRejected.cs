@@ -27,7 +27,6 @@ public sealed class BatchTotalSizeExceedsLimitRejected
     [Test]
     [DisplayName("sqs.batch-total-size-exceeds-limit-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "the oversize batch is refused with BatchRequestTooLong, but not with the query-compatible AWS.SimpleQueueService.BatchRequestTooLong code")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -68,7 +68,6 @@ public sealed class OpCancelUnknownMoveTaskRejected
     [Test]
     [DisplayName("sqs.op-cancel-unknown-move-task-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "Check timed out after 60.0s")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

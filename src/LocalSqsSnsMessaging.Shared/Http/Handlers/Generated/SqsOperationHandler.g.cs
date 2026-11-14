@@ -794,10 +794,12 @@ internal static partial class SqsOperationHandler
         }
         """;
 
-        return new HttpResponseMessage(statusCode)
+        var response = new HttpResponseMessage(statusCode)
         {
             Content = new StringContent(errorJson, Encoding.UTF8, "application/x-amz-json-1.0")
         };
+        response.Headers.TryAddWithoutValidation(SqsQueryCompatibleErrors.HeaderName, SqsQueryCompatibleErrors.HeaderValue(errorCode, statusCode));
+        return response;
     }
 }
 

@@ -23,7 +23,6 @@ public sealed class QueueNameResolutionIsCaseSensitiveAndExact
     [Test]
     [DisplayName("sqs.queue-name-resolution-is-case-sensitive-and-exact")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "GetQueueUrl of a case-flipped name gave 'QueueDoesNotExist', expected 'AWS.SimpleQueueService.NonExistentQueue'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

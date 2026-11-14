@@ -24,7 +24,6 @@ public sealed class RedriveAllowPolicyDenyallDoesNotBlockStartMessageMoveTask
     [Test]
     [DisplayName("sqs.redrive-allow-policy-denyall-does-not-block-start-message-move-task")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MoveTasks, "Check timed out after 60.0s")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

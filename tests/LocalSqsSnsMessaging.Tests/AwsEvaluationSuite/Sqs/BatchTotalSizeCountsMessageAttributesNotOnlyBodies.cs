@@ -26,7 +26,6 @@ public sealed class BatchTotalSizeCountsMessageAttributesNotOnlyBodies
     [Test]
     [DisplayName("sqs.batch-total-size-counts-message-attributes-not-only-bodies")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.QueryErrorCodes, "the oversize batch is refused with BatchRequestTooLong, but not with the query-compatible AWS.SimpleQueueService.BatchRequestTooLong code")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

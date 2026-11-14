@@ -15,7 +15,6 @@ public sealed class ListDeadLetterSourceQueuesReflectsRedrivePolicy
     [Test]
     [DisplayName("sqs.list-dead-letter-source-queues-reflects-redrive-policy")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "source queue with matching RedrivePolicy missing from set()")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

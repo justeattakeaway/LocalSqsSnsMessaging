@@ -34,4 +34,4 @@ are in the `TimeBased` category. Leave them out for a fast loop:
 `--treenode-filter "/**[Category!=TimeBased]"`.
 
 When a fix makes a skipped test pass, delete its attribute. To find every test for one root cause,
-grep for its `FidelityGap` value: `grep -l "FidelityGap.DefaultAttributes" Sqs/*.cs`.
+grep for its `FidelityGap` value: `grep -l "FidelityGap.Validation" Sqs/*.cs`.

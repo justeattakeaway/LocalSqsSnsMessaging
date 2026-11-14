@@ -26,7 +26,6 @@ public sealed class ListDeadLetterSourceQueuesPaginates
     [Test]
     [DisplayName("sqs.list-dead-letter-source-queues-paginates")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "Check timed out after 60.0s (ListDeadLetterSourceQueues never lists the sources)")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -23,7 +23,6 @@ public sealed class DeadLetteredMessageKeepsItsIdentityAndNamesItsSourceQueue
     [Test]
     [DisplayName("sqs.dead-lettered-message-keeps-its-identity-and-names-its-source-queue")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.DeadLetterQueues, "RedrivePolicy must read back as compact JSON with a numeric maxReceiveCount, but it reads back as sent (spaced, count \"1\")")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

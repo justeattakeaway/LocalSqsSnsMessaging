@@ -18,7 +18,6 @@ public sealed class ChangeVisibilityOnExpiredHandleRejected
     [Test]
     [DisplayName("sqs.change-visibility-on-expired-handle-rejected")]
     [Timeout(FidelityContext.BudgetMilliseconds)]
-    [KnownFidelityGap(FidelityGap.ReceiptHandles, "ChangeMessageVisibility with a deleted message's receipt handle succeeds instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
