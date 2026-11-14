@@ -76,6 +76,7 @@ public sealed class FidelityContext : IAsyncDisposable
     private readonly Dictionary<object, DateTimeOffset> _delayDeadlines = [];
     private readonly System.Diagnostics.Stopwatch _realClock = System.Diagnostics.Stopwatch.StartNew();
     private long _lastActivityTicks;
+    private int _requestsInFlight;
 
     public FidelityContext(int budgetMilliseconds = BudgetMilliseconds, CancellationToken cancellationToken = default)
     {
@@ -349,8 +350,18 @@ public sealed class FidelityContext : IAsyncDisposable
         {
             context.MarkActivity();
             context.Time.Advance(RequestLatency);
+            var concurrent = Interlocked.Increment(ref context._requestsInFlight) > 1;
             try
             {
+                if (concurrent)
+                {
+                    // Against SQS, concurrent calls overlap because each takes real time on the
+                    // network. In memory a call takes microseconds, so one caller could finish a
+                    // whole loop before another got a thread: pause briefly so they take turns.
+                    // Calls made one after another never pay this.
+                    await Task.Delay(1, cancellationToken);
+                }
+
                 // Through the thread pool's global queue: Task.Yield on a pool thread would queue to
                 // that thread's local queue, and the same caller would run again first.
                 return await Task.Factory.StartNew(
@@ -361,6 +372,7 @@ public sealed class FidelityContext : IAsyncDisposable
             }
             finally
             {
+                Interlocked.Decrement(ref context._requestsInFlight);
                 context.MarkActivity();
             }
         }

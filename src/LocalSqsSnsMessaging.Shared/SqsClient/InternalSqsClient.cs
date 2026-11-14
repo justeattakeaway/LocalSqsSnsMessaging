@@ -552,6 +552,26 @@ internal sealed partial class InternalSqsClient
     public async Task<ReceiveMessageResponse> ReceiveMessageAsync(ReceiveMessageRequest request,
         CancellationToken cancellationToken = default)
     {
+        var response = await ReceiveMessageCoreAsync(request, cancellationToken).ConfigureAwait(true);
+
+        // Messages received with a zero visibility timeout are visible again as soon as the
+        // receive returns, as on SQS.
+        if (response.Messages is { Count: > 0 } received
+            && Queues.TryGetValue(GetQueueNameFromUrl(request.QueueUrl!), out var queue)
+            && (request.VisibilityTimeout is { } requested ? requested == 0 : queue.VisibilityTimeout == TimeSpan.Zero))
+        {
+            foreach (var message in received)
+            {
+                SqsInflightMessageExpirationJob.EndVisibilityTimeout(queue, message.ReceiptHandle!, _bus.TimeProvider);
+            }
+        }
+
+        return response;
+    }
+
+    private async Task<ReceiveMessageResponse> ReceiveMessageCoreAsync(ReceiveMessageRequest request,
+        CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(request);
 
         var queueName = GetQueueNameFromUrl(request.QueueUrl!);
@@ -863,7 +883,13 @@ internal sealed partial class InternalSqsClient
             queue.InFlightGroupCounts.AddOrUpdate(groupId, 1, (_, count) => count + 1);
         }
 
-        expirationJob.UpdateTimeout(visibilityTimeout);
+        // A zero visibility timeout ends when the receive returns (ReceiveMessageAsync), not on a
+        // timer: a timer could make the message visible again mid-receive, handing it out twice in
+        // one batch, or (on the real clock) only some time after the call has returned.
+        if (visibilityTimeout > TimeSpan.Zero)
+        {
+            expirationJob.UpdateTimeout(visibilityTimeout);
+        }
         return true;
     }
 

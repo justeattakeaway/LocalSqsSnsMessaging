@@ -38,21 +38,30 @@ internal sealed class SqsInflightMessageExpirationJob : IDisposable
     private static void VisibilityTimeoutCallback(object? state)
     {
         var timerState = (TimerState)state!;
-        if (timerState.Queue.InFlightMessages.TryRemove(timerState.ReceiptHandle, out var inFlightMessage))
+        EndVisibilityTimeout(timerState.Queue, timerState.ReceiptHandle, timerState.TimeProvider);
+    }
+
+    /// <summary>
+    /// Ends the visibility timeout of the message in flight under <paramref name="receiptHandle"/>
+    /// now: it becomes visible again, or is discarded if it outlived the queue's retention period.
+    /// </summary>
+    public static void EndVisibilityTimeout(SqsQueueResource queue, string receiptHandle, TimeProvider timeProvider)
+    {
+        if (queue.InFlightMessages.TryRemove(receiptHandle, out var inFlightMessage))
         {
             var (message, inFlightExpireCallback) = inFlightMessage;
-            if (timerState.Queue.IsExpired(message, timerState.TimeProvider.GetUtcNow()))
+            if (queue.IsExpired(message, timeProvider.GetUtcNow()))
             {
                 // Retention runs from the send, so a message can expire while in flight; it is
                 // discarded rather than made visible again.
-                if (timerState.Queue.IsFifo)
+                if (queue.IsFifo)
                 {
-                    timerState.Queue.ReleaseDeletedFifoMessage(message);
+                    queue.ReleaseDeletedFifoMessage(message);
                 }
             }
             else
             {
-                timerState.Queue.ReturnInFlightMessage(message);
+                queue.ReturnInFlightMessage(message);
             }
 
             inFlightExpireCallback.Dispose();
