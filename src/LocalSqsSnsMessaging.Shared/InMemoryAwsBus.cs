@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 #if NET
 using System.Diagnostics;
 #endif
@@ -112,10 +113,49 @@ public sealed class InMemoryAwsBus
     public ApiUsageTracker UsageTracker { get; } = new();
 
     /// <summary>
-    /// Gets the collection of SQS queue resources.
+    /// Gets the SQS queues in <see cref="CurrentRegion"/>, the region requests are served in unless
+    /// they name another.
     /// </summary>
     /// <value>A thread-safe dictionary of SQS queue resources, keyed by queue name.</value>
     internal ConcurrentDictionary<string, SqsQueueResource> Queues { get; } = [];
+
+    /// <summary>The SQS queues in every region other than <see cref="CurrentRegion"/>, keyed by region.</summary>
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, SqsQueueResource>> _otherRegionQueues = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The SQS queues in <paramref name="region"/>, keyed by queue name, or <see langword="null"/>
+    /// when no queue was ever created there. Same-named queues in two regions are separate queues.
+    /// </summary>
+    internal ConcurrentDictionary<string, SqsQueueResource>? FindQueuesInRegion(string region) =>
+        string.Equals(region, CurrentRegion, StringComparison.Ordinal)
+            ? Queues
+            : _otherRegionQueues.TryGetValue(region, out var queues) ? queues : null;
+
+    /// <summary>The SQS queues in <paramref name="region"/>, keyed by queue name, created on first use.</summary>
+    internal ConcurrentDictionary<string, SqsQueueResource> GetOrAddQueuesInRegion(string region) =>
+        FindQueuesInRegion(region) ?? _otherRegionQueues.GetOrAdd(region, _ => new ConcurrentDictionary<string, SqsQueueResource>());
+
+    /// <summary>
+    /// Finds the queue an SQS ARN names, in the region the ARN names, for the deliveries that
+    /// address a queue by ARN (SNS subscriptions, EventBridge targets, dead-letter sources).
+    /// </summary>
+    /// <remarks>
+    /// The account in the ARN is not checked. An ARN naming a region this bus has never created a
+    /// queue in, or one that is not a well-formed ARN, is looked up by name in
+    /// <see cref="CurrentRegion"/>, as it was before queues were partitioned by region.
+    /// </remarks>
+    internal bool TryGetQueueByArn(string? arn, [NotNullWhen(true)] out SqsQueueResource? queue)
+    {
+        queue = null;
+        if (arn is null)
+        {
+            return false;
+        }
+
+        var parts = arn.Split(':');
+        var queues = parts.Length == 6 ? FindQueuesInRegion(parts[3]) ?? Queues : Queues;
+        return queues.TryGetValue(parts[^1], out queue);
+    }
 
     /// <summary>
     /// Gets the collection of SQS move tasks.

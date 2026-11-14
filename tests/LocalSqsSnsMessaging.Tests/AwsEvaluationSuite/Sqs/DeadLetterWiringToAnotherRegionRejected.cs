@@ -23,7 +23,6 @@ public sealed class DeadLetterWiringToAnotherRegionRejected
     [Test]
     [DisplayName("sqs.dead-letter-wiring-to-another-region-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MultiRegion, "SetQueueAttributes with a RedrivePolicy naming a DLQ in another region succeeded instead of InvalidParameterValue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

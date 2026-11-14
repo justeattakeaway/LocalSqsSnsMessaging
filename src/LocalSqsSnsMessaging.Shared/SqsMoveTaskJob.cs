@@ -29,7 +29,7 @@ internal sealed class SqsMoveTaskJob : IDisposable
             var targetQueue = destinationQueue;
             if (targetQueue is null
                 && !(message.Attributes?.TryGetValue(InternalMessageSystemAttributeName.DeadLetterQueueSourceArn, out var deadLetterSourceArn) == true
-                     && bus.Queues.TryGetValue(GetQueueNameFromArn(deadLetterSourceArn), out targetQueue)))
+                     && bus.TryGetQueueByArn(deadLetterSourceArn, out targetQueue)))
             {
                 // A message that was not dead-lettered from a queue (sent to the DLQ directly, or
                 // its source deleted) has nowhere to go back to: SQS fails the task and leaves the
@@ -92,16 +92,6 @@ internal sealed class SqsMoveTaskJob : IDisposable
         newMessage.Attributes[InternalMessageSystemAttributeName.SentTimestamp] =
             timeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(NumberFormatInfo.InvariantInfo);
         return newMessage;
-    }
-
-    private static string GetQueueNameFromArn(string queueArn)
-    {
-        var indexOfLastColon = queueArn.LastIndexOf(':');
-        if (indexOfLastColon == -1)
-        {
-            throw new ArgumentException("ARN malformed", nameof(queueArn));
-        }
-        return queueArn[(indexOfLastColon+1) ..];
     }
 
     public void Dispose()

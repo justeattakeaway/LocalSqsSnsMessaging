@@ -20,7 +20,6 @@ public sealed class QueueUrlFromAnotherRegionNotServedRejected
     [Test]
     [DisplayName("sqs.queue-url-from-another-region-not-served-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.MultiRegion, "SendMessage from the home-region client to another region's QueueUrl succeeded instead of NonExistentQueue")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

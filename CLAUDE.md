@@ -73,6 +73,7 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 **InMemoryAwsBus** (src/LocalSqsSnsMessaging/InMemoryAwsBus.cs:8)
 - Central message bus managing all queues, topics, subscriptions, and move tasks
 - Configurable with `TimeProvider`, `CurrentAccountId`, and `CurrentRegion`
+- SQS queues are partitioned by region: `Queues` holds `CurrentRegion`'s, other regions' are reached via `FindQueuesInRegion`/`GetOrAddQueuesInRegion`, and ARN-addressed deliveries (SNS, EventBridge, move tasks) use `TryGetQueueByArn`. The library HTTP handler serves each SQS request from the region in its SigV4 credential scope, else its `sqs.<region>.amazonaws.com` host (`Http/AwsRequestRegion.cs`), else `CurrentRegion`; the server (`AwsBridgeMiddleware`) always uses `CurrentRegion`
 - Thread-safe using `ConcurrentDictionary` for all resource collections
 
 **InMemorySqsClient** (src/LocalSqsSnsMessaging/SqsClient/InMemorySqsClient.cs)
