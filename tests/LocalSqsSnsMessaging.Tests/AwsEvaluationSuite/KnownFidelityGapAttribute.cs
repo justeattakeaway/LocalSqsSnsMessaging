@@ -11,6 +11,57 @@ public enum FidelityGap
 
     /// <summary>A one-off behavioral difference, kept for compatibility.</summary>
     Other,
+
+    /// <summary>SNS: the right failure, but a different error code or message.</summary>
+    SnsErrorMessages,
+
+    /// <summary>SNS: subscription lifecycle (ARN format, subscribing a missing queue, idempotent subscribe, unsubscribe).</summary>
+    SnsSubscriptions,
+
+    /// <summary>SNS: topic attributes (defaults, computed attributes, validation, immutability).</summary>
+    SnsTopicAttributes,
+
+    /// <summary>SNS: subscription attributes (read-back form, validation, unknown names).</summary>
+    SnsSubscriptionAttributes,
+
+    /// <summary>SNS: request validation AWS performs that we skip (names, publish parameters, message attributes, subjects).</summary>
+    SnsValidation,
+
+    /// <summary>SNS: PublishBatch validation and per-entry results.</summary>
+    SnsBatch,
+
+    /// <summary>SNS: FIFO topic semantics (sequence numbers, topic-level deduplication, throughput scope).</summary>
+    SnsFifo,
+
+    /// <summary>SNS: the JSON envelope delivered to SQS (fields, layout, signature, signing certificate).</summary>
+    SnsEnvelope,
+
+    /// <summary>SNS: raw message delivery (attribute conversion, limits, toggling).</summary>
+    SnsRawDelivery,
+
+    /// <summary>SNS: subscription filter policy evaluation and validation.</summary>
+    SnsFilterPolicy,
+
+    /// <summary>SNS: deliveries SQS refuses (queue policies, deleted queues) and subscription dead-letter queues.</summary>
+    SnsDeliveryFailures,
+
+    /// <summary>SNS: topic policies, AddPermission and RemovePermission.</summary>
+    SnsPermissions,
+
+    /// <summary>SNS: topic tags.</summary>
+    SnsTags,
+
+    /// <summary>SNS: list operations and their pagination tokens.</summary>
+    SnsListing,
+
+    /// <summary>SNS: <c>MessageStructure=json</c> publishes.</summary>
+    SnsMessageStructure,
+
+    /// <summary>SNS: FIFO topic message archiving and replay.</summary>
+    SnsArchive,
+
+    /// <summary>SNS topics and subscriptions are not regional yet (planned as separate work).</summary>
+    SnsRegions,
 }
 
 /// <summary>
