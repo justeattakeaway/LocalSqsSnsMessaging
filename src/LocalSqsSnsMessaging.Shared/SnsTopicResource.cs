@@ -29,6 +29,11 @@ internal sealed class SnsTopicResource
     /// subscription, or race a raised limit against a subscription the raised limit forbids. Also
     /// guards <see cref="Attributes"/> and <see cref="Tags"/>.
     /// </summary>
+    /// <remarks>
+    /// Lock order: a FIFO topic's <see cref="SnsFifoTopicState.Gate"/> may be taken while holding this
+    /// gate, never the reverse. Delivery runs under the FIFO gate, so it never takes this one: what it
+    /// needs of the attributes it reads from <see cref="SignatureVersion"/> and <see cref="DeliveryPolicy"/>.
+    /// </remarks>
     internal object SubscriptionGate { get; } = new();
 
     /// <summary>
@@ -38,6 +43,15 @@ internal sealed class SnsTopicResource
     internal SnsPublishAction PublishAction { get; set; } = null!;
 
     public Dictionary<string, string> Tags { get; } = new(StringComparer.Ordinal);
+
+    private volatile string? _signatureVersion;
+    private volatile string? _deliveryPolicy;
+
+    /// <summary>The <c>SignatureVersion</c> attribute, readable without <see cref="SubscriptionGate"/>.</summary>
+    public string? SignatureVersion => _signatureVersion;
+
+    /// <summary>The <c>DeliveryPolicy</c> attribute, readable without <see cref="SubscriptionGate"/>.</summary>
+    public string? DeliveryPolicy => _deliveryPolicy;
 
     private int _subscriptionsDeleted;
 
@@ -61,6 +75,9 @@ internal sealed class SnsTopicResource
         {
             Attributes[name] = value ?? string.Empty;
         }
+
+        _signatureVersion = Attributes.GetValueOrDefault(SnsTopicAttributes.SignatureVersion);
+        _deliveryPolicy = Attributes.GetValueOrDefault(SnsTopicAttributes.DeliveryPolicy);
 
         if (Fifo is not { } fifo)
         {

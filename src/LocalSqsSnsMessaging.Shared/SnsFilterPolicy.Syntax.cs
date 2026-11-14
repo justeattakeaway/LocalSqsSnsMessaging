@@ -19,6 +19,14 @@ internal static partial class SnsFilterPolicy
         // Jackson reports at most this many characters of an unrecognized token.
         private const int MaxReportedTokenLength = 256;
 
+        /// <summary>
+        /// The deepest nesting of objects and arrays the reader accepts, Jackson's default. The reader
+        /// recurses per level, so without a limit a policy of nested brackets could exhaust the stack.
+        /// </summary>
+        private const int MaxNestingDepth = 1000;
+
+        private int _depth;
+
         private readonly string _text;
         private int _position;
         private int _line = 1;
@@ -48,6 +56,16 @@ internal static partial class SnsFilterPolicy
         private bool AtEnd => _position >= _text.Length;
 
         private char Peek => _text[_position];
+
+        private void EnterNesting(int line, int column)
+        {
+            if (++_depth > MaxNestingDepth)
+            {
+                throw Error(
+                    $"Document nesting depth ({_depth}) exceeds the maximum allowed ({MaxNestingDepth}, from `StreamReadConstraints.getMaxNestingDepth()`)",
+                    line, column);
+            }
+        }
 
         private JsonNode? ReadValue()
         {
@@ -79,6 +97,19 @@ internal static partial class SnsFilterPolicy
         }
 
         private JsonObject ReadObject()
+        {
+            EnterNesting(_line, Column(_position));
+            try
+            {
+                return ReadObjectBody();
+            }
+            finally
+            {
+                _depth--;
+            }
+        }
+
+        private JsonObject ReadObjectBody()
         {
             var (startLine, startColumn) = (_line, Column(_position));
             _position++;
@@ -132,6 +163,19 @@ internal static partial class SnsFilterPolicy
         }
 
         private JsonArray ReadArray()
+        {
+            EnterNesting(_line, Column(_position));
+            try
+            {
+                return ReadArrayBody();
+            }
+            finally
+            {
+                _depth--;
+            }
+        }
+
+        private JsonArray ReadArrayBody()
         {
             var (startLine, startColumn) = (_line, Column(_position));
             _position++;

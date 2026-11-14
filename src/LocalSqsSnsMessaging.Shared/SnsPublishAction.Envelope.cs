@@ -10,23 +10,16 @@ internal sealed partial class SnsPublishAction
     /// </summary>
     private string CreateSnsEnvelope(SnsSubscription subscription, OutboundMessage message)
     {
-        string signatureVersion;
-        lock (_topic.SubscriptionGate)
-        {
-            signatureVersion = _topic.Attributes.TryGetValue(SnsTopicAttributes.SignatureVersion, out var version)
-                ? version
-                : SnsEnvelope.DefaultSignatureVersion;
-        }
-
         return SnsEnvelope.Notification(
             _bus,
-            signatureVersion,
+            _topic.SignatureVersion ?? SnsEnvelope.DefaultSignatureVersion,
             message.MessageId,
             message.SequenceNumber,
             message.TopicArn,
             message.Subject,
             message.Body,
             SnsHttpDelivery.UnsubscribeUrl(_bus, subscription),
-            message.Attributes);
+            message.Attributes,
+            message.Stamp);
     }
 }

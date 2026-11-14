@@ -154,9 +154,12 @@ internal sealed partial class InternalSnsClient
         var topicName = SnsArn.TopicName(request.TopicArn);
         if (_bus.Topics.TryRemove(topicName, out var topic))
         {
-            foreach (var subscription in _bus.Subscriptions.Values.Where(s => string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal)).ToList())
+            lock (topic.SubscriptionGate)
             {
-                _bus.Subscriptions.TryRemove(subscription.SubscriptionArn, out _);
+                foreach (var subscription in _bus.Subscriptions.Values.Where(s => string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal)).ToList())
+                {
+                    _bus.Subscriptions.TryRemove(subscription.SubscriptionArn, out _);
+                }
             }
         }
 

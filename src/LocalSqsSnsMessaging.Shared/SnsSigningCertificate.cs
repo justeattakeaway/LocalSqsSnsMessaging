@@ -25,12 +25,19 @@ internal sealed class SnsSigningCertificate
     private static readonly Lazy<SnsSigningCertificate> Instance = new(Create);
 #endif
 
-    private readonly RSA _key;
-    private readonly object _signLock = new();
+    /// <summary>The signing key's parameters, from which each signer in <see cref="_signers"/> is made.</summary>
+    private readonly RSAParameters _parameters;
+
+    /// <summary>
+    /// Idle signers. RSA instances aren't documented as safe for concurrent use, so each signature
+    /// takes one of its own: concurrent publishers sign in parallel instead of queueing on one key.
+    /// </summary>
+    private readonly System.Collections.Concurrent.ConcurrentBag<RSA> _signers = [];
 
     private SnsSigningCertificate(RSA key, string pem, string fileName)
     {
-        _key = key;
+        _parameters = key.ExportParameters(includePrivateParameters: true);
+        _signers.Add(key);
         Pem = pem;
         FileName = fileName;
     }
@@ -65,17 +72,32 @@ internal sealed class SnsSigningCertificate
     /// <summary>
     /// The base64 RSASSA-PKCS1-v1_5 signature SNS puts in a message's <c>Signature</c>, over its
     /// <paramref name="canonicalString"/>: SHA1withRSA for <c>SignatureVersion</c> 1, SHA256withRSA for 2.
+    /// <see langword="null"/> when the platform refuses the digest (some crypto policies disable SHA-1
+    /// signatures), so the message is still delivered, with a placeholder signature.
     /// </summary>
-    public string Sign(string canonicalString, string signatureVersion)
+    public string? Sign(string canonicalString, string signatureVersion)
     {
         var hash = string.Equals(signatureVersion, "2", StringComparison.Ordinal)
             ? HashAlgorithmName.SHA256
             : HashAlgorithmName.SHA1;
         var data = Encoding.UTF8.GetBytes(canonicalString);
-        lock (_signLock)
+        if (!_signers.TryTake(out var signer))
         {
-            // RSA instances aren't documented as safe for concurrent use.
-            return Convert.ToBase64String(_key.SignData(data, hash, RSASignaturePadding.Pkcs1));
+            signer = RSA.Create();
+            signer.ImportParameters(_parameters);
+        }
+
+        try
+        {
+            return Convert.ToBase64String(signer.SignData(data, hash, RSASignaturePadding.Pkcs1));
+        }
+        catch (CryptographicException)
+        {
+            return null;
+        }
+        finally
+        {
+            _signers.Add(signer);
         }
     }
 

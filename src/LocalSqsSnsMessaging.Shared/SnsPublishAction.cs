@@ -42,13 +42,20 @@ internal sealed partial class SnsPublishAction
         Dictionary<string, MessageAttributeValue>? Attributes,
         string? MessageGroupId,
         string? DeduplicationId,
-        string? SequenceNumber = null);
+        string? SequenceNumber = null)
+    {
+        /// <summary>
+        /// The message's envelope Timestamp and signatures, shared by every subscription (and every
+        /// copy <c>with</c> makes of the message, such as a FIFO topic's sequenced one).
+        /// </summary>
+        public SnsNotificationStamp Stamp { get; init; } = new();
+    }
 
     public PublishResponse Execute(PublishRequest request)
     {
         var (messageId, sequenceNumber) = Publish(new OutboundMessage(
             Guid.NewGuid().ToString(),
-            request.TopicArn ?? request.TargetArn,
+            _topic.Arn,
             request.Subject,
             request.Message,
             request.MessageStructure,

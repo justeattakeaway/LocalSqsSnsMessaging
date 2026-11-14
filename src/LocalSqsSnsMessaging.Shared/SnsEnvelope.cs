@@ -40,7 +40,8 @@ internal static class SnsEnvelope
         string? subject,
         string message,
         string unsubscribeUrl,
-        Dictionary<string, MessageAttributeValue>? attributes)
+        Dictionary<string, MessageAttributeValue>? attributes,
+        SnsNotificationStamp stamp)
     {
         var members = new List<KeyValuePair<string, string>>(11)
         {
@@ -59,8 +60,8 @@ internal static class SnsEnvelope
         }
 
         members.Add(new("Message", message));
-        members.Add(new("Timestamp", SnsHttpDelivery.Timestamp(bus)));
-        AddSignature(bus, members, signatureVersion);
+        members.Add(new("Timestamp", stamp.Timestamp(bus)));
+        AddSignature(members, signatureVersion, stamp.Signature(signatureVersion, message, () => Sign(bus, members, signatureVersion)));
         members.Add(new("UnsubscribeURL", unsubscribeUrl));
 
         return Write(members, attributes);
@@ -89,7 +90,7 @@ internal static class SnsEnvelope
             new("SubscribeURL", subscribeUrl),
             new("Timestamp", SnsHttpDelivery.Timestamp(bus)),
         };
-        AddSignature(bus, members, signatureVersion);
+        AddSignature(members, signatureVersion, Sign(bus, members, signatureVersion));
 
         return Write(members, attributes: null);
     }
@@ -109,20 +110,30 @@ internal static class SnsEnvelope
     }
 
     /// <summary>
-    /// Appends SignatureVersion, Signature and SigningCertURL, signing the members already present:
-    /// for a notification Message, MessageId, Subject, Timestamp, TopicArn and Type (its
-    /// UnsubscribeURL comes after, unsigned), for a confirmation Message, MessageId, SubscribeURL,
-    /// Timestamp, Token, TopicArn and Type.
+    /// The Signature and SigningCertURL for the members already present: for a notification Message,
+    /// MessageId, Subject, Timestamp, TopicArn and Type (its UnsubscribeURL comes after, unsigned), for
+    /// a confirmation Message, MessageId, SubscribeURL, Timestamp, Token, TopicArn and Type.
     /// </summary>
-    private static void AddSignature(InMemoryAwsBus bus, List<KeyValuePair<string, string>> members, string signatureVersion)
+    private static (string Signature, string CertificateUrl) Sign(
+        InMemoryAwsBus bus, List<KeyValuePair<string, string>> members, string signatureVersion)
     {
         var certificate = SnsSigningCertificate.Current;
-        var signature = certificate?.Sign(CanonicalString(members), signatureVersion) ?? Placeholder;
-        var certificateUrl = certificate is null ? Placeholder : SnsHttpDelivery.SigningCertUrl(bus, certificate);
+        if (certificate is null)
+        {
+            return (Placeholder, Placeholder);
+        }
 
+        return (certificate.Sign(CanonicalString(members), signatureVersion) ?? Placeholder,
+            SnsHttpDelivery.SigningCertUrl(bus, certificate));
+    }
+
+    /// <summary>Appends SignatureVersion, Signature and SigningCertURL.</summary>
+    private static void AddSignature(
+        List<KeyValuePair<string, string>> members, string signatureVersion, (string Signature, string CertificateUrl) signed)
+    {
         members.Add(new("SignatureVersion", signatureVersion));
-        members.Add(new("Signature", signature));
-        members.Add(new("SigningCertURL", certificateUrl));
+        members.Add(new("Signature", signed.Signature));
+        members.Add(new("SigningCertURL", signed.CertificateUrl));
     }
 
     private static string Write(List<KeyValuePair<string, string>> members, Dictionary<string, MessageAttributeValue>? attributes)
@@ -207,5 +218,46 @@ internal static class SnsEnvelope
         }
 
         json.Append('"');
+    }
+}
+
+/// <summary>
+/// The Timestamp and signatures of one published message. Every subscription's envelope signs the
+/// same members (the UnsubscribeURL, the only one that differs, isn't signed), so a message is
+/// stamped once, and signed once per signature version and body, however many subscriptions get it.
+/// </summary>
+internal sealed class SnsNotificationStamp
+{
+    private readonly object _gate = new();
+    private readonly Dictionary<(string Version, string Body), (string Signature, string CertificateUrl)> _signatures = [];
+    private string? _timestamp;
+
+    /// <summary>The message's Timestamp: when it was first written into an envelope.</summary>
+    public string Timestamp(InMemoryAwsBus bus)
+    {
+        lock (_gate)
+        {
+            return _timestamp ??= SnsHttpDelivery.Timestamp(bus);
+        }
+    }
+
+    /// <summary>
+    /// The signature of the message with this <paramref name="body"/> (a <c>MessageStructure=json</c>
+    /// message has one per protocol) under <paramref name="signatureVersion"/>, made by
+    /// <paramref name="sign"/> the first time it is needed.
+    /// </summary>
+    public (string Signature, string CertificateUrl) Signature(
+        string signatureVersion, string body, Func<(string Signature, string CertificateUrl)> sign)
+    {
+        lock (_gate)
+        {
+            if (!_signatures.TryGetValue((signatureVersion, body), out var signed))
+            {
+                signed = sign();
+                _signatures[(signatureVersion, body)] = signed;
+            }
+
+            return signed;
+        }
     }
 }

@@ -32,7 +32,8 @@ internal static class SnsReplayPolicy
         {
             lock (topic.SubscriptionGate)
             {
-                archiving = topic.Attributes.ContainsKey(SnsTopicAttributes.ArchivePolicy);
+                // Only a FIFO topic archives: an ArchivePolicy stored on a standard topic archives nothing.
+                archiving = topic.IsFifo && topic.Attributes.ContainsKey(SnsTopicAttributes.ArchivePolicy);
             }
         }
 

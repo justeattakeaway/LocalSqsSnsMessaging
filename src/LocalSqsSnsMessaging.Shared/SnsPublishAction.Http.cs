@@ -15,7 +15,7 @@ internal sealed partial class SnsPublishAction
     {
         var policy = SnsDeliveryPolicy.Resolve(
             subscription.DeliveryPolicy,
-            _topic.Attributes.TryGetValue("DeliveryPolicy", out var topicPolicy) ? topicPolicy : null);
+            _topic.DeliveryPolicy);
 
         var body = subscription.Raw
             ? message.Body

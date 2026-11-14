@@ -256,6 +256,9 @@ internal static class DashboardApi
         }
     }
 
+    /// <summary>The message group the dashboard publishes to a FIFO topic in.</summary>
+    private const string DashboardMessageGroupId = "dashboard";
+
     public static async Task<IResult> PublishToTopic(BusRegistry registry, string? account, string topicName, HttpContext ctx)
     {
         var bus = ResolveBus(registry, account);
@@ -272,12 +275,24 @@ internal static class DashboardApi
         }
 
         var snsClient = new InternalSnsClient(bus);
-        var response = await snsClient.PublishAsync(new PublishRequest
+        PublishResponse response;
+        try
         {
-            TopicArn = topic.Arn,
-            Message = body.Message,
-            Subject = body.Subject
-        }).ConfigureAwait(false);
+            response = await snsClient.PublishAsync(new PublishRequest
+            {
+                TopicArn = topic.Arn,
+                Message = body.Message,
+                Subject = body.Subject,
+                // A FIFO topic needs a message group, and a deduplication id unless it deduplicates by
+                // content: each publish from the dashboard is a distinct message in one group.
+                MessageGroupId = topic.IsFifo ? DashboardMessageGroupId : null,
+                MessageDeduplicationId = topic.IsFifo ? Guid.NewGuid().ToString("N") : null,
+            }).ConfigureAwait(false);
+        }
+        catch (AwsServiceException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
 
         return Results.Json(
             new PublishTopicResponse { MessageId = response.MessageId! },

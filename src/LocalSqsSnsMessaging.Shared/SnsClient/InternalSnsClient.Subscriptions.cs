@@ -113,6 +113,13 @@ internal sealed partial class InternalSnsClient
         // room for one more.
         lock (topic.SubscriptionGate)
         {
+            // DeleteTopic removes a topic's subscriptions under this gate: one added after that
+            // would outlive the topic, and come back if the name were created again.
+            if (!_bus.Topics.TryGetValue(topic.Name, out var current) || !ReferenceEquals(current, topic))
+            {
+                throw new InternalNotFoundException(TopicDoesNotExist);
+            }
+
             var existing = _bus.Subscriptions.Values.FirstOrDefault(s =>
                 string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal) &&
                 string.Equals(s.Protocol, protocol, StringComparison.Ordinal) &&
@@ -160,13 +167,24 @@ internal sealed partial class InternalSnsClient
         SnsArn.Parse(request.SubscriptionArn, "SubscriptionArn");
 
         // Unsubscribing a subscription that doesn't exist succeeds, as on AWS.
-        if (_bus.Subscriptions.TryRemove(request.SubscriptionArn, out var subscription))
+        if (_bus.Subscriptions.TryGetValue(request.SubscriptionArn, out var subscription))
         {
-            if (_bus.Topics.TryGetValue(SnsArn.TopicName(subscription.TopicArn), out var topic)
-                && string.Equals(topic.Arn, subscription.TopicArn, StringComparison.Ordinal))
+            if (FindTopicOf(subscription) is { } topic)
             {
-                topic.RecordSubscriptionDeleted();
-                SnsPublishActionFactory.UpdateTopicPublishAction(subscription.TopicArn, _bus);
+                // Under the topic's gate, so this rebuild of its subscriber list can't overwrite one a
+                // concurrent Subscribe makes.
+                lock (topic.SubscriptionGate)
+                {
+                    if (_bus.Subscriptions.TryRemove(request.SubscriptionArn, out _))
+                    {
+                        topic.RecordSubscriptionDeleted();
+                        SnsPublishActionFactory.UpdateTopicPublishAction(subscription.TopicArn, _bus);
+                    }
+                }
+            }
+            else
+            {
+                _bus.Subscriptions.TryRemove(request.SubscriptionArn, out _);
             }
         }
 
@@ -302,7 +320,10 @@ internal sealed partial class InternalSnsClient
             subscription.PendingConfirmation = false;
             if (FindTopicOf(subscription) is { } topic)
             {
-                SnsPublishActionFactory.Activate(topic, subscription, _bus);
+                lock (topic.SubscriptionGate)
+                {
+                    SnsPublishActionFactory.Activate(topic, subscription, _bus);
+                }
             }
         }
 
