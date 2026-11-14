@@ -19,7 +19,7 @@ internal sealed partial class SnsPublishAction
 
         var body = subscription.Raw
             ? message.Body
-            : CreateSnsEnvelope(subscription, message).ToJsonString();
+            : CreateSnsEnvelope(subscription, message);
 
         _ = DeliverToHttpAsync(subscription, message, body, policy);
     }

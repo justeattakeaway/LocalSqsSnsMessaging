@@ -35,7 +35,6 @@ public sealed class NotificationSignatureVerifiesAgainstTheSigningCertificate
     [Test]
     [DisplayName("sns.notification-signature-verifies-against-the-signing-certificate")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsEnvelope, "the envelope's SigningCertURL and Signature are the placeholder 'EXAMPLE', so the signature can't be verified")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

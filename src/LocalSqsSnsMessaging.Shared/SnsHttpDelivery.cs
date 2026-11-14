@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Text.Json.Nodes;
 
 namespace LocalSqsSnsMessaging;
 
@@ -30,11 +29,22 @@ internal static class SnsHttpDelivery
     public const string RawDeliveryHeader = "x-amz-sns-rawdelivery";
     private const string UserAgent = "Amazon Simple Notification Service Agent";
 
-    public static string SubscribeUrl(InMemoryAwsBus bus, SnsSubscription subscription) =>
-        $"{BaseUrl(bus)}/?Action=ConfirmSubscription&TopicArn={Uri.EscapeDataString(subscription.TopicArn)}&Token={subscription.ConfirmationToken}";
+    // SNS writes ARNs into its URLs unescaped: an ARN's characters are all valid in a query string.
 
+    /// <summary>The <c>SubscribeURL</c> of a confirmation: a GET that confirms the subscription.</summary>
+    public static string SubscribeUrl(InMemoryAwsBus bus, SnsSubscription subscription) =>
+        $"{BaseUrl(bus)}/?Action=ConfirmSubscription&TopicArn={subscription.TopicArn}&Token={subscription.ConfirmationToken}";
+
+    /// <summary>The <c>UnsubscribeURL</c> of a notification: a GET that unsubscribes <paramref name="subscription"/>.</summary>
     public static string UnsubscribeUrl(InMemoryAwsBus bus, SnsSubscription subscription) =>
-        $"{BaseUrl(bus)}/?Action=Unsubscribe&SubscriptionArn={Uri.EscapeDataString(subscription.SubscriptionArn)}";
+        $"{BaseUrl(bus)}/?Action=Unsubscribe&SubscriptionArn={subscription.SubscriptionArn}";
+
+    /// <summary>
+    /// The <c>SigningCertURL</c> of a signed message: a GET of it serves <paramref name="certificate"/>
+    /// in PEM form, through the SNS <see cref="Http.InMemoryAwsHttpMessageHandler"/> or the server.
+    /// </summary>
+    public static string SigningCertUrl(InMemoryAwsBus bus, SnsSigningCertificate certificate) =>
+        $"{BaseUrl(bus)}/{certificate.FileName}";
 
     private static string BaseUrl(InMemoryAwsBus bus) =>
         bus.ServiceUrl?.ToString().TrimEnd('/') ?? $"https://sns.{bus.CurrentRegion}.amazonaws.com";
@@ -47,19 +57,23 @@ internal static class SnsHttpDelivery
     public static void SendSubscriptionConfirmation(InMemoryAwsBus bus, SnsSubscription subscription)
     {
         var messageId = Guid.NewGuid().ToString();
-        var body = new JsonObject
+        var signatureVersion = SnsEnvelope.DefaultSignatureVersion;
+        if (bus.Topics.TryGetValue(SnsArn.TopicName(subscription.TopicArn), out var topic))
         {
-            ["Type"] = "SubscriptionConfirmation",
-            ["MessageId"] = messageId,
-            ["Token"] = subscription.ConfirmationToken,
-            ["TopicArn"] = subscription.TopicArn,
-            ["Message"] = $"You have chosen to subscribe to the topic {subscription.TopicArn}.\nTo confirm the subscription, visit the SubscribeURL included in this message.",
-            ["SubscribeURL"] = SubscribeUrl(bus, subscription),
-            ["Timestamp"] = Timestamp(bus),
-            ["SignatureVersion"] = "1",
-            ["Signature"] = "EXAMPLE",
-            ["SigningCertURL"] = "EXAMPLE"
-        }.ToJsonString();
+            lock (topic.SubscriptionGate)
+            {
+                signatureVersion = topic.Attributes.GetValueOrDefault(SnsTopicAttributes.SignatureVersion, signatureVersion);
+            }
+        }
+
+        var body = SnsEnvelope.SubscriptionConfirmation(
+            bus,
+            signatureVersion,
+            messageId,
+            subscription.ConfirmationToken,
+            subscription.TopicArn,
+            $"You have chosen to subscribe to the topic {subscription.TopicArn}.\nTo confirm the subscription, visit the SubscribeURL included in this message.",
+            SubscribeUrl(bus, subscription));
 
         _ = PostAsync(bus, subscription, "SubscriptionConfirmation", messageId, body, SnsDeliveryPolicy.DefaultContentType, raw: false);
     }

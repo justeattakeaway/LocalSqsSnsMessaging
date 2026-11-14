@@ -22,7 +22,6 @@ public sealed class RawDeliveryToggleOnALiveSubscriptionSwitchesTheDeliveredForm
     [Test]
     [DisplayName("sns.raw-delivery-toggle-on-a-live-subscription-switches-the-delivered-format")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsEnvelope, "an enveloped delivery adds a TopicArn SQS message attribute that SNS doesn't send")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

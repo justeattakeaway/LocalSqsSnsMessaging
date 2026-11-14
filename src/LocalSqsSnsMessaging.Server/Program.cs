@@ -63,9 +63,10 @@ app.MapPost("/_ui/api/move-tasks/{taskHandle}/cancel", (HttpContext ctx, string 
     return DashboardApi.CancelRedrive(registry, account, taskHandle);
 });
 
-// Fallback: all other requests go to the AWS bridge middleware
+// Fallback: all other requests go to the AWS bridge middleware. The pattern takes paths that look
+// like files too (the default fallback doesn't), such as an SNS SigningCertURL's .pem.
 var middleware = new AwsBridgeMiddleware(registry);
-app.MapFallback(middleware.InvokeAsync);
+app.MapFallback("{*path}", middleware.InvokeAsync);
 
 Console.WriteLine($"LocalSqsSnsMessaging server listening on http://localhost:{port}");
 Console.WriteLine($"  Region:     {region}");

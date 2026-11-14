@@ -33,7 +33,6 @@ public sealed class SignatureVersionTwoSwitchesTheDeliveredDigestToSha256
     [Test]
     [DisplayName("sns.signature-version-two-switches-the-delivered-digest-to-sha256")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsEnvelope, "the envelope's SigningCertURL and Signature are the placeholder 'EXAMPLE', so neither digest can be verified")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

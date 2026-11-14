@@ -42,7 +42,6 @@ public sealed partial class SqsEnvelopeRawBytesArePrettyPrintedInCanonicalKeyOrd
     [Test]
     [DisplayName("sns__sqs.sqs-envelope-raw-bytes-are-pretty-printed-in-canonical-key-order")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsEnvelope, "the envelope is written as compact JSON in a different key order instead of SNS's pretty-printed layout")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

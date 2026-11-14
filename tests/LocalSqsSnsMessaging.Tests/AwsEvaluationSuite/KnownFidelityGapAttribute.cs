@@ -15,12 +15,6 @@ public enum FidelityGap
     /// <summary>SNS: PublishBatch validation and per-entry results.</summary>
     SnsBatch,
 
-    /// <summary>SNS: the JSON envelope delivered to SQS (fields, layout, signature, signing certificate).</summary>
-    SnsEnvelope,
-
-    /// <summary>SNS: raw message delivery (attribute conversion, limits, toggling).</summary>
-    SnsRawDelivery,
-
     /// <summary>SNS: subscription filter policy evaluation and validation.</summary>
     SnsFilterPolicy,
 

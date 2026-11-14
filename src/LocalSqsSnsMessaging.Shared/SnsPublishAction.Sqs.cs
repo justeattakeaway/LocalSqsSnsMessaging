@@ -21,7 +21,10 @@ internal sealed partial class SnsPublishAction
             return;
         }
 
-        Enqueue(queue, CreateSqsMessage(subscription, message), message);
+        if (CreateSqsMessage(subscription, message) is { } sqsMessage)
+        {
+            Enqueue(queue, sqsMessage, message);
+        }
     }
 
     /// <summary>
@@ -39,7 +42,10 @@ internal sealed partial class SnsPublishAction
             return;
         }
 
-        Enqueue(deadLetterQueue, CreateSqsMessage(subscription, message, deliveredBody), message);
+        if (CreateSqsMessage(subscription, message, deliveredBody) is { } sqsMessage)
+        {
+            Enqueue(deadLetterQueue, sqsMessage, message);
+        }
     }
 
     private bool TryGetQueue(string arn, out SqsQueueResource queue)
@@ -100,11 +106,28 @@ internal sealed partial class SnsPublishAction
                throughputLimit == "perMessageGroupId";
     }
 
-    private Message CreateSqsMessage(SnsSubscription subscription, OutboundMessage message, string? body = null)
+    /// <summary>
+    /// The SQS message SNS delivers for <paramref name="subscription"/>: the JSON envelope, or for raw
+    /// delivery the bare body with the message attributes as SQS message attributes. Null when SQS
+    /// would refuse the message (a raw delivery with more than ten attributes), so it is dropped.
+    /// </summary>
+    private Message? CreateSqsMessage(SnsSubscription subscription, OutboundMessage message, string? body = null)
     {
-        var sqsMessage = subscription.Raw
-            ? CreateRawSqsMessage(body ?? message.Body, message.Attributes)
-            : CreateFormattedMessage(body ?? CreateSnsEnvelope(subscription, message).ToJsonString(), message.TopicArn);
+        Message sqsMessage;
+        if (subscription.Raw)
+        {
+            if (!SnsRawMessageAttributes.TryConvert(message.Attributes, out var attributes))
+            {
+                return null;
+            }
+
+            sqsMessage = new Message { Body = body ?? message.Body, MessageAttributes = attributes };
+        }
+        else
+        {
+            // The attributes travel inside the envelope; the SQS message itself carries none.
+            sqsMessage = new Message { Body = body ?? CreateSnsEnvelope(subscription, message) };
+        }
 
         sqsMessage.MessageId = Guid.NewGuid().ToString();
 
@@ -116,37 +139,5 @@ internal sealed partial class SnsPublishAction
 #pragma warning restore CA1308
 
         return sqsMessage;
-    }
-
-    private static Message CreateRawSqsMessage(string message, Dictionary<string, MessageAttributeValue>? attributes)
-    {
-        return new Message
-        {
-            Body = message,
-            MessageAttributes = attributes?.ToDictionary(
-                kvp => kvp.Key,
-                kvp => new SqsMessageAttributeValue
-                {
-                    DataType = kvp.Value.DataType,
-                    StringValue = kvp.Value.StringValue,
-                    BinaryValue = kvp.Value.BinaryValue
-                })
-        };
-    }
-
-    private static Message CreateFormattedMessage(string envelope, string topicArn)
-    {
-        return new Message
-        {
-            Body = envelope,
-            MessageAttributes = new Dictionary<string, SqsMessageAttributeValue>
-            {
-                ["TopicArn"] = new()
-                {
-                    DataType = "String",
-                    StringValue = topicArn
-                }
-            }
-        };
     }
 }
