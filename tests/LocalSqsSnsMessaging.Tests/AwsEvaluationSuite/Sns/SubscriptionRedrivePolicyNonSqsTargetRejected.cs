@@ -21,7 +21,6 @@ public sealed class SubscriptionRedrivePolicyNonSqsTargetRejected
     [Test]
     [DisplayName("sns.subscription-redrive-policy-non-sqs-target-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsDeliveryFailures, "a RedrivePolicy targeting a topic is refused with 'deadLetterTargetArn must be an SQS queue ARN' instead of 'deadLetterTargetArn must be a SQS queue'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

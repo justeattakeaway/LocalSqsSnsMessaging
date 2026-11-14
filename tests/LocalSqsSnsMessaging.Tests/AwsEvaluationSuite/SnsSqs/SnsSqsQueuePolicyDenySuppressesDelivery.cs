@@ -23,7 +23,6 @@ public sealed class SnsSqsQueuePolicyDenySuppressesDelivery
     [Test]
     [DisplayName("sns__sqs.sns-sqs-queue-policy-deny-suppresses-delivery")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsDeliveryFailures, "SNS delivers to a queue whose policy explicitly denies sqs:SendMessage")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

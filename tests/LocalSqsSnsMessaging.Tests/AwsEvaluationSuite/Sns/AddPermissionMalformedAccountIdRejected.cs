@@ -20,7 +20,6 @@ public sealed class AddPermissionMalformedAccountIdRejected
     [Test]
     [DisplayName("sns.add-permission-malformed-account-id-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsPermissions, "AddPermission accepts a malformed account id instead of refusing it with 'Invalid parameter: A provided account ID is not valid'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

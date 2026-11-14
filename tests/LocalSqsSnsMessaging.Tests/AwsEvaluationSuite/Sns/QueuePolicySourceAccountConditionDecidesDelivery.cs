@@ -23,7 +23,6 @@ public sealed class QueuePolicySourceAccountConditionDecidesDelivery
     [Test]
     [DisplayName("sns.queue-policy-source-account-condition-decides-delivery")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsDeliveryFailures, "SNS delivers to a queue whose policy admits SNS only for another aws:SourceAccount")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

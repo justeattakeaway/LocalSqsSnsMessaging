@@ -11,11 +11,19 @@ internal sealed partial class InternalSnsClient
     /// <summary>SNS answers a tag request for a resource that doesn't exist with this message.</summary>
     private const string ResourceDoesNotExist = "Resource does not exist";
 
+    /// <summary>The actions <c>AddPermission</c> can grant on a topic, as SNS names them.</summary>
+    private static readonly HashSet<string> TopicPolicyActions = new(StringComparer.Ordinal)
+    {
+        "AddPermission", "DeleteTopic", "GetTopicAttributes", "ListSubscriptionsByTopic", "Publish",
+        "Receive", "RemovePermission", "SetTopicAttributes", "Subscribe",
+    };
+
     public Task<AddPermissionResponse> AddPermissionAsync(AddPermissionRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         var topic = GetTopicByArn(request.TopicArn);
+        ValidatePermission(request);
 
         lock (topic.SubscriptionGate)
         {
@@ -69,6 +77,23 @@ internal sealed partial class InternalSnsClient
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.AddPermission, topic.Arn);
         return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
+    }
+
+    /// <summary>
+    /// Refuses an <c>AddPermission</c> grant SNS would not add to the policy: an account id that is
+    /// not twelve digits, or an action that is not one of <see cref="TopicPolicyActions"/>.
+    /// </summary>
+    private static void ValidatePermission(AddPermissionRequest request)
+    {
+        if (request.AWSAccountId?.Exists(account => account is not { Length: 12 } || !account.All(c => c is >= '0' and <= '9')) == true)
+        {
+            throw new InternalInvalidParameterException("Invalid parameter: A provided account ID is not valid");
+        }
+
+        if (request.ActionName?.Exists(action => !TopicPolicyActions.Contains(action)) == true)
+        {
+            throw new InternalInvalidParameterException("Invalid parameter: Policy statement action out of service scope!");
+        }
     }
 
     public Task<RemovePermissionResponse> RemovePermissionAsync(RemovePermissionRequest request,

@@ -7,15 +7,16 @@ namespace LocalSqsSnsMessaging;
 
 /// <summary>
 /// A queue's <c>Policy</c> attribute: how SQS stores it, and the parts of IAM policy evaluation the
-/// library enforces. Only explicit <c>Deny</c> statements are enforced; <c>Allow</c> statements are
-/// never needed, because every caller acts for the account that owns the queues.
+/// library enforces. For callers, only explicit <c>Deny</c> statements are enforced; <c>Allow</c>
+/// statements are never needed, because every caller acts for the account that owns the queues.
+/// Deliveries by AWS services are evaluated by <see cref="AdmitsServiceDelivery"/>.
 /// </summary>
 /// <remarks>
 /// A statement is applied only when every part of it is understood. One whose condition uses an
 /// operator or a shape the library does not evaluate is skipped, so an unsupported Deny never
 /// blocks a request.
 /// </remarks>
-internal static class SqsQueuePolicy
+internal static partial class SqsQueuePolicy
 {
     /// <summary>Parsed documents, keyed by the attribute string they were parsed from.</summary>
     private static readonly ConditionalWeakTable<string, JsonObject?> ParsedDocuments = new();
@@ -39,7 +40,20 @@ internal static class SqsQueuePolicy
         IPAddress? SourceIp,
         bool SecureTransport)
     {
-        public bool IsAnonymous => PrincipalAccount is null;
+        /// <summary>
+        /// The service principal making the request on a resource's behalf (e.g. <c>sns.amazonaws.com</c>
+        /// delivering a topic's notification), or <see langword="null"/> when an account or an
+        /// anonymous caller makes it.
+        /// </summary>
+        public string? Service { get; init; }
+
+        /// <summary>The resource a service acts for (<c>aws:SourceArn</c>), e.g. the publishing topic.</summary>
+        public string? SourceArn { get; init; }
+
+        /// <summary>The account that owns <see cref="SourceArn"/> (<c>aws:SourceAccount</c>).</summary>
+        public string? SourceAccount { get; init; }
+
+        public bool IsAnonymous => PrincipalAccount is null && Service is null;
     }
 
     /// <summary>
@@ -177,7 +191,12 @@ internal static class SqsQueuePolicy
             return false;
         }
 
-        // Service, federated and canonical-user principals never make SQS API calls here.
+        if (request.Service is { } service)
+        {
+            return Values(obj["Service"]).Contains(service, StringComparer.Ordinal);
+        }
+
+        // Federated and canonical-user principals never make SQS API calls here.
         return Values(obj["AWS"]).Any(value =>
             IsAccountId(value)
                 ? string.Equals(value, request.PrincipalAccount, StringComparison.Ordinal)
@@ -306,7 +325,21 @@ internal static class SqsQueuePolicy
                 value = request.PrincipalArn;
                 return true;
             case "AWS:PRINCIPALTYPE":
-                value = request.IsAnonymous ? "Anonymous" : "Account";
+                // A service principal, such as SNS delivering a notification, has no principal type.
+                value = request.Service is not null ? null : request.IsAnonymous ? "Anonymous" : "Account";
+                return true;
+            case "AWS:PRINCIPALSERVICENAME":
+                value = request.Service;
+                return true;
+            case "AWS:PRINCIPALISAWSSERVICE":
+                value = request.Service is not null ? "true" : "false";
+                return true;
+            case "AWS:SOURCEARN":
+                value = request.SourceArn;
+                return true;
+            case "AWS:SOURCEACCOUNT":
+            case "AWS:SOURCEOWNER":
+                value = request.SourceAccount;
                 return true;
             case "AWS:USERID":
                 value = request.IsAnonymous ? "anonymous" : request.PrincipalAccount;

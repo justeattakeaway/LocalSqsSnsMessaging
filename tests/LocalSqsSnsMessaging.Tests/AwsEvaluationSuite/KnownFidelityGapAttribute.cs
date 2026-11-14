@@ -12,9 +12,6 @@ public enum FidelityGap
     /// <summary>A one-off behavioral difference, kept for compatibility.</summary>
     Other,
 
-    /// <summary>SNS: subscription attributes (read-back form, validation, unknown names).</summary>
-    SnsSubscriptionAttributes,
-
     /// <summary>SNS: request validation AWS performs that we skip (names, publish parameters, message attributes, subjects).</summary>
     SnsValidation,
 
@@ -35,9 +32,6 @@ public enum FidelityGap
 
     /// <summary>SNS: deliveries SQS refuses (queue policies, deleted queues) and subscription dead-letter queues.</summary>
     SnsDeliveryFailures,
-
-    /// <summary>SNS: topic policies, AddPermission and RemovePermission.</summary>
-    SnsPermissions,
 
     /// <summary>SNS: <c>MessageStructure=json</c> publishes.</summary>
     SnsMessageStructure,

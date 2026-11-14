@@ -13,9 +13,9 @@ internal sealed partial class SnsPublishAction
 {
     private void DeliverToSqs(SnsSubscription subscription, OutboundMessage message)
     {
-        // A queue that has been deleted since subscribing is a client-side error: SNS doesn't
-        // retry those, it dead-letters (or drops) the message straight away.
-        if (!TryGetQueue(subscription.EndPoint, out var queue))
+        // A queue that has been deleted since subscribing, or whose policy refuses SNS, is a
+        // client-side error: SNS doesn't retry those, it dead-letters (or drops) the message straight away.
+        if (!TryGetQueue(subscription.EndPoint, out var queue) || !AdmitsDelivery(queue))
         {
             DeadLetter(subscription, message);
             return;
@@ -28,11 +28,13 @@ internal sealed partial class SnsPublishAction
     /// Sends a message that couldn't be delivered to the subscription's dead-letter queue, if it has one.
     /// The DLQ receives exactly what the endpoint would have: <paramref name="deliveredBody"/> is the
     /// body that was actually attempted (so the envelope's timestamp isn't regenerated), or is built
-    /// fresh when no attempt was made.
+    /// fresh when no attempt was made. A dead-letter queue whose policy refuses SNS loses the message.
     /// </summary>
     private void DeadLetter(SnsSubscription subscription, OutboundMessage message, string? deliveredBody = null)
     {
-        if (subscription.DeadLetterTargetArn is null || !TryGetQueue(subscription.DeadLetterTargetArn, out var deadLetterQueue))
+        if (subscription.DeadLetterTargetArn is null
+            || !TryGetQueue(subscription.DeadLetterTargetArn, out var deadLetterQueue)
+            || !AdmitsDelivery(deadLetterQueue))
         {
             return;
         }

@@ -23,7 +23,6 @@ public sealed class QueuePolicySourceArnOfAnotherTopicWithholdsDelivery
     [Test]
     [DisplayName("sns.queue-policy-source-arn-of-another-topic-withholds-delivery")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsDeliveryFailures, "SNS delivers to a queue whose policy admits only another topic as aws:SourceArn")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

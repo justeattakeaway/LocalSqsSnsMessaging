@@ -337,7 +337,8 @@ internal sealed partial class InternalSnsClient
             SnsSubscriptionAttributes.FilterPolicy => JsonEquivalent(subscription.FilterPolicy, value),
             SnsSubscriptionAttributes.FilterPolicyScope => string.Equals(subscription.FilterPolicyScope, value, StringComparison.Ordinal),
             SnsSubscriptionAttributes.RedrivePolicy => JsonEquivalent(subscription.RedrivePolicy ?? string.Empty, value),
-            SnsSubscriptionAttributes.DeliveryPolicy => JsonEquivalent(subscription.DeliveryPolicy ?? string.Empty, value),
+            SnsSubscriptionAttributes.DeliveryPolicy => JsonEquivalent(subscription.DeliveryPolicy ?? string.Empty,
+                string.IsNullOrWhiteSpace(value) ? value : SnsDeliveryPolicy.NormalizeSubscriptionPolicy(value)),
             SnsSubscriptionAttributes.SubscriptionRoleArn => string.Equals(subscription.SubscriptionRoleArn ?? string.Empty, value, StringComparison.Ordinal),
             SnsSubscriptionAttributes.ReplayPolicy => JsonEquivalent(subscription.ReplayPolicy ?? string.Empty, value),
             _ => false,
@@ -411,7 +412,7 @@ internal sealed partial class InternalSnsClient
 
                 case SnsSubscriptionAttributes.DeliveryPolicy:
                     SnsDeliveryPolicy.Validate(value);
-                    subscription.DeliveryPolicy = string.IsNullOrWhiteSpace(value) ? null : value;
+                    subscription.DeliveryPolicy = string.IsNullOrWhiteSpace(value) ? null : SnsDeliveryPolicy.NormalizeSubscriptionPolicy(value);
                     break;
 
                 case SnsSubscriptionAttributes.SubscriptionRoleArn:
