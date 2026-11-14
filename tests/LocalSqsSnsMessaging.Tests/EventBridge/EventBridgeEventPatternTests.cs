@@ -307,4 +307,31 @@ public sealed class EventBridgeEventPatternTests
         Match("""{"detail":{"absent":["x"]}}""", """{"detail":{"present":"y"}}""").ShouldBeFalse();
         await Task.CompletedTask;
     }
+    [Test]
+    public async Task ArrayConsistency_KeysInUnrelatedArrays_DoNotMultiplyTheSearch()
+    {
+        // a, b and c each match every element of their own array; x and y then fail because they lie
+        // in different elements of items. Trying every (a, b, c) combination first took n^3 steps.
+        const int n = 1000;
+        var values = $"[{string.Join(",", Enumerable.Range(0, n))}]";
+        var pattern = """{"a":[{"exists":true}],"b":[{"exists":true}],"c":[{"exists":true}],"items":{"x":[1],"y":[2]}}""";
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        Match(pattern, $$"""{"a":{{values}},"b":{{values}},"c":{{values}},"items":[{"x":1},{"y":2}]}""").ShouldBeFalse();
+        Match(pattern, $$"""{"a":{{values}},"b":{{values}},"c":{{values}},"items":[{"x":1,"y":2}]}""").ShouldBeTrue();
+
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task ArrayConsistency_StillRequiresTheSameElementOfASharedOuterArray()
+    {
+        // Values in their own inner arrays are interchangeable only within one element of items.
+        var pattern = """{"items":{"tags":["t"],"sku":["abc"]}}""";
+
+        Match(pattern, """{"items":[{"tags":["t","u"],"sku":"xyz"},{"tags":["v"],"sku":"abc"}]}""").ShouldBeFalse();
+        Match(pattern, """{"items":[{"tags":["v"],"sku":"xyz"},{"tags":["u","t"],"sku":"abc"}]}""").ShouldBeTrue();
+        await Task.CompletedTask;
+    }
 }

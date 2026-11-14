@@ -189,6 +189,18 @@ public sealed class EventBridgeTargetDeliveryTests : IDisposable
     }
 
     [Test]
+    public async Task DetailWithARepeatedKey_IsDeliveredWithTheKeysLastValue()
+    {
+        var queue = await QueueAsync("q");
+        await RuleAsync("r", new EventBridgeTarget { Id = "q", Arn = queue.Arn });
+
+        await PutEventAsync(detail: """{"x":{"k":1,"k":2},"n":1}""");
+
+        var delivered = JsonNode.Parse((await ReceiveAllAsync(queue.Url)).ShouldHaveSingleItem().Body)!;
+        delivered["detail"]!.ToJsonString().ShouldBe("""{"x":{"k":2},"n":1}""");
+    }
+
+    [Test]
     public async Task QueueDelaySeconds_AppliesToDeliveries()
     {
         var queue = await QueueAsync("delayed", new Dictionary<string, string> { ["DelaySeconds"] = "5" });

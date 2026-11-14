@@ -8,7 +8,7 @@ namespace LocalSqsSnsMessaging;
 /// See https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-scheduled-rule-pattern.html
 /// </summary>
 /// <remarks>
-/// Schedules are stored and echoed but never fire: nothing runs a rule on its schedule.
+/// <see cref="EventBridgeSchedule"/> computes when an accepted schedule fires.
 /// </remarks>
 internal static class EventBridgeScheduleExpression
 {
@@ -20,7 +20,7 @@ internal static class EventBridgeScheduleExpression
     private static readonly CronField DayOfMonth = new(1, 31);
     private static readonly CronField Month = new(1, 12, MonthNames);
     private static readonly CronField DayOfWeek = new(1, 7, DayNames);
-    private static readonly CronField Year = new(1970, 2199);
+    private static readonly CronField Year = new(1970, 2199, wraps: false);
 
     /// <summary>
     /// Whether <paramref name="expression"/> is a schedule EventBridge accepts. A rate needs a value of
@@ -121,7 +121,10 @@ internal static class EventBridgeScheduleExpression
         var dash = item.IndexOf('-', StringComparison.Ordinal);
         if (dash >= 0)
         {
-            return spec.TryParse(item[..dash], out _) && spec.TryParse(item[(dash + 1)..], out _);
+            // A range in a cyclic field may wrap (22-2, FRI-MON); a year range cannot.
+            return spec.TryParse(item[..dash], out var first)
+                && spec.TryParse(item[(dash + 1)..], out var last)
+                && (spec.Wraps || first <= last);
         }
 
         return spec.TryParse(item, out _);
@@ -169,9 +172,14 @@ internal static class EventBridgeScheduleExpression
             && int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value);
     }
 
-    /// <summary>The numeric range of one cron field, and the names (e.g. <c>JAN</c>, <c>MON</c>) it also accepts.</summary>
-    private sealed class CronField(int min, int max, string[]? names = null)
+    /// <summary>
+    /// The numeric range of one cron field, the names (e.g. <c>JAN</c>, <c>MON</c>) it also accepts,
+    /// and whether a range in it may wrap past its maximum.
+    /// </summary>
+    private sealed class CronField(int min, int max, string[]? names = null, bool wraps = true)
     {
+        public bool Wraps => wraps;
+
         public bool TryParse(string text, out int value)
         {
             if (names is not null)

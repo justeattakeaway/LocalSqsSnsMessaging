@@ -133,7 +133,47 @@ internal static class JsonPatternMatcher
             choices.Add(matching);
         }
 
-        return choices.Count == 0 || ChooseConsistent(choices, 0, []);
+        return choices.Count < 2 || ChooseConsistent(DistinctPlacements(choices), 0, []);
+    }
+
+    /// <summary>
+    /// Each key's matching values reduced to their distinct placements in the arrays that another
+    /// key's values also lie within.
+    /// </summary>
+    /// <remarks>
+    /// Only an array two keys share can make their choices inconsistent, so two values of one key
+    /// placed alike in every shared array are interchangeable. Keeping one of them stops the search
+    /// from trying every combination of the matches of keys that never constrain one another (three
+    /// keys matching every element of their own long arrays, say) before a later key fails.
+    /// </remarks>
+    private static List<List<FieldValue>> DistinctPlacements(List<List<FieldValue>> choices)
+    {
+        // How many keys have a value within each array. JsonNode compares by reference.
+        var keysPerArray = new Dictionary<JsonArray, int>();
+        foreach (var values in choices)
+        {
+            foreach (var array in values.SelectMany(v => v.Elements).Select(e => e.Array).Distinct())
+            {
+                keysPerArray[array] = keysPerArray.TryGetValue(array, out var count) ? count + 1 : 1;
+            }
+        }
+
+        var shared = new Dictionary<JsonArray, int>();
+        foreach (var (array, keys) in keysPerArray)
+        {
+            if (keys > 1)
+            {
+                shared[array] = shared.Count;
+            }
+        }
+
+        return choices
+            .Select(values => values
+                .Select(v => v with { Elements = [.. v.Elements.Where(e => shared.ContainsKey(e.Array))] })
+                .GroupBy(v => string.Join(",", v.Elements.Select(e => $"{shared[e.Array]}:{e.Index}")), StringComparer.Ordinal)
+                .Select(placement => placement.First())
+                .ToList())
+            .ToList();
     }
 
     /// <summary>

@@ -145,16 +145,7 @@ internal static partial class SnsFilterPolicy
         if (string.Equals(subscription.FilterPolicyScope, MessageBodyScope, StringComparison.Ordinal))
         {
             // Body-scoped policies require the message to be a JSON object; anything else is dropped.
-            JsonObject? body;
-            try
-            {
-                body = JsonNode.Parse(message) as JsonObject;
-            }
-            catch (JsonException)
-            {
-                body = null;
-            }
-
+            var body = EventRulerDocument.ParseObject(message);
             return body is not null && JsonPatternMatcher.Matches(policy, body);
         }
 

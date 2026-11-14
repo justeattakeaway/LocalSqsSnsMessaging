@@ -154,6 +154,12 @@ public sealed class EventBridgeArchiveReplayScheduleTests
     [Arguments("cron(0 8 1W * ? *)", "2026-02-01T00:00:00Z", "2026-02-02T08:00:00Z")]
     [Arguments("cron(0 8 1W * ? *)", "2026-02-02T09:00:00Z", "2026-03-02T08:00:00Z")]
     [Arguments("rate(5 minutes)", "2026-01-05T09:00:00Z", "2026-01-05T09:05:00Z")]
+    [Arguments("cron(0 22-2 * * ? *)", "2026-01-05T02:30:00Z", "2026-01-05T22:00:00Z")]
+    [Arguments("cron(0 22-2 * * ? *)", "2026-01-05T23:30:00Z", "2026-01-06T00:00:00Z")]
+    [Arguments("cron(0 22-2/2 * * ? *)", "2026-01-05T22:30:00Z", "2026-01-06T00:00:00Z")]
+    [Arguments("cron(0 9 ? * FRI-MON *)", "2026-01-05T10:00:00Z", "2026-01-09T09:00:00Z")]
+    [Arguments("cron(0 9 ? * FRI-MON *)", "2026-01-10T10:00:00Z", "2026-01-11T09:00:00Z")]
+    [Arguments("cron(0 0 1 NOV-FEB ? *)", "2026-02-02T00:00:00Z", "2026-11-01T00:00:00Z")]
     public async Task Schedule_NextAfter(string expression, string after, string expected)
     {
         EventBridgeSchedule.TryParse(expression, out var schedule).ShouldBeTrue();
@@ -266,5 +272,65 @@ public sealed class EventBridgeArchiveReplayScheduleTests
 
         // 2026-01-05 is a Monday.
         schedule.NextAfter(Start).ShouldBe(new DateTimeOffset(2026, 1, 10, 12, 0, 0, TimeSpan.Zero));
+    }
+    [Test]
+    [Arguments("cron(0 22-2 * * ? *)", true)]
+    [Arguments("cron(0 9 ? * FRI-MON *)", true)]
+    [Arguments("cron(0 0 1 1 ? 2030-2027)", false)]
+    public async Task ScheduleExpression_WrappingRanges_AreValidOnlyInCyclicFields(string expression, bool valid)
+    {
+        EventBridgeScheduleExpression.IsValid(expression).ShouldBe(valid);
+        EventBridgeSchedule.TryParse(expression, out _).ShouldBe(valid);
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task RateRule_LongerThanTheLongestTimerWait_FiresOnTime()
+    {
+        var (_, time, eb, sqs, queueUrl, queueArn) = await CreateAsync();
+        using var _ = sqs;
+        await eb.PutRuleAsync(new Eb.PutRuleRequest { Name = "slow", ScheduleExpression = "rate(60 days)" });
+        await eb.PutTargetsAsync(new Eb.PutTargetsRequest { Rule = "slow", Targets = [new Eb.Target { Id = "q", Arn = queueArn }] });
+
+        // A timer waits at most about 49.7 days, so the rule wakes early once and waits the rest.
+        time.Advance(TimeSpan.FromDays(50));
+        (await DrainAsync(sqs, queueUrl)).ShouldBeEmpty();
+        time.Advance(TimeSpan.FromDays(10));
+        var fired = (await DrainAsync(sqs, queueUrl)).ShouldHaveSingleItem();
+
+        fired["time"]!.GetValue<string>().ShouldBe("2026-03-06T09:00:00Z");
+    }
+
+    [Test]
+    public async Task CronRule_WhoseNextFiringIsMonthsAway_KeepsFiring()
+    {
+        var (_, time, eb, sqs, queueUrl, queueArn) = await CreateAsync();
+        using var _ = sqs;
+        await eb.PutRuleAsync(new Eb.PutRuleRequest { Name = "quarterly", ScheduleExpression = "cron(0 0 1 1/3 ? *)" });
+        await eb.PutTargetsAsync(new Eb.PutTargetsRequest { Rule = "quarterly", Targets = [new Eb.Target { Id = "q", Arn = queueArn }] });
+
+        for (var day = 0; day < 190; day++)
+        {
+            time.Advance(TimeSpan.FromDays(1));
+        }
+
+        (await DrainAsync(sqs, queueUrl)).Select(e => e["time"]!.GetValue<string>())
+            .ShouldBe(["2026-04-01T00:00:00Z", "2026-07-01T00:00:00Z"]);
+    }
+
+    [Test]
+    public async Task Archive_WithARetentionPastTheCalendar_KeepsEveryEvent()
+    {
+        var (_, time, eb, sqs, queueUrl, _) = await CreateAsync();
+        using var _ = sqs;
+        var busArn = (await eb.CreateEventBusAsync(new Eb.CreateEventBusRequest { Name = "orders" })).EventBusArn;
+        await eb.CreateArchiveAsync(new Eb.CreateArchiveRequest { ArchiveName = "a", EventSourceArn = busArn, RetentionDays = int.MaxValue });
+
+        var put = await eb.PutEventsAsync(new Eb.PutEventsRequest { Entries = [new Eb.PutEventsRequestEntry { EventBusName = "orders", Source = "shop", DetailType = "Order", Detail = "{}" }] });
+        time.Advance(TimeSpan.FromDays(365));
+        await eb.PutEventsAsync(new Eb.PutEventsRequest { Entries = [new Eb.PutEventsRequestEntry { EventBusName = "orders", Source = "shop", DetailType = "Order", Detail = "{}" }] });
+
+        put.FailedEntryCount.ShouldBe(0);
+        (await eb.DescribeArchiveAsync(new Eb.DescribeArchiveRequest { ArchiveName = "a" })).EventCount.ShouldBe(2);
     }
 }

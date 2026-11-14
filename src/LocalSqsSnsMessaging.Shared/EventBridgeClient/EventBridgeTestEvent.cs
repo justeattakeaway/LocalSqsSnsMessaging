@@ -20,15 +20,7 @@ internal static class EventBridgeTestEvent
     /// </summary>
     public static JsonObject Parse(string? eventJson)
     {
-        JsonObject? @event;
-        try
-        {
-            @event = JsonNode.Parse(eventJson ?? string.Empty) as JsonObject;
-        }
-        catch (JsonException)
-        {
-            @event = null;
-        }
+        var @event = EventRulerDocument.ParseObject(eventJson ?? string.Empty);
 
         if (@event is null || RequiredFields.Any(field => !@event.ContainsKey(field)))
         {

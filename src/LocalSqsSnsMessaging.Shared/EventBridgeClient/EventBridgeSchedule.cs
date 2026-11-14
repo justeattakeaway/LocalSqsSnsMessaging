@@ -122,7 +122,7 @@ internal abstract class EventBridgeSchedule
                 || !cron.TryParseDayOfMonth(fields[2])
                 || !TryParseField(fields[3], 1, 12, MonthNames, out cron._months)
                 || !cron.TryParseDayOfWeek(fields[4])
-                || !TryParseField(fields[5], MinYear, MaxYear, null, out cron._years))
+                || !TryParseField(fields[5], MinYear, MaxYear, null, out cron._years, wraps: false))
             {
                 return false;
             }
@@ -304,10 +304,15 @@ internal abstract class EventBridgeSchedule
             return true;
         }
 
-        /// <summary>Parses a list of <c>*</c>, values, ranges and increments into the allowed values, indexed from <paramref name="min"/>.</summary>
-        private static bool TryParseField(string field, int min, int max, string[]? names, out bool[] allowed)
+        /// <summary>
+        /// Parses a list of <c>*</c>, values, ranges and increments into the allowed values, indexed from
+        /// <paramref name="min"/>. When <paramref name="wraps"/>, a range whose end is below its start
+        /// wraps past <paramref name="max"/>, as Quartz reads it: hours <c>22-2</c> are 22, 23, 0, 1 and 2.
+        /// </summary>
+        private static bool TryParseField(string field, int min, int max, string[]? names, out bool[] allowed, bool wraps = true)
         {
-            allowed = new bool[max - min + 1];
+            var size = max - min + 1;
+            allowed = new bool[size];
             foreach (var item in field.Split(','))
             {
                 var slash = item.IndexOf('/', StringComparison.Ordinal);
@@ -344,13 +349,14 @@ internal abstract class EventBridgeSchedule
                     }
                 }
 
-                if (first > last)
+                if (first > last && !wraps)
                 {
                     return false;
                 }
-                for (var value = first; value <= last; value += step)
+                var span = first <= last ? last - first : last - first + size;
+                for (var offset = 0; offset <= span; offset += step)
                 {
-                    allowed[value - min] = true;
+                    allowed[(first - min + offset) % size] = true;
                 }
             }
             return true;

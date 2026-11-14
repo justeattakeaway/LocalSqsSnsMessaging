@@ -46,12 +46,18 @@ internal sealed class ScheduledRuleJob : IDisposable
         }
     }
 
+    /// <summary>
+    /// The longest wait a timer accepts (<c>uint.MaxValue - 1</c> milliseconds, about 49.7 days). A
+    /// firing further off than that (<c>rate(50 days)</c>, a yearly cron) is reached in several waits.
+    /// </summary>
+    private static readonly TimeSpan MaxTimerDue = TimeSpan.FromMilliseconds(uint.MaxValue - 1.0);
+
     private void Arm()
     {
         if (_next is { } next)
         {
             var due = next - _bus.TimeProvider.GetUtcNow();
-            _timer.Change(due > TimeSpan.Zero ? due : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+            _timer.Change(due <= TimeSpan.Zero ? TimeSpan.Zero : due < MaxTimerDue ? due : MaxTimerDue, Timeout.InfiniteTimeSpan);
         }
     }
 
@@ -61,6 +67,13 @@ internal sealed class ScheduledRuleJob : IDisposable
         {
             if (_disposed || _next is not { } firedAt)
             {
+                return;
+            }
+
+            if (_bus.TimeProvider.GetUtcNow() < firedAt)
+            {
+                // Woken by a capped wait before the firing is due: wait the rest.
+                Arm();
                 return;
             }
 

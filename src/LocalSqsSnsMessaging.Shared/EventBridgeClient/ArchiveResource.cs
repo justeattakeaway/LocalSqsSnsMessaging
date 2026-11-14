@@ -97,7 +97,9 @@ internal sealed class ArchiveResource
     /// <summary>Drops the events archived longer ago than <see cref="RetentionDays"/>; 0 keeps them indefinitely.</summary>
     private void DropExpired(DateTimeOffset now)
     {
-        if (RetentionDays <= 0)
+        // A retention reaching back past the earliest representable date (int.MaxValue days, say)
+        // keeps every event, as it would.
+        if (RetentionDays <= 0 || RetentionDays >= (now - DateTimeOffset.MinValue).TotalDays)
         {
             return;
         }

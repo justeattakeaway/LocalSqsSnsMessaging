@@ -32,17 +32,8 @@ internal static class EventBridgeEnvelope
     /// Parses an entry's Detail, which must be a JSON object nested at most <see cref="MaxDetailDepth"/>
     /// levels deep; anything else (not JSON, an array, a string, ...) is <see langword="null"/>.
     /// </summary>
-    public static JsonObject? ParseDetail(string detail)
-    {
-        try
-        {
-            return JsonNode.Parse(detail, documentOptions: new JsonDocumentOptions { MaxDepth = MaxDetailDepth }) as JsonObject;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
+    /// <remarks>A key repeated in one object takes its last value, as in Event Ruler.</remarks>
+    public static JsonObject? ParseDetail(string detail) => EventRulerDocument.ParseObject(detail, MaxDetailDepth);
 
     /// <summary>Builds the event for a validated PutEvents entry whose Detail parsed to <paramref name="detail"/>.</summary>
     public static EventBridgeEvent Build(PutEventsRequestEntry entry, JsonObject detail, string eventId, InMemoryAwsBus bus)
