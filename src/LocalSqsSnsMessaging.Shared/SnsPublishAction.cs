@@ -36,6 +36,7 @@ internal sealed partial class SnsPublishAction
         string TopicArn,
         string? Subject,
         string Body,
+        string? MessageStructure,
         Dictionary<string, MessageAttributeValue>? Attributes,
         string? MessageGroupId,
         string? DeduplicationId);
@@ -46,9 +47,10 @@ internal sealed partial class SnsPublishAction
 
         Deliver(new OutboundMessage(
             messageId,
-            request.TopicArn,
+            request.TopicArn ?? request.TargetArn,
             request.Subject,
             request.Message,
+            request.MessageStructure,
             request.MessageAttributes,
             request.MessageGroupId,
             request.MessageDeduplicationId));
@@ -77,6 +79,7 @@ internal sealed partial class SnsPublishAction
                     request.TopicArn,
                     entry.Subject,
                     entry.Message,
+                    entry.MessageStructure,
                     entry.MessageAttributes,
                     entry.MessageGroupId,
                     entry.MessageDeduplicationId));
@@ -104,10 +107,13 @@ internal sealed partial class SnsPublishAction
         return response.SetCommonProperties();
     }
 
-    private void Deliver(OutboundMessage message)
+    private void Deliver(OutboundMessage published)
     {
+        var structure = SnsMessageStructure.Parse(published.Body, published.MessageStructure);
         foreach (var subscription in _subscriptions)
         {
+            // With MessageStructure=json each protocol has its own body.
+            var message = published with { Body = structure.BodyFor(subscription.Protocol) };
             if (!SnsFilterPolicy.Matches(subscription, message.Body, message.Attributes))
             {
                 continue;

@@ -25,7 +25,6 @@ public sealed class MessageStructureJsonStringifiesScalarBranchesAndIgnoresObjec
     [Test]
     [DisplayName("sns.message-structure-json-stringifies-scalar-branches-and-ignores-object-branches")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsMessageStructure, "MessageStructure=json isn't validated: a document whose default branch is not a string is accepted")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

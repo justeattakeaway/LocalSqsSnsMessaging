@@ -22,7 +22,6 @@ public sealed class MessageStructureJsonSelectsTheProtocolBodyAndFallsBackToDefa
     [Test]
     [DisplayName("sns.message-structure-json-selects-the-protocol-body-and-falls-back-to-default")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsMessageStructure, "MessageStructure=json is ignored: the SQS subscriber gets the whole JSON document instead of its sqs or default branch")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

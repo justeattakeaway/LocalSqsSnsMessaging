@@ -11,19 +11,21 @@ internal sealed partial class InternalSnsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        // The limit is per-topic, so the topic has to be resolved before the message can be sized up.
-        var topic = GetTopicByArn(request.TopicArn);
+        var targetArn = SnsPublishValidation.ResolveTarget(request);
+        var topic = GetTopicByArn(targetArn, string.IsNullOrEmpty(request.TopicArn) ? "TargetArn" : "TopicArn");
 
-        var maxMessageSize = GetMaxMessageSize(topic);
-        var messageSize = CalculateMessageSize(request.Message, request.Subject, request.MessageAttributes);
-        if (messageSize > maxMessageSize)
+        SnsPublishValidation.ValidateMessage(topic, request.Message, request.Subject, request.MessageStructure,
+            request.MessageAttributes, request.MessageGroupId, request.MessageDeduplicationId);
+
+        // The limit is per-topic, so the topic has to be resolved before the message can be sized up.
+        if (SnsPublishValidation.MessageSize(request.Message, request.MessageAttributes) > GetMaxMessageSize(topic))
         {
             throw new InternalInvalidParameterException("Invalid parameter: Message too long");
         }
 
         var result = topic.PublishAction.Execute(request);
 
-        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Publish, request.TopicArn);
+        _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Publish, topic.Arn);
         return Task.FromResult(result);
     }
 
@@ -34,12 +36,19 @@ internal sealed partial class InternalSnsClient
 
         var topic = GetTopicByArn(request.TopicArn);
 
+        // Every entry is checked before any is published: one invalid entry fails the whole request.
+        var entries = request.PublishBatchRequestEntries;
+        SnsPublishValidation.ValidateBatch(entries);
+        foreach (var entry in entries!)
+        {
+            SnsPublishValidation.ValidateMessage(topic, entry.Message, entry.Subject, entry.MessageStructure,
+                entry.MessageAttributes, entry.MessageGroupId, entry.MessageDeduplicationId);
+        }
+
         // The combined size of the batch is measured against the topic's limit, the same one a
         // single Publish is measured against.
-        var maxMessageSize = GetMaxMessageSize(topic);
-        var totalSize = (request.PublishBatchRequestEntries ?? [])
-            .Sum(requestEntry => CalculateMessageSize(requestEntry.Message, requestEntry.Subject, requestEntry.MessageAttributes));
-        if (totalSize > maxMessageSize)
+        var totalSize = entries.Sum(entry => SnsPublishValidation.MessageSize(entry.Message, entry.MessageAttributes));
+        if (totalSize > GetMaxMessageSize(topic))
         {
             throw new InternalBatchRequestTooLongException(
                 "The length of all the messages put together is more than the limit.");
@@ -49,44 +58,5 @@ internal sealed partial class InternalSnsClient
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.PublishBatch, request.TopicArn);
         return Task.FromResult(result);
-    }
-
-    private static int CalculateMessageSize(string message, string? subject, Dictionary<string, MessageAttributeValue>? messageAttributes)
-    {
-        var totalSize = 0;
-
-        // Add message body size
-        totalSize += Encoding.UTF8.GetByteCount(message ?? string.Empty);
-
-        // Add subject size
-        if (!string.IsNullOrEmpty(subject))
-        {
-            totalSize += Encoding.UTF8.GetByteCount(subject);
-        }
-
-        // Add message attributes size
-        if (messageAttributes != null)
-        {
-            foreach (var (key, attributeValue) in messageAttributes)
-            {
-                // Add attribute name size
-                totalSize += Encoding.UTF8.GetByteCount(key);
-
-                // Add data type size (including any custom type prefix)
-                totalSize += Encoding.UTF8.GetByteCount(attributeValue.DataType ?? string.Empty);
-
-                // Add value size based on the type
-                if (attributeValue.BinaryValue != null)
-                {
-                    totalSize += (int)attributeValue.BinaryValue.Length;
-                }
-                else if (attributeValue.StringValue != null)
-                {
-                    totalSize += Encoding.UTF8.GetByteCount(attributeValue.StringValue);
-                }
-            }
-        }
-
-        return totalSize;
     }
 }

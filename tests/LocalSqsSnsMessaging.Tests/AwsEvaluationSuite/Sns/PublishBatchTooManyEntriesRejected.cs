@@ -21,7 +21,6 @@ public sealed class PublishBatchTooManyEntriesRejected
     [Test]
     [DisplayName("sns.publish-batch-too-many-entries-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch accepts more than ten entries instead of refusing it with TooManyEntriesInBatchRequest")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

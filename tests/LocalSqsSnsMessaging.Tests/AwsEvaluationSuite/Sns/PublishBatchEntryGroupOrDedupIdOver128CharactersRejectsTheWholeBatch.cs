@@ -21,7 +21,6 @@ public sealed class PublishBatchEntryGroupOrDedupIdOver128CharactersRejectsTheWh
     [Test]
     [DisplayName("sns.publish-batch-entry-group-or-dedup-id-over-128-characters-rejects-the-whole-batch")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsBatch, "PublishBatch accepts an entry whose MessageGroupId or MessageDeduplicationId is over 128 characters instead of refusing the whole batch")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

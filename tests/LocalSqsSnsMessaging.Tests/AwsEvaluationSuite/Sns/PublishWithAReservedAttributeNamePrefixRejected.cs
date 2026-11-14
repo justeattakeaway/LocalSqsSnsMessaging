@@ -23,7 +23,6 @@ public sealed class PublishWithAReservedAttributeNamePrefixRejected
     [Test]
     [DisplayName("sns.publish-with-a-reserved-attribute-name-prefix-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts message attribute names with the reserved AWS. or Amazon. prefixes")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

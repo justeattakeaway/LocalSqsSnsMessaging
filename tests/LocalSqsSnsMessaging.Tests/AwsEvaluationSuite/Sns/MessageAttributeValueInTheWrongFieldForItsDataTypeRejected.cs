@@ -24,7 +24,6 @@ public sealed class MessageAttributeValueInTheWrongFieldForItsDataTypeRejected
     [Test]
     [DisplayName("sns.message-attribute-value-in-the-wrong-field-for-its-data-type-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts a String attribute sent as BinaryValue (and the reverse) instead of refusing it")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

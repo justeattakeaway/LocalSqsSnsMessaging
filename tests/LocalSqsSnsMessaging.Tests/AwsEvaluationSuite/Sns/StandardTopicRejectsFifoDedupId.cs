@@ -20,7 +20,6 @@ public sealed class StandardTopicRejectsFifoDedupId
     [Test]
     [DisplayName("sns.standard-topic-rejects-fifo-dedup-id")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish to a standard topic accepts a MessageDeduplicationId instead of refusing it with InvalidParameter")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

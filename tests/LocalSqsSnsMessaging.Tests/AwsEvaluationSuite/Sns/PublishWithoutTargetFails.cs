@@ -21,7 +21,6 @@ public sealed class PublishWithoutTargetFails
     [Test]
     [DisplayName("sns.publish-without-target-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish without TopicArn or TargetArn is refused with 'Invalid parameter: TopicArn' instead of 'Invalid parameter: TopicArn or TargetArn Reason: no value for required parameter'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

@@ -16,7 +16,6 @@ public sealed class PublishEmptyMessageFails
     [Test]
     [DisplayName("sns.publish-empty-message-fails")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "Publish accepts an empty Message instead of refusing it with 'Invalid parameter: Empty message'")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

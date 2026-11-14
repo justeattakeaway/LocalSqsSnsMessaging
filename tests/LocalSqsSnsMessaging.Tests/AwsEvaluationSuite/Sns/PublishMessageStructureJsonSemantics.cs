@@ -20,7 +20,6 @@ public sealed class PublishMessageStructureJsonSemantics
     [Test]
     [DisplayName("sns.publish-message-structure-json-semantics")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsMessageStructure, "MessageStructure=json is ignored: the SQS subscriber gets the whole JSON document instead of its default branch")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);

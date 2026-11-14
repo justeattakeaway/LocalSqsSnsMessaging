@@ -33,9 +33,6 @@ public enum FidelityGap
     /// <summary>SNS: deliveries SQS refuses (queue policies, deleted queues) and subscription dead-letter queues.</summary>
     SnsDeliveryFailures,
 
-    /// <summary>SNS: <c>MessageStructure=json</c> publishes.</summary>
-    SnsMessageStructure,
-
     /// <summary>SNS: FIFO topic message archiving and replay.</summary>
     SnsArchive,
 

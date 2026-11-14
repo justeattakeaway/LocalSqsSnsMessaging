@@ -21,7 +21,6 @@ public sealed class PublishSizeCountsAttributeNameTypeAndValueButNotTheSubject
     [Test]
     [DisplayName("sns.publish-size-counts-attribute-name-type-and-value-but-not-the-subject")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
-    [KnownFidelityGap(FidelityGap.SnsValidation, "the Subject is counted against the 256 KiB Publish limit, so a message AWS accepts is refused as too long")]
     public async Task Run(CancellationToken cancellationToken)
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
