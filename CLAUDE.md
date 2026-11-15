@@ -118,8 +118,8 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 
 **Resource Models**
 - `SqsQueueResource`: Queue state including messages, in-flight messages, message groups for FIFO
-- `SnsTopicResource`: Topic state with publish actions
-- `SnsSubscription`: Links topics to `sqs` queues or `http`/`https` endpoints, and holds the subscription's `FilterPolicy`/`FilterPolicyScope`, `RedrivePolicy` (dead-letter queue) and `DeliveryPolicy`
+- `SnsTopicResource`: a topic's attributes and tags, its subscriptions and its fan-out (see SNS Delivery)
+- `SnsSubscription`: Links its `Topic` to an `sqs` queue or an `http`/`https` endpoint, and holds the subscription's `FilterPolicy`/`FilterPolicyScope`, `RedrivePolicy` (dead-letter queue) and `DeliveryPolicy`
 - `EventBusResource`, `RuleResource`, `ArchiveResource`, `ReplayResource` (`EventBridgeClient/`)
 
 ### SNS Requests
@@ -127,17 +127,18 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 `InternalSnsClient` is split into partial files under `SnsClient/` (topics, subscriptions, publish, permissions and tags, unsupported operations). Requests are answered as SNS does:
 - ARNs are checked by `SnsArn` before any lookup (malformed: `InvalidParameter`); a missing topic is `NotFound` "Topic does not exist", a missing subscription "Subscription does not exist"
 - A subscription ARN is its topic ARN plus a uuid. Subscribe needs the topic, but not the SQS queue, to exist; subscribing the same endpoint again returns the existing subscription
+- Subscription changes go through the topic: `Subscribe`, `Confirm`, `UpdateSubscription` (SetSubscriptionAttributes), `Unsubscribe` and `Delete` (DeleteTopic). The topic keeps its own set (found by protocol and endpoint), writes the region's `Subscriptions` index (subscription ARN to subscription, for ARN lookups and ListSubscriptions) under its gate, and enforces the `MaximumMessageSize` rules that depend on its subscriptions. Nothing else writes the index
 - `SnsTopicAttributes` holds topic attribute names, defaults (default `Policy`, `EffectiveDeliveryPolicy`, ...) and validation; `SnsPublishValidation` and `SnsMessageStructure` validate Publish/PublishBatch and pick a `MessageStructure=json` branch per protocol
 - SNS is regional: a topic ARN naming another region is refused with `InvalidParameter` "Invalid parameter: TopicArn", as a regional endpoint does
 
 ### SNS Delivery
 
-`SnsPublishAction` (split into `SnsPublishAction*.cs`) fans a published message out per subscription:
+A topic publishes through `topic.Publish`/`PublishBatch` (also EventBridge's SNS targets). Its fan-out, `SnsFanOut` (split into `SnsFanOut*.cs`), is built once per topic and delivers to the topic's current `FanOutSubscriptions`, a snapshot of its confirmed subscriptions the topic replaces as a whole on every change, so a publish sees a subscription whole or not at all. Lock order lives in `SnsTopicResource`: its `SubscriptionGate` (subscriptions, attributes, tags), then a FIFO topic's `SnsFifoTopicState.Gate`; only the topic and its fan-out take the FIFO gate. Per subscription the fan-out:
 - `SnsFilterPolicy` validates filter policies with AWS's messages (`.Syntax.cs` for SNS's JSON errors, the shared `EventRulerJsonReader`/`EventRulerGrammar` for Event Ruler's operator rules) and evaluates them (attribute or body scope) on top of `JsonPatternMatcher`, the same matcher EventBridge uses for event patterns
-- FIFO topics (`SnsPublishAction.Fifo.cs`, `SnsFifoTopicState`) assign sequence numbers and deduplicate for five minutes on the bus `TimeProvider`; an `ArchivePolicy` archives messages, and a subscription's `ReplayPolicy` (`SnsReplayPolicy`) replays them
+- FIFO topics (`SnsFanOut.Fifo.cs`, `SnsFifoTopicState`) assign sequence numbers and deduplicate for five minutes on the bus `TimeProvider`; an `ArchivePolicy` archives messages, and a subscription's `ReplayPolicy` (`SnsReplayPolicy`) replays them. The topic replays whenever a subscription change leaves a replay `Pending` (subscribe, confirm, a new `ReplayPolicy`), joining the fan-out and replaying under the FIFO gate so no live message overtakes the replayed ones
 - SQS endpoints go through `SqsServiceDelivery` (see below) at publish time; a deleted queue, or a queue `Policy` that denies SNS (`sns.amazonaws.com`, with the topic as `aws:SourceArn`) or addresses SNS deliveries without admitting this one, is a delivery failure; a policy that says nothing about SNS admits it
 - Non-raw deliveries get the envelope `SnsEnvelope` writes, byte for byte as SNS lays it out and signed (`SnsSigningCertificate`: one self-signed key per process, served at the envelope's `SigningCertURL`; netstandard2.0 keeps `EXAMPLE` placeholders). Raw deliveries convert attributes (`SnsRawMessageAttributes`)
-- HTTP/S subscriptions start `PendingConfirmation` and are excluded from fan-out until `ConfirmSubscription` (or a GET on the `SubscribeURL`) presents the token
+- HTTP/S subscriptions start `PendingConfirmation` and are excluded from fan-out until `ConfirmSubscription` (or a GET on the `SubscribeURL`) presents the token to the topic (`topic.Confirm`)
 - HTTP/S endpoints are POSTed in the background by `SnsHttpDelivery` using `bus.HttpClient`, retried per `SnsDeliveryPolicy` with `TimeProvider`-driven delays
 - Failed deliveries go to the subscription's dead-letter queue when a `RedrivePolicy` is set
 

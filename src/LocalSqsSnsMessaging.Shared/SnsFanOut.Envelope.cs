@@ -1,7 +1,7 @@
 namespace LocalSqsSnsMessaging;
 
 /// <summary>The JSON envelope SNS wraps a notification in.</summary>
-internal sealed partial class SnsPublishAction
+internal sealed partial class SnsFanOut
 {
     /// <summary>
     /// The notification as <paramref name="subscription"/> receives it when not in raw mode, signed

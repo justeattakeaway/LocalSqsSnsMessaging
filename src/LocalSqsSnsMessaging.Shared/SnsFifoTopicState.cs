@@ -14,7 +14,7 @@ internal sealed class SnsFifoTopicState
     private TimeSpan _archiveRetention;
 
     /// <summary>A message in the archive, and when it was published.</summary>
-    internal readonly record struct ArchivedMessage(SnsPublishAction.OutboundMessage Message, DateTimeOffset PublishedAt);
+    internal readonly record struct ArchivedMessage(SnsFanOut.OutboundMessage Message, DateTimeOffset PublishedAt);
 
     /// <summary>Serialises publishes, replays and setting changes on the topic.</summary>
     public object Gate { get; } = new();
@@ -71,7 +71,7 @@ internal sealed class SnsFifoTopicState
     }
 
     /// <summary>Adds a published message to the archive, if the topic is archiving.</summary>
-    public void Archive(SnsPublishAction.OutboundMessage message, DateTimeOffset publishedAt)
+    public void Archive(SnsFanOut.OutboundMessage message, DateTimeOffset publishedAt)
     {
         if (BeginningArchiveTime is null)
         {
@@ -86,7 +86,7 @@ internal sealed class SnsFifoTopicState
     /// The archived messages published from <paramref name="start"/> up to <paramref name="end"/>
     /// (or the latest, when null), in publish order.
     /// </summary>
-    public List<SnsPublishAction.OutboundMessage> Archived(DateTimeOffset start, DateTimeOffset? end, DateTimeOffset now)
+    public List<SnsFanOut.OutboundMessage> Archived(DateTimeOffset start, DateTimeOffset? end, DateTimeOffset now)
     {
         DiscardExpired(now);
         return _archive

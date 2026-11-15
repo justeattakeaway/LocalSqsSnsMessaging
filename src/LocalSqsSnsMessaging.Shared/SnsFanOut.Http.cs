@@ -9,7 +9,7 @@ using SqsMessageAttributeValue = LocalSqsSnsMessaging.Sqs.Model.MessageAttribute
 namespace LocalSqsSnsMessaging;
 
 /// <summary>Delivery to HTTP/S endpoints, retried per the delivery policy.</summary>
-internal sealed partial class SnsPublishAction
+internal sealed partial class SnsFanOut
 {
     private void DeliverToHttp(SnsSubscription subscription, OutboundMessage message)
     {

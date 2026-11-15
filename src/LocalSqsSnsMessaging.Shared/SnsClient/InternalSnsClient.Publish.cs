@@ -18,12 +18,12 @@ internal sealed partial class InternalSnsClient
             request.MessageAttributes, request.MessageGroupId, request.MessageDeduplicationId);
 
         // The limit is per-topic, so the topic has to be resolved before the message can be sized up.
-        if (SnsPublishValidation.MessageSize(request.Message, request.MessageAttributes) > GetMaxMessageSize(topic))
+        if (SnsPublishValidation.MessageSize(request.Message, request.MessageAttributes) > topic.MaximumMessageSize)
         {
             throw new InternalInvalidParameterException("Invalid parameter: Message too long");
         }
 
-        var result = topic.PublishAction.Execute(request);
+        var result = topic.Publish(request);
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Publish, topic.Arn);
         return Task.FromResult(result);
@@ -48,13 +48,13 @@ internal sealed partial class InternalSnsClient
         // The combined size of the batch is measured against the topic's limit, the same one a
         // single Publish is measured against.
         var totalSize = entries.Sum(entry => SnsPublishValidation.MessageSize(entry.Message, entry.MessageAttributes));
-        if (totalSize > GetMaxMessageSize(topic))
+        if (totalSize > topic.MaximumMessageSize)
         {
             throw new InternalBatchRequestTooLongException(
                 "The length of all the messages put together is more than the limit.");
         }
 
-        var result = topic.PublishAction.ExecuteBatch(request);
+        var result = topic.PublishBatch(request);
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.PublishBatch, request.TopicArn);
         return Task.FromResult(result);

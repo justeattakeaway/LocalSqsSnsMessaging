@@ -18,7 +18,11 @@ internal sealed class AwsRegionResources(string region)
     /// <summary>The region's SNS topics, keyed by topic name.</summary>
     public ConcurrentDictionary<string, SnsTopicResource> Topics { get; } = [];
 
-    /// <summary>The subscriptions to the region's SNS topics, keyed by subscription ARN.</summary>
+    /// <summary>
+    /// The subscriptions to the region's SNS topics, keyed by subscription ARN: the index that resolves a
+    /// subscription ARN. Each topic holds its own subscriptions and writes them here, under its gate, as
+    /// they come and go; nothing else changes it.
+    /// </summary>
     public ConcurrentDictionary<string, SnsSubscription> Subscriptions { get; } = [];
 
     /// <summary>The region's EventBridge event buses (each holding its own rules and targets), keyed by name.</summary>

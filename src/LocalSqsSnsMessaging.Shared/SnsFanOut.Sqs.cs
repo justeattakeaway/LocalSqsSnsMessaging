@@ -5,7 +5,7 @@ using LocalSqsSnsMessaging.Sns.Model;
 namespace LocalSqsSnsMessaging;
 
 /// <summary>Delivery to SQS queues, and to subscription dead-letter queues.</summary>
-internal sealed partial class SnsPublishAction
+internal sealed partial class SnsFanOut
 {
     private void DeliverToSqs(SnsSubscription subscription, OutboundMessage message)
     {
