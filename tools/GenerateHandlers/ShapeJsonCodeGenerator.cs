@@ -712,6 +712,22 @@ internal sealed class ShapeJsonCodeGenerator
                         code.AppendLine($"{indent}    }}");
                         code.AppendLine($"{indent}}}");
                     }
+
+                    // A list of structures (BatchWriteItem's write requests per table): each
+                    // element's own members are checked too.
+                    if (TypeOf(valueShape) == "list" && ListMember(Shape(valueShape)) is var elementShape
+                        && TypeOf(elementShape) == "structure" && !_customShapes.ContainsKey(elementShape))
+                    {
+                        var entry = $"entry{depth}";
+                        var i = $"i{depth}";
+                        code.AppendLine($"{indent}foreach (var {entry} in {value})");
+                        code.AppendLine($"{indent}{{");
+                        code.AppendLine($"{indent}    for (var {i} = 0; {i} < {entry}.Value.Count; {i}++)");
+                        code.AppendLine($"{indent}    {{");
+                        code.AppendLine($"{indent}        Validate_{elementShape}({entry}.Value[{i}], {pathVariable} + \".\" + {entry}.Key + \".member.\" + ({i} + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + \".member\", violations);");
+                        code.AppendLine($"{indent}    }}");
+                        code.AppendLine($"{indent}}}");
+                    }
                 }
 
                 break;

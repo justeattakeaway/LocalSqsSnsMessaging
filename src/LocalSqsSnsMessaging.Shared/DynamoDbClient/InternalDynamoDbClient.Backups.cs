@@ -38,7 +38,7 @@ internal sealed partial class InternalDynamoDbClient
             {
                 PointInTimeRecoveryStatus = "ENABLED",
                 RecoveryPeriodInDays = table.PointInTimeRecoveryPeriodInDays,
-                EarliestRestorableDateTime = table.EarliestRestorableDateTime,
+                EarliestRestorableDateTime = EarliestRestorableDateTime(table),
                 LatestRestorableDateTime = LatestRestorableDateTime(table),
             }
             : new PointInTimeRecoveryDescription { PointInTimeRecoveryStatus = "DISABLED" },
@@ -68,17 +68,22 @@ internal sealed partial class InternalDynamoDbClient
             {
                 // To the second, as DynamoDB reports it, so it reads back exactly as a RestoreDateTime.
                 var now = Now;
-                table.EarliestRestorableDateTime = new DateTime(now.Ticks - (now.Ticks % TimeSpan.TicksPerSecond), DateTimeKind.Utc);
-                table.PointInTimeLog = new DynamoPointInTimeLog(_bus.TimeProvider);
+                table.PointInTimeRecoveryEnabledAt = new DateTime(now.Ticks - (now.Ticks % TimeSpan.TicksPerSecond), DateTimeKind.Utc);
+                table.PointInTimeLog = new DynamoPointInTimeLog(_bus.TimeProvider, TimeSpan.FromDays(specification.RecoveryPeriodInDays ?? table.PointInTimeRecoveryPeriodInDays));
             }
             else if (!enable)
             {
-                table.EarliestRestorableDateTime = null;
+                table.PointInTimeRecoveryEnabledAt = null;
                 table.PointInTimeLog = null;
             }
 
             table.PointInTimeRecoveryEnabled = enable;
             table.PointInTimeRecoveryPeriodInDays = specification.RecoveryPeriodInDays ?? (enable ? table.PointInTimeRecoveryPeriodInDays : 35);
+            if (table.PointInTimeLog is { } log)
+            {
+                log.Retention = TimeSpan.FromDays(table.PointInTimeRecoveryPeriodInDays);
+            }
+
             Record("UpdateContinuousBackups", table.Arn);
             return Task.FromResult(new UpdateContinuousBackupsResponse { ContinuousBackupsDescription = ContinuousBackups(table) });
         }
@@ -96,7 +101,7 @@ internal sealed partial class InternalDynamoDbClient
                 Arn = arn,
                 Name = request.BackupName!,
                 CreationDateTime = created,
-                Snapshot = Copy(table, table.Name, table.Arn, table.TableId),
+                Snapshot = Copy(table, table.Name, table.Arn, table.TableId, table.CreationDateTime),
                 TableName = table.Name,
                 TableArn = table.Arn,
                 TableId = table.TableId,
@@ -219,18 +224,15 @@ internal sealed partial class InternalDynamoDbClient
                 throw new DynamoDbException("TableAlreadyExistsException", $"Table already exists: {name}");
             }
 
-            var table = Copy(backup.Snapshot, name, TableArn(name), Guid.NewGuid().ToString());
-            if (request.BillingModeOverride is { } billing)
-            {
-                table.BillingMode = billing;
-                table.BillingModeStated = true;
-            }
-
-            if (request.ProvisionedThroughputOverride is { } throughput)
-            {
-                table.Throughput = new DynamoThroughput { ReadCapacityUnits = throughput.ReadCapacityUnits ?? 0, WriteCapacityUnits = throughput.WriteCapacityUnits ?? 0 };
-            }
-
+            var table = Copy(backup.Snapshot, name, TableArn(name), Guid.NewGuid().ToString(), Now);
+            ApplyRestoreOverrides(
+                table,
+                request.BillingModeOverride,
+                request.ProvisionedThroughputOverride,
+                request.OnDemandThroughputOverride,
+                request.GlobalSecondaryIndexOverride,
+                request.LocalSecondaryIndexOverride,
+                request.SSESpecificationOverride);
             table.Restore = new DynamoRestore(backup.Arn, backup.TableArn, Now);
             Store.Tables[name] = table;
             Record("RestoreTableFromBackup", table.Arn);
@@ -238,9 +240,34 @@ internal sealed partial class InternalDynamoDbClient
         }
     }
 
+    /// <summary>
+    /// The earliest time a table can be restored to: when recovery was turned on, or the start of
+    /// the recovery period, whichever is later (rounded up to the second, so it reads back exactly
+    /// as a RestoreDateTime whose changes are all still in the log).
+    /// </summary>
+    private DateTime? EarliestRestorableDateTime(DynamoTable table)
+    {
+        if (table.PointInTimeRecoveryEnabledAt is not { } enabledAt)
+        {
+            return null;
+        }
+
+        var periodStart = Now.AddDays(-table.PointInTimeRecoveryPeriodInDays);
+        var remainder = periodStart.Ticks % TimeSpan.TicksPerSecond;
+        if (remainder != 0)
+        {
+            periodStart = new DateTime(periodStart.Ticks - remainder + TimeSpan.TicksPerSecond, DateTimeKind.Utc);
+        }
+
+        return periodStart > enabledAt ? periodStart : enabledAt;
+    }
+
     /// <summary>The latest time a table can be restored to: five minutes ago, as DynamoDB reports it, but never before the earliest.</summary>
-    private DateTime LatestRestorableDateTime(DynamoTable table) =>
-        Now.AddMinutes(-5) < table.EarliestRestorableDateTime ? table.EarliestRestorableDateTime.Value : Now.AddMinutes(-5);
+    private DateTime LatestRestorableDateTime(DynamoTable table)
+    {
+        var latest = Now.AddMinutes(-5);
+        return EarliestRestorableDateTime(table) is { } earliest && latest < earliest ? earliest : latest;
+    }
 
     public Task<RestoreTableToPointInTimeResponse> RestoreTableToPointInTimeAsync(RestoreTableToPointInTimeRequest request, CancellationToken cancellationToken = default)
     {
@@ -265,14 +292,12 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var source = TableForBackup(request.SourceTableName ?? request.SourceTableArn);
-            if (!source.PointInTimeRecoveryEnabled || source.EarliestRestorableDateTime is not { } earliest)
+            if (!source.PointInTimeRecoveryEnabled || EarliestRestorableDateTime(source) is not { } earliest)
             {
                 throw new DynamoDbException("PointInTimeRecoveryUnavailableException", $"Point in time recovery is not enabled for table '{source.Name}'");
             }
 
-            // Changes older than the recovery period are out of any restore's reach.
             var latest = LatestRestorableDateTime(source);
-            source.PointInTimeLog?.Forget(Now.AddDays(-source.PointInTimeRecoveryPeriodInDays));
             var point = useLatest ? latest : request.RestoreDateTime!.Value.ToUniversalTime();
             if (point < earliest || point > latest)
             {
@@ -286,18 +311,15 @@ internal sealed partial class InternalDynamoDbClient
                 throw new DynamoDbException("TableAlreadyExistsException", $"Table already exists: {name}");
             }
 
-            var table = Copy(source, name, TableArn(name), Guid.NewGuid().ToString(), source.ItemsAt(point).Select(e => (e.Key, e.Value)));
-            if (request.BillingModeOverride is { } billing)
-            {
-                table.BillingMode = billing;
-                table.BillingModeStated = true;
-            }
-
-            if (request.ProvisionedThroughputOverride is { } throughput)
-            {
-                table.Throughput = new DynamoThroughput { ReadCapacityUnits = throughput.ReadCapacityUnits ?? 0, WriteCapacityUnits = throughput.WriteCapacityUnits ?? 0 };
-            }
-
+            var table = Copy(source, name, TableArn(name), Guid.NewGuid().ToString(), Now, source.ItemsAt(point).Select(e => (e.Key, e.Value)));
+            ApplyRestoreOverrides(
+                table,
+                request.BillingModeOverride,
+                request.ProvisionedThroughputOverride,
+                request.OnDemandThroughputOverride,
+                request.GlobalSecondaryIndexOverride,
+                request.LocalSecondaryIndexOverride,
+                request.SSESpecificationOverride);
             table.Restore = new DynamoRestore(null, source.Arn, point);
             Store.Tables[name] = table;
             Record("RestoreTableToPointInTime", table.Arn);
@@ -305,15 +327,107 @@ internal sealed partial class InternalDynamoDbClient
         }
     }
 
+    /// <summary>
+    /// Applies a restore's overrides to the restored table. An index override names which of the
+    /// source's indexes the restored table keeps (DynamoDB allows leaving some or all out, not
+    /// adding new ones); a global index's override may also set its throughput.
+    /// </summary>
+    private void ApplyRestoreOverrides(
+        DynamoTable table,
+        string? billingMode,
+        ProvisionedThroughput? throughput,
+        OnDemandThroughput? onDemandThroughput,
+        List<GlobalSecondaryIndex>? globalIndexes,
+        List<LocalSecondaryIndex>? localIndexes,
+        SSESpecification? sse)
+    {
+        if (localIndexes is not null)
+        {
+            var kept = new List<DynamoIndex>();
+            foreach (var local in localIndexes)
+            {
+                kept.Add(table.LocalIndexes.FirstOrDefault(i => string.Equals(i.Name, local.IndexName, StringComparison.Ordinal))
+                    ?? throw DynamoDbErrors.InvalidParameter($"LocalSecondaryIndexOverride names an index the source table does not have: {local.IndexName}"));
+            }
+
+            table.LocalIndexes.Clear();
+            table.LocalIndexes.AddRange(kept);
+        }
+
+        if (globalIndexes is not null)
+        {
+            var kept = new List<DynamoIndex>();
+            foreach (var global in globalIndexes)
+            {
+                var index = table.GlobalIndexes.FirstOrDefault(i => string.Equals(i.Name, global.IndexName, StringComparison.Ordinal))
+                    ?? throw DynamoDbErrors.InvalidParameter($"GlobalSecondaryIndexOverride names an index the source table does not have: {global.IndexName}");
+                if (global.ProvisionedThroughput is { } indexThroughput)
+                {
+                    index.Throughput = new DynamoThroughput { ReadCapacityUnits = indexThroughput.ReadCapacityUnits ?? 0, WriteCapacityUnits = indexThroughput.WriteCapacityUnits ?? 0 };
+                }
+
+                if (global.OnDemandThroughput is { } indexOnDemand)
+                {
+                    index.MaxReadRequestUnits = indexOnDemand.MaxReadRequestUnits;
+                    index.MaxWriteRequestUnits = indexOnDemand.MaxWriteRequestUnits;
+                }
+
+                kept.Add(index);
+            }
+
+            table.GlobalIndexes.Clear();
+            table.GlobalIndexes.AddRange(kept);
+        }
+
+        if (localIndexes is not null || globalIndexes is not null)
+        {
+            // An attribute only a dropped index was keyed on is no longer defined.
+            var used = new HashSet<string>(table.KeySchema.Attributes.Concat(table.Indexes.SelectMany(i => i.KeySchema.Attributes)).Select(a => a.Name), StringComparer.Ordinal);
+            table.AttributeDefinitions = table.AttributeDefinitions.Where(a => used.Contains(a.Name)).ToList();
+        }
+
+        if (billingMode is not null)
+        {
+            if (billingMode == "PAY_PER_REQUEST" && table.BillingMode != "PAY_PER_REQUEST")
+            {
+                table.LastUpdateToPayPerRequestDateTime = Now;
+                table.Throughput = new DynamoThroughput();
+                foreach (var index in table.GlobalIndexes)
+                {
+                    index.Throughput = new DynamoThroughput();
+                }
+            }
+
+            table.BillingMode = billingMode;
+            table.BillingModeStated = true;
+        }
+
+        if (throughput is not null)
+        {
+            table.Throughput = new DynamoThroughput { ReadCapacityUnits = throughput.ReadCapacityUnits ?? 0, WriteCapacityUnits = throughput.WriteCapacityUnits ?? 0 };
+        }
+
+        if (onDemandThroughput is not null)
+        {
+            table.MaxReadRequestUnits = onDemandThroughput.MaxReadRequestUnits;
+            table.MaxWriteRequestUnits = onDemandThroughput.MaxWriteRequestUnits;
+        }
+
+        if (sse is not null)
+        {
+            SetServerSideEncryption(table, sse.Enabled ?? true, sse);
+        }
+    }
+
     /// <summary>A copy of a table's settings and items (or the given items), under another name.</summary>
-    private DynamoTable Copy(DynamoTable source, string name, string arn, string tableId, IEnumerable<(DynamoKey Key, Dictionary<string, DynamoValue> Item)>? items = null)
+    private static DynamoTable Copy(DynamoTable source, string name, string arn, string tableId, DateTime creationDateTime, IEnumerable<(DynamoKey Key, Dictionary<string, DynamoValue> Item)>? items = null)
     {
         var copy = new DynamoTable
         {
             Name = name,
             Arn = arn,
             TableId = tableId,
-            CreationDateTime = string.Equals(arn, source.Arn, StringComparison.Ordinal) ? source.CreationDateTime : Now,
+            CreationDateTime = creationDateTime,
             KeySchema = source.KeySchema,
             AttributeDefinitions = source.AttributeDefinitions.ToList(),
             BillingMode = source.BillingMode,
@@ -359,12 +473,13 @@ internal sealed partial class InternalDynamoDbClient
     // Resource policies
 
     /// <summary>
-    /// The table a resource-policy <c>ResourceArn</c> names: the table itself or its stream.
+    /// The policy of the resource a resource-policy <c>ResourceArn</c> names: a table, or its stream
+    /// (each has its own), with the name of the table.
     /// A value that isn't an ARN, an ARN of another resource (an index, another service) and
     /// an ARN outside this account and region are refused as input, each in its own words;
     /// only a well-formed ARN of a missing table or stream is a lookup miss.
     /// </summary>
-    private DynamoTable TableForPolicy(string? resourceArn)
+    private (string TableName, DynamoResourcePolicy Policy) PolicyOf(string? resourceArn)
     {
         resourceArn ??= string.Empty;
         if (!resourceArn.StartsWith("arn:", StringComparison.Ordinal))
@@ -410,24 +525,23 @@ internal sealed partial class InternalDynamoDbClient
             throw DynamoDbErrors.ResourceNotFound($"Requested resource not found: Stream: {resourceArn} not found");
         }
 
-        return table;
+        return (table.Name, stream ? table.LatestStream!.ResourcePolicy : table.ResourcePolicy);
     }
 
     public Task<PutResourcePolicyResponse> PutResourcePolicyAsync(PutResourcePolicyRequest request, CancellationToken cancellationToken = default)
     {
         lock (Store.Gate)
         {
-            var table = TableForPolicy(request.ResourceArn);
-            if (request.Policy is { } policy && Encoding.UTF8.GetByteCount(policy) > MaxResourcePolicyBytes)
+            var (tableName, resourcePolicy) = PolicyOf(request.ResourceArn);
+            if (request.Policy is { } policy)
             {
-                throw DynamoDbErrors.InvalidParameter($"Maximum policy size of {MaxResourcePolicyBytes} bytes exceeded");
+                CheckResourcePolicySize(policy);
             }
 
-            CheckExpectedRevision(table, request.ExpectedRevisionId);
-            table.ResourcePolicy = request.Policy;
-            table.ResourcePolicyRevision = _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
+            CheckExpectedRevision(tableName, resourcePolicy, request.ExpectedRevisionId);
+            resourcePolicy.Set(request.Policy, _bus.TimeProvider);
             Record("PutResourcePolicy", request.ResourceArn);
-            return Task.FromResult(new PutResourcePolicyResponse { RevisionId = table.ResourcePolicyRevision });
+            return Task.FromResult(new PutResourcePolicyResponse { RevisionId = resourcePolicy.Revision });
         }
     }
 
@@ -435,14 +549,14 @@ internal sealed partial class InternalDynamoDbClient
     {
         lock (Store.Gate)
         {
-            var table = TableForPolicy(request.ResourceArn);
-            if (table.ResourcePolicy is null)
+            var (_, resourcePolicy) = PolicyOf(request.ResourceArn);
+            if (resourcePolicy.Policy is null)
             {
                 throw new DynamoDbException("PolicyNotFoundException", $"Resource-based policy not found for the provided ResourceArn: {request.ResourceArn}");
             }
 
             Record("GetResourcePolicy", request.ResourceArn);
-            return Task.FromResult(new GetResourcePolicyResponse { Policy = table.ResourcePolicy, RevisionId = table.ResourcePolicyRevision });
+            return Task.FromResult(new GetResourcePolicyResponse { Policy = resourcePolicy.Policy, RevisionId = resourcePolicy.Revision });
         }
     }
 
@@ -450,13 +564,12 @@ internal sealed partial class InternalDynamoDbClient
     {
         lock (Store.Gate)
         {
-            var table = TableForPolicy(request.ResourceArn);
-            CheckExpectedRevision(table, request.ExpectedRevisionId);
+            var (tableName, resourcePolicy) = PolicyOf(request.ResourceArn);
+            CheckExpectedRevision(tableName, resourcePolicy, request.ExpectedRevisionId);
 
             // Deleting a policy that isn't there is a no-op success, with no revision to report.
-            var revision = table.ResourcePolicyRevision;
-            table.ResourcePolicy = null;
-            table.ResourcePolicyRevision = null;
+            var revision = resourcePolicy.Revision;
+            resourcePolicy.Set(null, _bus.TimeProvider);
             Record("DeleteResourcePolicy", request.ResourceArn);
             return Task.FromResult(new DeleteResourcePolicyResponse { RevisionId = revision });
         }
@@ -464,19 +577,35 @@ internal sealed partial class InternalDynamoDbClient
 
     private const int MaxResourcePolicyBytes = 20480;
 
-    /// <summary>An <c>ExpectedRevisionId</c> must name the policy the table has now.</summary>
-    private static void CheckExpectedRevision(DynamoTable table, string? expected)
+    /// <summary>The value of <c>ExpectedRevisionId</c> that asks for a policy to be attached only where there is none.</summary>
+    private const string NoPolicyRevision = "NO_POLICY";
+
+    private static void CheckResourcePolicySize(string policy)
     {
-        if (expected is null || string.Equals(expected, table.ResourcePolicyRevision, StringComparison.Ordinal))
+        if (Encoding.UTF8.GetByteCount(policy) > MaxResourcePolicyBytes)
+        {
+            throw DynamoDbErrors.InvalidParameter($"Maximum policy size of {MaxResourcePolicyBytes} bytes exceeded");
+        }
+    }
+
+    /// <summary>
+    /// An <c>ExpectedRevisionId</c> must name the policy the resource has now, or be
+    /// <c>NO_POLICY</c> for a resource with none.
+    /// </summary>
+    private static void CheckExpectedRevision(string tableName, DynamoResourcePolicy resourcePolicy, string? expected)
+    {
+        if (expected is null
+            || string.Equals(expected, resourcePolicy.Revision, StringComparison.Ordinal)
+            || (string.Equals(expected, NoPolicyRevision, StringComparison.Ordinal) && resourcePolicy.Policy is null))
         {
             return;
         }
 
         throw new DynamoDbException(
             "PolicyNotFoundException",
-            table.ResourcePolicy is null
-                ? $"Resource-based policy not found for the provided ResourceArn: Requested update for policy with revision id {expected}, but table {table.Name} has no associated policy."
-                : $"Resource-based policy not found for the provided ResourceArn: Requested update for policy with revision id {expected}, but the policy associated to target table {table.Name} has revision id {table.ResourcePolicyRevision}.");
+            resourcePolicy.Policy is null
+                ? $"Resource-based policy not found for the provided ResourceArn: Requested update for policy with revision id {expected}, but table {tableName} has no associated policy."
+                : $"Resource-based policy not found for the provided ResourceArn: Requested update for policy with revision id {expected}, but the policy associated to target table {tableName} has revision id {resourcePolicy.Revision}.");
     }
 
     // Contributor insights: a setting the table remembers; no metrics are collected.

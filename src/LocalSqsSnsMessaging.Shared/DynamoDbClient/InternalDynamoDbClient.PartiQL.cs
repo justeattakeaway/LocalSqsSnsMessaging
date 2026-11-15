@@ -40,7 +40,7 @@ internal sealed partial class InternalDynamoDbClient
             return Task.FromResult(new ExecuteStatementResponse
             {
                 Items = write.Returned is null ? [] : [write.Returned],
-                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, WriteUnits(write.Before, write.After), write: true),
+                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, WriteUnits(write.Before, write.After), write: true, IndexWriteUnits(table, write.Before, write.After)),
             });
         }
     }
@@ -111,6 +111,17 @@ internal sealed partial class InternalDynamoDbClient
         {
             candidates = table.Keys.GetViewBetween(DynamoKey.PartitionStart(partition), DynamoKey.PartitionEnd(partition))
                 .Where(k => sort is null || (k.Sort is not null && DynamoKeyOrder.Compare(k.Sort, sort) == 0))
+                .Select(k => (k, table.Get(k)!))
+                .ToList();
+        }
+        else if (index is null && select.Where is not null && PartitionsIn(select.Where, table.KeySchema.Partition.Name) is { } partitions)
+        {
+            // An IN on the partition key reads only the partitions it names, in key order.
+            candidates = partitions
+                .Where(v => v.Type == table.KeySchema.Partition.Type)
+                .Distinct()
+                .SelectMany(v => table.Keys.GetViewBetween(DynamoKey.PartitionStart(v), DynamoKey.PartitionEnd(v)))
+                .OrderBy(k => k, DynamoKey.Comparer)
                 .Select(k => (k, table.Get(k)!))
                 .ToList();
         }
@@ -223,6 +234,29 @@ internal sealed partial class InternalDynamoDbClient
         InCondition { Value: PathOperand { Path.IsTopLevel: true } p } => p.Path.AttributeName == partition,
         _ => false,
     };
+
+    /// <summary>The values a top-level AND branch of a WHERE clause matches <paramref name="partition"/> against with <c>IN</c>, if any.</summary>
+    private static IReadOnlyList<DynamoValue>? PartitionsIn(ExpressionCondition where, string partition)
+    {
+        switch (where)
+        {
+            case AndCondition and:
+                foreach (var condition in and.Conditions)
+                {
+                    if (PartitionsIn(condition, partition) is { } values)
+                    {
+                        return values;
+                    }
+                }
+
+                return null;
+            case InCondition { Value: PathOperand { Path.IsTopLevel: true } p } inCondition
+                when p.Path.AttributeName == partition && inCondition.Candidates.All(c => c is ValueOperand):
+                return inCondition.Candidates.Select(c => ((ValueOperand)c).Value).ToList();
+            default:
+                return null;
+        }
+    }
 
     private static Dictionary<string, DynamoValue> ProjectStatement(Dictionary<string, DynamoValue> item, IReadOnlyList<PartiQLProjection> projection)
     {
@@ -377,6 +411,7 @@ internal sealed partial class InternalDynamoDbClient
             {
                 var item = CanonicalItem(insert.Item);
                 CheckIndexKeys(table, item, update: false);
+                CheckLocalIndexEntrySizes(table, item);
                 var key = KeyFromItem(table, item);
                 if (table.Get(key) is { } existing)
                 {
@@ -413,6 +448,7 @@ internal sealed partial class InternalDynamoDbClient
                 }
 
                 DynamoValueRules.CheckItemLimits(after, DynamoValueRules.UpdateItemSizeExceeded);
+                CheckLocalIndexEntrySizes(table, after, DynamoValueRules.UpdateItemSizeExceeded);
                 CheckIndexKeys(table, after, update: true);
                 var returned = update.Returning switch
                 {
@@ -561,6 +597,7 @@ internal sealed partial class InternalDynamoDbClient
         {
             var responses = new List<BatchStatementResponse>();
             var units = new Dictionary<DynamoTable, double>();
+            var indexUnits = new Dictionary<DynamoTable, Dictionary<string, double>>();
             foreach (var (statementRequest, statement, parseError) in parsed)
             {
                 if (statement is null)
@@ -644,6 +681,7 @@ internal sealed partial class InternalDynamoDbClient
 
                         ApplyWrite(write);
                         units[table] = (units.TryGetValue(table, out var written) ? written : 0) + WriteUnits(write.Before, write.After);
+                        AddIndexWriteUnits(indexUnits, table, write.Before, write.After);
                         responses.Add(new BatchStatementResponse { TableName = table.Name, Item = write.Returned });
                     }
 
@@ -655,7 +693,7 @@ internal sealed partial class InternalDynamoDbClient
                 }
             }
 
-            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value, write: kinds == 1 && !parsed.First(p => p.Statement is not null).Statement!.IsRead)).Where(c => c is not null).Select(c => c!).ToList();
+            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value, write: kinds == 1 && !parsed.First(p => p.Statement is not null).Statement!.IsRead, indexUnits.TryGetValue(u.Key, out var indexes) ? indexes : null)).Where(c => c is not null).Select(c => c!).ToList();
             return Task.FromResult(new BatchExecuteStatementResponse
             {
                 Responses = responses,
@@ -815,6 +853,7 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             var units = new Dictionary<DynamoTable, double>();
+            var indexUnits = new Dictionary<DynamoTable, Dictionary<string, double>>();
             foreach (var write in writes)
             {
                 ApplyWrite(write);
@@ -822,6 +861,10 @@ internal sealed partial class InternalDynamoDbClient
                     ? ReadUnits(write.Before is null ? 0 : DynamoValueRules.ItemSize(write.Before), consistent: true, transactional: true)
                     : WriteUnits(write.Before, write.After, transactional: true);
                 units[write.Table] = (units.TryGetValue(write.Table, out var running) ? running : 0) + cost;
+                if (!write.Check)
+                {
+                    AddIndexWriteUnits(indexUnits, write.Table, write.Before, write.After);
+                }
                 Record("ExecuteTransaction", write.Table.Arn);
             }
 
@@ -831,7 +874,7 @@ internal sealed partial class InternalDynamoDbClient
                 Store.TransactionTokens[requestToken] = new DynamoTransactionToken(fingerprint!, now + TransactionTokenLifetime, ledger);
             }
 
-            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value, write: true, transactional: true)).Where(c => c is not null).Select(c => c!).ToList();
+            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value, write: true, indexUnits.TryGetValue(u.Key, out var indexes) ? indexes : null, transactional: true)).Where(c => c is not null).Select(c => c!).ToList();
             return Task.FromResult(new ExecuteTransactionResponse
             {
                 // A write transaction answers only the items its RETURNING clauses asked for.

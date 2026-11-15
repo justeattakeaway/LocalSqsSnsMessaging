@@ -351,6 +351,374 @@ public sealed class DynamoDbRegressionTests
         refusal.Message.ShouldContain("regular expression pattern");
     }
 
+    [Test]
+    public async Task BatchWriteItem_WriteRequestWithoutItsKeyOrItemIsRefused()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateTableAsync(bus);
+
+        foreach (var write in new[] { new WriteRequest { DeleteRequest = new DeleteRequest() }, new WriteRequest { PutRequest = new PutRequest() } })
+        {
+            var refusal = await Should.ThrowAsync<AmazonDynamoDBException>(() => client.BatchWriteItemAsync(new BatchWriteItemRequest
+            {
+                RequestItems = new Dictionary<string, List<WriteRequest>> { ["tbl"] = [write] },
+            }));
+
+            refusal.ErrorCode.ShouldBe("ValidationException");
+            refusal.Message.ShouldContain("Member must not be null");
+        }
+    }
+
+    [Test]
+    public async Task RestoreTableToPointInTime_RefusesATimeBeforeTheRecoveryPeriod()
+    {
+        var time = new FakeTimeProvider(Start);
+        var bus = new InMemoryAwsBus { TimeProvider = time };
+        using var client = await CreateTableAsync(bus);
+        await client.UpdateContinuousBackupsAsync(new UpdateContinuousBackupsRequest
+        {
+            TableName = "tbl",
+            PointInTimeRecoverySpecification = new PointInTimeRecoverySpecification { PointInTimeRecoveryEnabled = true, RecoveryPeriodInDays = 1 },
+        });
+        time.Advance(TimeSpan.FromSeconds(1));
+        await client.PutItemAsync("tbl", Item("A", 1, ("v", "1")));
+        time.Advance(TimeSpan.FromDays(2));
+        await client.PutItemAsync("tbl", Item("A", 1, ("v", "2")));
+
+        var description = (await client.DescribeContinuousBackupsAsync(new DescribeContinuousBackupsRequest { TableName = "tbl" }))
+            .ContinuousBackupsDescription.PointInTimeRecoveryDescription;
+        description.EarliestRestorableDateTime.ShouldNotBeNull().ShouldBeGreaterThanOrEqualTo(time.GetUtcNow().UtcDateTime.AddDays(-1));
+
+        var refusal = await Should.ThrowAsync<AmazonDynamoDBException>(() => client.RestoreTableToPointInTimeAsync(new RestoreTableToPointInTimeRequest
+        {
+            SourceTableName = "tbl",
+            TargetTableName = "restored",
+            RestoreDateTime = Start.UtcDateTime,
+        }));
+        refusal.ErrorCode.ShouldBe("InvalidRestoreTimeException");
+
+        // The earliest time it reports is one it can restore to, with every later change undone.
+        await client.RestoreTableToPointInTimeAsync(new RestoreTableToPointInTimeRequest
+        {
+            SourceTableName = "tbl",
+            TargetTableName = "restored",
+            RestoreDateTime = description.EarliestRestorableDateTime,
+        });
+        (await client.GetItemAsync("restored", Item("A", 1))).Item["v"].S.ShouldBe("1");
+    }
+
+    [Test]
+    public async Task ResourcePolicy_OfAStreamIsKeptApartFromItsTables()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateTableAsync(bus, viewType: StreamViewType.NEW_IMAGE);
+        var table = (await client.DescribeTableAsync("tbl")).Table;
+        const string TablePolicy = """{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::000000000000:root"},"Action":"dynamodb:GetItem","Resource":"*"}]}""";
+        const string StreamPolicy = """{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::000000000000:root"},"Action":"dynamodb:GetRecords","Resource":"*"}]}""";
+
+        await client.PutResourcePolicyAsync(new PutResourcePolicyRequest { ResourceArn = table.TableArn, Policy = TablePolicy });
+        await client.PutResourcePolicyAsync(new PutResourcePolicyRequest { ResourceArn = table.LatestStreamArn, Policy = StreamPolicy });
+
+        (await client.GetResourcePolicyAsync(new GetResourcePolicyRequest { ResourceArn = table.TableArn })).Policy.ShouldBe(TablePolicy);
+        (await client.GetResourcePolicyAsync(new GetResourcePolicyRequest { ResourceArn = table.LatestStreamArn })).Policy.ShouldBe(StreamPolicy);
+
+        await client.DeleteResourcePolicyAsync(new DeleteResourcePolicyRequest { ResourceArn = table.LatestStreamArn });
+        (await client.GetResourcePolicyAsync(new GetResourcePolicyRequest { ResourceArn = table.TableArn })).Policy.ShouldBe(TablePolicy);
+    }
+
+    [Test]
+    public async Task PutResourcePolicy_NoPolicyRevisionAttachesOnlyWhereThereIsNone()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateTableAsync(bus);
+        var arn = (await client.DescribeTableAsync("tbl")).Table.TableArn;
+        const string Policy = """{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::000000000000:root"},"Action":"dynamodb:GetItem","Resource":"*"}]}""";
+
+        var attached = await client.PutResourcePolicyAsync(new PutResourcePolicyRequest { ResourceArn = arn, Policy = Policy, ExpectedRevisionId = "NO_POLICY" });
+        attached.RevisionId.ShouldNotBeNullOrEmpty();
+
+        var refusal = await Should.ThrowAsync<AmazonDynamoDBException>(() => client.PutResourcePolicyAsync(new PutResourcePolicyRequest
+        {
+            ResourceArn = arn,
+            Policy = Policy,
+            ExpectedRevisionId = "NO_POLICY",
+        }));
+        refusal.ErrorCode.ShouldBe("PolicyNotFoundException");
+    }
+
+    [Test]
+    public async Task CreateTable_ResourcePolicyHasARevision()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = bus.CreateDynamoDbClient();
+        await client.CreateTableAsync(new CreateTableRequest
+        {
+            TableName = "tbl",
+            KeySchema = [new KeySchemaElement("pk", KeyType.HASH)],
+            AttributeDefinitions = [new AttributeDefinition("pk", ScalarAttributeType.S)],
+            BillingMode = BillingMode.PAY_PER_REQUEST,
+            ResourcePolicy = """{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::000000000000:root"},"Action":"dynamodb:GetItem","Resource":"*"}]}""",
+        });
+        var arn = (await client.DescribeTableAsync("tbl")).Table.TableArn;
+
+        var revision = (await client.GetResourcePolicyAsync(new GetResourcePolicyRequest { ResourceArn = arn })).RevisionId;
+
+        revision.ShouldNotBeNullOrEmpty();
+        await client.DeleteResourcePolicyAsync(new DeleteResourcePolicyRequest { ResourceArn = arn, ExpectedRevisionId = revision });
+    }
+
+    [Test]
+    public async Task RestoreTableFromBackup_IndexOverrideLeavesIndexesOut()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateIndexedTableAsync(bus);
+        await client.PutItemAsync("tbl", IndexedItem(1, rank: 7));
+        var backupArn = (await client.CreateBackupAsync(new CreateBackupRequest { TableName = "tbl", BackupName = "backup" })).BackupDetails.BackupArn;
+
+        await client.RestoreTableFromBackupAsync(new RestoreTableFromBackupRequest
+        {
+            BackupArn = backupArn,
+            TargetTableName = "restored",
+            GlobalSecondaryIndexOverride = [],
+        });
+
+        var restored = (await client.DescribeTableAsync("restored")).Table;
+        (restored.GlobalSecondaryIndexes ?? []).ShouldBeEmpty();
+        restored.AttributeDefinitions.Select(a => a.AttributeName).ShouldBe(["pk", "sk"], ignoreOrder: true);
+        (await client.GetItemAsync("restored", IndexedItem(1, rank: 7).Where(a => a.Key is "pk" or "sk").ToDictionary())).IsItemSet.ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task RestoreTableFromBackup_UnderTheDeletedTablesNameIsCreatedAnew()
+    {
+        var time = new FakeTimeProvider(Start);
+        var bus = new InMemoryAwsBus { TimeProvider = time };
+        using var client = await CreateTableAsync(bus);
+        var backupArn = (await client.CreateBackupAsync(new CreateBackupRequest { TableName = "tbl", BackupName = "backup" })).BackupDetails.BackupArn;
+        await client.DeleteTableAsync("tbl");
+        time.Advance(TimeSpan.FromHours(1));
+
+        var restored = (await client.RestoreTableFromBackupAsync(new RestoreTableFromBackupRequest { BackupArn = backupArn, TargetTableName = "tbl" })).TableDescription;
+
+        restored.CreationDateTime.ShouldBe(time.GetUtcNow().UtcDateTime);
+    }
+
+    [Test]
+    public async Task TransactWriteItems_ChargesTheIndexesItWrites()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateIndexedTableAsync(bus);
+
+        var result = await client.TransactWriteItemsAsync(new TransactWriteItemsRequest
+        {
+            TransactItems = [new TransactWriteItem { Put = new Put { TableName = "tbl", Item = IndexedItem(1, rank: 7) } }],
+            ReturnConsumedCapacity = ReturnConsumedCapacity.INDEXES,
+        });
+
+        var consumed = result.ConsumedCapacity.Single();
+        consumed.GlobalSecondaryIndexes["byStatus"].CapacityUnits.ShouldBe(1);
+        consumed.CapacityUnits.ShouldBe(consumed.Table.CapacityUnits + 1);
+    }
+
+    [Test]
+    public async Task ExecuteStatement_InsertChargesTheIndexesItWrites()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateIndexedTableAsync(bus);
+
+        var result = await client.ExecuteStatementAsync(new ExecuteStatementRequest
+        {
+            Statement = "INSERT INTO \"tbl\" VALUE {'pk': 'A', 'sk': 1, 'status': 'PENDING', 'rank': 7}",
+            ReturnConsumedCapacity = ReturnConsumedCapacity.TOTAL,
+        });
+
+        result.ConsumedCapacity.CapacityUnits.ShouldBe(2);
+    }
+
+    [Test]
+    public async Task ExecuteStatement_InOnThePartitionKeyReadsOnlyThosePartitions()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateTableAsync(bus);
+        foreach (var pk in new[] { "A", "B", "C", "D", "E" })
+        {
+            await client.PutItemAsync("tbl", Item(pk, 1));
+        }
+
+        var result = await client.ExecuteStatementAsync(new ExecuteStatementRequest
+        {
+            Statement = "SELECT pk FROM \"tbl\" WHERE pk IN ['E', 'C']",
+            Limit = 1,
+        });
+
+        result.Items.Select(i => i["pk"].S).ShouldBe(["C"]);
+        var next = await client.ExecuteStatementAsync(new ExecuteStatementRequest
+        {
+            Statement = "SELECT pk FROM \"tbl\" WHERE pk IN ['E', 'C']",
+            NextToken = result.NextToken,
+        });
+        next.Items.Select(i => i["pk"].S).ShouldBe(["E"]);
+    }
+
+    [Test]
+    public async Task UpdateItem_RefusesAnItemTooLargeWithItsLocalIndexEntry()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = bus.CreateDynamoDbClient();
+        await client.CreateTableAsync(new CreateTableRequest
+        {
+            TableName = "tbl",
+            KeySchema = [new KeySchemaElement("pk", KeyType.HASH), new KeySchemaElement("sk", KeyType.RANGE)],
+            AttributeDefinitions =
+            [
+                new AttributeDefinition("pk", ScalarAttributeType.S),
+                new AttributeDefinition("sk", ScalarAttributeType.N),
+                new AttributeDefinition("lsk", ScalarAttributeType.S),
+            ],
+            BillingMode = BillingMode.PAY_PER_REQUEST,
+            LocalSecondaryIndexes =
+            [
+                new LocalSecondaryIndex
+                {
+                    IndexName = "byLsk",
+                    KeySchema = [new KeySchemaElement("pk", KeyType.HASH), new KeySchemaElement("lsk", KeyType.RANGE)],
+                    Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                },
+            ],
+        });
+        await client.PutItemAsync("tbl", Item("A", 1, ("lsk", "x")));
+
+        // About 300 KB: under the limit alone, over it with the index entry that copies it.
+        var refusal = await Should.ThrowAsync<AmazonDynamoDBException>(() => client.UpdateItemAsync(new UpdateItemRequest
+        {
+            TableName = "tbl",
+            Key = Item("A", 1),
+            UpdateExpression = "SET big = :big",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue> { [":big"] = new(new string('x', 300 * 1024)) },
+        }));
+
+        refusal.ErrorCode.ShouldBe("ValidationException");
+        refusal.Message.ShouldContain("Item size to update has exceeded the maximum allowed size");
+    }
+
+    [Test]
+    public async Task UpdateTable_LeavingOnDemandNeedsThroughputForEachGlobalIndex()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateIndexedTableAsync(bus);
+
+        var refusal = await Should.ThrowAsync<AmazonDynamoDBException>(() => client.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "tbl",
+            BillingMode = BillingMode.PROVISIONED,
+            ProvisionedThroughput = new ProvisionedThroughput(5, 5),
+        }));
+        refusal.Message.ShouldContain("ProvisionedThroughput must be specified for index: byStatus");
+
+        await client.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "tbl",
+            BillingMode = BillingMode.PROVISIONED,
+            ProvisionedThroughput = new ProvisionedThroughput(5, 5),
+            GlobalSecondaryIndexUpdates =
+            [
+                new GlobalSecondaryIndexUpdate { Update = new UpdateGlobalSecondaryIndexAction { IndexName = "byStatus", ProvisionedThroughput = new ProvisionedThroughput(3, 4) } },
+            ],
+        });
+        var index = (await client.DescribeTableAsync("tbl")).Table.GlobalSecondaryIndexes.Single();
+        index.ProvisionedThroughput.ReadCapacityUnits.ShouldBe(3);
+        index.ProvisionedThroughput.WriteCapacityUnits.ShouldBe(4);
+    }
+
+    [Test]
+    public async Task UpdateTable_KeepsAKmsKeyGivenAsAnArn()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateTableAsync(bus);
+        const string KeyArn = "arn:aws:kms:us-east-1:111122223333:key/abc";
+
+        var table = (await client.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "tbl",
+            SSESpecification = new SSESpecification { Enabled = true, SSEType = SSEType.KMS, KMSMasterKeyId = KeyArn },
+        })).TableDescription;
+
+        table.SSEDescription.KMSMasterKeyArn.ShouldBe(KeyArn);
+    }
+
+    [Test]
+    public async Task TimeToLive_LeavesExpiriesMoreThanFiveYearsOld()
+    {
+        var time = new FakeTimeProvider(Start);
+        var bus = new InMemoryAwsBus { TimeProvider = time };
+        using var client = await CreateTableAsync(bus);
+        await client.UpdateTimeToLiveAsync(new UpdateTimeToLiveRequest
+        {
+            TableName = "tbl",
+            TimeToLiveSpecification = new TimeToLiveSpecification { Enabled = true, AttributeName = "expiresAt" },
+        });
+        var ancient = Item("ancient", 1);
+        ancient["expiresAt"] = new AttributeValue { N = "1" };
+        var recent = Item("recent", 1);
+        recent["expiresAt"] = new AttributeValue { N = (Start.ToUnixTimeSeconds() - 60).ToString(CultureInfo.InvariantCulture) };
+        await client.PutItemAsync("tbl", ancient);
+        await client.PutItemAsync("tbl", recent);
+
+        time.Advance(TimeSpan.FromSeconds(5));
+
+        (await client.GetItemAsync("tbl", Item("ancient", 1))).IsItemSet.ShouldBeTrue();
+        (await client.GetItemAsync("tbl", Item("recent", 1))).IsItemSet.ShouldBeFalse();
+    }
+
+    [Test]
+    public async Task ProjectionExpression_NamesTheLeafOfTheDeepestDocument()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateTableAsync(bus);
+        var document = new AttributeValue("leaf");
+        for (var level = 0; level < 31; level++)
+        {
+            document = new AttributeValue { M = new Dictionary<string, AttributeValue> { ["n"] = document } };
+        }
+
+        var item = Item("A", 1);
+        item["d"] = document;
+        await client.PutItemAsync("tbl", item);
+
+        var path = "d" + string.Concat(Enumerable.Repeat(".n", 31));
+        var got = (await client.GetItemAsync(new GetItemRequest { TableName = "tbl", Key = Item("A", 1), ProjectionExpression = path })).Item;
+        var value = got["d"];
+        for (var level = 0; level < 31; level++)
+        {
+            value = value.M["n"];
+        }
+
+        value.S.ShouldBe("leaf");
+        await Should.ThrowAsync<AmazonDynamoDBException>(() => client.GetItemAsync(new GetItemRequest { TableName = "tbl", Key = Item("A", 1), ProjectionExpression = path + ".n" }));
+    }
+
+    [Test]
+    public async Task Stream_ForgetsRecordsAndDisabledStreamsAfterADay()
+    {
+        var time = new FakeTimeProvider(Start);
+        var bus = new InMemoryAwsBus { TimeProvider = time };
+        using var client = await CreateTableAsync(bus, viewType: StreamViewType.NEW_IMAGE);
+        using var streams = CreateStreamsClient(bus);
+        var streamArn = (await client.DescribeTableAsync("tbl")).Table.LatestStreamArn;
+        await client.PutItemAsync("tbl", Item("old", 1));
+        time.Advance(TimeSpan.FromHours(23));
+        await client.PutItemAsync("tbl", Item("new", 1));
+        time.Advance(TimeSpan.FromHours(2));
+
+        (await ReadAllAsync(streams, streamArn)).Select(r => r.Dynamodb.Keys["pk"].S).ShouldBe(["new"]);
+
+        await client.UpdateTableAsync(new UpdateTableRequest { TableName = "tbl", StreamSpecification = new StreamSpecification { StreamEnabled = false } });
+        time.Advance(TimeSpan.FromHours(23));
+        (await streams.ListStreamsAsync(new Streams.ListStreamsRequest { TableName = "tbl" })).Streams.Count.ShouldBe(1);
+        time.Advance(TimeSpan.FromHours(2));
+        ((await streams.ListStreamsAsync(new Streams.ListStreamsRequest { TableName = "tbl" })).Streams ?? []).ShouldBeEmpty();
+    }
+
     private static async Task<AmazonDynamoDBClient> CreateIndexedTableAsync(InMemoryAwsBus bus)
     {
         var client = bus.CreateDynamoDbClient();

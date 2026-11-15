@@ -605,7 +605,8 @@ internal sealed class ExpressionParser
         var steps = new List<PathStep> { PathStep.Attribute(PathName()) };
         while (true)
         {
-            if (steps.Count >= DynamoValueRules.MaxDepth)
+            // A path may name as many levels as an item may nest, and no more.
+            if (steps.Count >= DynamoValueRules.MaxDepth && Peek() is { Kind: TokenKind.Dot or TokenKind.Index })
             {
                 throw DynamoDbErrors.Validation($"Invalid {_member}: a document path may name at most {DynamoValueRules.MaxDepth} levels");
             }

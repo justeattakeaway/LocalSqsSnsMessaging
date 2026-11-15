@@ -205,15 +205,15 @@ internal sealed class DynamoTable
 
     public string? SseKmsKeyArn { get; set; }
 
-    public string? ResourcePolicy { get; set; }
-
-    public string? ResourcePolicyRevision { get; set; }
+    /// <summary>The table's resource policy (its stream has its own).</summary>
+    public DynamoResourcePolicy ResourcePolicy { get; } = new();
 
     public bool PointInTimeRecoveryEnabled { get; set; }
 
     public int PointInTimeRecoveryPeriodInDays { get; set; } = 35;
 
-    public DateTime? EarliestRestorableDateTime { get; set; }
+    /// <summary>When point-in-time recovery was last turned on, to the second; nothing earlier can be restored.</summary>
+    public DateTime? PointInTimeRecoveryEnabledAt { get; set; }
 
     /// <summary>While point-in-time recovery is on, every item change, so the table can be restored as it stood at an earlier time.</summary>
     public DynamoPointInTimeLog? PointInTimeLog { get; set; }
@@ -322,35 +322,57 @@ internal sealed class DynamoTable
     }
 }
 
+/// <summary>A resource's policy and its revision id, both null when it has none.</summary>
+internal sealed class DynamoResourcePolicy
+{
+    public string? Policy { get; private set; }
+
+    public string? Revision { get; private set; }
+
+    public void Set(string? policy, TimeProvider timeProvider)
+    {
+        Policy = policy;
+        Revision = policy is null ? null : timeProvider.GetUtcNow().ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
+    }
+}
+
 /// <summary>Where a restored table came from: a backup, or another table at a point in time.</summary>
 internal sealed record DynamoRestore(string? SourceBackupArn, string SourceTableArn, DateTime RestoreDateTime);
 
-/// <summary>A table's item changes while point-in-time recovery is on: each key's item before the change, and when.</summary>
-internal sealed class DynamoPointInTimeLog(TimeProvider timeProvider)
+/// <summary>
+/// A table's item changes while point-in-time recovery is on: each key's item before the change,
+/// and when. Changes older than the recovery period are dropped as new ones arrive, since no
+/// restore can reach them.
+/// </summary>
+internal sealed class DynamoPointInTimeLog(TimeProvider timeProvider, TimeSpan retention)
 {
-    private readonly List<(DateTime At, DynamoKey Key, Dictionary<string, DynamoValue>? Before)> _changes = [];
+    private readonly LinkedList<(DateTime At, DynamoKey Key, Dictionary<string, DynamoValue>? Before)> _changes = new();
 
-    public void Record(DynamoKey key, Dictionary<string, DynamoValue>? before) =>
-        _changes.Add((timeProvider.GetUtcNow().UtcDateTime, key, before));
+    /// <summary>How long a change stays restorable: the table's recovery period.</summary>
+    public TimeSpan Retention { get; set; } = retention;
+
+    public void Record(DynamoKey key, Dictionary<string, DynamoValue>? before)
+    {
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        Forget(now - Retention);
+        _changes.AddLast((now, key, before));
+    }
 
     /// <summary>The changes made after <paramref name="time"/>, latest first, to undo in that order.</summary>
     public IEnumerable<(DateTime At, DynamoKey Key, Dictionary<string, DynamoValue>? Before)> Since(DateTime time)
     {
-        for (var i = _changes.Count - 1; i >= 0 && _changes[i].At > time; i--)
+        for (var node = _changes.Last; node is not null && node.Value.At > time; node = node.Previous)
         {
-            yield return _changes[i];
+            yield return node.Value;
         }
     }
 
     /// <summary>Forgets the changes made before <paramref name="time"/>, which no restore can reach any more.</summary>
-    public void Forget(DateTime time)
+    private void Forget(DateTime time)
     {
-        var count = 0;
-        while (count < _changes.Count && _changes[count].At < time)
+        while (_changes.First is { } first && first.Value.At < time)
         {
-            count++;
+            _changes.RemoveFirst();
         }
-
-        _changes.RemoveRange(0, count);
     }
 }

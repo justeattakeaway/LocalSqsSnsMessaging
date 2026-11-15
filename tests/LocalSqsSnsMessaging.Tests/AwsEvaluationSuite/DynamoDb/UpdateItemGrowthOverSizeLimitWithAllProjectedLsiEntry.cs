@@ -21,7 +21,6 @@ public sealed class UpdateItemGrowthOverSizeLimitWithAllProjectedLsiEntry
     /// refused ValidationException with one, leaving the pre-growth item unchanged.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "The item size limit ignores the ALL-projected local secondary index entry, so the ~390 KB growth is accepted")]
     [DisplayName("dynamodb.update-item-growth-over-size-limit-with-all-projected-lsi-entry")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

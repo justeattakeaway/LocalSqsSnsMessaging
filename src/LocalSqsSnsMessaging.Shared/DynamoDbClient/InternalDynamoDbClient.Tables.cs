@@ -75,8 +75,12 @@ internal sealed partial class InternalDynamoDbClient
             DeletionProtectionEnabled = request.DeletionProtectionEnabled ?? false,
             TableClass = request.TableClass,
             TableClassLastUpdate = null,
-            ResourcePolicy = request.ResourcePolicy,
         };
+        if (request.ResourcePolicy is { } resourcePolicy)
+        {
+            CheckResourcePolicySize(resourcePolicy);
+            table.ResourcePolicy.Set(resourcePolicy, _bus.TimeProvider);
+        }
 
         var used = new HashSet<string>(keySchema.Attributes.Select(a => a.Name), StringComparer.Ordinal);
         var indexNames = new HashSet<string>(StringComparer.Ordinal);
@@ -184,11 +188,7 @@ internal sealed partial class InternalDynamoDbClient
 
         if (request.SSESpecification is { Enabled: true } sse)
         {
-            table.SseEnabled = true;
-            table.SseType = sse.SSEType ?? "KMS";
-            table.SseKmsKeyArn = sse.KMSMasterKeyId is { } key && key.StartsWith("arn:", StringComparison.Ordinal)
-                ? key
-                : $"arn:aws:kms:{Region}:{_bus.CurrentAccountId}:key/{(sse.KMSMasterKeyId is null ? "aws/dynamodb" : sse.KMSMasterKeyId)}";
+            SetServerSideEncryption(table, enabled: true, sse);
         }
 
         if (request.Tags is { } tags)
@@ -406,6 +406,20 @@ internal sealed partial class InternalDynamoDbClient
     }
 
     /// <summary>DynamoDB checks <c>TableClass</c> itself, with its own sentence rather than the model's enum clause.</summary>
+    /// <summary>
+    /// Turns server-side encryption on or off. A KMS key given as an ARN is kept as it is; a key id
+    /// or alias (or none, for the AWS-managed key) is made into this account's and region's ARN.
+    /// </summary>
+    private void SetServerSideEncryption(DynamoTable table, bool enabled, SSESpecification sse)
+    {
+        table.SseEnabled = enabled;
+        table.SseType = sse.SSEType ?? "KMS";
+        var key = sse.KMSMasterKeyId ?? "aws/dynamodb";
+        table.SseKmsKeyArn = !enabled ? null
+            : key.StartsWith("arn:", StringComparison.Ordinal) ? key
+            : $"arn:aws:kms:{Region}:{_bus.CurrentAccountId}:key/{key}";
+    }
+
     private static void CheckTableClass(string? tableClass)
     {
         if (tableClass is not null and not "STANDARD" and not "STANDARD_INFREQUENT_ACCESS")
@@ -506,6 +520,19 @@ internal sealed partial class InternalDynamoDbClient
                 if (!onDemand && table.BillingMode == "PAY_PER_REQUEST" && request.ProvisionedThroughput is null)
                 {
                     throw DynamoDbErrors.InvalidParameter("ProvisionedThroughput must be specified when BillingMode is PROVISIONED");
+                }
+
+                // Leaving on-demand, every global index the table keeps needs throughput of its own.
+                if (!onDemand && table.BillingMode == "PAY_PER_REQUEST")
+                {
+                    var updates = request.GlobalSecondaryIndexUpdates ?? [];
+                    var unprovisioned = table.GlobalIndexes.FirstOrDefault(index =>
+                        !updates.Any(u => string.Equals(u.Delete?.IndexName, index.Name, StringComparison.Ordinal)
+                            || (string.Equals(u.Update?.IndexName, index.Name, StringComparison.Ordinal) && u.Update!.ProvisionedThroughput is not null)));
+                    if (unprovisioned is not null)
+                    {
+                        throw DynamoDbErrors.InvalidParameter($"ProvisionedThroughput must be specified for index: {unprovisioned.Name}");
+                    }
                 }
             }
 
@@ -655,9 +682,7 @@ internal sealed partial class InternalDynamoDbClient
 
             if (request.SSESpecification is { } sse)
             {
-                table.SseEnabled = sse.Enabled ?? true;
-                table.SseType = sse.SSEType ?? "KMS";
-                table.SseKmsKeyArn = table.SseEnabled ? $"arn:aws:kms:{Region}:{_bus.CurrentAccountId}:key/{sse.KMSMasterKeyId ?? "aws/dynamodb"}" : null;
+                SetServerSideEncryption(table, sse.Enabled ?? true, sse);
             }
 
             if (request.TableClass is { } tableClass)

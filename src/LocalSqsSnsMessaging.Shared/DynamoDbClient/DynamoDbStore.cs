@@ -13,8 +13,24 @@ internal sealed class DynamoDbStore
     /// <summary>The tables, in creation order (ListTables sorts by name).</summary>
     public Dictionary<string, DynamoTable> Tables { get; } = new(StringComparer.Ordinal);
 
-    /// <summary>Every stream a table has had, including disabled ones and those of deleted tables, by ARN.</summary>
+    /// <summary>Every stream a table has had in the last 24 hours, including disabled ones and those of deleted tables, by ARN.</summary>
     public Dictionary<string, DynamoStream> Streams { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Forgets the streams disabled more than 24 hours ago, and every stream's records older than that.</summary>
+    public void TrimStreams(DateTimeOffset now)
+    {
+        foreach (var stream in Streams.Values.ToList())
+        {
+            if (stream.IsExpired(now))
+            {
+                Streams.Remove(stream.Arn);
+            }
+            else
+            {
+                stream.Trim(now);
+            }
+        }
+    }
 
     /// <summary>On-demand backups, by ARN.</summary>
     public Dictionary<string, DynamoBackup> Backups { get; } = new(StringComparer.Ordinal);

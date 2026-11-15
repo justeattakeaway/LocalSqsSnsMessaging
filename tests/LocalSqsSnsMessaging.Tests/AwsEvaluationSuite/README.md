@@ -117,7 +117,7 @@ item reads and writes, condition, update, projection and filter expressions and 
 parameters, Query and Scan, batches and transactions, PartiQL, consumed capacity, size and
 validation limits, tags, resource policies, backups and point-in-time restore, time to live,
 DynamoDB Streams, the JSON wire protocol (`x-amz-crc32`, `__type`) and concurrency: 853 of the 902
-checks in `behavioral/dynamodb` and `behavioral/dynamodbstreams`. 749 pass and 104 are known gaps.
+checks in `behavioral/dynamodb` and `behavioral/dynamodbstreams`. 750 pass and 103 are known gaps.
 
 `DynamoDbFidelity.cs` holds what the ports share:
 
@@ -153,13 +153,13 @@ are not ported, because they need another service:
 - **IAM roles, role assumption and Lambda** (4): `dynamodb.awsjson-epoch-timestamp-survives-two-deserializers`, `dynamodb.awsjson-error-code-carrier-is-body-only-rejected`, `dynamodb.e2e-resource-policy-grant-revoke-access-flow`, `dynamodb.resource-policy-explicit-deny-blocks-access-rejected`.
 - **CloudWatch metrics** (2): `dynamodb.conditional-check-failed-requests-metric-counts-only-the-failures`, `dynamodb.provisioned-write-throttle-reason-and-metric-agreement-rejected`.
 
-The 104 known gaps, by root cause:
+The 103 known gaps, by root cause:
 
 | `FidelityGap` | Checks | What the library doesn't do |
 |---|---|---|
 | `DynamoDbVectorSearch` | 43 | Vector indexes and `SearchVectors` |
 | `DynamoDbGlobalTables` | 20 | Replicas, `CreateGlobalTable` and the global-table settings |
-| `DynamoDbDetail` | 14 | One-off differences: a message's wording, the order of checks, an edge case (each attribute says which) |
+| `DynamoDbDetail` | 13 | One-off differences: a message's wording, the order of checks, an edge case (each attribute says which) |
 | `DynamoDbTransientStates` | 9 | Tables, indexes and backups are ACTIVE (or gone) at once, never CREATING, UPDATING or DELETING |
 | `DynamoDbMultiAttributeKeys` | 8 | Indexes keyed on several attributes per key role |
 | `DynamoDbAuthentication` | 4 | Signature checks: an unsigned, incompletely signed or tampered request is served |

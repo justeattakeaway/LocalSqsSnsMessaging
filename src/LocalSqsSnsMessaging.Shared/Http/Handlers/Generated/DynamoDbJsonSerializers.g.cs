@@ -15841,6 +15841,13 @@ internal static partial class DynamoDbJsonSerializers
                         break;
                     }
                 }
+                foreach (var entry0 in value.RequestItems)
+                {
+                    for (var i0 = 0; i0 < entry0.Value.Count; i0++)
+                    {
+                        Validate_WriteRequest(entry0.Value[i0], memberPath + "." + entry0.Key + ".member." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                    }
+                }
             }
         }
         {

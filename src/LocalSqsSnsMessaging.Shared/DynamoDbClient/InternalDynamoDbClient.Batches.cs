@@ -457,6 +457,15 @@ internal sealed partial class InternalDynamoDbClient
                 tableUnits += write.Check
                     ? ReadUnits(write.Old is null ? 0 : DynamoValueRules.ItemSize(write.Old), consistent: true, transactional: true)
                     : WriteUnits(write.Old, write.After, transactional: true);
+                if (!write.Check)
+                {
+                    // Index entries are written once the transaction commits, at the standard rate.
+                    foreach (var (index, cost) in IndexWriteUnits(write.Table, write.Old, write.Delete ? null : write.After))
+                    {
+                        indexUnits[index] = (indexUnits.TryGetValue(index, out var indexSum) ? indexSum : 0) + cost;
+                    }
+                }
+
                 units[write.Table] = (tableUnits, indexUnits);
                 Record("TransactWriteItems", write.Table.Arn);
             }
@@ -560,6 +569,7 @@ internal sealed partial class InternalDynamoDbClient
             var updated = old is null ? table.KeySchema.ToAttributes(key) : new Dictionary<string, DynamoValue>(old, StringComparer.Ordinal);
             InElement(() => update.Apply(updated));
             InElement(() => DynamoValueRules.CheckItemLimits(updated, DynamoValueRules.UpdateItemSizeExceeded));
+            InElement(() => CheckLocalIndexEntrySizes(table, updated, DynamoValueRules.UpdateItemSizeExceeded));
             CancelledBy(at, count, () => CheckIndexKeyTypes(table, updated));
             CheckIndexKeyValues(table, updated, update: true);
 

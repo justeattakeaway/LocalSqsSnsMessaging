@@ -82,7 +82,8 @@ internal sealed partial class InternalDynamoDbClient
         }
 
         // A table deleted and recreated under its name has the same ARN, and its old streams stay
-        // readable, so the new stream's label must also differ from theirs.
+        // readable (for a day), so the new stream's label must also differ from theirs.
+        Store.TrimStreams(now);
         while (Store.Streams.ContainsKey(DynamoStream.ArnFor(table.Arn, now)))
         {
             now = now.AddMilliseconds(1);
@@ -127,12 +128,17 @@ internal sealed class DynamoTimeToLiveJob : IDisposable
                 return;
             }
 
-            var now = _bus.TimeProvider.GetUtcNow().ToUnixTimeSeconds();
+            // An expiry more than five years in the past is not considered for deletion at all.
+            var utcNow = _bus.TimeProvider.GetUtcNow();
+            var now = utcNow.ToUnixTimeSeconds();
+            var oldest = utcNow.AddYears(-5).ToUnixTimeSeconds();
             var expired = _table.All()
                 .Where(entry => entry.Item.TryGetValue(attribute, out var value)
                     && value.Type == DynamoType.N
                     && DynamoNumber.TryParse(value.N, out var seconds)
-                    && seconds.ToDouble() <= now)
+                    && seconds.ToDouble() is var expiresAt
+                    && expiresAt <= now
+                    && expiresAt >= oldest)
                 .Select(entry => entry.Key)
                 .ToList();
             foreach (var key in expired)

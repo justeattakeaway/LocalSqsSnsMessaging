@@ -178,6 +178,7 @@ internal sealed partial class InternalDynamoDbClient
 
             CheckIndexKeys(table, updated, update: true);
             DynamoValueRules.CheckItemLimits(updated, DynamoValueRules.UpdateItemSizeExceeded);
+            CheckLocalIndexEntrySizes(table, updated, DynamoValueRules.UpdateItemSizeExceeded);
 
             // An update whose every action only takes something away adds no item where there was none.
             var createsNothing = old is null && update is { Actions.Count: > 0 } && updated.Keys.All(table.KeySchema.IsKeyAttribute);
@@ -541,14 +542,14 @@ internal sealed partial class InternalDynamoDbClient
     /// Refuses an item that, with its entry in a local secondary index, passes the item size limit:
     /// the limit holds for an item and each of its local index entries together.
     /// </summary>
-    private static void CheckLocalIndexEntrySizes(DynamoTable table, Dictionary<string, DynamoValue> item)
+    private static void CheckLocalIndexEntrySizes(DynamoTable table, Dictionary<string, DynamoValue> item, string message = DynamoValueRules.ItemSizeExceeded)
     {
         var size = DynamoValueRules.ItemSize(item);
         foreach (var index in table.LocalIndexes)
         {
             if (index.KeySchema.KeyOf(item) is not null && size + DynamoValueRules.ItemSize(ProjectForIndex(table, index, item)) > DynamoValueRules.MaxItemBytes)
             {
-                throw DynamoDbErrors.Validation(DynamoValueRules.ItemSizeExceeded);
+                throw DynamoDbErrors.Validation(message);
             }
         }
     }

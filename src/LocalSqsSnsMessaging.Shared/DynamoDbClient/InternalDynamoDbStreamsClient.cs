@@ -22,6 +22,13 @@ internal sealed class InternalDynamoDbStreamsClient
 
     private DynamoDbStore Store => _resources.DynamoDb;
 
+    /// <summary>The store, under its lock, with what DynamoDB Streams no longer keeps forgotten.</summary>
+    private DynamoDbStore TrimmedStore()
+    {
+        Store.TrimStreams(_bus.TimeProvider.GetUtcNow());
+        return Store;
+    }
+
     private DynamoStream FindStream(string? arn) =>
         arn is not null && Store.Streams.TryGetValue(arn, out var stream)
             ? stream
@@ -36,7 +43,7 @@ internal sealed class InternalDynamoDbStreamsClient
 
         lock (Store.Gate)
         {
-            var streams = Store.Streams.Values
+            var streams = TrimmedStore().Streams.Values
                 .Where(s => request.TableName is null || string.Equals(s.TableName, request.TableName, StringComparison.Ordinal))
                 .OrderBy(s => s.Arn, StringComparer.Ordinal)
                 .ToList();
@@ -60,6 +67,7 @@ internal sealed class InternalDynamoDbStreamsClient
     {
         lock (Store.Gate)
         {
+            TrimmedStore();
             var stream = FindStream(request.StreamArn);
             var shards = new List<Shard>();
             if (request.ExclusiveStartShardId is null || string.CompareOrdinal(stream.ShardId, request.ExclusiveStartShardId) > 0)
@@ -104,7 +112,7 @@ internal sealed class InternalDynamoDbStreamsClient
         lock (Store.Gate)
         {
             // GetShardIterator words a missing stream without naming it.
-            var stream = request.StreamArn is not null && Store.Streams.TryGetValue(request.StreamArn, out var found)
+            var stream = request.StreamArn is not null && TrimmedStore().Streams.TryGetValue(request.StreamArn, out var found)
                 ? found
                 : throw DynamoDbErrors.ResourceNotFound("Requested resource not found: Stream does not exist");
             if (!string.Equals(request.ShardId, stream.ShardId, StringComparison.Ordinal))
@@ -116,28 +124,15 @@ internal sealed class InternalDynamoDbStreamsClient
             switch (request.ShardIteratorType)
             {
                 case "TRIM_HORIZON":
-                    position = 0;
+                    position = stream.FirstPosition;
                     break;
                 case "LATEST":
-                    position = stream.Records.Count;
+                    position = stream.EndPosition;
                     break;
                 case "AT_SEQUENCE_NUMBER" or "AFTER_SEQUENCE_NUMBER":
                 {
                     var sequence = request.SequenceNumber ?? throw DynamoDbErrors.InvalidParameter("SequenceNumber cannot be null");
-                    var at = -1;
-                    for (var i = 0; i < stream.Records.Count; i++)
-                    {
-                        if (string.Equals(stream.Records[i].SequenceNumber, sequence, StringComparison.Ordinal))
-                        {
-                            at = i;
-                            break;
-                        }
-                    }
-
-                    if (at < 0)
-                    {
-                        throw DynamoDbErrors.Validation("Invalid SequenceNumber for the shard");
-                    }
+                    var at = stream.PositionOf(sequence) ?? throw DynamoDbErrors.Validation("Invalid SequenceNumber for the shard");
 
                     position = request.ShardIteratorType == "AT_SEQUENCE_NUMBER" ? at : at + 1;
                     break;
@@ -185,20 +180,26 @@ internal sealed class InternalDynamoDbStreamsClient
 
         lock (Store.Gate)
         {
+            TrimmedStore();
             var stream = FindStream(parts[0]);
             if (_bus.TimeProvider.GetUtcNow() - DateTimeOffset.FromUnixTimeMilliseconds(issued) > IteratorLifetime)
             {
                 throw new DynamoDbException("ExpiredIteratorException", "Iterator expired. The iterator was created more than 15 minutes ago.");
             }
 
+            if (position < stream.FirstPosition)
+            {
+                throw new DynamoDbException("TrimmedDataAccessException", "The operation attempted to read past the oldest stream record in a shard.");
+            }
+
             var limit = request.Limit ?? 1000;
-            var records = stream.Records.Skip(position).Take(limit).ToList();
+            var records = stream.From(position, limit);
             var next = position + records.Count;
             _bus.RecordOperation(AwsServiceName.DynamoDb, "GetRecords", stream.Arn);
             return Task.FromResult(new GetRecordsResponse
             {
                 Records = records.Select(r => ToRecord(stream, r)).ToList(),
-                NextShardIterator = !stream.Enabled && next >= stream.Records.Count ? null : Iterator(stream, next),
+                NextShardIterator = !stream.Enabled && next >= stream.EndPosition ? null : Iterator(stream, next),
             });
         }
     }

@@ -225,6 +225,24 @@ internal sealed partial class InternalDynamoDbClient
         WriteCapacityUnits = transactional && write ? units : null,
     };
 
+    /// <summary>Adds what an item write costs each index it changes to a running per-table, per-index total.</summary>
+    private static void AddIndexWriteUnits(
+        Dictionary<DynamoTable, Dictionary<string, double>> totals,
+        DynamoTable table,
+        IReadOnlyDictionary<string, DynamoValue>? before,
+        IReadOnlyDictionary<string, DynamoValue>? after)
+    {
+        if (!totals.TryGetValue(table, out var sums))
+        {
+            totals[table] = sums = new Dictionary<string, double>(StringComparer.Ordinal);
+        }
+
+        foreach (var (index, cost) in IndexWriteUnits(table, before, after))
+        {
+            sums[index] = (sums.TryGetValue(index, out var sum) ? sum : 0) + cost;
+        }
+    }
+
     /// <summary>What an item write costs each global index it changes: a unit per 1 KB of the index entry, twice when the entry moves.</summary>
     private static Dictionary<string, double> IndexWriteUnits(DynamoTable table, IReadOnlyDictionary<string, DynamoValue>? before, IReadOnlyDictionary<string, DynamoValue>? after)
     {
