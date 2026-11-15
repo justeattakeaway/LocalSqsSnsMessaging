@@ -20,6 +20,34 @@ _Avoid_: requeue, retry
 The queue a failed message goes to: for an SQS source queue, the one its redrive policy names; for an SNS subscription or an EventBridge target, the one its own dead-letter configuration names.
 _Avoid_: DLQ (in prose), error queue
 
+**Move task**:
+A task started on a dead-letter queue that moves its visible messages, as redriven messages, back to the queues they were dead-lettered from or to one destination queue, until it completes, fails or is cancelled.
+_Avoid_: redrive task, DLQ redrive
+
+## Message lifecycle
+
+**Message lifecycle**:
+The stages a message passes through on one queue: delayed, visible, in flight, and gone (deleted, expired past the retention period, purged, redriven or moved). The queue alone moves a message between them.
+_Avoid_: message state
+
+**Visible**:
+Waiting on the queue to be received, its delay (if any) over and not in flight.
+_Avoid_: available, pending
+
+**In flight**:
+Received and neither deleted nor visible again: hidden from other receives until its visibility timeout ends.
+_Avoid_: inflight, not visible, locked (for a message)
+
+**Locked message group**:
+A FIFO message group with a message in flight, from which the queue delivers nothing further until that message leaves flight.
+_Avoid_: blocked group
+
+**Lapsed receipt handle**:
+The latest receipt handle of a message whose visibility timeout has ended: it still deletes the message or hides it again.
+
+**Stale receipt handle**:
+An earlier receipt handle of a message received again since, under a newer one: a FIFO queue refuses it as expired.
+
 ## Resources
 
 **ARN resolution**:
