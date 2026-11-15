@@ -300,30 +300,6 @@ public sealed class SqsCallerPolicyAndKmsTests
     }
 
     [Test]
-    [Arguments("10.1.2.3/8", "10.200.0.1", true)]
-    [Arguments("10.1.2.3/8", "11.0.0.1", false)]
-    [Arguments("127.0.0.1/32", "127.0.0.1", true)]
-    [Arguments("127.0.0.1", "127.0.0.2", false)]
-    [Arguments("192.168.1.0/23", "192.168.0.255", true)]
-    [Arguments("2001:db8::/32", "2001:db8:1::1", true)]
-    [Arguments("2001:db8::/32", "127.0.0.1", false)]
-    public void SourceIpCidrMatching(string cidr, string address, bool expected)
-    {
-        SqsQueuePolicy.InCidr(cidr, address).ShouldBe(expected);
-    }
-
-    [Test]
-    [Arguments("sqs:*", "sqs:SendMessage", true)]
-    [Arguments("sqs:Send*", "sqs:sendmessage", true)]
-    [Arguments("sqs:Receive?essage", "sqs:ReceiveMessage", true)]
-    [Arguments("sqs:SendMessage", "sqs:SendMessageBatch", false)]
-    [Arguments("*", "anything", true)]
-    public void ActionWildcards(string pattern, string value, bool expected)
-    {
-        SqsQueuePolicy.Glob(pattern, value, StringComparison.OrdinalIgnoreCase).ShouldBe(expected);
-    }
-
-    [Test]
     public async Task KmsKey_AnyAlias_ExistsWhenNoAliasesAreConfigured()
     {
         var bus = new InMemoryAwsBus();

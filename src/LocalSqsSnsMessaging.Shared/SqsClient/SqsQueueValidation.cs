@@ -319,7 +319,12 @@ internal static class SqsQueueValidation
             return requestedFlag == currentFlag;
         }
 
-        if (name is InternalQueueAttributeName.Policy or InternalQueueAttributeName.RedrivePolicy or InternalQueueAttributeName.RedriveAllowPolicy)
+        if (name == InternalQueueAttributeName.Policy)
+        {
+            return ResourcePolicy.AreEquivalent(ResourcePolicyKind.Queue, requested, current);
+        }
+
+        if (name is InternalQueueAttributeName.RedrivePolicy or InternalQueueAttributeName.RedriveAllowPolicy)
         {
             var requestedDocument = TryParseObject(requested);
             var currentDocument = TryParseObject(current);
@@ -332,18 +337,10 @@ internal static class SqsQueueValidation
         return string.Equals(requested, current, StringComparison.Ordinal);
     }
 
-    /// <summary>A policy document with statement ids dropped and numeric strings read as numbers.</summary>
+    /// <summary>A redrive document with a numeric-string <c>maxReceiveCount</c> read as a number.</summary>
     private static JsonObject Canonical(JsonObject document)
     {
         var copy = document.DeepClone().AsObject();
-        if (copy["Statement"] is JsonArray statements)
-        {
-            foreach (var statement in statements.OfType<JsonObject>())
-            {
-                statement.Remove("Sid");
-            }
-        }
-
         if (copy["maxReceiveCount"] is JsonValue count && count.GetValueKind() == JsonValueKind.String
             && int.TryParse(count.GetValue<string>(), NumberStyles.None, NumberFormatInfo.InvariantInfo, out var number))
         {

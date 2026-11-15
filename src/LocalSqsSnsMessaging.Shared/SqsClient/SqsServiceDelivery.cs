@@ -13,7 +13,7 @@ namespace LocalSqsSnsMessaging;
 /// <para>
 /// The queue is found by its whole ARN when the delivery is made (a queue deleted since the
 /// subscription or target was set is <see cref="Outcome.QueueNotFound"/>), and its <c>Policy</c>
-/// is evaluated for the service as <see cref="SqsQueuePolicy.EvaluateServiceDelivery"/> describes.
+/// is evaluated for the service as <see cref="ResourcePolicy.EvaluateServiceDelivery"/> describes.
 /// An admitted message is accepted as a send (<see cref="SqsQueueResource.AcceptSent"/>): stamped
 /// with its <c>SentTimestamp</c>, delayed by the queue's <c>DelaySeconds</c>, and on a FIFO queue
 /// put in its group and deduplicated.
@@ -83,12 +83,13 @@ internal static class SqsServiceDelivery
             return Outcome.QueueNotFound;
         }
 
-        var policyRequest = SqsQueuePolicy.ServiceRequest(SqsActionName.SendMessage, queue.Arn, request.ServicePrincipal, request.SourceArn);
-        switch (SqsQueuePolicy.EvaluateServiceDelivery(queue.Attributes?.GetValueOrDefault(InternalQueueAttributeName.Policy), policyRequest))
+        var policyRequest = ResourcePolicy.ServiceRequest(SqsActionName.SendMessage, queue.Arn, request.ServicePrincipal, request.SourceArn);
+        var policy = ResourcePolicy.Parse(ResourcePolicyKind.Queue, queue.Attributes?.GetValueOrDefault(InternalQueueAttributeName.Policy));
+        switch (policy?.EvaluateServiceDelivery(policyRequest) ?? ResourcePolicy.ServiceDeliveryVerdict.Admitted)
         {
-            case SqsQueuePolicy.ServiceDeliveryVerdict.ExplicitlyDenied:
+            case ResourcePolicy.ServiceDeliveryVerdict.ExplicitlyDenied:
                 return Outcome.ExplicitlyDenied;
-            case SqsQueuePolicy.ServiceDeliveryVerdict.NotAllowed:
+            case ResourcePolicy.ServiceDeliveryVerdict.NotAllowed:
                 return Outcome.NotAllowed;
         }
 

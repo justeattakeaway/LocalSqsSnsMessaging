@@ -13,7 +13,7 @@ It ships three ways, all compiled from the same source in `src/LocalSqsSnsMessag
 
 Build the whole solution (`LocalSqsSnsMessaging.slnx`) after changing shared code: netstandard2.0 has weaker nullable annotations (e.g. `string.IsNullOrEmpty` does not prove non-null), so a change that builds for the test project can still fail there.
 
-Domain terms (send, service delivery, redrive, dead-letter queue, ARN resolution) are defined in `GLOSSARY.md`.
+Domain terms (send, service delivery, redrive, dead-letter queue, ARN resolution, resource policy) are defined in `GLOSSARY.md`.
 
 ## Building and Testing
 
@@ -148,7 +148,7 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 - Event patterns are validated and matched as Event Ruler does (`EventBridgeEventPattern`): `EventRulerJsonReader` and `EventRulerGrammar` (shared with SNS filter policies) give Jackson-style refusals, and `JsonPatternMatcher` matches on the event's flattened values
 - `EventBridgeEnvelope` builds each event's envelope; `EventBridgeEventDelivery` routes it through a bus's enabled rules and delivers it, during PutEvents, to each matching rule's targets: SQS queues (FIFO through the FIFO send path, deduplicated by event id), SNS topics (through the topic's publish action) and event buses in the same region and account (forwarded once). `EventBridgeTargetInput` renders what each target receives
 - A failed delivery (missing resource, a queue or topic `Policy` that denies `events.amazonaws.com` or admits it only for other rules, input that is not JSON) goes to the target's `DeadLetterConfig` queue with EventBridge's `ERROR_CODE`/`ERROR_MESSAGE`/`RULE_ARN`/`TARGET_ARN` attributes. A policy that says nothing about EventBridge admits it. These failures are not retried, as on AWS
-- A bus `Policy` (PutPermission/RemovePermission) is enforced for explicit Deny statements on PutEvents, through `SqsQueuePolicy`
+- A bus `Policy` (PutPermission/RemovePermission) is enforced for explicit Deny statements on PutEvents (see Resource Policies)
 - Archives (`ArchiveResource`) record events through a managed rule on their source bus; replays (`ReplayResource`) and rules with a `ScheduleExpression` (`ScheduledRuleJob`, `EventBridgeSchedule`) run on the bus `TimeProvider`
 - Timestamps go on the wire as epoch seconds (`Http/Serialization/AwsJsonTimestamp.cs`)
 
@@ -194,13 +194,23 @@ FIFO queues (.fifo suffix) have special handling:
 - Message group locks ensure ordering (`SqsQueueResource.MessageGroupLocks`)
 - Each message group has its own queue (`SqsQueueResource.MessageGroups`)
 
-### SQS Callers and Queue Policies
+### Resource Policies
 
-The generated SQS handlers build `InternalSqsClient` with a `Caller` (`SqsCaller`: the SigV4 access key, source IP, TLS). A client built without one (tests, the dashboard) is never subject to policies.
+A queue's, topic's or event bus's `Policy` is a **resource policy** (`ResourcePolicies/`). `ResourcePolicy` owns the document and its evaluation; callers never edit the JSON themselves:
+- `ResourcePolicy.Parse(kind, json)` (`null` for no policy), `Empty`/`ParseOrEmpty` for the document a service writes from scratch. `Statement` may be one object or a list; every operation reads both, and an edit writes a list
+- Edits by statement id return a new policy: `HasStatement`, `StatementCount`, `WithStatement` (adds, or replaces the same `Sid`), `WithoutStatement`. Each service keeps its own errors (duplicate label, over the limit, missing label) and decides what an emptied policy becomes (SQS removes it, SNS keeps `[]`, EventBridge clears it). Statements are built by the service, because each writes its values differently (SQS a single value as a string, SNS always lists)
+- `Normalize` (SQS stores a bare account-id principal as its root ARN) and `AreEquivalent` (CreateQueue/CreateTopic on an existing name)
+- Evaluation: `DeniesExplicitly` and `GrantsToEveryone` for a caller, `EvaluateServiceDelivery` for a service principal (admitted / explicitly denied / not allowed). Only explicit Deny statements are enforced for callers; a statement the library cannot evaluate is skipped
+- `ResourcePolicyKind` (`Queue`, `Topic`, `EventBus`) holds what differs: the action prefix (`sqs`, `sns`, `events`), the empty document (SNS: `2008-10-17`, `__default_policy_ID`; SQS: `<arn>/SQSDefaultPolicy`), and SQS's storage and comparison rules
+- Policies apply in `InternalSqsClient.Authorize`, `SqsServiceDelivery`, EventBridge's delivery to topics (`EventBridgeEventDelivery`) and PutEvents (`AuthorizePutEvents`). `AwsAccountId.IsValid` is the one twelve-digit check
+
+### SQS Callers
+
+The generated SQS handlers build `InternalSqsClient` with a `Caller` (`SqsCaller`: the SigV4 access key, source IP, TLS). A client built without one (tests, the dashboard) is never subject to queue policies.
 - `SenderId` comes from `SqsCaller.SenderId` (signed: `bus.CurrentUserId`, or the account id for an account-id access key; unsigned: the account id)
-- `InternalSqsClient.Authorization.cs`: `Authorize(queue, action)` runs after each queue lookup and enforces explicit Deny statements only (`SqsQueuePolicy`); `EnsureKmsKeyExists` refuses sends to a queue whose KMS alias is not in `bus.KmsKeyAliases` (only when that is set; by default every key exists)
+- `InternalSqsClient.Authorization.cs`: `Authorize(queue, action)` runs after each queue lookup and enforces explicit Deny statements only (`ResourcePolicy`); `EnsureKmsKeyExists` refuses sends to a queue whose KMS alias is not in `bus.KmsKeyAliases` (only when that is set; by default every key exists)
 - Receipt handles carry the queue's `Incarnation`, so a handle from a deleted queue is refused by a same-name successor
-- A **service delivery** (SNS subscription, EventBridge target, and both services' dead-letter queues) goes through `SqsServiceDelivery.Deliver`: it resolves the queue by ARN, evaluates the queue policy for the service principal (`SqsQueuePolicy.EvaluateServiceDelivery`, a verdict of admitted / explicitly denied / not allowed), and returns an `Outcome`. It sets no `SenderId` (AWS documents none) and skips `SendMessage`'s KMS and size checks
+- A **service delivery** (SNS subscription, EventBridge target, and both services' dead-letter queues) goes through `SqsServiceDelivery.Deliver`: it resolves the queue by ARN, evaluates the queue policy for the service principal (`ResourcePolicy.EvaluateServiceDelivery`, a verdict of admitted / explicitly denied / not allowed), and returns an `Outcome`. It sets no `SenderId` (AWS documents none) and skips `SendMessage`'s KMS and size checks
 - Only the queue enqueues: `SqsQueueResource.AcceptSent` (sends and service deliveries: stamps `SentTimestamp`, applies delay, FIFO group and deduplication scope) and `AcceptRedriven` (into a dead-letter queue or back by a move task: no deduplication claim, no delay, FIFO retention restarts)
 
 ### Exception Handling in HTTP Mode

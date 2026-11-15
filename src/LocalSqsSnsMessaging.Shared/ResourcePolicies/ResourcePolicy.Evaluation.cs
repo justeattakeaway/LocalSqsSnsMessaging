@@ -1,37 +1,32 @@
 using System.Net;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace LocalSqsSnsMessaging;
 
 /// <summary>
-/// A queue's <c>Policy</c> attribute: how SQS stores it, and the parts of IAM policy evaluation the
-/// library enforces. For callers, only explicit <c>Deny</c> statements are enforced; <c>Allow</c>
-/// statements are never needed, because every caller acts for the account that owns the queues.
-/// Deliveries by AWS services are evaluated by <see cref="EvaluateServiceDelivery"/>.
-/// EventBridge evaluates event bus policies the same way (<see cref="RequestContext.ActionPrefix"/>).
+/// The parts of IAM policy evaluation the library enforces. For callers, only explicit
+/// <c>Deny</c> statements are enforced; <c>Allow</c> statements are never needed, because every
+/// caller acts for the account that owns the resources. Deliveries by AWS services are evaluated
+/// by <see cref="EvaluateServiceDelivery"/>.
 /// </summary>
 /// <remarks>
 /// A statement is applied only when every part of it is understood. One whose condition uses an
 /// operator or a shape the library does not evaluate is skipped, so an unsupported Deny never
 /// blocks a request.
 /// </remarks>
-internal static partial class SqsQueuePolicy
+internal sealed partial class ResourcePolicy
 {
-    /// <summary>Parsed documents, keyed by the attribute string they were parsed from.</summary>
-    private static readonly ConditionalWeakTable<string, JsonObject?> ParsedDocuments = new();
-
     private static readonly char[] Wildcards = ['*', '?'];
 
     private static readonly string[] PrincipalKeys = ["Principal", "NotPrincipal"];
 
     /// <summary>What the request is, as policy evaluation sees it.</summary>
     /// <param name="Action">
-    /// The SQS action, without the <c>sqs:</c> prefix (e.g. <c>SendMessage</c>), or another service's
-    /// action with its prefix (e.g. <c>sns:Publish</c>, to evaluate a topic's policy).
+    /// The action, without its service prefix (e.g. <c>SendMessage</c>); the policy's
+    /// <see cref="ResourcePolicyKind.ActionPrefix"/> names its service.
     /// </param>
-    /// <param name="Resource">The queue's (or other resource's) ARN.</param>
+    /// <param name="Resource">The ARN of the resource the policy belongs to.</param>
     /// <param name="PrincipalAccount">The caller's account, or <see langword="null"/> for an anonymous caller.</param>
     /// <param name="PrincipalArn">The caller's ARN, or <see langword="null"/> for an anonymous caller.</param>
     /// <param name="SourceIp">Where the request came from, when known.</param>
@@ -57,9 +52,6 @@ internal static partial class SqsQueuePolicy
         /// <summary>The account that owns <see cref="SourceArn"/> (<c>aws:SourceAccount</c>).</summary>
         public string? SourceAccount { get; init; }
 
-        /// <summary>The service prefix policies name the action with: <c>sqs</c>, or <c>events</c> for an event bus.</summary>
-        public string ActionPrefix { get; init; } = "sqs";
-
         /// <summary>
         /// The request's service-specific condition keys (e.g. <c>events:source</c>), in a dictionary that
         /// ignores case as IAM does. A key that is neither here nor a global key the library models makes
@@ -70,111 +62,32 @@ internal static partial class SqsQueuePolicy
         public bool IsAnonymous => PrincipalAccount is null && Service is null;
     }
 
-    /// <summary>
-    /// The document as SQS stores it: an <c>AWS</c> principal given as a bare account id reads back
-    /// as that account's root ARN. A value that is not a JSON object is stored unchanged.
-    /// </summary>
-    public static string Normalize(string policy)
-    {
-        JsonNode? root;
-        try
-        {
-            root = JsonNode.Parse(policy);
-        }
-        catch (JsonException)
-        {
-            return policy;
-        }
-
-        if (root is not JsonObject document)
-        {
-            return policy;
-        }
-
-        var changed = false;
-        foreach (var statement in Statements(document))
-        {
-            foreach (var key in PrincipalKeys)
-            {
-                if (statement[key] is not JsonObject principal || principal["AWS"] is not { } aws)
-                {
-                    continue;
-                }
-
-                if (aws is JsonValue && RootArn(aws) is { } arn)
-                {
-                    principal["AWS"] = arn;
-                    changed = true;
-                }
-                else if (aws is JsonArray array)
-                {
-                    for (var i = 0; i < array.Count; i++)
-                    {
-                        if (RootArn(array[i]) is { } itemArn)
-                        {
-                            array[i] = itemArn;
-                            changed = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        return changed ? document.ToJsonString() : policy;
-
-        static string? RootArn(JsonNode? node) =>
-            AsString(node) is { } value && IsAccountId(value) ? $"arn:aws:iam::{value}:root" : null;
-    }
-
-    /// <summary>Whether a Deny statement in <paramref name="policy"/> applies to the request.</summary>
-    public static bool DeniesExplicitly(string policy, RequestContext request) =>
-        Parse(policy) is { } document
-        && Statements(document).Any(statement =>
+    /// <summary>Whether a Deny statement applies to the request.</summary>
+    public bool DeniesExplicitly(RequestContext request) =>
+        Statements().Any(statement =>
             string.Equals(AsString(statement["Effect"]), "Deny", StringComparison.Ordinal)
             && Applies(statement, request) == true);
 
     /// <summary>
-    /// Whether an Allow statement in <paramref name="policy"/> grants the request to everyone
-    /// (<c>"Principal": "*"</c>), which is the only way an anonymous request is allowed.
+    /// Whether an Allow statement grants the request to everyone (<c>"Principal": "*"</c>), which
+    /// is the only way an anonymous request is allowed.
     /// </summary>
-    public static bool GrantsToEveryone(string policy, RequestContext request) =>
-        Parse(policy) is { } document
-        && Statements(document).Any(statement =>
+    public bool GrantsToEveryone(RequestContext request) =>
+        Statements().Any(statement =>
             string.Equals(AsString(statement["Effect"]), "Allow", StringComparison.Ordinal)
             && statement["NotPrincipal"] is null
             && NamesEveryone(statement["Principal"])
             && Applies(statement, request) == true);
 
-    private static JsonObject? Parse(string policy) =>
-        ParsedDocuments.GetValue(policy, static json =>
-        {
-            try
-            {
-                return JsonNode.Parse(json) as JsonObject;
-            }
-            catch (JsonException)
-            {
-                return null;
-            }
-        });
-
-    private static IEnumerable<JsonObject> Statements(JsonObject document) =>
-        document["Statement"] switch
-        {
-            JsonObject single => [single],
-            JsonArray many => many.OfType<JsonObject>(),
-            _ => [],
-        };
-
     /// <summary>Whether the statement applies to the request; <see langword="null"/> when it cannot be evaluated.</summary>
-    private static bool? Applies(JsonObject statement, RequestContext request)
+    private bool? Applies(JsonObject statement, RequestContext request)
     {
         var principal = statement["Principal"] is { } p
             ? MatchesPrincipal(p, request)
             : statement["NotPrincipal"] is { } np ? !MatchesPrincipal(np, request) : false;
         var action = statement["Action"] is { } a
-            ? MatchesAny(a, $"{request.ActionPrefix}:{request.Action}", StringComparison.OrdinalIgnoreCase)
-            : statement["NotAction"] is { } na ? !MatchesAny(na, $"{request.ActionPrefix}:{request.Action}", StringComparison.OrdinalIgnoreCase) : false;
+            ? MatchesAny(a, $"{Kind.ActionPrefix}:{request.Action}", StringComparison.OrdinalIgnoreCase)
+            : statement["NotAction"] is { } na ? !MatchesAny(na, $"{Kind.ActionPrefix}:{request.Action}", StringComparison.OrdinalIgnoreCase) : false;
         var resource = statement["Resource"] is { } r
             ? MatchesAny(r, request.Resource, StringComparison.Ordinal)
             : statement["NotResource"] is not { } nr || !MatchesAny(nr, request.Resource, StringComparison.Ordinal);
@@ -212,7 +125,7 @@ internal static partial class SqsQueuePolicy
 
         // Federated and canonical-user principals never make SQS API calls here.
         return Values(obj["AWS"]).Any(value =>
-            IsAccountId(value)
+            AwsAccountId.IsValid(value)
                 ? string.Equals(value, request.PrincipalAccount, StringComparison.Ordinal)
                 : string.Equals(value, $"arn:aws:iam::{request.PrincipalAccount}:root", StringComparison.Ordinal)
                   || string.Equals(value, request.PrincipalArn, StringComparison.Ordinal));
@@ -365,7 +278,7 @@ internal static partial class SqsQueuePolicy
     }
 
     /// <summary>Whether <paramref name="address"/> is within <paramref name="cidr"/>; <see langword="null"/> when either is malformed.</summary>
-    internal static bool? InCidr(string cidr, string address)
+    private static bool? InCidr(string cidr, string address)
     {
         var slash = cidr.IndexOf('/', StringComparison.Ordinal);
         if (!IPAddress.TryParse(slash < 0 ? cidr : cidr[..slash], out var network)
@@ -407,7 +320,7 @@ internal static partial class SqsQueuePolicy
     }
 
     /// <summary>IAM wildcard matching: <c>*</c> matches any run of characters, <c>?</c> any one.</summary>
-    internal static bool Glob(string pattern, string value, StringComparison comparison)
+    private static bool Glob(string pattern, string value, StringComparison comparison)
     {
         if (pattern.IndexOfAny(Wildcards) < 0)
         {
@@ -469,6 +382,4 @@ internal static partial class SqsQueuePolicy
             _ => null,
         }
         : null;
-
-    private static bool IsAccountId(string value) => value.Length == 12 && value.All(c => c is >= '0' and <= '9');
 }

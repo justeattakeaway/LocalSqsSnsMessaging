@@ -22,7 +22,7 @@ namespace LocalSqsSnsMessaging;
 /// service errors, which the in-memory services never return.
 /// </para>
 /// <para>
-/// Resource policies are evaluated as for SNS deliveries (<see cref="SqsQueuePolicy.EvaluateServiceDelivery"/>):
+/// Resource policies are evaluated as for SNS deliveries (<see cref="ResourcePolicy.EvaluateServiceDelivery"/>):
 /// EventBridge delivers as <c>events.amazonaws.com</c>, with the rule as <c>aws:SourceArn</c>. A
 /// policy that denies it, or that grants EventBridge deliveries without admitting this rule,
 /// refuses the delivery. A queue with no policy, or a policy that says nothing about EventBridge,
@@ -196,11 +196,11 @@ internal static class EventBridgeEventDelivery
             policy = topic.Attributes.GetValueOrDefault(SnsTopicAttributes.Policy);
         }
 
-        var request = SqsQueuePolicy.ServiceRequest("Publish", topic.Arn, SqsServiceDelivery.EventsPrincipal, delivery.Rule.Arn) with { ActionPrefix = "sns" };
-        var reason = SqsQueuePolicy.EvaluateServiceDelivery(policy, request) switch
+        var request = ResourcePolicy.ServiceRequest("Publish", topic.Arn, SqsServiceDelivery.EventsPrincipal, delivery.Rule.Arn);
+        var reason = ResourcePolicy.Parse(ResourcePolicyKind.Topic, policy)?.EvaluateServiceDelivery(request) switch
         {
-            SqsQueuePolicy.ServiceDeliveryVerdict.ExplicitlyDenied => "with an explicit deny in a resource-based policy",
-            SqsQueuePolicy.ServiceDeliveryVerdict.NotAllowed => "because no resource-based policy allows the SNS:Publish action",
+            ResourcePolicy.ServiceDeliveryVerdict.ExplicitlyDenied => "with an explicit deny in a resource-based policy",
+            ResourcePolicy.ServiceDeliveryVerdict.NotAllowed => "because no resource-based policy allows the SNS:Publish action",
             _ => null,
         };
         if (reason is not null)

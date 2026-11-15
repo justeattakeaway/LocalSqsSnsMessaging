@@ -44,7 +44,7 @@ internal sealed class SqsCaller
 
     /// <summary>The account the caller acts for.</summary>
     public string AccountId(InMemoryAwsBus bus) =>
-        AccessKeyId is { } key && IsAccountId(key) ? key : bus.CurrentAccountId;
+        AccessKeyId is { } key && AwsAccountId.IsValid(key) ? key : bus.CurrentAccountId;
 
     /// <summary>The caller's ARN, as an authorization error names it.</summary>
     public string Arn(InMemoryAwsBus bus) => $"arn:aws:iam::{AccountId(bus)}:root";
@@ -55,7 +55,7 @@ internal sealed class SqsCaller
     /// root user is the account id. An unsigned caller keeps the library's long-standing account id.
     /// </summary>
     public string SenderId(InMemoryAwsBus bus) =>
-        AccessKeyId is { } key && !IsAccountId(key) ? bus.CurrentUserId : AccountId(bus);
+        AccessKeyId is { } key && !AwsAccountId.IsValid(key) ? bus.CurrentUserId : AccountId(bus);
 
     /// <summary>A caller signed with <paramref name="accessKeyId"/>, for tests.</summary>
     internal static SqsCaller Signed(string accessKeyId, IPAddress? sourceIp = null) =>
@@ -132,6 +132,4 @@ internal sealed class SqsCaller
 
         return null;
     }
-
-    private static bool IsAccountId(string value) => value.Length == 12 && value.All(c => c is >= '0' and <= '9');
 }

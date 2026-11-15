@@ -26,6 +26,14 @@ _Avoid_: DLQ (in prose), error queue
 Finding the resource an ARN names, in the region and account the ARN names, at the moment it is used. A resource deleted and recreated under the same ARN is the same target.
 _Avoid_: lookup by name
 
+**Resource policy**:
+The IAM policy document a queue, topic or event bus holds, saying which callers and services may act on it. Each service names its actions with its own prefix and writes its documents in its own way, but the document and its meaning are the same concept for all three.
+_Avoid_: queue policy, topic policy, access policy (for the concept in general); permission (for the whole document)
+
+**Statement id**:
+The `Sid` that names one statement in a resource policy; permission operations add, replace and remove statements by it. SQS and SNS call it a label, EventBridge a statement id.
+_Avoid_: label (outside the SQS and SNS parameter name)
+
 ## DynamoDB
 
 **Canonical form**:

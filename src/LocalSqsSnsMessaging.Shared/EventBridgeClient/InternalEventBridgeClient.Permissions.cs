@@ -1,6 +1,5 @@
 #pragma warning disable CS8600, CS8601, CS8602, CS8604 // Nullable warnings - internal POCOs use nullable properties but values are set at runtime
 
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using LocalSqsSnsMessaging.EventBridge.Model;
 
@@ -41,7 +40,10 @@ internal sealed partial class InternalEventBridgeClient
         var eventBus = ResolveBus(request.EventBusName);
         lock (eventBus)
         {
-            eventBus.Policy = request.Policy ?? WithStatement(eventBus.Policy, PermissionStatement(request, eventBus.Arn));
+            eventBus.Policy = request.Policy
+                ?? ResourcePolicy.ParseOrEmpty(ResourcePolicyKind.EventBus, eventBus.Policy, eventBus.Arn)
+                    .WithStatement(PermissionStatement(request, eventBus.Arn))
+                    .ToJson();
         }
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "PutPermission", eventBus.Arn);
@@ -66,7 +68,7 @@ internal sealed partial class InternalEventBridgeClient
         var eventBus = ResolveBus(request.EventBusName);
         lock (eventBus)
         {
-            eventBus.Policy = removeAll ? null : WithoutStatement(eventBus.Policy, request.StatementId);
+            eventBus.Policy = removeAll ? null : WithoutStatement(eventBus, request.StatementId);
         }
 
         _bus.RecordOperation(AwsServiceName.EventBridge, "RemovePermission", eventBus.Arn);
@@ -78,7 +80,7 @@ internal sealed partial class InternalEventBridgeClient
     /// <c>events:PutEvents</c> to the caller for any of its entries; no entry is then delivered.
     /// </summary>
     /// <remarks>
-    /// As for SQS queue policies (<see cref="SqsQueuePolicy"/>), only explicit Deny statements are
+    /// As for SQS queue policies (<see cref="ResourcePolicy"/>), only explicit Deny statements are
     /// enforced: a bus with no policy, or one that only allows, accepts every event as before. The
     /// library does not see who sends an EventBridge request, so every request acts for the bus's
     /// account (its root user), as an unsigned SQS request does, and has no <c>aws:SourceIp</c>.
@@ -90,14 +92,13 @@ internal sealed partial class InternalEventBridgeClient
         foreach (var entry in entries ?? [])
         {
             if (!_resources.EventBuses.TryGetValue(ExtractBusName(entry.EventBusName), out var eventBus)
-                || eventBus.Policy is not { } policy)
+                || ResourcePolicy.Parse(ResourcePolicyKind.EventBus, eventBus.Policy) is not { } policy)
             {
                 continue;
             }
 
-            var context = new SqsQueuePolicy.RequestContext("PutEvents", eventBus.Arn, _bus.CurrentAccountId, callerArn, SourceIp: null, SecureTransport: true)
+            var context = new ResourcePolicy.RequestContext("PutEvents", eventBus.Arn, _bus.CurrentAccountId, callerArn, SourceIp: null, SecureTransport: true)
             {
-                ActionPrefix = "events",
                 ServiceKeys = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["events:source"] = entry.Source,
@@ -105,7 +106,7 @@ internal sealed partial class InternalEventBridgeClient
                 }
             };
 
-            if (SqsQueuePolicy.DeniesExplicitly(policy, context))
+            if (policy.DeniesExplicitly(context))
             {
                 throw new AwsServiceException(
                     $"User: {callerArn} is not authorized to perform: {PutEventsAction} on resource: {eventBus.Arn} " +
@@ -153,79 +154,18 @@ internal sealed partial class InternalEventBridgeClient
         return statement;
     }
 
-    /// <summary><paramref name="policy"/> with <paramref name="statement"/> added, replacing a statement with the same <c>Sid</c>.</summary>
-    private static string WithStatement(string? policy, JsonObject statement)
-    {
-        var document = ParsePolicy(policy) ?? new JsonObject { ["Version"] = "2012-10-17", ["Statement"] = new JsonArray() };
-        var statements = Statements(document);
-        var sid = statement["Sid"]?.GetValue<string>();
-        var existing = statements.FirstOrDefault(s => s is JsonObject o && string.Equals(StatementId(o), sid, StringComparison.Ordinal));
-        if (existing is not null)
-        {
-            statements[statements.IndexOf(existing)] = statement;
-        }
-        else
-        {
-            statements.Add((JsonNode)statement);
-        }
-
-        return document.ToJsonString();
-    }
-
     /// <summary>
-    /// <paramref name="policy"/> without the statement <paramref name="statementId"/>, or
+    /// The bus's policy without the statement <paramref name="statementId"/>, or
     /// <see langword="null"/> when no statement is left.
     /// </summary>
-    private static string? WithoutStatement(string? policy, string? statementId)
+    private static string? WithoutStatement(EventBusResource eventBus, string? statementId)
     {
-        var document = ParsePolicy(policy);
-        var statements = document is null ? null : Statements(document);
-        var existing = statements?.FirstOrDefault(s => s is JsonObject o && string.Equals(StatementId(o), statementId, StringComparison.Ordinal));
-        if (existing is null)
+        if (ResourcePolicy.Parse(ResourcePolicyKind.EventBus, eventBus.Policy) is not { } policy || !policy.HasStatement(statementId))
         {
             throw new InternalResourceNotFoundException("Statement with the provided id does not exist.");
         }
 
-        statements!.Remove(existing);
-        return statements.Count == 0 ? null : document!.ToJsonString();
+        var remaining = policy.WithoutStatement(statementId);
+        return remaining.StatementCount == 0 ? null : remaining.ToJson();
     }
-
-    private static JsonObject? ParsePolicy(string? policy)
-    {
-        if (string.IsNullOrEmpty(policy))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonNode.Parse(policy) as JsonObject;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>The policy's statements as a list, converting a single statement object into one.</summary>
-    private static JsonArray Statements(JsonObject document)
-    {
-        switch (document["Statement"])
-        {
-            case JsonArray array:
-                return array;
-            case JsonObject single:
-                document.Remove("Statement");
-                var wrapped = new JsonArray(single);
-                document["Statement"] = wrapped;
-                return wrapped;
-            default:
-                var empty = new JsonArray();
-                document["Statement"] = empty;
-                return empty;
-        }
-    }
-
-    private static string? StatementId(JsonObject statement) =>
-        statement["Sid"] is JsonValue sid && sid.TryGetValue<string>(out var value) ? value : null;
 }

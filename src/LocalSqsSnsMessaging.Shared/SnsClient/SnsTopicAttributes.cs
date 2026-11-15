@@ -90,11 +90,8 @@ internal static class SnsTopicAttributes
     }
 
     /// <summary>The access policy SNS gives a new topic: the owner's account may do anything with it.</summary>
-    public static string DefaultPolicy(string topicArn, string accountId) => new JsonObject
-    {
-        ["Version"] = "2008-10-17",
-        ["Id"] = "__default_policy_ID",
-        ["Statement"] = new JsonArray(new JsonObject
+    public static string DefaultPolicy(string topicArn, string accountId) =>
+        ResourcePolicy.Empty(ResourcePolicyKind.Topic, topicArn).WithStatement(new JsonObject
         {
             ["Sid"] = "__default_statement_ID",
             ["Effect"] = "Allow",
@@ -113,8 +110,7 @@ internal static class SnsTopicAttributes
             {
                 ["StringEquals"] = new JsonObject { ["AWS:SourceOwner"] = accountId },
             },
-        }),
-    }.ToJsonString();
+        }).ToJson();
 
     /// <summary>
     /// <c>EffectiveDeliveryPolicy</c>: the topic's <c>DeliveryPolicy</c> merged over SNS's default HTTP

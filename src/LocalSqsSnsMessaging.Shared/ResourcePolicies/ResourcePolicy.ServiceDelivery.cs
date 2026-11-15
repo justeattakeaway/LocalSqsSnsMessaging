@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 namespace LocalSqsSnsMessaging;
 
 /// <summary>Whether a resource's policy lets an AWS service, such as SNS, deliver to it.</summary>
-internal static partial class SqsQueuePolicy
+internal sealed partial class ResourcePolicy
 {
     /// <summary>The condition keys that scope a grant to the resource a service acts for.</summary>
     private static readonly string[] SourceConditionKeys = ["aws:SourceArn", "aws:SourceAccount", "aws:SourceOwner"];
@@ -35,13 +35,14 @@ internal static partial class SqsQueuePolicy
         };
 
     /// <summary>
-    /// Whether <paramref name="policy"/> lets the service in <paramref name="request"/>
+    /// Whether the policy lets the service in <paramref name="request"/>
     /// (<see cref="RequestContext.Service"/>) make the request, such as SNS sending a topic's
     /// notification to the queue.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A resource with no policy admits the delivery. A Deny statement that applies refuses it.
+    /// A resource with no policy admits the delivery (a caller holding no <see cref="ResourcePolicy"/>
+    /// takes <see cref="ServiceDeliveryVerdict.Admitted"/>). A Deny statement that applies refuses it.
     /// Beyond that, a matching Allow is needed only when the policy addresses deliveries from that
     /// service: when an Allow statement names the service principal, or grants to everyone on an
     /// <c>aws:SourceArn</c>, <c>aws:SourceAccount</c> or <c>aws:SourceOwner</c> condition. A policy
@@ -55,15 +56,15 @@ internal static partial class SqsQueuePolicy
     /// unsupported condition is skipped, and an Allow with one is taken to grant.
     /// </para>
     /// </remarks>
-    public static ServiceDeliveryVerdict EvaluateServiceDelivery(string? policy, RequestContext request)
+    public ServiceDeliveryVerdict EvaluateServiceDelivery(RequestContext request)
     {
-        if (string.IsNullOrEmpty(policy) || request.Service is not { } service || Parse(policy!) is not { } document)
+        if (request.Service is not { } service)
         {
             return ServiceDeliveryVerdict.Admitted;
         }
 
         var allows = new List<JsonObject>();
-        foreach (var statement in Statements(document))
+        foreach (var statement in Statements())
         {
             var effect = AsString(statement["Effect"]);
             if (string.Equals(effect, "Deny", StringComparison.Ordinal) && Applies(statement, request) == true)

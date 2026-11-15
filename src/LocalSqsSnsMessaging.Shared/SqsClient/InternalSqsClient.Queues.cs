@@ -96,7 +96,7 @@ internal sealed partial class InternalSqsClient
     {
         foreach (var (name, value) in requestedAttributes)
         {
-            var requested = name == InternalQueueAttributeName.Policy && !string.IsNullOrEmpty(value) ? SqsQueuePolicy.Normalize(value) : value;
+            var requested = name == InternalQueueAttributeName.Policy && !string.IsNullOrEmpty(value) ? ResourcePolicy.Normalize(ResourcePolicyKind.Queue, value) : value;
             if (!SqsQueueValidation.SameAttributeValue(name, requested, queue.Attributes?.GetValueOrDefault(name)))
             {
                 throw SqsRequestValidation.Error("QueueNameExists",

@@ -32,19 +32,18 @@ internal sealed partial class InternalSqsClient
     private void Authorize(SqsQueueResource queue, string action)
     {
         if (Caller is null
-            || queue.Attributes?.TryGetValue(InternalQueueAttributeName.Policy, out var policy) != true
-            || string.IsNullOrEmpty(policy))
+            || ResourcePolicy.Parse(ResourcePolicyKind.Queue, queue.Attributes?.GetValueOrDefault(InternalQueueAttributeName.Policy)) is not { } policy)
         {
             return;
         }
 
         var account = Caller.AccountId(_bus);
-        var asAccount = new SqsQueuePolicy.RequestContext(action, queue.Arn, account, Caller.Arn(_bus), Caller.SourceIp, Caller.SecureTransport);
+        var asAccount = new ResourcePolicy.RequestContext(action, queue.Arn, account, Caller.Arn(_bus), Caller.SourceIp, Caller.SecureTransport);
         var anonymous = !Caller.IsSigned
-            && SqsQueuePolicy.GrantsToEveryone(policy, asAccount with { PrincipalAccount = null, PrincipalArn = null });
+            && policy.GrantsToEveryone(asAccount with { PrincipalAccount = null, PrincipalArn = null });
         var request = anonymous ? asAccount with { PrincipalAccount = null, PrincipalArn = null } : asAccount;
 
-        if (SqsQueuePolicy.DeniesExplicitly(policy, request))
+        if (policy.DeniesExplicitly(request))
         {
 #pragma warning disable CA1308 // SQS names the action in lower case.
             throw AccessDenied(
