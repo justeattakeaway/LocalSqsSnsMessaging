@@ -83,7 +83,7 @@ internal sealed partial class InternalSnsClient
         var snsSubscription = new SnsSubscription
         {
             SubscriptionArn = SnsArn.NewSubscriptionArn(topic.Arn),
-            TopicArn = topic.Arn,
+            Topic = topic,
             EndPoint = request.Endpoint,
             Protocol = protocol,
             Raw = false,
@@ -106,48 +106,16 @@ internal sealed partial class InternalSnsClient
             }
         }
 
-        SnsSubscription subscription;
-
-        // Finding an existing subscription, checking the topic has room and taking that room have to
-        // happen together, or two concurrent subscribers can both add the same endpoint, or both see
-        // room for one more.
-        lock (topic.SubscriptionGate)
+        // Subscribing the same endpoint again returns the existing subscription, unless the request
+        // asks for attributes it doesn't have.
+        var subscription = topic.Subscribe(snsSubscription, existing =>
         {
-            // DeleteTopic removes a topic's subscriptions under this gate: one added after that
-            // would outlive the topic, and come back if the name were created again.
-            if (!_resources.Topics.TryGetValue(topic.Name, out var current) || !ReferenceEquals(current, topic))
+            if (requested.Any(a => !SubscriptionAttributeMatches(existing, a.Key, a.Value)))
             {
-                throw new InternalNotFoundException(TopicDoesNotExist);
+                throw new InternalInvalidParameterException(
+                    "Invalid parameter: Attributes Reason: Subscription already exists with different attributes");
             }
-
-            var existing = _resources.Subscriptions.Values.FirstOrDefault(s =>
-                string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal) &&
-                string.Equals(s.Protocol, protocol, StringComparison.Ordinal) &&
-                string.Equals(s.EndPoint, request.Endpoint, StringComparison.Ordinal));
-            if (existing is not null)
-            {
-                // Subscribing the same endpoint again returns the existing subscription, unless the
-                // request asks for attributes it doesn't have.
-                if (requested.Any(a => !SubscriptionAttributeMatches(existing, a.Key, a.Value)))
-                {
-                    throw new InternalInvalidParameterException(
-                        "Invalid parameter: Attributes Reason: Subscription already exists with different attributes");
-                }
-
-                subscription = existing;
-            }
-            else
-            {
-                ValidateSubscriptionSupportsTopicMessageSize(topic, protocol);
-                _resources.Subscriptions.TryAdd(snsSubscription.SubscriptionArn, snsSubscription);
-                SnsPublishActionFactory.Activate(topic, snsSubscription, _bus);
-                subscription = snsSubscription;
-                if (subscription.IsHttp)
-                {
-                    SnsHttpDelivery.SendSubscriptionConfirmation(_bus, subscription);
-                }
-            }
-        }
+        });
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Subscribe, request.TopicArn);
         return Task.FromResult(new SubscribeResponse
@@ -169,23 +137,7 @@ internal sealed partial class InternalSnsClient
         // Unsubscribing a subscription that doesn't exist succeeds, as on AWS.
         if (_resources.Subscriptions.TryGetValue(request.SubscriptionArn, out var subscription))
         {
-            if (FindTopicOf(subscription) is { } topic)
-            {
-                // Under the topic's gate, so this rebuild of its subscriber list can't overwrite one a
-                // concurrent Subscribe makes.
-                lock (topic.SubscriptionGate)
-                {
-                    if (_resources.Subscriptions.TryRemove(request.SubscriptionArn, out _))
-                    {
-                        topic.RecordSubscriptionDeleted();
-                        SnsPublishActionFactory.UpdateTopicPublishAction(subscription.TopicArn, _bus);
-                    }
-                }
-            }
-            else
-            {
-                _resources.Subscriptions.TryRemove(request.SubscriptionArn, out _);
-            }
+            subscription.Topic.Unsubscribe(subscription);
         }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.Unsubscribe, request.SubscriptionArn);
@@ -257,13 +209,9 @@ internal sealed partial class InternalSnsClient
             throw new InternalInvalidParameterException("Invalid parameter: AttributeName");
         }
 
-        var topic = FindTopicOf(subscription);
-        ApplySubscriptionAttribute(topic, subscription, request.AttributeName, request.AttributeValue, atSubscribe: false);
-        if (topic is not null && request.AttributeName == SnsSubscriptionAttributes.ReplayPolicy)
-        {
-            // A replay policy set on an existing subscription starts a replay straight away.
-            topic.PublishAction.Replay(subscription);
-        }
+        // A replay policy set on an existing subscription starts a replay straight away.
+        subscription.Topic.UpdateSubscription(subscription, s =>
+            ApplySubscriptionAttribute(s.Topic, s, request.AttributeName, request.AttributeValue, atSubscribe: false));
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.SetSubscriptionAttributes, subscription.SubscriptionArn);
         return Task.FromResult(new SetSubscriptionAttributesResponse().SetCommonProperties());
@@ -291,7 +239,7 @@ internal sealed partial class InternalSnsClient
 
         var topic = GetTopicByArn(request.TopicArn);
         var (items, nextToken) = ListSubscriptionPage(
-            _resources.Subscriptions.Values.Where(s => string.Equals(s.TopicArn, topic.Arn, StringComparison.Ordinal)),
+            topic.Subscriptions,
             request.NextToken);
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ListSubscriptionsByTopic, request.TopicArn);
@@ -306,25 +254,15 @@ internal sealed partial class InternalSnsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var subscription = _resources.Subscriptions.Values.FirstOrDefault(s =>
-            string.Equals(s.TopicArn, request.TopicArn, StringComparison.Ordinal) &&
-            string.Equals(s.ConfirmationToken, request.Token, StringComparison.Ordinal));
-
+        // A token is only good for the topic it was issued for: any other TopicArn, well formed or
+        // not, refuses the token rather than the ARN.
+        var subscription = _bus.TryGetTopicByArn(request.TopicArn, out var topic)
+                           && string.Equals(topic.Region, _resources.Region, StringComparison.Ordinal)
+            ? topic.Confirm(request.Token)
+            : null;
         if (subscription is null)
         {
             throw new InternalInvalidParameterException("Invalid parameter: Token");
-        }
-
-        if (subscription.PendingConfirmation)
-        {
-            subscription.PendingConfirmation = false;
-            if (FindTopicOf(subscription) is { } topic)
-            {
-                lock (topic.SubscriptionGate)
-                {
-                    SnsPublishActionFactory.Activate(topic, subscription, _bus);
-                }
-            }
         }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.ConfirmSubscription, subscription.SubscriptionArn);
@@ -358,13 +296,6 @@ internal sealed partial class InternalSnsClient
             ? subscription
             : throw new InternalNotFoundException(SubscriptionDoesNotExist);
     }
-
-    /// <summary>The topic <paramref name="subscription"/> belongs to, or null if it has just been deleted.</summary>
-    private SnsTopicResource? FindTopicOf(SnsSubscription subscription) =>
-        _resources.Topics.TryGetValue(SnsArn.TopicName(subscription.TopicArn), out var topic)
-        && string.Equals(topic.Arn, subscription.TopicArn, StringComparison.Ordinal)
-            ? topic
-            : null;
 
     /// <summary>
     /// Whether <paramref name="subscription"/> already has <paramref name="name"/> set to
@@ -407,10 +338,10 @@ internal sealed partial class InternalSnsClient
     /// <summary>
     /// Validates and applies a single subscription attribute. <paramref name="atSubscribe"/> is true
     /// when it came in <c>Subscribe</c>'s attribute map, where SNS reports a bad value as a reason
-    /// against <c>Attributes</c>. <paramref name="topic"/> is the subscription's topic (null if it has
-    /// just been deleted), which some attributes are validated against.
+    /// against <c>Attributes</c>. <paramref name="topic"/> is the subscription's topic, which some
+    /// attributes are validated against.
     /// </summary>
-    private static void ApplySubscriptionAttribute(SnsTopicResource? topic, SnsSubscription subscription, string name, string? value, bool atSubscribe)
+    private static void ApplySubscriptionAttribute(SnsTopicResource topic, SnsSubscription subscription, string name, string? value, bool atSubscribe)
     {
         value ??= string.Empty;
         try
@@ -449,7 +380,7 @@ internal sealed partial class InternalSnsClient
 
                 case SnsSubscriptionAttributes.RedrivePolicy:
                     var deadLetterTargetArn = SnsRedrivePolicy.ParseDeadLetterTargetArn(value);
-                    if (deadLetterTargetArn is not null && topic is { IsFifo: true } && subscription.IsSqs
+                    if (deadLetterTargetArn is not null && topic.IsFifo && subscription.IsSqs
                         && subscription.EndPoint.EndsWith(".fifo", StringComparison.Ordinal)
                         && !deadLetterTargetArn.EndsWith(".fifo", StringComparison.Ordinal))
                     {

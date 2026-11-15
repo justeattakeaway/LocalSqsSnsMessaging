@@ -1,7 +1,7 @@
 namespace LocalSqsSnsMessaging;
 
 /// <summary>Publishing to a FIFO topic, and replaying its archive.</summary>
-internal sealed partial class SnsPublishAction
+internal sealed partial class SnsFanOut
 {
     /// <summary>
     /// Publishes to a FIFO topic. The topic deduplicates the message for five minutes (by its
@@ -33,9 +33,7 @@ internal sealed partial class SnsPublishAction
 
             fifo.Archive(sequenced, now);
 
-            // The subscriptions may have changed while this publish waited for the gate: the topic's
-            // current action holds the ones subscribed now.
-            _topic.PublishAction.Deliver(sequenced);
+            Deliver(sequenced);
             return (sequenced.MessageId, sequenced.SequenceNumber);
         }
     }

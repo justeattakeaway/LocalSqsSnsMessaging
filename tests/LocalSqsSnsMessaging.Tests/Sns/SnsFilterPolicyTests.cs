@@ -5,10 +5,18 @@ namespace LocalSqsSnsMessaging.Tests.Sns;
 
 public class SnsFilterPolicyTests
 {
+    private static readonly InMemoryAwsBus Bus = new();
+
+    private static readonly SnsTopicResource Topic = new(Bus, Bus.Region("us-east-1"))
+    {
+        Name = "topic",
+        Arn = "arn:aws:sns:us-east-1:000000000000:topic",
+    };
+
     private static SnsSubscription Subscription(string policy, string scope = SnsFilterPolicy.MessageAttributesScope) => new()
     {
         SubscriptionArn = "sub",
-        TopicArn = "arn:aws:sns:us-east-1:000000000000:topic",
+        Topic = Topic,
         EndPoint = "arn:aws:sqs:us-east-1:000000000000:queue",
         Protocol = "sqs",
         Raw = true,

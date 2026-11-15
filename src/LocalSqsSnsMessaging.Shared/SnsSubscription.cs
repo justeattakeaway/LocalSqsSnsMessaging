@@ -7,7 +7,11 @@ internal sealed class SnsSubscription
     private string _filterPolicy = string.Empty;
 
     public required string SubscriptionArn { get; init; }
-    public required string TopicArn { get; init; }
+
+    /// <summary>The topic subscribed to. Its methods make every change to whether the subscription is in its fan-out.</summary>
+    public required SnsTopicResource Topic { get; init; }
+
+    public string TopicArn => Topic.Arn;
     public required string EndPoint { get; init; }
     public required string Protocol { get; init; }
     public required bool Raw { get; set; }
@@ -58,7 +62,8 @@ internal sealed class SnsSubscription
     /// <summary>
     /// True until an HTTP/S endpoint confirms the subscription via <c>ConfirmSubscription</c> (or by
     /// visiting the <c>SubscribeURL</c>). Pending subscriptions don't take part in fan-out, so a
-    /// caller can't point the bus at an arbitrary URL and have it start posting there.
+    /// caller can't point the bus at an arbitrary URL and have it start posting there. Cleared only by
+    /// <see cref="SnsTopicResource.Confirm"/>.
     /// </summary>
     public bool PendingConfirmation { get; set; }
 

@@ -59,9 +59,7 @@ internal static class SnsHttpDelivery
     public static void SendSubscriptionConfirmation(InMemoryAwsBus bus, SnsSubscription subscription)
     {
         var messageId = Guid.NewGuid().ToString();
-        var signatureVersion = bus.TryGetTopicByArn(subscription.TopicArn, out var topic)
-            ? topic.SignatureVersion ?? SnsEnvelope.DefaultSignatureVersion
-            : SnsEnvelope.DefaultSignatureVersion;
+        var signatureVersion = subscription.Topic.SignatureVersion ?? SnsEnvelope.DefaultSignatureVersion;
 
         var body = SnsEnvelope.SubscriptionConfirmation(
             bus,

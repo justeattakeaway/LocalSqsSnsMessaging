@@ -10,20 +10,20 @@ using SqsMessageAttributeValue = LocalSqsSnsMessaging.Sqs.Model.MessageAttribute
 namespace LocalSqsSnsMessaging;
 
 /// <summary>
-/// Fans a published message out to a topic's subscriptions: applies each subscription's filter
-/// policy, delivers to SQS queues synchronously and to HTTP/S endpoints in the background (with
-/// retries per the delivery policy), and dead-letters messages that can't be delivered when the
-/// subscription has a redrive policy.
+/// A topic's fan-out: hands a published message to each of the topic's confirmed subscriptions.
+/// Applies each subscription's filter policy, delivers to SQS queues synchronously and to HTTP/S
+/// endpoints in the background (with retries per the delivery policy), and dead-letters messages
+/// that can't be delivered when the subscription has a redrive policy. Part of
+/// <see cref="SnsTopicResource"/>'s implementation: the topic builds one when it is created and
+/// reaches it through its own publish and replay methods.
 /// </summary>
-internal sealed partial class SnsPublishAction
+internal sealed partial class SnsFanOut
 {
-    private readonly List<SnsSubscription> _subscriptions;
     private readonly SnsTopicResource _topic;
     private readonly InMemoryAwsBus _bus;
 
-    public SnsPublishAction(List<SnsSubscription> subscriptions, SnsTopicResource topic, InMemoryAwsBus bus)
+    public SnsFanOut(SnsTopicResource topic, InMemoryAwsBus bus)
     {
-        _subscriptions = subscriptions;
         _topic = topic;
         _bus = bus;
     }
@@ -131,9 +131,14 @@ internal sealed partial class SnsPublishAction
         return (message.MessageId, null);
     }
 
+    /// <summary>
+    /// Delivers to the subscriptions the topic fans out to at this moment. On a FIFO topic the caller
+    /// holds the topic's FIFO gate, which subscription changes also take, so the set can't change
+    /// mid-message.
+    /// </summary>
     private void Deliver(OutboundMessage message)
     {
-        foreach (var subscription in _subscriptions)
+        foreach (var subscription in _topic.FanOutSubscriptions)
         {
             DeliverTo(subscription, message);
         }

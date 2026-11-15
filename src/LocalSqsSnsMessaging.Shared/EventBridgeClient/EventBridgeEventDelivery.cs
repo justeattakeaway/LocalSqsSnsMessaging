@@ -213,7 +213,7 @@ internal static class EventBridgeEventDelivery
         // EventBridge refuses FIFO topics as targets (PutTargets), so there is no group to publish in.
         if (!topic.IsFifo)
         {
-            topic.PublishAction.Execute(new SnsPublishRequest { TopicArn = topic.Arn, Message = body });
+            topic.Publish(new SnsPublishRequest { TopicArn = topic.Arn, Message = body });
         }
 
         return null;
