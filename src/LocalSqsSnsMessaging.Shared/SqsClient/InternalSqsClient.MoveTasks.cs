@@ -19,7 +19,7 @@ internal sealed partial class InternalSqsClient
         }
 
         if (_bus.MoveTasks.Values
-                .Any(t => t.SourceQueue.Arn.Equals(request.SourceArn, StringComparison.OrdinalIgnoreCase) && t.Status == MoveTaskStatus.Running))
+                .Any(t => t.SourceArn.Equals(request.SourceArn, StringComparison.OrdinalIgnoreCase) && t.Status == MoveTaskStatus.Running))
         {
             throw new InternalInvalidParameterValueException(
                 "There is already a task running. Only one active task is allowed for a source queue arn at a given time.");
@@ -58,23 +58,19 @@ internal sealed partial class InternalSqsClient
         }
 
         // In-flight messages count too: the task moves them once they become visible again.
-        var approximateNumberOfMessages = sourceQueue.Messages.Count + sourceQueue.InFlightMessages.Count;
-
-        var taskHandle = Guid.NewGuid().ToString();
+        var counts = sourceQueue.CountMessages();
         var moveTask = new SqsMoveTask
         {
-            TaskHandle = taskHandle,
-            SourceQueue = sourceQueue,
-            DestinationQueue = destinationQueue,
+            TaskHandle = Guid.NewGuid().ToString(),
+            SourceArn = sourceQueue.Arn,
+            DestinationArn = destinationQueue?.Arn,
             MaxNumberOfMessagesPerSecond = request.MaxNumberOfMessagesPerSecond,
-            ApproximateNumberOfMessagesMoved = 0,
-            ApproximateNumberOfMessagesToMove = approximateNumberOfMessages,
-            MoveTaskJob = new SqsMoveTaskJob(_bus.TimeProvider, sourceQueue, destinationQueue, _bus, request.MaxNumberOfMessagesPerSecond, taskHandle),
-            Status = MoveTaskStatus.Running,
+            ApproximateNumberOfMessagesToMove = counts.Visible + counts.InFlight,
             StartedTimestamp = _bus.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds()
         };
 
         _bus.MoveTasks.TryAdd(moveTask.TaskHandle, moveTask);
+        moveTask.Start(_bus);
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.StartMessageMoveTask, sourceQueue.Arn);
         return Task.FromResult(new StartMessageMoveTaskResponse
@@ -88,15 +84,13 @@ internal sealed partial class InternalSqsClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!_bus.MoveTasks.TryGetValue(request.TaskHandle!, out var task))
+        // Only a running task can be cancelled; one that has settled is answered as if unknown.
+        if (!_bus.MoveTasks.TryGetValue(request.TaskHandle!, out var task) || !task.TryCancel())
         {
             throw new InternalResourceNotFoundException("Task does not exist.");
         }
 
-        task.MoveTaskJob.Dispose();
-        task.Status = MoveTaskStatus.Cancelled;
-
-        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.CancelMessageMoveTask, task.SourceQueue.Arn);
+        _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.CancelMessageMoveTask, task.SourceArn);
         return Task.FromResult(new CancelMessageMoveTaskResponse
         {
             ApproximateNumberOfMessagesMoved = task.ApproximateNumberOfMessagesMoved
@@ -116,14 +110,14 @@ internal sealed partial class InternalSqsClient
 
         // Most recent first; SQS returns only the latest task unless MaxResults asks for more.
         var tasks = _bus.MoveTasks.Values
-            .Where(t => t.SourceQueue.Arn.Equals(request.SourceArn, StringComparison.OrdinalIgnoreCase))
+            .Where(t => t.SourceArn.Equals(request.SourceArn, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(t => t.Sequence)
             .Take(request.MaxResults ?? 1)
             .Select(t => new ListMessageMoveTasksResultEntry
             {
                 TaskHandle = t.TaskHandle,
-                SourceArn = t.SourceQueue.Arn,
-                DestinationArn = t.DestinationQueue?.Arn,
+                SourceArn = t.SourceArn,
+                DestinationArn = t.DestinationArn,
                 MaxNumberOfMessagesPerSecond = t.MaxNumberOfMessagesPerSecond,
                 Status = t.Status,
                 FailureReason = t.FailureReason,

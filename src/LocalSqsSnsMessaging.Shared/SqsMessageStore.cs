@@ -29,9 +29,9 @@ namespace LocalSqsSnsMessaging;
 
 /// <summary>
 /// The messages waiting to be received from a standard queue, and the receives parked waiting
-/// for one. FIFO queues keep their messages in per-group queues instead (see
-/// <see cref="SqsQueueResource.MessageGroups"/>), because delivery there is ordered by group
-/// rather than shared out between consumers.
+/// for one; private to <see cref="SqsQueueResource"/>. FIFO queues keep their messages in
+/// per-group queues instead, because delivery there is ordered by group rather than shared out
+/// between consumers.
 /// </summary>
 /// <remarks>
 /// Enqueuing is the only way in. It hands the message to a parked receive when there is one,
@@ -170,55 +170,6 @@ internal sealed class SqsMessageStore
 
     /// <summary>A point-in-time view of the waiting messages, for the dashboard. Does not consume.</summary>
     public List<Message> Snapshot() => [.. _items];
-
-    /// <summary>
-    /// Removes a waiting message by id, for the dashboard's delete. <see langword="false"/> when
-    /// no waiting message has that id - it may have been received already, in which case it is
-    /// in flight rather than here.
-    /// </summary>
-    public bool TryRemove(string messageId)
-    {
-        var removed = false;
-        lock (SyncObj)
-        {
-            // ConcurrentQueue has no remove, so rotate the queue: everything comes off and goes
-            // back except the message being dropped. A concurrent receive can dequeue from under
-            // this, which is fine - it is taking a message that was going to be delivered
-            // anyway, and a dashboard delete racing a receive has no better answer. Bypassing
-            // Enqueue for the re-add is also fine: these messages were already in _items, which
-            // means nobody was parked when they arrived, and nobody can park mid-rotation
-            // because parking takes this same lock.
-            var count = _items.Count;
-            for (var i = 0; i < count; i++)
-            {
-                if (!_items.TryDequeue(out var message))
-                {
-                    break;
-                }
-
-                if (!removed && string.Equals(message.MessageId, messageId, StringComparison.Ordinal))
-                {
-                    removed = true;
-                    continue;
-                }
-
-                _items.Enqueue(message);
-            }
-        }
-
-        return removed;
-    }
-
-    /// <summary>Discards every waiting message, for <c>PurgeQueue</c>.</summary>
-    public void Clear()
-    {
-        lock (SyncObj)
-        {
-            while (_items.TryDequeue(out _))
-            {
-            }
-        }
-    }
 
     /// <summary>
     /// Removes and returns a parked receive picked uniformly at random, or <see langword="null"/>

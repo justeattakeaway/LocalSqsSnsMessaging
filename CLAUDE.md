@@ -80,7 +80,7 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 
 **Internal clients** (`SqsClient/InternalSqsClient*.cs`, `SnsClient/InternalSnsClient*.cs`, `EventBridgeClient/InternalEventBridgeClient*.cs`)
 - One per service, taking and returning the generated request/response models in `Models/*.g.cs`. They are internal: the public way in is an AWS SDK client over HTTP
-- A queue's messages live in `SqsMessageStore` (standard) or per-group queues (FIFO), owned by `SqsQueueResource`
+- A queue's messages are `SqsQueueResource`'s alone (see SQS Message Lifecycle); `InternalSqsClient` validates requests, calls the queue and shapes responses
 
 ### HTTP Mode
 
@@ -177,23 +177,23 @@ All time-dependent operations use `TimeProvider` from the bus:
 
 This allows tests to use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvider.Testing` to control time progression.
 
-### Background Jobs
+### SQS Message Lifecycle
 
-**SqsInflightMessageExpirationJob** (`SqsInflightMessageExpirationJob.cs`)
-- Returns in-flight messages to queue when visibility timeout expires
-- Uses `TimeProvider` for scheduling
+`SqsQueueResource` owns every message on a queue (the stages are in GLOSSARY.md), split into partial files: `SqsQueueResource.cs` (settings, sends, delays), `.Receive.cs`, `.Lifecycle.cs`. Its collections are private; callers use:
+- `AcceptSent` / `AcceptRedriven` in (see SQS Callers below), `ReceiveAsync` out: one call for standard and FIFO queues, long polling, redrive at `maxReceiveCount`, and FIFO `ReceiveRequestAttemptId` replays. It returns copies with every attribute; the client trims them to the request
+- `DeleteMessage` / `ChangeVisibility` by receipt handle, returning a `SqsReceiptHandleOutcome` that the client maps to SQS's error (`SqsReceiptHandle` mints and parses handles)
+- `Purge`, `RemoveMessage` (the dashboard's delete), `MoveMessages` (move tasks), `CountMessages` (sweeps expired messages first) and `Peek` (the dashboard's view)
 
-**SqsMoveTaskJob** (`SqsMoveTaskJob.cs`)
-- Moves messages from source queue to destination (e.g., DLQ to main queue)
-- Tracks progress via `SqsMoveTask`
+Inside, a standard queue's visible messages sit in `SqsMessageStore`, which hands each new message to one parked receive; a FIFO queue keeps one `FifoGroup` per message group, guarded by locking the group. Every way out of flight goes through `LeaveFlight` (timer stopped, FIFO group slot released under the group's lock), and every way out of the queue through `Forget` (receipt handle retired). Keep any new exit on those two paths; `SqsQueueLifecycleTests` checks each exit at the queue's interface. A receive starts its messages' visibility timers only as it returns, and nothing reads the clock while holding a group lock: a `FakeTimeProvider` with `AutoAdvanceAmount` runs due timers from inside `GetUtcNow`.
+
+`SqsMoveTask` runs a move task on a bus `TimeProvider` timer, once a second: it resolves its source and destination ARNs on each tick (a destination gone at a tick fails it), and a tick and `TryCancel` take the task's lock, so it settles on exactly one of COMPLETED, FAILED or CANCELLED.
 
 ### FIFO Queue Handling
 
 FIFO queues (.fifo suffix) have special handling:
-- Messages within a message group are processed sequentially
+- Messages within a message group are processed sequentially: a group with a message in flight delivers nothing further (a locked message group)
 - Deduplication IDs prevent duplicate messages within 5-minute windows
-- Message group locks ensure ordering (`SqsQueueResource.MessageGroupLocks`)
-- Each message group has its own queue (`SqsQueueResource.MessageGroups`)
+- Each message group has its own queue (`FifoGroup`, private to `SqsQueueResource`)
 
 ### Resource Policies
 

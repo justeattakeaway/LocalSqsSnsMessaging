@@ -47,6 +47,7 @@ internal sealed partial class InternalSqsClient
             Name = request.QueueName!,
             Region = _region,
             AccountId = _bus.CurrentAccountId,
+            Bus = _bus,
             Url = queueUrl,
             VisibilityTimeout = visibilityTimeoutParsed,
             CreatedTimestamp = now,
@@ -295,25 +296,7 @@ internal sealed partial class InternalSqsClient
         }
         Authorize(queue, SqsActionName.PurgeQueue);
 
-        queue.Messages.Clear();
-
-        var inflightMessageReceipts = queue.InFlightMessages.Keys.ToList();
-
-        foreach (var receipt in inflightMessageReceipts)
-        {
-            queue.InFlightMessages.TryRemove(receipt, out var inFlightInfo);
-            var (_, expirationHandler) = inFlightInfo;
-            expirationHandler.Dispose();
-        }
-
-        // FIFO messages live in per-group queues rather than the channel.
-        queue.MessageGroups.Clear();
-        queue.InFlightGroupCounts.Clear();
-        queue.DiscardDelayedMessages();
-        queue.LatestReceiptHandles.Clear();
-        queue.ClearDeduplication();
-        queue.ReceiveAttempts.Clear();
-        queue.ReceiveAttemptsByReceiptHandle.Clear();
+        queue.Purge();
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.PurgeQueue, queue.Arn);
         return Task.FromResult(new PurgeQueueResponse().SetCommonProperties());

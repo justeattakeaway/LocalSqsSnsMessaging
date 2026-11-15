@@ -7,10 +7,9 @@ using Shouldly;
 namespace LocalSqsSnsMessaging.Tests.Server;
 
 /// <summary>
-/// Covers the dashboard's read and delete of the messages waiting on a queue. Both used to
-/// reach into the private <c>_items</c> field of the channel backing the queue by reflection,
-/// because a channel has no way to look at its contents without consuming them; they now go
-/// through <see cref="SqsMessageStore"/>, which supports both directly.
+/// Covers the dashboard's read and delete of a queue's messages, waiting or in flight, which go
+/// through the queue's own <see cref="SqsQueueResource.Peek"/> and
+/// <see cref="SqsQueueResource.RemoveMessage"/>.
 /// </summary>
 public class DashboardApiTests
 {
@@ -117,5 +116,65 @@ public class DashboardApiTests
         var home = DashboardApi.GetState(registry, AccountId, null)
             .ShouldBeOfType<JsonHttpResult<DashboardApi.BusState>>().Value!;
         home.Regions.ShouldBe(["us-east-1"]);
+    }
+
+    private static (BusRegistry Registry, InternalSqsClient Sqs, string QueueUrl) CreateFifoQueue(string queueName)
+    {
+        var registry = new BusRegistry(AccountId, "us-east-1", new Uri("http://localhost:4566"));
+        var sqs = new InternalSqsClient(registry.DefaultBus);
+        var queueUrl = sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = queueName,
+            Attributes = new() { ["FifoQueue"] = "true", ["ContentBasedDeduplication"] = "true" }
+        }).GetAwaiter().GetResult().QueueUrl!;
+        return (registry, sqs, queueUrl);
+    }
+
+    [Test]
+    public async Task DeleteMessage_OfAnInFlightFifoMessage_UnlocksItsMessageGroup()
+    {
+        var (registry, sqs, queueUrl) = CreateFifoQueue("dashboard-fifo.fifo");
+        foreach (var body in new[] { "first", "second" })
+        {
+            await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = body, MessageGroupId = "g" });
+        }
+
+        var first = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = queueUrl })).Messages!.ShouldHaveSingleItem();
+        first.Body.ShouldBe("first");
+
+        DashboardApi.DeleteMessage(registry, AccountId, null, "dashboard-fifo.fifo", first.MessageId!)
+            .ShouldBeOfType<NoContent>();
+
+        // The group's in-flight message is gone, so the group delivers its next one.
+        var next = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = queueUrl });
+        next.Messages!.ShouldHaveSingleItem().Body.ShouldBe("second");
+    }
+
+    [Test]
+    public async Task DeleteMessage_OfAnInFlightMessage_RetiresItsReceiptHandle()
+    {
+        var (registry, sqs, queueUrl) = CreateQueue("dashboard-handle-queue");
+        await SendAsync(sqs, queueUrl, "first");
+        var received = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = queueUrl })).Messages!.ShouldHaveSingleItem();
+
+        DashboardApi.DeleteMessage(registry, AccountId, null, "dashboard-handle-queue", received.MessageId!)
+            .ShouldBeOfType<NoContent>();
+
+        // As after DeleteMessage: the handle's message no longer exists, so its visibility cannot change.
+        var error = await Should.ThrowAsync<InternalInvalidParameterValueException>(() => sqs.ChangeMessageVisibilityAsync(
+            new ChangeMessageVisibilityRequest { QueueUrl = queueUrl, ReceiptHandle = received.ReceiptHandle, VisibilityTimeout = 10 }));
+        error.Message.ShouldContain("Message does not exist or is not available for visibility timeout change.");
+    }
+
+    [Test]
+    public async Task GetState_CountsTheMessagesWaitingInFifoGroups()
+    {
+        var (registry, sqs, queueUrl) = CreateFifoQueue("dashboard-count.fifo");
+        await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "a", MessageGroupId = "g1" });
+        await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "b", MessageGroupId = "g2" });
+
+        var state = DashboardApi.GetState(registry, AccountId, null)
+            .ShouldBeOfType<JsonHttpResult<DashboardApi.BusState>>().Value!;
+        state.Queues.ShouldHaveSingleItem().MessagesAvailable.ShouldBe(2);
     }
 }
