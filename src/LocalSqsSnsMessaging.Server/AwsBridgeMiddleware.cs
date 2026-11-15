@@ -57,8 +57,6 @@ internal sealed class AwsBridgeMiddleware
 
             try
             {
-                context.Response.Headers["x-amzn-RequestId"] = Guid.NewGuid().ToString();
-
                 var mediaType = MediaTypeOf(context.Request.ContentType);
                 var hasTarget = TryGetJsonTarget(context.Request, out var targetService, out var jsonOperation);
 
@@ -71,6 +69,7 @@ internal sealed class AwsBridgeMiddleware
                 }
                 else if (hasTarget && string.Equals(targetService, "AWSEvents", StringComparison.Ordinal))
                 {
+                    SetRequestId(context);
                     await EventBridgeOperationHandler.HandleAsync(
                         context, bodyBuffer, bodyLength, jsonOperation, bus, cancellationToken).ConfigureAwait(false);
                 }
@@ -83,9 +82,7 @@ internal sealed class AwsBridgeMiddleware
                     }
                     else
                     {
-                        var operationName = ExtractSnsOperationName(context.Request, bodyBuffer, bodyLength);
-                        await SnsOperationHandler.HandleAsync(
-                            context, bodyBuffer, bodyLength, operationName, bus, cancellationToken).ConfigureAwait(false);
+                        await HandleSnsAsync(context, bodyBuffer.AsMemory(0, bodyLength), bus, cancellationToken).ConfigureAwait(false);
                     }
                 }
                 else if (hasTarget || SqsWireProtocol.IsJson(mediaType))
@@ -94,9 +91,7 @@ internal sealed class AwsBridgeMiddleware
                 }
                 else
                 {
-                    var operationName = ExtractSnsOperationName(context.Request, bodyBuffer, bodyLength);
-                    await SnsOperationHandler.HandleAsync(
-                        context, bodyBuffer, bodyLength, operationName, bus, cancellationToken).ConfigureAwait(false);
+                    await HandleSnsAsync(context, bodyBuffer.AsMemory(0, bodyLength), bus, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -139,8 +134,41 @@ internal sealed class AwsBridgeMiddleware
         }
         else
         {
+            SetRequestId(context);
             await SqsOperationHandler.HandleAsync(context, body, bodyLength, operation, bus, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>An SNS request (see <see cref="SnsWireProtocol"/>).</summary>
+    private static async Task HandleSnsAsync(HttpContext context, ReadOnlyMemory<byte> parameters, InMemoryAwsBus bus, CancellationToken cancellationToken)
+    {
+        using var output = PooledArrayBufferWriter.Rent();
+        var client = new InternalSnsClient(bus, AwsRequestRegion.FromHttpContext(context));
+        var wire = await SnsWireProtocol.HandleAsync(parameters, client, output.Writer, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(context, wire, output.Writer, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The <c>x-amzn-RequestId</c> of a response no wire protocol answered.</summary>
+    private static void SetRequestId(HttpContext context) => context.Response.Headers["x-amzn-RequestId"] = WireResponse.NewRequestId();
+
+    /// <summary>Copies a wire protocol's answer onto the response.</summary>
+    private static async Task WriteAsync(HttpContext context, WireResponse wire, ArrayBufferWriter<byte> body, CancellationToken cancellationToken)
+    {
+        var response = context.Response;
+        response.StatusCode = (int)wire.Status;
+        response.ContentType = wire.ContentType;
+        response.Headers["x-amzn-RequestId"] = wire.RequestId;
+        if (wire.QueryError is not null)
+        {
+            response.Headers[SqsQueryCompatibleErrors.HeaderName] = wire.QueryError;
+        }
+
+        if (wire.Crc32 is not null)
+        {
+            response.Headers["x-amz-crc32"] = wire.Crc32;
+        }
+
+        await response.Body.WriteAsync(body.WrittenMemory, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>A DynamoDB or DynamoDB Streams request (see <see cref="DynamoDbWireProtocol"/>).</summary>
@@ -153,6 +181,7 @@ internal sealed class AwsBridgeMiddleware
                 bus,
                 AwsRequestRegion.FromHttpContext(context),
                 cancellationToken).ConfigureAwait(false);
+        SetRequestId(context);
         context.Response.StatusCode = (int)result.Status;
         context.Response.ContentType = DynamoDbWireProtocol.ContentType;
         context.Response.Headers["x-amz-crc32"] = result.Crc32;
@@ -172,6 +201,7 @@ internal sealed class AwsBridgeMiddleware
         using var buffer = PooledArrayBufferWriter.Rent();
         var client = new InternalSqsClient(bus, AwsRequestRegion.FromHttpContext(context)) { Caller = SqsCaller.FromHttpContext(context) };
         var status = await SqsQueryOperationHandler.HandleAsync(parameters, client, buffer.Writer, cancellationToken).ConfigureAwait(false);
+        SetRequestId(context);
         context.Response.StatusCode = (int)status;
         context.Response.ContentType = SqsQueryOperationHandler.ContentType;
         await context.Response.Body.WriteAsync(buffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
@@ -179,6 +209,7 @@ internal sealed class AwsBridgeMiddleware
 
     private static async Task WriteRefusalAsync(HttpContext context, System.Net.HttpStatusCode status, string body, string contentType, CancellationToken cancellationToken)
     {
+        SetRequestId(context);
         context.Response.StatusCode = (int)status;
         context.Response.ContentType = contentType;
         await context.Response.Body.WriteAsync(SqsWireProtocol.Utf8(body), cancellationToken).ConfigureAwait(false);
@@ -256,29 +287,6 @@ internal sealed class AwsBridgeMiddleware
         return true;
     }
 
-    private static string ExtractSnsOperationName(HttpRequest request, byte[] bodyBytes, int bodyLength)
-    {
-        // Try query string first
-        if (request.Query.TryGetValue("Action", out var actionFromQuery) && !string.IsNullOrEmpty(actionFromQuery))
-        {
-            return actionFromQuery.ToString();
-        }
-
-        // Try form-encoded body
-        if (bodyLength > 0)
-        {
-            var bodyString = Encoding.UTF8.GetString(bodyBytes, 0, bodyLength);
-            var bodyParams = System.Web.HttpUtility.ParseQueryString(bodyString);
-            var action = bodyParams["Action"];
-            if (!string.IsNullOrEmpty(action))
-            {
-                return action;
-            }
-        }
-
-        throw new InvalidOperationException("Unable to determine SNS operation name from request.");
-    }
-
     private static async Task WriteErrorResponseAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
     {
         var errorType = exception.GetType().Name;
@@ -298,6 +306,7 @@ internal sealed class AwsBridgeMiddleware
             _ => 500
         };
 
+        SetRequestId(context);
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/x-amz-json-1.0";
         var errorBytes = Encoding.UTF8.GetBytes(errorJson);
