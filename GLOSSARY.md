@@ -63,7 +63,7 @@ Finding the resource an ARN names, in the region and account the ARN names, at t
 _Avoid_: lookup by name
 
 **Resource policy**:
-The IAM policy document a queue, topic or event bus holds, saying which callers and services may act on it. Each service names its actions with its own prefix and writes its documents in its own way, but the document and its meaning are the same concept for all three.
+The IAM policy document a queue, topic, event bus or DynamoDB table holds, saying which callers and services may act on it. Each service names its actions with its own prefix and writes its documents in its own way, but the document and its meaning are the same concept for all of them.
 _Avoid_: queue policy, topic policy, access policy (for the concept in general); permission (for the whole document)
 
 **Statement id**:

@@ -25,6 +25,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = TableForBackup(request.TableName);
+            Authorize(table, "DescribeContinuousBackups");
             Record("DescribeContinuousBackups", table.Arn);
             return Task.FromResult(new DescribeContinuousBackupsResponse { ContinuousBackupsDescription = ContinuousBackups(table) });
         }
@@ -49,6 +50,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = TableForBackup(request.TableName);
+            Authorize(table, "UpdateContinuousBackups");
             var specification = request.PointInTimeRecoverySpecification!;
             if (specification.RecoveryPeriodInDays is { } days)
             {
@@ -94,6 +96,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = TableForBackup(request.TableName);
+            Authorize(table, "CreateBackup");
             var created = Now;
             var arn = $"{table.Arn}/backup/{created.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture)}-{Guid.NewGuid().ToString("N")[..8]}";
             var backup = new DynamoBackup
@@ -615,6 +618,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ExistingTable(request.TableName!);
+            Authorize(table, "DescribeContributorInsights", IndexArn(table, request.IndexName));
             var setting = ContributorInsights(table, request.IndexName);
             Record("DescribeContributorInsights", table.Arn);
             return Task.FromResult(new DescribeContributorInsightsResponse
@@ -634,6 +638,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ExistingTable(request.TableName!);
+            Authorize(table, "UpdateContributorInsights", IndexArn(table, request.IndexName));
             var setting = ContributorInsights(table, request.IndexName);
             setting.Status = request.ContributorInsightsAction == "ENABLE" ? "ENABLED" : "DISABLED";
             setting.Mode = request.ContributorInsightsMode ?? "ACCESSED_AND_THROTTLED_KEYS";
@@ -693,6 +698,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ExistingTable(request.TableName!);
+            Authorize(table, "DescribeKinesisStreamingDestination");
             return Task.FromResult(new DescribeKinesisStreamingDestinationResponse { TableName = table.Name, KinesisDataStreamDestinations = [] });
         }
     }
@@ -720,6 +726,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ExistingTable(request.TableName!);
+            Authorize(table, "DescribeTableReplicaAutoScaling");
             throw DynamoDbErrors.ResourceNotFound($"Requested resource not found: Table: {table.Name} is not a global table");
         }
     }

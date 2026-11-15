@@ -123,7 +123,7 @@ internal sealed partial class ResourcePolicy
             return Values(obj["Service"]).Contains(service, StringComparer.Ordinal);
         }
 
-        // Federated and canonical-user principals never make SQS API calls here.
+        // Federated and canonical-user principals never make API calls here.
         return Values(obj["AWS"]).Any(value =>
             AwsAccountId.IsValid(value)
                 ? string.Equals(value, request.PrincipalAccount, StringComparison.Ordinal)

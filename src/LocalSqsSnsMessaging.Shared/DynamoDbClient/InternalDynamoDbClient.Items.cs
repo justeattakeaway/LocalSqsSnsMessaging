@@ -29,6 +29,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ActiveTable(name);
+            Authorize(table, "PutItem");
             CheckIndexKeys(table, item, update: false);
             var key = KeyFromItem(table, item);
             CheckLocalIndexEntrySizes(table, item);
@@ -59,6 +60,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ActiveTable(name);
+            Authorize(table, "GetItem");
             var key = KeyFromKeyMap(table, request.Key!, enveloped: false);
             var item = table.Get(key);
             var consistent = request.ConsistentRead ?? false;
@@ -90,6 +92,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ActiveTable(name);
+            Authorize(table, "DeleteItem");
             var key = KeyFromKeyMap(table, request.Key!);
             var old = table.Get(key);
             CheckCondition(condition, old, request.ReturnValuesOnConditionCheckFailure);
@@ -148,6 +151,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ActiveTable(name);
+            Authorize(table, "UpdateItem");
             var key = KeyFromKeyMap(table, request.Key!);
             var old = table.Get(key);
 

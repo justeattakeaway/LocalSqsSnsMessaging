@@ -1,9 +1,9 @@
 namespace LocalSqsSnsMessaging;
 
 /// <summary>
-/// What differs between the resource policies of SQS queues, SNS topics and EventBridge event
-/// buses: the prefix their actions are named with, the document an edit starts from when the
-/// resource has none, and how the service stores and compares a document.
+/// What differs between the resource policies of SQS queues, SNS topics, EventBridge event buses
+/// and DynamoDB tables: the prefix their actions are named with, the document an edit starts from
+/// when the resource has none, and how the service stores and compares a document.
 /// </summary>
 internal sealed class ResourcePolicyKind
 {
@@ -20,6 +20,12 @@ internal sealed class ResourcePolicyKind
     /// <summary>An event bus's policy (<c>PutPermission</c>, <c>DescribeEventBus</c>).</summary>
     public static readonly ResourcePolicyKind EventBus = new("events", "2012-10-17", static _ => null);
 
+    /// <summary>
+    /// A DynamoDB table's policy (<c>PutResourcePolicy</c>). DynamoDB stores the document it is
+    /// given and never edits one, so only evaluation applies to it.
+    /// </summary>
+    public static readonly ResourcePolicyKind Table = new("dynamodb", "2012-10-17", static _ => null);
+
     private readonly Func<string, string?> _documentId;
 
     private ResourcePolicyKind(string actionPrefix, string version, Func<string, string?> documentId)
@@ -29,7 +35,7 @@ internal sealed class ResourcePolicyKind
         _documentId = documentId;
     }
 
-    /// <summary>The service prefix statements name actions with: <c>sqs</c>, <c>sns</c> or <c>events</c>.</summary>
+    /// <summary>The service prefix statements name actions with: <c>sqs</c>, <c>sns</c>, <c>events</c> or <c>dynamodb</c>.</summary>
     public string ActionPrefix { get; }
 
     /// <summary>The <c>Version</c> of a document the service writes from scratch.</summary>

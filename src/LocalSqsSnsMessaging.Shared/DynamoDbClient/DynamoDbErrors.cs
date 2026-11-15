@@ -109,6 +109,9 @@ internal static class DynamoDbErrors
     public static DynamoDbException TableNotFound(string name) =>
         ResourceNotFound($"Requested resource not found: Table: {name} not found");
 
+    /// <summary>A request a resource policy refuses: <c>AccessDeniedException</c>, with DynamoDB's usual HTTP 400.</summary>
+    public static DynamoDbException AccessDenied(string message) => new("AccessDeniedException", message);
+
     public static DynamoDbException ResourceInUse(string message) => new("ResourceInUseException", message);
 
     public static DynamoDbException LimitExceeded(string message) => new("LimitExceededException", message);
