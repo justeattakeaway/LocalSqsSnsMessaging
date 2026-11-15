@@ -7,8 +7,9 @@ namespace LocalSqsSnsMessaging.DynamoDb;
 /// </summary>
 /// <remarks>
 /// Split into partial files by area: tables, items, reads (Query and Scan), batches and
-/// transactions, PartiQL, time to live, backups, and the operations the bus doesn't emulate. Every
-/// operation runs under its region's <see cref="DynamoDbStore.Gate"/>.
+/// transactions, PartiQL, time to live, backups, authorization against a table's resource policy,
+/// and the operations the bus doesn't emulate. Every operation runs under its region's
+/// <see cref="DynamoDbStore.Gate"/>.
 /// </remarks>
 internal sealed partial class InternalDynamoDbClient
 {

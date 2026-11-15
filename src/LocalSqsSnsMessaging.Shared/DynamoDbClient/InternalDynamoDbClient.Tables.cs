@@ -433,6 +433,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ExistingTable(request.TableName!);
+            Authorize(table, "DescribeTable");
             Record("DescribeTable", table.Arn);
             return Task.FromResult(new DescribeTableResponse { Table = Describe(table) });
         }
@@ -462,6 +463,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ExistingTable(request.TableName!);
+            Authorize(table, "DeleteTable");
             if (table.Status == "DELETING")
             {
                 throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being deleted: {table.Name}");
@@ -501,6 +503,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ExistingTable(request.TableName!);
+            Authorize(table, "UpdateTable");
             if (table.Status != "ACTIVE")
             {
                 throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being {(table.Status == "CREATING" ? "created" : "updated")}: {table.Name}");
@@ -911,15 +914,17 @@ internal sealed partial class InternalDynamoDbClient
     }
 
     /// <summary>
-    /// The tags of the resource a tagging operation names: a table, or one of its streams, which
-    /// has tags of its own.
+    /// The tags of the resource a tagging operation (<paramref name="action"/>) names: a table, or
+    /// one of its streams, which has tags of its own. A table's tags are subject to its policy.
     /// </summary>
-    private List<KeyValuePair<string, string>> TagsOfResource(string? resourceArn)
+    private List<KeyValuePair<string, string>> TagsOfResource(string? resourceArn, string action)
     {
         var at = resourceArn?.IndexOf("/stream/", StringComparison.Ordinal) ?? -1;
         if (at < 0)
         {
-            return TableForResource(resourceArn).Tags;
+            var table = TableForResource(resourceArn);
+            Authorize(table, action);
+            return table.Tags;
         }
 
         _ = TableForResource(resourceArn![..at]);
@@ -932,7 +937,7 @@ internal sealed partial class InternalDynamoDbClient
     {
         lock (Store.Gate)
         {
-            var resourceTags = TagsOfResource(request.ResourceArn);
+            var resourceTags = TagsOfResource(request.ResourceArn, "TagResource");
             var tags = request.Tags ?? [];
             if (tags.Count > MaxTags)
             {
@@ -959,7 +964,7 @@ internal sealed partial class InternalDynamoDbClient
     {
         lock (Store.Gate)
         {
-            var resourceTags = TagsOfResource(request.ResourceArn);
+            var resourceTags = TagsOfResource(request.ResourceArn, "UntagResource");
             var keys = new HashSet<string>(request.TagKeys ?? [], StringComparer.Ordinal);
             resourceTags.RemoveAll(t => keys.Contains(t.Key));
             Record("UntagResource", request.ResourceArn);
@@ -971,7 +976,7 @@ internal sealed partial class InternalDynamoDbClient
     {
         lock (Store.Gate)
         {
-            var resourceTags = TagsOfResource(request.ResourceArn);
+            var resourceTags = TagsOfResource(request.ResourceArn, "ListTagsOfResource");
             Record("ListTagsOfResource", request.ResourceArn);
             return Task.FromResult(new ListTagsOfResourceResponse
             {

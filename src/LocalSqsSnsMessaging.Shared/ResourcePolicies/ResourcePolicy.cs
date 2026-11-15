@@ -5,10 +5,10 @@ using System.Text.Json.Nodes;
 namespace LocalSqsSnsMessaging;
 
 /// <summary>
-/// A resource policy: the IAM policy document an SQS queue, SNS topic or EventBridge event bus
-/// holds as JSON text, how its service edits and stores it, and the parts of IAM evaluation the
-/// library enforces (<see cref="DeniesExplicitly"/>, <see cref="GrantsToEveryone"/>,
-/// <see cref="EvaluateServiceDelivery"/>). What differs between the three services is its
+/// A resource policy: the IAM policy document an SQS queue, SNS topic, EventBridge event bus or
+/// DynamoDB table holds as JSON text, how its service edits and stores it, and the parts of IAM
+/// evaluation the library enforces (<see cref="DeniesExplicitly"/>, <see cref="GrantsToEveryone"/>,
+/// <see cref="EvaluateServiceDelivery"/>). What differs between the services is its
 /// <see cref="ResourcePolicyKind"/>.
 /// </summary>
 /// <remarks>

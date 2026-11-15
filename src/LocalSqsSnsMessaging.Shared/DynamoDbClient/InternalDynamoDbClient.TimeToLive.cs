@@ -10,6 +10,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ExistingTable(request.TableName!);
+            Authorize(table, "UpdateTimeToLive");
             var specification = request.TimeToLiveSpecification!;
             var enable = specification.Enabled ?? false;
             if (table.TimeToLiveEnabled && !string.Equals(table.TimeToLiveAttribute, specification.AttributeName, StringComparison.Ordinal))
@@ -61,6 +62,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var table = ExistingTable(request.TableName!);
+            Authorize(table, "DescribeTimeToLive");
             Record("DescribeTimeToLive", table.Arn);
             return Task.FromResult(new DescribeTimeToLiveResponse
             {

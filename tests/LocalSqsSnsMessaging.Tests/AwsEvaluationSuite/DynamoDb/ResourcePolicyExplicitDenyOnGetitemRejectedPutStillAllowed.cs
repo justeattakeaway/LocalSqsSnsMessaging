@@ -30,7 +30,6 @@ public sealed class ResourcePolicyExplicitDenyOnGetitemRejectedPutStillAllowed
     /// GetItem; only evaluated, action-scoped enforcement passes.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "DynamoDB resource policies are stored and returned but never enforced: the explicit Deny on GetItem is ignored")]
     [DisplayName("dynamodb.resource-policy-explicit-deny-on-getitem-rejected-put-still-allowed")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

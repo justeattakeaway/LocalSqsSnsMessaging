@@ -89,7 +89,7 @@ internal sealed partial class InternalDynamoDbClient
 
         lock (Store.Gate)
         {
-            var plan = Plan(name, request.IndexName, request.Select, projection, request.AttributesToGet, filter, request.Limit, request.ConsistentRead, request.ReturnConsumedCapacity, request.FilterExpression ?? (request.QueryFilter is { Count: > 0 } ? "QueryFilter" : null));
+            var plan = Plan("Query", name, request.IndexName, request.Select, projection, request.AttributesToGet, filter, request.Limit, request.ConsistentRead, request.ReturnConsumedCapacity, request.FilterExpression ?? (request.QueryFilter is { Count: > 0 } ? "QueryFilter" : null));
             var keyCondition = KeyCondition.Resolve(comparisons, plan.OrderSchema, plan.Table.DeclaredType);
             CheckFilterHasNoKeys(plan, filter);
             CheckFilterProjected(plan, filter);
@@ -159,7 +159,7 @@ internal sealed partial class InternalDynamoDbClient
 
         lock (Store.Gate)
         {
-            var plan = Plan(name, request.IndexName, request.Select, projection, request.AttributesToGet, filter, request.Limit, request.ConsistentRead, request.ReturnConsumedCapacity, request.FilterExpression ?? (request.ScanFilter is { Count: > 0 } ? "ScanFilter" : null));
+            var plan = Plan("Scan", name, request.IndexName, request.Select, projection, request.AttributesToGet, filter, request.Limit, request.ConsistentRead, request.ReturnConsumedCapacity, request.FilterExpression ?? (request.ScanFilter is { Count: > 0 } ? "ScanFilter" : null));
             var start = StartKey(plan, request.ExclusiveStartKey, scan: true);
             var candidates = All(plan, start);
             if (request.Segment is { } wanted)
@@ -229,7 +229,9 @@ internal sealed partial class InternalDynamoDbClient
         return null;
     }
 
+    /// <param name="action">The operation, <c>Query</c> or <c>Scan</c>, as the table's policy names it.</param>
     private ReadPlan Plan(
+        string action,
         string tableName,
         string? indexName,
         string? select,
@@ -242,6 +244,9 @@ internal sealed partial class InternalDynamoDbClient
         string? filterMember)
     {
         var table = ActiveTable(tableName);
+
+        // A read of an index acts on the index's ARN, under the table's policy, whether or not the index exists.
+        Authorize(table, action, IndexArn(table, indexName));
         DynamoIndex? index = null;
         if (indexName is not null)
         {
