@@ -1,3 +1,4 @@
+using Amazon.DynamoDBv2;
 using Amazon.EventBridge;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
@@ -73,6 +74,8 @@ public sealed class FidelityContext : IAsyncDisposable
     private readonly Dictionary<string, AmazonSQSClient> _clients = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AmazonSimpleNotificationServiceClient> _snsClients = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AmazonEventBridgeClient> _eventsClients = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, AmazonDynamoDBClient> _dynamoClients = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Amazon.DynamoDBStreams.AmazonDynamoDBStreamsClient> _streamsClients = new(StringComparer.Ordinal);
     private readonly FidelityStopwatch _clock;
     private readonly TimeSpan _budget;
     private readonly CancellationTokenSource _stopPump = new();
@@ -80,6 +83,8 @@ public sealed class FidelityContext : IAsyncDisposable
     private readonly RequestLatencyHandler _handler;
     private readonly RequestLatencyHandler _snsHandler;
     private readonly RequestLatencyHandler _eventsHandler;
+    private readonly RequestLatencyHandler _dynamoHandler;
+    private readonly RequestLatencyHandler _streamsHandler;
     private readonly IDisposable _noTraceContext;
     private readonly Dictionary<object, DateTimeOffset> _delayDeadlines = [];
     private readonly System.Diagnostics.Stopwatch _realClock = System.Diagnostics.Stopwatch.StartNew();
@@ -103,6 +108,8 @@ public sealed class FidelityContext : IAsyncDisposable
         _handler = new RequestLatencyHandler(this, AwsServiceType.Sqs);
         _snsHandler = new RequestLatencyHandler(this, AwsServiceType.Sns);
         _eventsHandler = new RequestLatencyHandler(this, AwsServiceType.EventBridge);
+        _dynamoHandler = new RequestLatencyHandler(this, AwsServiceType.DynamoDb);
+        _streamsHandler = new RequestLatencyHandler(this, AwsServiceType.DynamoDbStreams);
         CurrentContext.Value = this;
 
         // boto3 sends no trace context. The test run's SDK tracing would otherwise add a traceparent
@@ -227,6 +234,69 @@ public sealed class FidelityContext : IAsyncDisposable
         return client;
     }
 
+    /// <summary><c>ctx.client("dynamodb")</c>: the default DynamoDB client, in <see cref="Region"/>.</summary>
+    public AmazonDynamoDBClient Dynamo => DynamoClient();
+
+    /// <summary>
+    /// <c>ctx.client("dynamodb", region=..., config=Config(retries=...))</c>. Clients are cached per
+    /// combination, like the runner's. Every client talks to this context's single bus.
+    /// </summary>
+    /// <param name="region">The client's signing region; defaults to <see cref="Region"/>.</param>
+    /// <param name="maxAttempts">
+    /// botocore's <c>max_attempts</c> (or <c>total_max_attempts</c>): attempts in all, retries
+    /// included. The runner's clients use standard-mode retries with 3 attempts, which retry
+    /// throttling and transient faults but never the 4xx a check asserts on.
+    /// </param>
+    /// <param name="serviceUrl">An endpoint override.</param>
+    /// <param name="accessKey">The access key the client signs with (<c>creds=</c>).</param>
+    public AmazonDynamoDBClient DynamoClient(string? region = null, int maxAttempts = 3, string? serviceUrl = null, string accessKey = "test")
+    {
+        region ??= Region;
+        serviceUrl ??= $"https://dynamodb.{region}.amazonaws.com";
+        var key = $"{region}|{serviceUrl}|{maxAttempts}|{accessKey}";
+        if (_dynamoClients.TryGetValue(key, out var existing))
+        {
+            return existing;
+        }
+
+        var config = new AmazonDynamoDBConfig
+        {
+            ServiceURL = serviceUrl,
+            AuthenticationRegion = region,
+            RetryMode = RequestRetryMode.Standard,
+            MaxErrorRetry = Math.Max(0, maxAttempts - 1),
+            HttpClientFactory = new VirtualTimeHttpClientFactory(_dynamoHandler),
+        };
+        var client = new AmazonDynamoDBClient(new BasicAWSCredentials(accessKey, "test"), config);
+        _dynamoClients[key] = client;
+        return client;
+    }
+
+    /// <summary><c>ctx.client("dynamodbstreams")</c>: the default DynamoDB Streams client, in <see cref="Region"/>.</summary>
+    public Amazon.DynamoDBStreams.AmazonDynamoDBStreamsClient DynamoStreams => DynamoStreamsClient();
+
+    /// <summary><c>ctx.client("dynamodbstreams", region=...)</c>, cached per region like the runner's.</summary>
+    public Amazon.DynamoDBStreams.AmazonDynamoDBStreamsClient DynamoStreamsClient(string? region = null)
+    {
+        region ??= Region;
+        if (_streamsClients.TryGetValue(region, out var existing))
+        {
+            return existing;
+        }
+
+        var config = new Amazon.DynamoDBStreams.AmazonDynamoDBStreamsConfig
+        {
+            ServiceURL = $"https://streams.dynamodb.{region}.amazonaws.com",
+            AuthenticationRegion = region,
+            RetryMode = RequestRetryMode.Standard,
+            MaxErrorRetry = 2,
+            HttpClientFactory = new VirtualTimeHttpClientFactory(_streamsHandler),
+        };
+        var client = new Amazon.DynamoDBStreams.AmazonDynamoDBStreamsClient(new BasicAWSCredentials("test", "test"), config);
+        _streamsClients[region] = client;
+        return client;
+    }
+
     /// <summary>
     /// A role ARN for a check that creates an IAM role only to put its ARN on a rule or target. The
     /// bus models no IAM: it accepts any well-formed role ARN and never assumes it.
@@ -275,6 +345,8 @@ public sealed class FidelityContext : IAsyncDisposable
         {
             AwsServiceType.Sns => "sns",
             AwsServiceType.EventBridge => "events",
+            AwsServiceType.DynamoDb => "dynamodb",
+            AwsServiceType.DynamoDbStreams => "streams.dynamodb",
             _ => "sqs",
         };
 #pragma warning disable CA2000 // The HttpClient owns and disposes the handler.
@@ -493,12 +565,24 @@ public sealed class FidelityContext : IAsyncDisposable
             client.Dispose();
         }
 
+        foreach (var client in _dynamoClients.Values)
+        {
+            client.Dispose();
+        }
+
+        foreach (var client in _streamsClients.Values)
+        {
+            client.Dispose();
+        }
+
         await _stopPump.CancelAsync();
         await _pump;
         _stopPump.Dispose();
         _handler.Dispose();
         _snsHandler.Dispose();
         _eventsHandler.Dispose();
+        _dynamoHandler.Dispose();
+        _streamsHandler.Dispose();
         _noTraceContext.Dispose();
     }
 

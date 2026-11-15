@@ -24,6 +24,30 @@ public enum FidelityGap
     /// against any emulator, however fast; against AWS it runs with a longer budget.
     /// </summary>
     EmulatorBudget,
+
+    /// <summary>DynamoDB vector indexes and <c>SearchVectors</c> are not emulated.</summary>
+    DynamoDbVectorSearch,
+
+    /// <summary>DynamoDB global tables (replicas in other regions) are not emulated.</summary>
+    DynamoDbGlobalTables,
+
+    /// <summary>A DynamoDB index keyed on more than one attribute per key role is refused.</summary>
+    DynamoDbMultiAttributeKeys,
+
+    /// <summary>
+    /// DynamoDB tables, indexes and backups are ACTIVE (or gone) at once: they never pass through
+    /// CREATING, UPDATING or DELETING unless <c>DynamoDbTableCreationDelay</c> is set.
+    /// </summary>
+    DynamoDbTransientStates,
+
+    /// <summary>DynamoDB provisioned throughput is reported, never enforced: nothing is throttled.</summary>
+    DynamoDbThroughput,
+
+    /// <summary>DynamoDB requests are not authenticated: SigV4 signatures and missing credentials are not checked.</summary>
+    DynamoDbAuthentication,
+
+    /// <summary>A one-off DynamoDB difference: a message's wording, the order of checks, an edge case.</summary>
+    DynamoDbDetail,
 }
 
 /// <summary>

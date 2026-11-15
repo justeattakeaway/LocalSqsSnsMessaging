@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 namespace LocalSqsSnsMessaging;
 
 /// <summary>
-/// The SQS, SNS and EventBridge resources of one region. AWS resources are regional: a request is
+/// The SQS, SNS, EventBridge and DynamoDB resources of one region. AWS resources are regional: a request is
 /// served from the resources of the region it was made in, and same-named resources in two regions
 /// are separate resources.
 /// </summary>
@@ -29,4 +29,7 @@ internal sealed class AwsRegionResources(string region)
 
     /// <summary>The region's EventBridge replays (EventBridge keeps finished replays too), keyed by replay name.</summary>
     public ConcurrentDictionary<string, ReplayResource> EventBridgeReplays { get; } = [];
+
+    /// <summary>The region's DynamoDB tables, streams and backups, behind one lock.</summary>
+    public DynamoDb.DynamoDbStore DynamoDb { get; } = new();
 }

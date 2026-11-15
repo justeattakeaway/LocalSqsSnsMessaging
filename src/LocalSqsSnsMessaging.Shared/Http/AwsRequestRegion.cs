@@ -82,7 +82,7 @@ internal static class AwsRequestRegion
 
     /// <summary>
     /// The region in an AWS endpoint host: <c>sqs.us-east-1.amazonaws.com</c> (and other partitions'
-    /// domains) or the legacy <c>us-east-1.queue.amazonaws.com</c>.
+    /// domains), the legacy <c>us-east-1.queue.amazonaws.com</c>, or a DynamoDB endpoint.
     /// </summary>
     internal static string? FromHost(string host)
     {
@@ -95,6 +95,18 @@ internal static class AwsRequestRegion
         if (labels.Length >= 4 && labels[1] == "queue" && IsRegionName(labels[0]))
         {
             return labels[0];
+        }
+
+        // DynamoDB: dynamodb.us-east-1.amazonaws.com, streams.dynamodb.us-east-1.amazonaws.com, and
+        // the account-based endpoints SDKs resolve to, 123456789012.ddb.us-east-1.amazonaws.com.
+        if (labels.Length >= 4 && labels[0] == "dynamodb" && IsRegionName(labels[1]))
+        {
+            return labels[1];
+        }
+
+        if (labels.Length >= 5 && labels[1] is "dynamodb" or "ddb" && IsRegionName(labels[2]))
+        {
+            return labels[2];
         }
 
         return null;

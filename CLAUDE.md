@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LocalSqsSnsMessaging is an in-memory emulator of AWS SQS, SNS and EventBridge, for fast tests and local development without LocalStack or other external services. Real AWS SDK clients talk to it through an in-memory `HttpMessageHandler`, so it answers on the wire as AWS does.
+LocalSqsSnsMessaging is an in-memory emulator of AWS SQS, SNS, EventBridge and DynamoDB (with DynamoDB Streams), for fast tests and local development without LocalStack or other external services. Real AWS SDK clients talk to it through an in-memory `HttpMessageHandler`, so it answers on the wire as AWS does.
 
 It ships three ways, all compiled from the same source in `src/LocalSqsSnsMessaging.Shared/` (each project globs it in):
-- `src/LocalSqsSnsMessaging`: the NuGet library, against the v4 AWS SDK (net8.0 and netstandard2.0)
+- `src/LocalSqsSnsMessaging`: the NuGet library, against the v4 AWS SDK (net8.0 and netstandard2.0). Its only dependencies are AWS SDK packages (plus netstandard2.0 polyfills); keep it that way
 - `src/LocalSqsSnsMessaging.AWSSDKv3`: the same library against the 3.7.x AWS SDK (`AWS_SDK_V3` defined)
 - `src/LocalSqsSnsMessaging.Server`: a standalone ASP.NET Core server with a dashboard (`ASPNETCORE` defined), serving the AWS wire protocols over real HTTP
 
@@ -106,11 +106,13 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 
 3. **EventBridge - JSON Protocol:** `application/x-amz-json-1.1`, operations named by an `X-Amz-Target` of `AWSEvents.<Operation>`
 
+4. **DynamoDB and DynamoDB Streams - JSON Protocol:** `application/x-amz-json-1.0`, targets `DynamoDB_20120810.<Operation>` and `DynamoDBStreams_20120810.<Operation>`. `Http/DynamoDbWireProtocol.cs` serves both, transport-neutral, for the library handler and the server: it parses the body, runs the generated dispatcher, writes errors (`__type` in `com.amazon.coral.validate` for `ValidationException`, `com.amazon.coral.service` for protocol errors, `com.amazonaws.dynamodb.v20120810` otherwise, plus modelled members such as `CancellationReasons`) and the `x-amz-crc32` header SDKs check
+
 **Operation Handlers** (`Http/Handlers/Generated/`)
 - Generated per service: a `switch` on the operation name that deserializes the request, calls the internal client and serializes the response or error (see Code Generation)
 
 **Public entry points**
-- `InMemoryAwsBusHttpExtensions.cs`: `CreateSqsClient()`, `CreateSnsClient()`, `CreateEventBridgeClient()` return real `AmazonSQSClient` / `AmazonSimpleNotificationServiceClient` / `AmazonEventBridgeClient` instances wired to the bus
+- `InMemoryAwsBusHttpExtensions.cs`: `CreateSqsClient()`, `CreateSnsClient()`, `CreateEventBridgeClient()`, `CreateDynamoDbClient()` return real `AmazonSQSClient` / `AmazonSimpleNotificationServiceClient` / `AmazonEventBridgeClient` / `AmazonDynamoDBClient` instances wired to the bus
 - `InMemoryAwsHttpClientFactory`: an AWS SDK `HttpClientFactory` for clients configured elsewhere (e.g. dependency injection)
 - Tests may construct an internal client directly (`new InternalEventBridgeClient(bus)`); the server's dashboard does too. Such a client bypasses the HTTP layer and has no `Caller`, so queue policies never apply to it
 
@@ -150,6 +152,18 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 - Archives (`ArchiveResource`) record events through a managed rule on their source bus; replays (`ReplayResource`) and rules with a `ScheduleExpression` (`ScheduledRuleJob`, `EventBridgeSchedule`) run on the bus `TimeProvider`
 - Timestamps go on the wire as epoch seconds (`Http/Serialization/AwsJsonTimestamp.cs`)
 
+### DynamoDB
+
+`DynamoDbClient/` holds DynamoDB, in namespace `LocalSqsSnsMessaging.DynamoDb` (models in `.DynamoDb.Model`). Each region's tables, streams, backups and transaction tokens are in one `DynamoDbStore` (`AwsRegionResources.DynamoDb`) behind a single lock (`Gate`), because a transaction spans tables; every operation holds it.
+- **Values:** `DynamoValue` is an immutable attribute value; requests are read straight into it (`DynamoValueJson`; an `AttributeValue` with no type, or two, is refused there). A value is kept as sent until `DynamoValueRules` canonicalizes it where DynamoDB checks it: `DynamoNumber` (BigInteger mantissa and point, 38 digits, exponents -130 to 125, one canonical text per number), set rules, the 32-level and 400 KB item limits. Refusals are *enveloped* (`1 validation error detected: ...`) or bare depending on where the value came from, as DynamoDB words them
+- **Storage:** `DynamoTable` keeps items in a dictionary plus a `SortedSet<DynamoKey>` (`DynamoKeyOrder`: strings by UTF-8 bytes, binaries unsigned, numbers numerically); each `DynamoIndex` is a sorted set of `DynamoIndexEntry` updated on every write, so sparse indexes need no extra code. Every write returns a `DynamoItemChange`, which feeds streams (`DynamoStream`), `ReturnValues` and the point-in-time log
+- **Expressions** (`Expressions/`): one tokenizer and recursive-descent parser for condition, filter, projection and update expressions (`ExpressionParser`, AST in `Conditions.cs` and `Updates.cs`); key conditions have their own grammar (`KeyCondition`). `ExpressionAttributes.CheckAllReferenced` checks undefined and unused `#names`/`:values` before any expression is parsed. Legacy parameters (`Expected`, `KeyConditions`, `QueryFilter`, `ScanFilter`, `AttributeUpdates`, `AttributesToGet`) translate into the same AST (`LegacyConditions`, `UpdateProgram.FromAttributeUpdates`)
+- **PartiQL** (`PartiQL/PartiQLParser.cs`): SELECT/INSERT/UPDATE/DELETE, lowered to the same conditions and `UpdateProgram`, so a WHERE clause evaluates as a `ConditionExpression` would
+- **`InternalDynamoDbClient`** is split by area: tables, items, reads (Query/Scan: `Limit` before the filter, 1 MB pages, parallel scan segments), batches and transactions, PartiQL, time to live, backups, and `Unsupported` (features of other services: answered as `UnknownOperationException` by the wire protocol). `DynamoDbRequestChecks` holds the request-shape refusals DynamoDB words differently from its model's constraints; the generated dispatcher calls it. `InternalDynamoDbStreamsClient` serves DynamoDB Streams over the same store
+- **Time:** time to live sweeps run on the bus `TimeProvider` (`DynamoTimeToLiveJob`, every `DynamoDbTimeToLiveSweepInterval`); tables are ACTIVE immediately unless `DynamoDbTableCreationDelay` is set. Provisioned throughput is reported, never enforced
+- **SDK v4 packages:** DynamoDB Streams is a separate package in v4 (`AWSSDK.DynamoDBStreams`) that the library doesn't reference; `InMemoryAwsHttpClientFactory` recognises its config by type name
+- **Fidelity:** the measure is AWS's emulator evaluation suite (`behavioral/dynamodb`, `behavioral/dynamodbstreams`, 902 checks). 853 are ported to C# in `AwsEvaluationSuite/DynamoDb*` and run in memory with the other tests; to run the originals with boto3 against the server, clone [aws-emulator-evaluation-suite](https://github.com/aws/aws-emulator-evaluation-suite), `uv sync --locked --extra checks`, start the server, then `uv run fidelity-tests-runner run behavioral/dynamodb/check_<name>.py --endpoint http://127.0.0.1:5050 --auth off`. The CC0 Rust emulator in [aws-emulator](https://github.com/aws/aws-emulator/tree/main/services/service-com-amazonaws-dynamodb-dynamodb-20120810) is a reference for exact messages
+
 ### Time Control
 
 All time-dependent operations use `TimeProvider` from the bus:
@@ -158,6 +172,7 @@ All time-dependent operations use `TimeProvider` from the bus:
 - In-flight message expiration
 - Move task scheduling
 - EventBridge replays and scheduled rules
+- DynamoDB time to live, table creation delays, transaction token windows and stream iterator expiry
 
 This allows tests to use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvider.Testing` to control time progression.
 
@@ -219,6 +234,7 @@ The generated handlers format `ErrorCode` into each protocol's error response. A
 - `Http/Handlers/Generated/{Sqs,Sns,EventBridge}OperationHandler.g.cs`: the library handlers, and `*.HttpContext.g.cs` twins of each for the server (`Program.cs`)
 - `SqsJsonSerializers.g.cs`, `EventBridgeJsonSerializers.g.cs` (`JsonCodeGenerator.cs`) and `SnsQuerySerializers.g.cs` (`QueryCodeGenerator.cs`)
 - `SqsQuerySerializers.g.cs` / `SqsQueryOperationHandler.g.cs`: the SQS Query protocol serializers and its one transport-neutral dispatcher (`SqsQueryCodeGenerator.cs`). The SQS model is the JSON one and has lost the Query wire names, so the generator restores them from its `WireNames` table
+- DynamoDB and DynamoDB Streams use `ShapeJsonCodeGenerator.cs`, which writes a method per shape (`Read_X`/`Write_X`/`Validate_X`) so recursive and nested shapes work: `Models/DynamoDb{,Streams}Models.g.cs` (collections null when absent, so `"L": []` stays distinct from a missing list; Java-style `ToString` for validation messages), `DynamoDb{,Streams}JsonSerializers.g.cs` (including the model's constraint checks, worded as AWS's request validation words them) and `DynamoDb{,Streams}OperationDispatcher.g.cs`. `AttributeValue` maps to the hand-written `DynamoValue`
 
 **Regenerate** (the argument is the shared project directory):
 ```bash
@@ -241,7 +257,8 @@ This project uses **TUnit** (not xUnit or NUnit) for testing:
 - `tests/LocalSqsSnsMessaging.Tests.Shared/`: abstract test classes (e.g. `SqsFifoTests`), compiled into two projects:
   - `LocalSqsSnsMessaging.Tests/LocalAwsMessaging/` subclasses run them in memory through `CreateSqsClient()` etc.
   - `LocalSqsSnsMessaging.Tests.Verification/ExternalVerification/` subclasses run them against Floci
-- `LocalSqsSnsMessaging.Tests/AwsEvaluationSuite/`: C# ports of AWS's emulator evaluation suite, checks verified against real AWS (see its `README.md`); `KnownFidelityGap` marks the ones not passed yet
+- `LocalSqsSnsMessaging.Tests/AwsEvaluationSuite/`: C# ports of AWS's emulator evaluation suite (SQS, SNS, EventBridge, DynamoDB and DynamoDB Streams), checks verified against real AWS (see its `README.md`); `KnownFidelityGap` marks the ones not passed yet. DynamoDB ports share `DynamoDbFidelity.cs` (boto3-style values, Python `repr`/`==`, waiters, raw requests)
+- `LocalSqsSnsMessaging.Tests/DynamoDb/`: DynamoDB through the low-level client, `DynamoDBContext`, the Document Model and the Streams client
 - `LocalSqsSnsMessaging.Tests/` (other folders): focused regression and behaviour tests, mostly through the SDK clients; a few reach internals (`InternalsVisibleTo`)
 - `tests/LocalSqsSnsMessaging.Tests.Server/`: the server, through real SDK clients against Kestrel, and its dashboard API
 

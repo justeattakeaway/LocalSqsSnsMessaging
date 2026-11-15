@@ -138,3 +138,34 @@ internal class InternalLimitExceededException : AwsServiceException
 
 // Alias for SNS InternalBatchRequestTooLongException - same class works for both SQS and SNS
 // since the SQS one above is sufficient (both use the same error pattern)
+
+// JSON-protocol request errors
+
+/// <summary>A request body that is not the JSON its operation takes, or a member of the wrong JSON type.</summary>
+internal class InternalSerializationException : AwsServiceException
+{
+    public InternalSerializationException(string message) : base(message)
+    {
+        ErrorCode = "SerializationException";
+    }
+}
+
+/// <summary>An <c>X-Amz-Target</c> naming no operation of the service.</summary>
+internal class InternalUnknownOperationException : AwsServiceException
+{
+    public InternalUnknownOperationException() : base(string.Empty)
+    {
+        ErrorCode = "UnknownOperationException";
+    }
+
+    public InternalUnknownOperationException(string message) : base(message)
+    {
+        ErrorCode = "UnknownOperationException";
+    }
+}
+
+/// <summary>An error whose JSON body carries modelled members besides its message.</summary>
+internal interface IAwsJsonErrorMembers
+{
+    void WriteMembers(System.Text.Json.Utf8JsonWriter writer);
+}

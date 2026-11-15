@@ -36,6 +36,7 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
             AwsServiceType.Sqs => AwsProtocolType.Json,
             AwsServiceType.EventBridge => AwsProtocolType.Json,
             AwsServiceType.Sns => AwsProtocolType.Query,
+            AwsServiceType.DynamoDb or AwsServiceType.DynamoDbStreams => AwsProtocolType.Json,
             _ => throw new NotSupportedException($"Service type {serviceType} is not supported.")
         };
     }
@@ -49,6 +50,11 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         if (_serviceType == AwsServiceType.Sqs)
         {
             return await SendSqsAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (_serviceType is AwsServiceType.DynamoDb or AwsServiceType.DynamoDbStreams)
+        {
+            return await SendDynamoDbAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
         // The SigningCertURL of a signed SNS message.
@@ -227,6 +233,31 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
 #endif
             return CreateErrorResponse(ex);
         }
+    }
+
+    /// <summary>
+    /// Serves a DynamoDB or DynamoDB Streams request (see <see cref="DynamoDbWireProtocol"/>), with
+    /// the <c>x-amz-crc32</c> header DynamoDB sends.
+    /// </summary>
+    private async Task<HttpResponseMessage> SendDynamoDbAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var body = request.Content is not null ? await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false) : [];
+        if (!request.Headers.TryGetValues("x-amz-target", out var targets))
+        {
+            request.Content?.Headers.TryGetValues("x-amz-target", out targets);
+        }
+
+        var result = DynamoDbWireProtocol.ConflictingSignatures(
+                // Authorization, not Headers.Authorization: .NET can't parse a SigV4 value, so that is null.
+                request.Headers.Contains("Authorization"),
+                request.RequestUri?.Query.Contains("X-Amz-Algorithm=", StringComparison.Ordinal) == true)
+            ?? await DynamoDbWireProtocol.HandleAsync(
+                targets?.FirstOrDefault(), body, _bus, AwsRequestRegion.FromRequest(request), cancellationToken).ConfigureAwait(false);
+        var response = new HttpResponseMessage(result.Status) { Content = new ByteArrayContent(result.Body) };
+        response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(DynamoDbWireProtocol.ContentType);
+        response.Headers.Add("x-amzn-RequestId", Guid.NewGuid().ToString());
+        response.Headers.TryAddWithoutValidation("x-amz-crc32", result.Crc32);
+        return response;
     }
 
     private static async Task<HttpResponseMessage> SendSqsQueryAsync(Dictionary<string, string> parameters, InternalSqsClient client, CancellationToken cancellationToken)

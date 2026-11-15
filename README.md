@@ -5,7 +5,7 @@
 
 ## Overview
 
-This .NET library is intended to provide a simple in-memory drop-in replacement for the AWS SDK for SQS, SNS and EventBridge, primarily for testing (but can be used for local development too).
+This .NET library is intended to provide a simple in-memory drop-in replacement for the AWS SDK for SQS, SNS, EventBridge and DynamoDB, primarily for testing (but can be used for local development too).
 
 It comes in three flavours that all share the same in-memory bus:
 
@@ -20,8 +20,9 @@ It comes in three flavours that all share the same in-memory bus:
 | **SQS** | Standard and FIFO queues, long polling, visibility timeouts, delays, message attributes, batch operations, redrive policies and dead-letter queues, message move tasks (redrive from a DLQ), fair queues (per-message-group deduplication), queue tags. |
 | **SNS** | Topics (standard and FIFO), `sqs` and `http`/`https` subscriptions, raw message delivery, [filter policies](#sns-filter-policies) on message attributes or the message body, [HTTP/S delivery](#sns-httphttps-subscriptions) with the confirmation handshake, retries and delivery policies, [subscription dead-letter queues](#sns-subscription-dead-letter-queues), topic attributes, permissions and tags. |
 | **EventBridge** | Event buses, rules with [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html), `PutEvents` routing to SQS (standard and FIFO), SNS and event bus targets, input transformers, target dead-letter queues, scheduled rules, archives and replays, tags, `TestEventPattern`. See [EventBridge](#eventbridge). |
+| **DynamoDB** | Tables with global and local secondary indexes, item reads and writes, condition, update, projection, filter and key-condition expressions (and the legacy `Expected`/`QueryFilter`/`AttributeUpdates` parameters), Query and Scan (paging, parallel scan), batches, transactions with idempotency tokens, PartiQL, DynamoDB Streams, time to live, on-demand backups and restores (including point in time), tags, resource policies, consumed capacity. See [DynamoDB](#dynamodb). |
 
-Operations that don't make sense in memory (SMS, mobile push, platform applications, data protection policies) throw `NotSupportedException`.
+Operations that don't make sense in memory (SMS, mobile push, platform applications, data protection policies) throw `NotSupportedException`. DynamoDB operations for features of other services (S3 exports and imports, Kinesis destinations, global tables, auto scaling, vector search) answer `UnknownOperationException`.
 
 ## Why?
 
@@ -237,6 +238,40 @@ var message = (await sqs.ReceiveMessageAsync(queueUrl)).Messages.Single();
 Console.WriteLine(message.Body); // the EventBridge envelope: {"version":"0","id":...,"detail":{"orderId":42}}
 ```
 
+### DynamoDB
+
+`bus.CreateDynamoDbClient()` gives a real `AmazonDynamoDBClient`, so the SDK's higher-level APIs work on top of it too: `DynamoDBContext` (the object persistence model, including versioned saves and batch and transactional writes) and the Document Model (`Table`, `Document`).
+
+```csharp
+using Amazon.DynamoDBv2.DataModel;
+
+var bus = new InMemoryAwsBus();
+using var dynamoDb = bus.CreateDynamoDbClient();
+await dynamoDb.CreateTableAsync(new CreateTableRequest
+{
+    TableName = "Orders",
+    KeySchema = [new KeySchemaElement("CustomerId", KeyType.HASH), new KeySchemaElement("OrderNumber", KeyType.RANGE)],
+    AttributeDefinitions = [new AttributeDefinition("CustomerId", ScalarAttributeType.S), new AttributeDefinition("OrderNumber", ScalarAttributeType.N)],
+    BillingMode = BillingMode.PAY_PER_REQUEST,
+});
+
+using var context = new DynamoDBContextBuilder().WithDynamoDBClient(() => dynamoDb).Build();
+await context.SaveAsync(new Order { CustomerId = "c1", OrderNumber = 1 });
+var orders = await context.QueryAsync<Order>("c1").GetRemainingAsync();
+```
+
+Requests are validated and answered as DynamoDB does, with its error codes and messages: numbers keep their 38 digits of precision, keys order by UTF-8 bytes, `Limit` applies before a filter, pages stop at 1 MB, and a failed transaction reports a `CancellationReasons` entry per item. Tables are `ACTIVE` as soon as `CreateTable` returns; set `DynamoDbTableCreationDelay` on the bus to have them stay `CREATING` for a while on its `TimeProvider`. Time to live deletes expired items on the bus's `TimeProvider` too, every `DynamoDbTimeToLiveSweepInterval` (one second by default), so a test with a `FakeTimeProvider` decides when items expire. Provisioned throughput is recorded and reported but not enforced: requests are never throttled.
+
+DynamoDB Streams is served too. In AWS SDK v4 its client is a separate package (`AWSSDK.DynamoDBStreams`), which this library doesn't depend on: route it to the bus with `bus.CreateAwsHttpClientFactory()`:
+
+```csharp
+using var streams = new AmazonDynamoDBStreamsClient(new AnonymousAWSCredentials(), new AmazonDynamoDBStreamsConfig
+{
+    ServiceURL = "https://streams.dynamodb.us-east-1.amazonaws.com",
+    HttpClientFactory = bus.CreateAwsHttpClientFactory(),
+});
+```
+
 ### Integrating with an existing `HttpClientFactory`
 
 When integration-testing an application that registers its own `Amazon.Runtime.HttpClientFactory`
@@ -266,7 +301,7 @@ var client = new HttpClient(handler);
 
 ## Standalone server
 
-If you'd rather run something out of process, for example for a non-.NET service or to poke at queues by hand, the same bus is available as a small HTTP server that speaks the SQS, SNS and EventBridge wire protocols. Point any AWS SDK at it with `ServiceURL = "http://localhost:5050"` and fake credentials.
+If you'd rather run something out of process, for example for a non-.NET service or to poke at queues by hand, the same bus is available as a small HTTP server that speaks the SQS, SNS, EventBridge and DynamoDB wire protocols. Point any AWS SDK at it with `ServiceURL = "http://localhost:5050"` and fake credentials.
 
 Run it with Docker:
 
@@ -286,7 +321,7 @@ dotnet run --project src/LocalSqsSnsMessaging.Server -- --port 5050 --region us-
 | `--region` | `us-east-1` | Region for requests that don't name one. A request signed for another region is served from that region's resources. |
 | `--account-id` | `000000000000` | The default account. |
 
-The server is multi-account: if the access key ID in a request's `Authorization` header is a 12-digit number, that account gets its own isolated bus, created on first use. This mirrors the LocalStack convention and lets parallel test runs share one server without seeing each other's queues.
+The server is multi-account: if the access key ID in a request's `Authorization` header is a 12-digit number, that account gets its own isolated bus, created on first use. This mirrors the LocalStack convention and lets parallel test runs share one server without seeing each other's queues or tables.
 
 ### Dashboard
 
