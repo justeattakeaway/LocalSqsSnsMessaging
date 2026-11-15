@@ -362,7 +362,10 @@ internal sealed partial class InternalDynamoDbClient
 
         public bool Delete { get; init; }
 
-        public bool Check => After is null && !Delete;
+        /// <summary>An Update of an absent item that only takes things away, which writes nothing.</summary>
+        public bool CreatesNothing { get; init; }
+
+        public bool Check => After is null && !Delete && !CreatesNothing;
     }
 
     public Task<TransactWriteItemsResponse> TransactWriteItemsAsync(TransactWriteItemsRequest request, CancellationToken cancellationToken = default)
@@ -543,6 +546,7 @@ internal sealed partial class InternalDynamoDbClient
 
         var old = table.Get(key);
         var after = action.Item;
+        var createsNothing = false;
         if (action.Update is { } update)
         {
             foreach (var change in update.Actions)
@@ -558,7 +562,10 @@ internal sealed partial class InternalDynamoDbClient
             InElement(() => DynamoValueRules.CheckItemLimits(updated, DynamoValueRules.UpdateItemSizeExceeded));
             CancelledBy(at, count, () => CheckIndexKeyTypes(table, updated));
             CheckIndexKeyValues(table, updated, update: true);
-            after = updated;
+
+            // As UpdateItem: an update whose every action only takes something away adds no item where there was none.
+            createsNothing = old is null && update.Actions.Count > 0 && updated.Keys.All(table.KeySchema.IsKeyAttribute);
+            after = createsNothing ? null : updated;
         }
 
         if (earlier.Any(w => ReferenceEquals(w.Table, table) && w.Key.Equals(key)))
@@ -575,6 +582,7 @@ internal sealed partial class InternalDynamoDbClient
             Old = old,
             After = after,
             Delete = action.Delete,
+            CreatesNothing = createsNothing,
         };
     }
 

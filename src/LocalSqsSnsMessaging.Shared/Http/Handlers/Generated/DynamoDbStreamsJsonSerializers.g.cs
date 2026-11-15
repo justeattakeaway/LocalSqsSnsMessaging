@@ -1183,5 +1183,5 @@ internal static partial class DynamoDbStreamsJsonSerializers
     }
 
     private static System.Text.RegularExpressions.Regex? _pattern0;
-    private static System.Text.RegularExpressions.Regex Pattern0 => _pattern0 ??= new("^(?:[a-zA-Z0-9_.-]+)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern0 => _pattern0 ??= new("^(?:[a-zA-Z0-9_.-]+)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 }

@@ -20589,21 +20589,21 @@ internal static partial class DynamoDbJsonSerializers
     }
 
     private static System.Text.RegularExpressions.Regex? _pattern0;
-    private static System.Text.RegularExpressions.Regex Pattern0 => _pattern0 ??= new("^(?:[\\x20-\\x7E]+)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern0 => _pattern0 ??= new("^(?:[\\x20-\\x7E]+)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern1;
-    private static System.Text.RegularExpressions.Regex Pattern1 => _pattern1 ??= new("^(?:[\\u0020-\\uD7FF\\uE000-\\uFFFD\\uD800-\\uDBFF\\uDC00-\\uDFFF\\r\\n\\t]*)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern1 => _pattern1 ??= new("^(?:[\\u0020-\\uD7FF\\uE000-\\uFFFD\\uD800-\\uDBFF\\uDC00-\\uDFFF\\r\\n\\t]*)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern2;
-    private static System.Text.RegularExpressions.Regex Pattern2 => _pattern2 ??= new("^(?:[a-zA-Z0-9_.-]+)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern2 => _pattern2 ??= new("^(?:[a-zA-Z0-9_.-]+)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern3;
-    private static System.Text.RegularExpressions.Regex Pattern3 => _pattern3 ??= new("^(?:[,;:|\\t ])$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern3 => _pattern3 ??= new("^(?:[,;:|\\t ])\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern4;
-    private static System.Text.RegularExpressions.Regex Pattern4 => _pattern4 ??= new("^(?:[\\x20-\\x21\\x23-\\x2B\\x2D-\\x7E]*)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern4 => _pattern4 ??= new("^(?:[\\x20-\\x21\\x23-\\x2B\\x2D-\\x7E]*)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern5;
-    private static System.Text.RegularExpressions.Regex Pattern5 => _pattern5 ??= new("^(?:^[^\\$]+$)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern5 => _pattern5 ??= new("^(?:^[^\\$]+$)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern6;
-    private static System.Text.RegularExpressions.Regex Pattern6 => _pattern6 ??= new("^(?:^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern6 => _pattern6 ??= new("^(?:^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern7;
-    private static System.Text.RegularExpressions.Regex Pattern7 => _pattern7 ??= new("^(?:[0-9]{12})$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern7 => _pattern7 ??= new("^(?:[0-9]{12})\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern8;
-    private static System.Text.RegularExpressions.Regex Pattern8 => _pattern8 ??= new("^(?:([0-9a-f]{16})+)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern8 => _pattern8 ??= new("^(?:([0-9a-f]{16})+)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 }

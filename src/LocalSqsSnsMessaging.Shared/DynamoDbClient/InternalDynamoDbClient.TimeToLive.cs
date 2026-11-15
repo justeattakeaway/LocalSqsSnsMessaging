@@ -81,6 +81,13 @@ internal sealed partial class InternalDynamoDbClient
             now = previous.CreatedAt.AddMilliseconds(1);
         }
 
+        // A table deleted and recreated under its name has the same ARN, and its old streams stay
+        // readable, so the new stream's label must also differ from theirs.
+        while (Store.Streams.ContainsKey(DynamoStream.ArnFor(table.Arn, now)))
+        {
+            now = now.AddMilliseconds(1);
+        }
+
         var stream = new DynamoStream(table, table.StreamViewType!, now, Region);
         table.LatestStream = stream;
         Store.Streams[stream.Arn] = stream;

@@ -457,16 +457,16 @@ internal sealed class ExpressionParser
     /// <summary>Refuses two paths of which one is, or starts with, the other.</summary>
     public static void CheckPathsDisjoint(string member, IReadOnlyList<DocumentPath> paths)
     {
-        var stated = new Dictionary<string, int>(StringComparer.Ordinal);
+        // Compared by step, not as rendered text: an attribute named "a.b" (through an alias) is not the path a.b.
+        var stated = new Dictionary<DocumentPath, int>();
         for (var i = 0; i < paths.Count; i++)
         {
-            var rendered = paths[i].Render();
-            if (stated.ContainsKey(rendered))
+            if (stated.ContainsKey(paths[i]))
             {
                 throw Overlap(member, paths[i].RenderTokens(), paths[i].RenderTokens());
             }
 
-            stated[rendered] = i;
+            stated[paths[i]] = i;
         }
 
         for (var i = 0; i < paths.Count; i++)
@@ -474,7 +474,7 @@ internal sealed class ExpressionParser
             var path = paths[i];
             for (var steps = 1; steps < path.Steps.Count; steps++)
             {
-                if (stated.TryGetValue(path.RenderPrefix(steps), out var earlier))
+                if (stated.TryGetValue(new DocumentPath(path.Steps.Take(steps).ToList()), out var earlier))
                 {
                     var whole = path.RenderTokens();
                     var prefix = path.RenderTokens(steps);

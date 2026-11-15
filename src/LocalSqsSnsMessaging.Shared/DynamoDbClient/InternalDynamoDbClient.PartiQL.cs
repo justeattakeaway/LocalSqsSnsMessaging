@@ -99,7 +99,8 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation("ORDER BY is supported only on a key attribute of the source");
             }
 
-            if (index is null && partition is null)
+            // An IN on the partition key keys the partition as well as an equality does.
+            if (index is null && partition is null && (select.Where is null || !KeysPartition(select.Where, table.KeySchema.Partition.Name)))
             {
                 throw DynamoDbErrors.Validation("ORDER BY is supported only for a statement whose WHERE clause states an equality on the table's partition key");
             }
@@ -130,20 +131,21 @@ internal sealed partial class InternalDynamoDbClient
 
         if (select.OrderBy is { } order)
         {
-            candidates.Sort((a, b) =>
-            {
-                var x = a.Item.TryGetValue(order.Attribute, out var av) ? av : null;
-                var y = b.Item.TryGetValue(order.Attribute, out var bv) ? bv : null;
-                var compared = x is null || y is null ? (x is null ? 0 : 1) - (y is null ? 0 : 1) : DynamoKeyOrder.Compare(x, y);
-                return order.Descending ? -compared : compared;
-            });
+            // The order is total (ties fall back to key order), so the unstable sort is deterministic.
+            candidates.Sort((a, b) => ComparePositions(PositionOf(table, index, order, a.Key, a.Item), PositionOf(table, index, order, b.Key, b.Item), order));
         }
 
         if (request.NextToken is { } token)
         {
-            var resume = DecodeCursor(request.Statement!, token, table);
-            var at = candidates.FindIndex(c => c.Key.Equals(resume));
-            candidates = at >= 0 ? candidates.Skip(at + 1).ToList() : candidates.Where(c => DynamoKey.Comparer.Compare(c.Key, resume) > 0).ToList();
+            // Resume after the token's position, whether or not its item is still there (or still
+            // has the keys it had), as DynamoDB resumes from an exclusive start key.
+            var resume = PositionOf(table, index, select.OrderBy, null, DecodeCursor(request.Statement!, token));
+            if (resume.TableKey is null || (index is not null && resume.IndexKey is null))
+            {
+                throw DynamoDbErrors.Validation("Invalid NextToken");
+            }
+
+            candidates = candidates.Where(c => ComparePositions(PositionOf(table, index, select.OrderBy, c.Key, c.Item), resume, select.OrderBy) > 0).ToList();
         }
 
         var limit = request.Limit ?? int.MaxValue;
@@ -184,7 +186,6 @@ internal sealed partial class InternalDynamoDbClient
         if ((candidates.Count > evaluated || (request.Limit is not null && evaluated >= limit)) && evaluated > 0)
         {
             var (key, item) = candidates[evaluated - 1];
-            nextToken = EncodeCursor(request.Statement!, table, key);
             lastEvaluatedKey = table.KeySchema.ToAttributes(key);
             if (index is not null)
             {
@@ -196,6 +197,9 @@ internal sealed partial class InternalDynamoDbClient
                     }
                 }
             }
+
+            // The token holds the index's key too, so a page resumes in index order.
+            nextToken = EncodeCursor(request.Statement!, lastEvaluatedKey);
         }
 
         return new ExecuteStatementResponse
@@ -245,13 +249,50 @@ internal sealed partial class InternalDynamoDbClient
         return Convert.ToBase64String(hash, 0, 12);
     }
 
-    private static string EncodeCursor(string statement, DynamoTable table, DynamoKey key)
+    /// <summary>
+    /// A row's place in the order SELECT reads rows: by the ORDER BY attribute when there is one,
+    /// then in its source's key order (an index's key, then the table's key, for an index).
+    /// </summary>
+    private sealed record SelectPosition(DynamoKey? TableKey, DynamoKey? IndexKey, DynamoValue? OrderValue);
+
+    private static SelectPosition PositionOf(
+        DynamoTable table, DynamoIndex? index, (string Attribute, bool Descending)? order, DynamoKey? tableKey, Dictionary<string, DynamoValue> attributes) =>
+        new(
+            tableKey ?? table.KeySchema.KeyOf(attributes),
+            index?.KeySchema.KeyOf(attributes),
+            order is { } o && attributes.TryGetValue(o.Attribute, out var value) ? value : null);
+
+    private static int ComparePositions(SelectPosition a, SelectPosition b, (string Attribute, bool Descending)? order)
     {
-        var json = DynamoValueJson.ToJson(DynamoValue.FromMap(table.KeySchema.ToAttributes(key)));
+        if (order is { } o)
+        {
+            var (x, y) = (a.OrderValue, b.OrderValue);
+            var compared = x is null || y is null ? (x is null ? 0 : 1) - (y is null ? 0 : 1) : DynamoKeyOrder.Compare(x, y);
+            if (compared != 0)
+            {
+                return o.Descending ? -compared : compared;
+            }
+        }
+
+        if (a.IndexKey is not null && b.IndexKey is not null)
+        {
+            var indexOrder = DynamoKey.Comparer.Compare(a.IndexKey, b.IndexKey);
+            if (indexOrder != 0)
+            {
+                return indexOrder;
+            }
+        }
+
+        return DynamoKey.Comparer.Compare(a.TableKey!, b.TableKey!);
+    }
+
+    private static string EncodeCursor(string statement, Dictionary<string, DynamoValue> position)
+    {
+        var json = DynamoValueJson.ToJson(DynamoValue.FromMap(position));
         return StatementFingerprint(statement) + ":" + Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
     }
 
-    private static DynamoKey DecodeCursor(string statement, string token, DynamoTable table)
+    private static Dictionary<string, DynamoValue> DecodeCursor(string statement, string token)
     {
         var colon = token.IndexOf(':', StringComparison.Ordinal);
         if (colon > 0 && !string.Equals(token[..colon], StatementFingerprint(statement), StringComparison.Ordinal))
@@ -265,9 +306,9 @@ internal sealed partial class InternalDynamoDbClient
             if (colon > 0)
             {
                 using var document = System.Text.Json.JsonDocument.Parse(Convert.FromBase64String(token[(colon + 1)..]));
-                if (table.KeySchema.KeyOf(DynamoValueJson.Read(document.RootElement).M) is { } key)
+                if (DynamoValueJson.Read(document.RootElement) is { Type: DynamoType.M } position)
                 {
-                    return key;
+                    return position.M.ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
                 }
             }
         }

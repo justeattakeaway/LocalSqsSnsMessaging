@@ -333,9 +333,10 @@ internal sealed class ShapeJsonCodeGenerator
         foreach (var (pattern, field) in _patternFields.OrderBy(p => p.Value, StringComparer.Ordinal))
         {
             // Compiled on first use, each on its own, so one pattern can't stop the others loading.
+            // Anchored with \z: AWS matches the whole value, and $ would also match before a final newline.
             var backing = "_" + char.ToLowerInvariant(field[0]) + field[1..];
             code.AppendLine($"    private static System.Text.RegularExpressions.Regex? {backing};");
-            code.AppendLine($"    private static System.Text.RegularExpressions.Regex {field} => {backing} ??= new({Literal("^(?:" + DotNetPattern(pattern) + ")$")}, System.Text.RegularExpressions.RegexOptions.CultureInvariant);");
+            code.AppendLine($"    private static System.Text.RegularExpressions.Regex {field} => {backing} ??= new({Literal("^(?:" + DotNetPattern(pattern) + @")\z")}, System.Text.RegularExpressions.RegexOptions.CultureInvariant);");
         }
 
         code.AppendLine("}");

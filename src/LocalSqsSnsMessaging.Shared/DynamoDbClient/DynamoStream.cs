@@ -29,11 +29,17 @@ internal sealed class DynamoStream
         ViewType = viewType;
         CreatedAt = createdAt;
         Region = region;
-        Label = createdAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff", CultureInfo.InvariantCulture);
-        Arn = $"{table.Arn}/stream/{Label}";
+        Label = LabelFor(createdAt);
+        Arn = ArnFor(table.Arn, createdAt);
         ShardId = $"shardId-{createdAt.ToUnixTimeMilliseconds().ToString("D20", CultureInfo.InvariantCulture)}-{Guid.NewGuid().ToString("N")[..8]}";
         StartingSequenceNumber = NextSequenceNumber();
     }
+
+    /// <summary>The ARN of a stream of the table <paramref name="tableArn"/> created at <paramref name="createdAt"/>.</summary>
+    public static string ArnFor(string tableArn, DateTimeOffset createdAt) => $"{tableArn}/stream/{LabelFor(createdAt)}";
+
+    private static string LabelFor(DateTimeOffset createdAt) =>
+        createdAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
     public string TableName { get; }
 
@@ -73,6 +79,13 @@ internal sealed class DynamoStream
             return;
         }
 
+        // "If you perform a PutItem or UpdateItem operation that does not change any data in an
+        // item, DynamoDB Streams does not write a stream record for that operation."
+        if (change.OldImage is { } before && change.NewImage is { } after && SameAttributes(before, after))
+        {
+            return;
+        }
+
         var eventName = change.OldImage is null ? "INSERT" : change.NewImage is null ? "REMOVE" : "MODIFY";
         var keys = table.KeySchema.ToAttributes(change.Key);
         var newImage = ViewType is "NEW_IMAGE" or "NEW_AND_OLD_IMAGES" ? change.NewImage : null;
@@ -91,6 +104,10 @@ internal sealed class DynamoStream
             size,
             change.ByTimeToLive));
     }
+
+    private static bool SameAttributes(IReadOnlyDictionary<string, DynamoValue> one, IReadOnlyDictionary<string, DynamoValue> two) =>
+        one.Count == two.Count
+        && one.All(attribute => two.TryGetValue(attribute.Key, out var other) && attribute.Value.Equals(other));
 
     public void Disable(DateTime now)
     {

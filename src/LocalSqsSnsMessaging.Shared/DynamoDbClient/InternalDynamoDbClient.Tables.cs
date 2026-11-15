@@ -469,7 +469,12 @@ internal sealed partial class InternalDynamoDbClient
                 stream.Disable(Now);
             }
 
-            Store.TimeToLiveJobs.Remove(table.Name);
+            if (Store.TimeToLiveJobs.TryGetValue(table.Name, out var timeToLiveJob))
+            {
+                timeToLiveJob.Dispose();
+                Store.TimeToLiveJobs.Remove(table.Name);
+            }
+
             Record("DeleteTable", table.Arn);
             return Task.FromResult(new DeleteTableResponse { TableDescription = description });
         }
@@ -487,10 +492,12 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being {(table.Status == "CREATING" ? "created" : "updated")}: {table.Name}");
             }
 
-            var changed = false;
-            if (request.BillingMode is { } billingMode)
+            // DynamoDB refuses a request without changing the table, so every check runs before
+            // anything changes, against the table as it will be (its billing mode, say).
+            var billingMode = request.BillingMode ?? table.BillingMode;
+            if (request.BillingMode is { } requestedBillingMode)
             {
-                var onDemand = billingMode == "PAY_PER_REQUEST";
+                var onDemand = requestedBillingMode == "PAY_PER_REQUEST";
                 if (onDemand && request.ProvisionedThroughput is not null)
                 {
                     throw DynamoDbErrors.InvalidParameter("ProvisionedThroughput cannot be specified when BillingMode is PAY_PER_REQUEST");
@@ -500,63 +507,27 @@ internal sealed partial class InternalDynamoDbClient
                 {
                     throw DynamoDbErrors.InvalidParameter("ProvisionedThroughput must be specified when BillingMode is PROVISIONED");
                 }
-
-                if (billingMode != table.BillingMode)
-                {
-                    table.BillingMode = billingMode;
-                    if (onDemand)
-                    {
-                        table.LastUpdateToPayPerRequestDateTime = Now;
-                        table.Throughput = new DynamoThroughput();
-                        foreach (var index in table.GlobalIndexes)
-                        {
-                            index.Throughput = new DynamoThroughput();
-                        }
-                    }
-                }
-
-                table.BillingModeStated = true;
-                changed = true;
             }
 
+            (long Read, long Write)? throughputChange = null;
             if (request.ProvisionedThroughput is { } throughput)
             {
-                if (table.BillingMode == "PAY_PER_REQUEST")
+                if (billingMode == "PAY_PER_REQUEST")
                 {
                     throw DynamoDbErrors.InvalidParameter("Neither ReadCapacityUnits nor WriteCapacityUnits can be specified when BillingMode is PAY_PER_REQUEST");
                 }
 
                 var read = throughput.ReadCapacityUnits ?? table.Throughput.ReadCapacityUnits;
                 var write = throughput.WriteCapacityUnits ?? table.Throughput.WriteCapacityUnits;
-                if (read == table.Throughput.ReadCapacityUnits && write == table.Throughput.WriteCapacityUnits && table.BillingMode == "PROVISIONED" && request.BillingMode is null or "PROVISIONED")
+                if (read == table.Throughput.ReadCapacityUnits && write == table.Throughput.WriteCapacityUnits && billingMode == "PROVISIONED" && request.BillingMode is null or "PROVISIONED")
                 {
                     throw DynamoDbErrors.Validation($"The provisioned throughput for the table will not change. The requested value equals the current value. Current ReadCapacityUnits provisioned for the table: {table.Throughput.ReadCapacityUnits}. Requested ReadCapacityUnits: {read}. Current WriteCapacityUnits provisioned for the table: {table.Throughput.WriteCapacityUnits}. Requested WriteCapacityUnits: {write}. Refer to the Amazon DynamoDB Developer Guide for current limits and how to request higher limits.");
                 }
 
-                if (read > table.Throughput.ReadCapacityUnits || write > table.Throughput.WriteCapacityUnits)
-                {
-                    table.Throughput.LastIncreaseDateTime = Now;
-                }
-
-                if (read < table.Throughput.ReadCapacityUnits || write < table.Throughput.WriteCapacityUnits)
-                {
-                    table.Throughput.LastDecreaseDateTime = Now;
-                    table.Throughput.NumberOfDecreasesToday++;
-                }
-
-                table.Throughput.ReadCapacityUnits = read;
-                table.Throughput.WriteCapacityUnits = write;
-                changed = true;
+                throughputChange = (read, write);
             }
 
-            CheckOnDemandThroughput(request.BillingMode ?? table.BillingMode, request.OnDemandThroughput);
-            if (request.OnDemandThroughput is { } onDemandThroughput)
-            {
-                table.MaxReadRequestUnits = onDemandThroughput.MaxReadRequestUnits ?? table.MaxReadRequestUnits;
-                table.MaxWriteRequestUnits = onDemandThroughput.MaxWriteRequestUnits ?? table.MaxWriteRequestUnits;
-                changed = true;
-            }
-
+            CheckOnDemandThroughput(billingMode, request.OnDemandThroughput);
             if (request.AttributeDefinitions is { } definitions)
             {
                 foreach (var definition in definitions)
@@ -570,15 +541,9 @@ internal sealed partial class InternalDynamoDbClient
                 }
             }
 
-            if (request.GlobalSecondaryIndexUpdates is { Count: > 0 } updates)
-            {
-                foreach (var update in updates)
-                {
-                    ApplyIndexUpdate(table, update, request.AttributeDefinitions);
-                }
-
-                changed = true;
-            }
+            var indexUpdates = (request.GlobalSecondaryIndexUpdates ?? [])
+                .Select(update => PrepareIndexUpdate(table, update, request.AttributeDefinitions, billingMode))
+                .ToList();
 
             if (request.StreamSpecification is { } stream)
             {
@@ -593,35 +558,14 @@ internal sealed partial class InternalDynamoDbClient
                     {
                         throw DynamoDbErrors.InvalidParameter("Table is being updated with a stream enabled, but StreamViewType is not specified");
                     }
-
-                    table.StreamEnabled = true;
-                    table.StreamViewType = stream.StreamViewType;
-                    StartStream(table);
                 }
-                else
+                else if (!table.StreamEnabled)
                 {
-                    if (!table.StreamEnabled)
-                    {
-                        throw DynamoDbErrors.Validation("Table has no stream to disable: TableName: " + table.Name);
-                    }
-
-                    table.StreamEnabled = false;
-                    table.StreamViewType = null;
-                    table.LatestStream?.Disable(Now);
+                    throw DynamoDbErrors.Validation("Table has no stream to disable: TableName: " + table.Name);
                 }
-
-                changed = true;
             }
 
-            if (request.SSESpecification is { } sse)
-            {
-                table.SseEnabled = sse.Enabled ?? true;
-                table.SseType = sse.SSEType ?? "KMS";
-                table.SseKmsKeyArn = table.SseEnabled ? $"arn:aws:kms:{Region}:{_bus.CurrentAccountId}:key/{sse.KMSMasterKeyId ?? "aws/dynamodb"}" : null;
-                changed = true;
-            }
-
-            if (request.TableClass is { } tableClass)
+            if (request.TableClass is not null)
             {
                 // DynamoDB allows two table class changes in a trailing 30 days.
                 table.TableClassUpdates.RemoveAll(at => at <= Now.AddDays(-30));
@@ -629,27 +573,103 @@ internal sealed partial class InternalDynamoDbClient
                 {
                     throw DynamoDbErrors.LimitExceeded("Subscriber limit exceeded: Updates to TableClass are limited to 2 times in 30 day(s).");
                 }
+            }
 
+            var changes = request.BillingMode is not null
+                || request.ProvisionedThroughput is not null
+                || request.OnDemandThroughput is not null
+                || indexUpdates.Count > 0
+                || request.StreamSpecification is not null
+                || request.SSESpecification is not null
+                || request.TableClass is not null
+                || request.DeletionProtectionEnabled is not null
+                || request.WarmThroughput is not null;
+            if (!changes)
+            {
+                throw DynamoDbErrors.Validation("At least one of ProvisionedThroughput, BillingMode, UpdateStreamEnabled, GlobalSecondaryIndexUpdates or SSESpecification or ReplicaUpdates is required");
+            }
+
+            // Every check has passed: make the changes.
+            if (request.BillingMode is not null)
+            {
+                if (billingMode != table.BillingMode)
+                {
+                    table.BillingMode = billingMode;
+                    if (billingMode == "PAY_PER_REQUEST")
+                    {
+                        table.LastUpdateToPayPerRequestDateTime = Now;
+                        table.Throughput = new DynamoThroughput();
+                        foreach (var index in table.GlobalIndexes)
+                        {
+                            index.Throughput = new DynamoThroughput();
+                        }
+                    }
+                }
+
+                table.BillingModeStated = true;
+            }
+
+            if (throughputChange is var (newRead, newWrite))
+            {
+                if (newRead > table.Throughput.ReadCapacityUnits || newWrite > table.Throughput.WriteCapacityUnits)
+                {
+                    table.Throughput.LastIncreaseDateTime = Now;
+                }
+
+                if (newRead < table.Throughput.ReadCapacityUnits || newWrite < table.Throughput.WriteCapacityUnits)
+                {
+                    table.Throughput.LastDecreaseDateTime = Now;
+                    table.Throughput.NumberOfDecreasesToday++;
+                }
+
+                table.Throughput.ReadCapacityUnits = newRead;
+                table.Throughput.WriteCapacityUnits = newWrite;
+            }
+
+            if (request.OnDemandThroughput is { } onDemandThroughput)
+            {
+                table.MaxReadRequestUnits = onDemandThroughput.MaxReadRequestUnits ?? table.MaxReadRequestUnits;
+                table.MaxWriteRequestUnits = onDemandThroughput.MaxWriteRequestUnits ?? table.MaxWriteRequestUnits;
+            }
+
+            foreach (var applyIndexUpdate in indexUpdates)
+            {
+                applyIndexUpdate();
+            }
+
+            if (request.StreamSpecification is { } streamChange)
+            {
+                if (streamChange.StreamEnabled == true)
+                {
+                    table.StreamEnabled = true;
+                    table.StreamViewType = streamChange.StreamViewType;
+                    StartStream(table);
+                }
+                else
+                {
+                    table.StreamEnabled = false;
+                    table.StreamViewType = null;
+                    table.LatestStream?.Disable(Now);
+                }
+            }
+
+            if (request.SSESpecification is { } sse)
+            {
+                table.SseEnabled = sse.Enabled ?? true;
+                table.SseType = sse.SSEType ?? "KMS";
+                table.SseKmsKeyArn = table.SseEnabled ? $"arn:aws:kms:{Region}:{_bus.CurrentAccountId}:key/{sse.KMSMasterKeyId ?? "aws/dynamodb"}" : null;
+            }
+
+            if (request.TableClass is { } tableClass)
+            {
                 table.TableClassUpdates.Add(Now);
                 table.TableClass = tableClass;
                 table.TableClassLastUpdate = Now;
-                changed = true;
             }
 
             if (request.DeletionProtectionEnabled is { } protection)
             {
                 table.DeletionProtectionEnabled = protection;
-                changed = true;
-            }
-
-            if (request.WarmThroughput is not null)
-            {
-                changed = true;
-            }
-
-            if (!changed)
-            {
-                throw DynamoDbErrors.Validation("At least one of ProvisionedThroughput, BillingMode, UpdateStreamEnabled, GlobalSecondaryIndexUpdates or SSESpecification or ReplicaUpdates is required");
             }
 
             Record("UpdateTable", table.Arn);
@@ -657,7 +677,11 @@ internal sealed partial class InternalDynamoDbClient
         }
     }
 
-    private static void ApplyIndexUpdate(DynamoTable table, GlobalSecondaryIndexUpdate update, List<AttributeDefinition>? definitions)
+    /// <summary>
+    /// Checks one index update against the table as it stands, under the table's
+    /// <paramref name="billingMode"/> once this request applies, and returns the change to make.
+    /// </summary>
+    private static Action PrepareIndexUpdate(DynamoTable table, GlobalSecondaryIndexUpdate update, List<AttributeDefinition>? definitions, string billingMode)
     {
         if (update.Create is { } create)
         {
@@ -695,15 +719,7 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             var keySchema = ParseKeySchema(create.KeySchema ?? [], known, indexName);
-            CheckThroughput(create.ProvisionedThroughput, table.BillingMode == "PAY_PER_REQUEST", indexName);
-            foreach (var attribute in keySchema.Attributes)
-            {
-                if (table.DeclaredType(attribute.Name) is null)
-                {
-                    table.AttributeDefinitions.Add(attribute);
-                }
-            }
-
+            CheckThroughput(create.ProvisionedThroughput, billingMode == "PAY_PER_REQUEST", indexName);
             var index = new DynamoIndex
             {
                 Name = indexName,
@@ -720,10 +736,23 @@ internal sealed partial class InternalDynamoDbClient
                 MaxWriteRequestUnits = create.OnDemandThroughput?.MaxWriteRequestUnits,
             };
             CheckExistingItemsFitIndex(table, index);
-            table.GlobalIndexes.Add(index);
-            table.Backfill(index);
+            return () =>
+            {
+                // The index's key attributes are declared only once the index is sure to be made.
+                foreach (var attribute in keySchema.Attributes)
+                {
+                    if (table.DeclaredType(attribute.Name) is null)
+                    {
+                        table.AttributeDefinitions.Add(attribute);
+                    }
+                }
+
+                table.GlobalIndexes.Add(index);
+                table.Backfill(index);
+            };
         }
-        else if (update.Delete is { } delete)
+
+        if (update.Delete is { } delete)
         {
             var index = table.FindIndex(delete.IndexName!);
             if (index is null)
@@ -736,31 +765,40 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation($"Cannot delete an index that is not a GlobalSecondaryIndex: {index.Name}");
             }
 
-            table.GlobalIndexes.Remove(index);
-            var stillUsed = new HashSet<string>(table.KeySchema.Attributes.Concat(table.Indexes.SelectMany(i => i.KeySchema.Attributes)).Select(a => a.Name), StringComparer.Ordinal);
-            table.AttributeDefinitions.RemoveAll(a => !stillUsed.Contains(a.Name));
+            return () =>
+            {
+                table.GlobalIndexes.Remove(index);
+                var stillUsed = new HashSet<string>(table.KeySchema.Attributes.Concat(table.Indexes.SelectMany(i => i.KeySchema.Attributes)).Select(a => a.Name), StringComparer.Ordinal);
+                table.AttributeDefinitions.RemoveAll(a => !stillUsed.Contains(a.Name));
+            };
         }
-        else if (update.Update is { } change)
+
+        if (update.Update is { } change)
         {
-            var index = table.FindIndex(change.IndexName!) as DynamoIndex;
+            var index = table.FindIndex(change.IndexName!);
             if (index is null || !index.IsGlobal)
             {
                 throw DynamoDbErrors.ResourceNotFound($"Requested resource not found: Index: {change.IndexName} not found");
             }
 
-            if (change.ProvisionedThroughput is { } throughput)
+            return () =>
             {
-                index.Throughput ??= new DynamoThroughput();
-                index.Throughput.ReadCapacityUnits = throughput.ReadCapacityUnits ?? index.Throughput.ReadCapacityUnits;
-                index.Throughput.WriteCapacityUnits = throughput.WriteCapacityUnits ?? index.Throughput.WriteCapacityUnits;
-            }
+                if (change.ProvisionedThroughput is { } throughput)
+                {
+                    index.Throughput ??= new DynamoThroughput();
+                    index.Throughput.ReadCapacityUnits = throughput.ReadCapacityUnits ?? index.Throughput.ReadCapacityUnits;
+                    index.Throughput.WriteCapacityUnits = throughput.WriteCapacityUnits ?? index.Throughput.WriteCapacityUnits;
+                }
 
-            if (change.OnDemandThroughput is { } onDemand)
-            {
-                index.MaxReadRequestUnits = onDemand.MaxReadRequestUnits ?? index.MaxReadRequestUnits;
-                index.MaxWriteRequestUnits = onDemand.MaxWriteRequestUnits ?? index.MaxWriteRequestUnits;
-            }
+                if (change.OnDemandThroughput is { } onDemand)
+                {
+                    index.MaxReadRequestUnits = onDemand.MaxReadRequestUnits ?? index.MaxReadRequestUnits;
+                    index.MaxWriteRequestUnits = onDemand.MaxWriteRequestUnits ?? index.MaxWriteRequestUnits;
+                }
+            };
         }
+
+        return () => { };
     }
 
     /// <summary>
