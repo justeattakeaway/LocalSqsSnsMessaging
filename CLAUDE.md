@@ -68,6 +68,13 @@ cd tests/LocalSqsSnsMessaging.Tests.Verification
 dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 ```
 
+### Benchmarks
+`benchmarks/LocalSqsSnsMessaging.Benchmarks` sends one SDK request per wire protocol through the library and through the server's middleware (on an in-memory `TestServer`), measuring allocations. CI never runs it. Run it on the commit before and after a change to a wire protocol or a host:
+```bash
+dotnet run -c Release --project benchmarks/LocalSqsSnsMessaging.Benchmarks -- --filter '*'
+```
+Allocated bytes are exact and comparable between runs; times are noisy on a shared machine, so run the two commits back to back.
+
 ## Architecture
 
 ### Core Components
@@ -84,10 +91,15 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 
 ### HTTP Mode
 
-**InMemoryAwsHttpMessageHandler** (`Http/InMemoryAwsHttpMessageHandler.cs`)
-- `DelegatingHandler` that intercepts HTTP requests from real AWS SDK clients
-- Deserializes requests, routes to the internal clients, serializes responses
-- `AwsBridgeMiddleware` (`src/LocalSqsSnsMessaging.Server`) does the same for the server over real HTTP, and `BusRegistry` gives each account (from the SigV4 access key) its own bus
+Each service has one **wire protocol** module (see GLOSSARY.md) in `Http/`, which both hosts call: `SqsWireProtocol` (`HandleJsonAsync`, and `HandleQueryAsync` in `SqsWireProtocol.Query.cs`), `SnsWireProtocol`, `EventBridgeWireProtocol` and `DynamoDbWireProtocol` (DynamoDB and DynamoDB Streams).
+- In: the operation (or the Query parameters), the body as memory, the client the host built for the request's region and SQS caller, and a pooled `ArrayBufferWriter<byte>` the host owns
+- Out: the response body, written into that buffer, and a `WireResponse` (a struct: status, Content-Type, request id, SQS's `x-amzn-query-error`, DynamoDB's `x-amz-crc32`)
+- It answers every failure in its own protocol (unknown operation, malformed body, `AwsServiceException`, anything else as an internal failure), resetting the buffer first, and records the operation's activity (`WireTracing`); only cancellation escapes
+- The generator writes only each protocol's operation switch (see Code Generation)
+
+The two hosts are adapters: each reads the body, decides which service and operation a request is for, builds the client, and copies the `WireResponse` onto its own response type.
+- `InMemoryAwsHttpMessageHandler` (`Http/`): the library's `DelegatingHandler`, one per service (`AwsServiceType`), reading the body once into a pooled `PooledRequestBody`
+- `AwsBridgeMiddleware` (`src/LocalSqsSnsMessaging.Server`): the server, which tells services apart by target prefix, Query `Version` or SigV4 scope; `BusRegistry` gives each account (from the SigV4 access key) its own bus
 
 **AWS Protocol Support:**
 
@@ -103,13 +115,11 @@ dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
    - Request: Form-encoded query parameters (e.g., `Action=Publish&TopicArn=...`)
    - Response: XML format
    - Nested structures use indexed notation: `MessageAttributes.entry.1.Name=foo&MessageAttributes.entry.1.Value.DataType=String`
+   - `Action` names the operation (in the body, or a GET's query string); a missing one is `MissingAction`, an unknown one `InvalidAction`
 
 3. **EventBridge - JSON Protocol:** `application/x-amz-json-1.1`, operations named by an `X-Amz-Target` of `AWSEvents.<Operation>`
 
-4. **DynamoDB and DynamoDB Streams - JSON Protocol:** `application/x-amz-json-1.0`, targets `DynamoDB_20120810.<Operation>` and `DynamoDBStreams_20120810.<Operation>`. `Http/DynamoDbWireProtocol.cs` serves both, transport-neutral, for the library handler and the server: it parses the body, runs the generated dispatcher, writes errors (`__type` in `com.amazon.coral.validate` for `ValidationException`, `com.amazon.coral.service` for protocol errors, `com.amazonaws.dynamodb.v20120810` otherwise, plus modelled members such as `CancellationReasons`) and the `x-amz-crc32` header SDKs check
-
-**Operation Handlers** (`Http/Handlers/Generated/`)
-- Generated per service: a `switch` on the operation name that deserializes the request, calls the internal client and serializes the response or error (see Code Generation)
+4. **DynamoDB and DynamoDB Streams - JSON Protocol:** `application/x-amz-json-1.0`, targets `DynamoDB_20120810.<Operation>` and `DynamoDBStreams_20120810.<Operation>`. `Http/DynamoDbWireProtocol.cs` serves both, building the client the target names: it parses the body, runs the generated dispatcher, writes errors (`__type` in `com.amazon.coral.validate` for `ValidationException`, `com.amazon.coral.service` for protocol errors, `com.amazonaws.dynamodb.v20120810` otherwise, plus modelled members such as `CancellationReasons`) and the `x-amz-crc32` header SDKs check
 
 **Public entry points**
 - `InMemoryAwsBusHttpExtensions.cs`: `CreateSqsClient()`, `CreateSnsClient()`, `CreateEventBridgeClient()`, `CreateDynamoDbClient()` return real `AmazonSQSClient` / `AmazonSimpleNotificationServiceClient` / `AmazonEventBridgeClient` / `AmazonDynamoDBClient` instances wired to the bus
@@ -233,19 +243,20 @@ throw new InternalResourceNotFoundException("Queue not found")
 throw new InternalResourceNotFoundException("Queue not found");
 ```
 
-**Error Response Format:**
-- SQS (JSON): `{"__type": "com.amazonaws.sqs#{ErrorCode}", "message": "..."}`
-- SNS (Query/XML): Standard AWS Query protocol error format
+**Error Response Format** (each wire protocol writes its own):
+- SQS over JSON and EventBridge: `{"__type": "com.amazonaws.sqs#{ErrorCode}", "message": "..."}` (`AwsJsonErrors`), with the service framework's errors (`UnknownOperationException`, `SerializationException`, `InternalFailure`) in `com.amazon.coral.service`; SQS adds the `x-amzn-query-error` header
+- SNS and SQS over Query: an XML `ErrorResponse` (`Type` Sender, or Receiver for a 5xx) carrying the request id of its header
+- DynamoDB: see AWS Protocol Support above
 
-The generated handlers format `ErrorCode` into each protocol's error response. An exception that is not an `AwsServiceException` (e.g. `NotSupportedException` from an unsupported operation) escapes to a generic fallback (`CreateErrorResponse` in the handler, `WriteErrorResponseAsync` in the server) that always answers in JSON.
+An exception that is not an `AwsServiceException` is answered as an internal failure (HTTP 500) in the protocol's own format. The server's `WriteErrorResponseAsync` answers only failures outside every wire protocol.
 
 ## Code Generation
 
 `tools/GenerateHandlers` reads the AWS service models in `src/LocalSqsSnsMessaging.Shared/ServiceModels/*.normal.json` and writes:
 - `Models/{Sqs,Sns,EventBridge}Models.g.cs`: the request/response models (`InternalTypeGenerator.cs`)
-- `Http/Handlers/Generated/{Sqs,Sns,EventBridge}OperationHandler.g.cs`: the library handlers, and `*.HttpContext.g.cs` twins of each for the server (`Program.cs`)
-- `SqsJsonSerializers.g.cs`, `EventBridgeJsonSerializers.g.cs` (`JsonCodeGenerator.cs`) and `SnsQuerySerializers.g.cs` (`QueryCodeGenerator.cs`)
-- `SqsQuerySerializers.g.cs` / `SqsQueryOperationHandler.g.cs`: the SQS Query protocol serializers and its one transport-neutral dispatcher (`SqsQueryCodeGenerator.cs`). The SQS model is the JSON one and has lost the Query wire names, so the generator restores them from its `WireNames` table
+- `Http/Handlers/Generated/{Sns,EventBridge}WireProtocol.g.cs`, `SqsWireProtocol.Json.g.cs` and `SqsWireProtocol.Query.g.cs`: each wire protocol's operation switch (`TryDispatch*Async`: deserialize, call the internal client, serialize), behind its hand-written `Handle*Async` (`Program.cs`; SQS Query's from `SqsQueryCodeGenerator.cs`)
+- `SqsJsonSerializers.g.cs`, `EventBridgeJsonSerializers.g.cs` (`JsonCodeGenerator.cs`; the deserializers parse the body in place and turn a body that is not JSON, or a value of the wrong type, into `SerializationException`) and `SnsQuerySerializers.g.cs` (`QueryCodeGenerator.cs`)
+- `SqsQuerySerializers.g.cs`: the SQS Query protocol serializers (`SqsQueryCodeGenerator.cs`). The SQS model is the JSON one and has lost the Query wire names, so the generator restores them from its `WireNames` table
 - DynamoDB and DynamoDB Streams use `ShapeJsonCodeGenerator.cs`, which writes a method per shape (`Read_X`/`Write_X`/`Validate_X`) so recursive and nested shapes work: `Models/DynamoDb{,Streams}Models.g.cs` (collections null when absent, so `"L": []` stays distinct from a missing list; Java-style `ToString` for validation messages), `DynamoDb{,Streams}JsonSerializers.g.cs` (including the model's constraint checks, worded as AWS's request validation words them) and `DynamoDb{,Streams}OperationDispatcher.g.cs`. `AttributeValue` maps to the hand-written `DynamoValue`
 
 **Regenerate** (the argument is the shared project directory):

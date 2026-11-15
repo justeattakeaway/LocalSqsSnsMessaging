@@ -2,6 +2,12 @@
 
 An in-memory emulator of AWS SQS, SNS, EventBridge and DynamoDB, answering requests and delivering messages as those services do.
 
+## Requests
+
+**Wire protocol**:
+How a service's requests and responses are written over HTTP (AWS JSON 1.0 or 1.1, or AWS Query), including how it states its errors and which headers it answers with. SQS speaks two; every other service speaks one.
+_Avoid_: transport, handler (for the concept)
+
 ## Delivery
 
 **Send**:
