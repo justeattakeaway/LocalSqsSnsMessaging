@@ -22,10 +22,6 @@ internal sealed partial class InternalSqsClient
         }
         Authorize(queue, SqsActionName.GetQueueAttributes);
 
-        // Expired messages are otherwise only dropped when a receive reaches them; sweep them
-        // now so the approximate counters don't keep reporting them.
-        queue.RemoveExpiredMessages(_bus.TimeProvider.GetUtcNow());
-
         var attributes = new Dictionary<string, string>();
         var attributeNames = request.AttributeNames ?? [];
         SqsQueueValidation.ValidateAttributeNamesToGet(attributeNames);
@@ -33,10 +29,11 @@ internal sealed partial class InternalSqsClient
         if (attributeNames.Count == 0 || attributeNames.Contains("All"))
         {
             attributes = new Dictionary<string, string>(queue.Attributes ?? []);
-            AddComputedAttributes(queue, attributes);
+            AddComputedAttributes(queue, queue.CountMessages(), attributes);
         }
         else
         {
+            var counts = queue.CountMessages();
             foreach (var attributeName in attributeNames)
             {
                 if (queue.Attributes?.TryGetValue(attributeName, out var value) == true)
@@ -45,7 +42,7 @@ internal sealed partial class InternalSqsClient
                 }
                 else if (IsComputedAttribute(attributeName))
                 {
-                    AddComputedAttribute(queue, attributeName, attributes);
+                    AddComputedAttribute(queue, counts, attributeName, attributes);
                 }
             }
         }
@@ -99,22 +96,23 @@ internal sealed partial class InternalSqsClient
                || attributeName == InternalQueueAttributeName.LastModifiedTimestamp;
     }
 
-    private static void AddComputedAttributes(SqsQueueResource queue, Dictionary<string, string> attributes)
+    private static void AddComputedAttributes(SqsQueueResource queue, SqsQueueResource.MessageCounts counts, Dictionary<string, string> attributes)
     {
-        AddComputedAttribute(queue, InternalQueueAttributeName.ApproximateNumberOfMessages, attributes);
-        AddComputedAttribute(queue, InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible, attributes);
-        AddComputedAttribute(queue, InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed, attributes);
-        AddComputedAttribute(queue, InternalQueueAttributeName.CreatedTimestamp, attributes);
-        AddComputedAttribute(queue, InternalQueueAttributeName.LastModifiedTimestamp, attributes);
+        AddComputedAttribute(queue, counts, InternalQueueAttributeName.ApproximateNumberOfMessages, attributes);
+        AddComputedAttribute(queue, counts, InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible, attributes);
+        AddComputedAttribute(queue, counts, InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed, attributes);
+        AddComputedAttribute(queue, counts, InternalQueueAttributeName.CreatedTimestamp, attributes);
+        AddComputedAttribute(queue, counts, InternalQueueAttributeName.LastModifiedTimestamp, attributes);
     }
 
-    private static void AddComputedAttribute(SqsQueueResource queue, string attributeName, Dictionary<string, string> attributes)
+    /// <param name="counts">The queue's message counts, taken once per request (each count sweeps expired messages).</param>
+    private static void AddComputedAttribute(SqsQueueResource queue, SqsQueueResource.MessageCounts counts, string attributeName, Dictionary<string, string> attributes)
     {
         long? value = attributeName switch
         {
-            InternalQueueAttributeName.ApproximateNumberOfMessages => queue.VisibleMessageCount,
-            InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible => queue.InFlightMessages.Count,
-            InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed => queue.DelayedMessageCount,
+            InternalQueueAttributeName.ApproximateNumberOfMessages => counts.Visible,
+            InternalQueueAttributeName.ApproximateNumberOfMessagesNotVisible => counts.InFlight,
+            InternalQueueAttributeName.ApproximateNumberOfMessagesDelayed => counts.Delayed,
             // Epoch seconds, as SQS reports them.
             InternalQueueAttributeName.CreatedTimestamp => queue.CreatedTimestamp.ToUnixTimeSeconds(),
             InternalQueueAttributeName.LastModifiedTimestamp => queue.LastModifiedTimestamp.ToUnixTimeSeconds(),

@@ -115,14 +115,10 @@ internal static class SqsRequestValidation
         }
     }
 
-    /// <summary>A message's visibility can't be extended past 12 hours from when it was received.</summary>
-    public static AwsServiceException? CheckVisibilityCap(int visibilityTimeout, TimeSpan sinceReceive)
-    {
-        return sinceReceive + TimeSpan.FromSeconds(visibilityTimeout) > TimeSpan.FromSeconds(MaxVisibilityTimeoutSeconds)
-            ? InvalidParameterValue("VisibilityTimeout", visibilityTimeout,
-                $"Total VisibilityTimeout for the message is beyond the limit [{MaxVisibilityTimeoutSeconds} seconds].")
-            : null;
-    }
+    /// <summary>The refusal of a visibility change that would keep a message in flight past 12 hours from when it was received.</summary>
+    public static AwsServiceException VisibilityCapExceeded(int visibilityTimeout) =>
+        InvalidParameterValue("VisibilityTimeout", visibilityTimeout,
+            $"Total VisibilityTimeout for the message is beyond the limit [{MaxVisibilityTimeoutSeconds} seconds].");
 
     /// <summary>What a send names, single or batched, for <see cref="ValidateSend"/>.</summary>
     public readonly record struct SendParameters(

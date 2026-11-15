@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -33,27 +32,13 @@ internal static class DashboardApi
             return Results.NotFound("Queue not found");
         }
 
+        var contents = queue.Peek();
         var result = new QueueMessages
         {
             QueueName = queue.Name,
-            PendingMessages = queue.Messages.Snapshot()
-                .Select(m => ToMessageInfo(m, inFlight: false)).ToList(),
-            InFlightMessages = queue.InFlightMessages.Values
-                .Select(pair => ToMessageInfo(pair.Item1, inFlight: true))
-                .ToList()
+            PendingMessages = contents.Waiting.Select(m => ToMessageInfo(m, inFlight: false, queue.IsFifo)).ToList(),
+            InFlightMessages = contents.InFlight.Select(m => ToMessageInfo(m, inFlight: true, queue.IsFifo)).ToList()
         };
-
-        // For FIFO queues, also include messages from message groups
-        if (queue.IsFifo)
-        {
-            foreach (var group in queue.MessageGroups)
-            {
-                foreach (var msg in group.Value)
-                {
-                    result.PendingMessages.Add(ToMessageInfo(msg, inFlight: false, messageGroupId: group.Key));
-                }
-            }
-        }
 
         return Results.Json(result, DashboardJsonContext.Default.QueueMessages);
     }
@@ -119,18 +104,18 @@ internal static class DashboardApi
             Regions = RegionsInUse(bus, resources.Region),
             CurrentRegion = resources.Region,
 
-            Queues = resources.Queues.Values.Select(q => new QueueInfo
+            Queues = resources.Queues.Values.Select(q => (Queue: q, Counts: q.CountMessages())).Select(q => new QueueInfo
             {
-                Name = q.Name,
-                Arn = q.Arn,
-                Url = q.Url,
-                IsFifo = q.IsFifo,
-                MessagesAvailable = q.Messages.Count,
-                MessagesInFlight = q.InFlightMessages.Count,
-                VisibilityTimeoutSeconds = (int)q.VisibilityTimeout.TotalSeconds,
-                HasDeadLetterQueue = q.DeadLetterTargetArn is not null,
-                DeadLetterQueueName = Arn.TryParse(q.DeadLetterTargetArn, out var deadLetterArn) ? deadLetterArn.Resource : null,
-                MaxReceiveCount = q.MaxReceiveCount
+                Name = q.Queue.Name,
+                Arn = q.Queue.Arn,
+                Url = q.Queue.Url,
+                IsFifo = q.Queue.IsFifo,
+                MessagesAvailable = q.Counts.Visible,
+                MessagesInFlight = q.Counts.InFlight,
+                VisibilityTimeoutSeconds = (int)q.Queue.VisibilityTimeout.TotalSeconds,
+                HasDeadLetterQueue = q.Queue.DeadLetterTargetArn is not null,
+                DeadLetterQueueName = Arn.TryParse(q.Queue.DeadLetterTargetArn, out var deadLetterArn) ? deadLetterArn.Resource : null,
+                MaxReceiveCount = q.Queue.MaxReceiveCount
             }).OrderBy(q => q.Name).ToList(),
 
             Topics = resources.Topics.Values.Select(t => new TopicInfo
@@ -150,12 +135,12 @@ internal static class DashboardApi
             }).ToList(),
 
             MoveTasks = bus.MoveTasks.Values
-                .Where(t => string.Equals(Arn.RegionOf(t.SourceQueue.Arn), resources.Region, StringComparison.Ordinal))
+                .Where(t => string.Equals(Arn.RegionOf(t.SourceArn), resources.Region, StringComparison.Ordinal))
                 .Select(t => new MoveTaskInfo
             {
                 TaskHandle = t.TaskHandle,
-                SourceArn = t.SourceQueue.Arn,
-                DestinationArn = t.DestinationQueue?.Arn,
+                SourceArn = t.SourceArn,
+                DestinationArn = t.DestinationArn,
                 Status = t.Status,
                 ApproximateNumberOfMessagesMoved = t.ApproximateNumberOfMessagesMoved,
                 ApproximateNumberOfMessagesToMove = t.ApproximateNumberOfMessagesToMove
@@ -187,41 +172,10 @@ internal static class DashboardApi
             return Results.NotFound("Queue not found");
         }
 
-        // Try removing from in-flight messages
-        foreach (var kvp in queue.InFlightMessages)
-        {
-            if (kvp.Value.Item1.MessageId == messageId)
-            {
-                if (queue.InFlightMessages.TryRemove(kvp.Key, out var removed))
-                {
-                    removed.Item2.Dispose();
-                    bus.RecordOperation("Dashboard", "DeleteMessage", queue.Arn);
-                    return Results.NoContent();
-                }
-            }
-        }
-
-        // Try removing from pending messages (drain and re-enqueue without the target)
-        if (queue.Messages.TryRemove(messageId))
+        if (queue.RemoveMessage(messageId))
         {
             bus.RecordOperation("Dashboard", "DeleteMessage", queue.Arn);
             return Results.NoContent();
-        }
-
-        // Try removing from FIFO message groups
-        if (queue.IsFifo)
-        {
-            foreach (var group in queue.MessageGroups)
-            {
-                var original = group.Value;
-                var filtered = new ConcurrentQueue<Message>(original.Where(m => m.MessageId != messageId));
-                if (filtered.Count < original.Count)
-                {
-                    queue.MessageGroups.TryUpdate(group.Key, filtered, original);
-                    bus.RecordOperation("Dashboard", "DeleteMessage", queue.Arn);
-                    return Results.NoContent();
-                }
-            }
         }
 
         return Results.NotFound("Message not found");
@@ -321,7 +275,7 @@ internal static class DashboardApi
             DashboardJsonContext.Default.PublishTopicResponse);
     }
 
-    private static MessageInfo ToMessageInfo(Message msg, bool inFlight, string? messageGroupId = null)
+    private static MessageInfo ToMessageInfo(Message msg, bool inFlight, bool fifo)
     {
         // Assign a stable MessageId if the message doesn't have one (e.g. SNS-delivered messages)
         msg.MessageId ??= Guid.NewGuid().ToString();
@@ -330,7 +284,8 @@ internal static class DashboardApi
             MessageId = msg.MessageId,
             Body = msg.Body!,
             InFlight = inFlight,
-            MessageGroupId = messageGroupId,
+            // Shown for FIFO messages, whose group orders them; a standard message's group only spreads load.
+            MessageGroupId = fifo ? msg.Attributes?.GetValueOrDefault(InternalMessageSystemAttributeName.MessageGroupId) : null,
             Attributes = msg.Attributes is { Count: > 0 } ? msg.Attributes : null,
             MessageAttributes = msg.MessageAttributes is { Count: > 0 }
                 ? msg.MessageAttributes.ToDictionary(
