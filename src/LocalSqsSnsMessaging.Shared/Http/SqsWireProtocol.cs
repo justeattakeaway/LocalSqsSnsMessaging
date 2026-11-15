@@ -1,5 +1,9 @@
+using System.Buffers;
 using System.Net;
 using System.Text;
+#if NETSTANDARD2_0
+using LocalSqsSnsMessaging.Http.Internal;
+#endif
 
 namespace LocalSqsSnsMessaging.Http;
 
@@ -14,13 +18,16 @@ namespace LocalSqsSnsMessaging.Http;
 /// the AWS Query protocol it was born with (form-encoded <c>Action=...&amp;Version=2012-11-05</c>
 /// parameters, XML responses). The Content-Type picks the protocol.
 /// </remarks>
-internal static class SqsWireProtocol
+internal static partial class SqsWireProtocol
 {
     /// <summary>The Query protocol's API version for SQS (SNS's is 2010-03-31).</summary>
     public const string QueryApiVersion = "2012-11-05";
 
     /// <summary>The JSON protocol's Content-Type; SQS refuses any other with a JSON target.</summary>
     public const string JsonContentType = "application/x-amz-json-1.0";
+
+    /// <summary>The namespace of SQS's own errors over JSON (<c>com.amazonaws.sqs#QueueDoesNotExist</c>).</summary>
+    private const string JsonErrorNamespace = "com.amazonaws.sqs";
 
     /// <summary>The Query protocol's Content-Type.</summary>
     public const string FormContentType = "application/x-www-form-urlencoded";
@@ -97,6 +104,50 @@ internal static class SqsWireProtocol
 
     /// <summary>True if <paramref name="mediaType"/> (without parameters) is the JSON protocol's.</summary>
     public static bool IsJson(string? mediaType) => string.Equals(mediaType, JsonContentType, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Runs <paramref name="operation"/> with its JSON <paramref name="body"/> on
+    /// <paramref name="client"/> (built for the request's region and caller) and writes the JSON
+    /// response, or the error document, to <paramref name="output"/>. Only cancellation escapes:
+    /// every failure is answered in the protocol, with the <c>x-amzn-query-error</c> header SDKs
+    /// read the Query protocol's error code from.
+    /// </summary>
+    public static async ValueTask<WireResponse> HandleJsonAsync(
+        string operation,
+        ReadOnlyMemory<byte> body,
+        InternalSqsClient client,
+        ArrayBufferWriter<byte> output,
+        CancellationToken cancellationToken)
+    {
+#if NET
+        using var activity = WireTracing.Start("SQS", operation);
+#endif
+        WireResponse response;
+        Exception? failure = null;
+        try
+        {
+            response = await TryDispatchJsonAsync(operation, body, client, output, cancellationToken).ConfigureAwait(false)
+                ? new WireResponse(HttpStatusCode.OK, JsonContentType, WireResponse.NewRequestId())
+                : AwsJsonErrors.UnknownOperation(output, JsonErrorNamespace, JsonContentType, queryCompatible: true);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+#pragma warning disable CA1031 // Every failure is answered in the protocol.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            failure = ex;
+            output.ResetWrittenCount();
+            response = AwsJsonErrors.Write(output, ex, JsonErrorNamespace, JsonContentType, queryCompatible: true);
+        }
+
+#if NET
+        WireTracing.Complete(activity, response.Status, failure);
+#endif
+        return response;
+    }
 
     /// <summary>The operation of an <c>X-Amz-Target</c> value (<c>AmazonSQS.SendMessage</c>), or null.</summary>
     public static string? OperationFromTarget(string? target)

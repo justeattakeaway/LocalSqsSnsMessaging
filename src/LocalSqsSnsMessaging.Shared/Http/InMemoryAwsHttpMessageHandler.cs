@@ -139,39 +139,23 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
     /// </summary>
     private async Task<HttpResponseMessage> SendSqsAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var content = request.Content;
-        var mediaType = content?.Headers.ContentType?.MediaType;
-
-        byte[]? body = null;
-        var length = content?.Headers.ContentLength;
-        if (content is not null && (length is null || length > SqsWireProtocol.MaxRequestBodyBytes))
-        {
-            // Buffered by HttpContent, so the JSON handler can still read it afterwards.
-            body = await content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-            length = body.Length;
-        }
-
-        if (body is not null && SqsWireProtocol.IsTooLarge(body, SqsWireProtocol.IsForm(mediaType)))
+        var mediaType = request.Content?.Headers.ContentType?.MediaType;
+        using var body = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+        if (SqsWireProtocol.IsTooLarge(body.Memory.Span, SqsWireProtocol.IsForm(mediaType)))
         {
             return Refusal(SqsWireProtocol.RequestEntityTooLargeStatus, SqsWireProtocol.RequestEntityTooLargeBody, "text/html");
         }
 
         var query = request.RequestUri?.IsAbsoluteUri == true ? request.RequestUri.Query : string.Empty;
-        if (SqsWireProtocol.IsForm(mediaType) || ((length ?? 0) == 0 && query.Contains("Action=", StringComparison.Ordinal)))
+        if (SqsWireProtocol.IsForm(mediaType) || (body.Memory.Length == 0 && query.Contains("Action=", StringComparison.Ordinal)))
         {
-            body ??= content is not null ? await content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false) : [];
             // A GET carries its Query parameters in the URL rather than the body.
-            var parameters = QueryStringParser.Parse(body.Length > 0 ? body : Encoding.UTF8.GetBytes(query.TrimStart('?')));
+            var parameters = QueryStringParser.Parse(body.Memory.Length > 0 ? body.Memory.Span : Encoding.UTF8.GetBytes(query.TrimStart('?')));
             var client = new InternalSqsClient(_bus, AwsRequestRegion.FromRequest(request)) { Caller = SqsCaller.FromRequest(request) };
             return await SendSqsQueryAsync(parameters, client, cancellationToken).ConfigureAwait(false);
         }
 
-        if (!request.Headers.TryGetValues("x-amz-target", out var targets))
-        {
-            content?.Headers.TryGetValues("x-amz-target", out targets);
-        }
-
-        var operationName = SqsWireProtocol.OperationFromTarget(targets?.FirstOrDefault());
+        var operationName = SqsWireProtocol.OperationFromTarget(TargetOf(request));
         if (!SqsWireProtocol.IsJson(mediaType))
         {
             return Refusal(SqsWireProtocol.UnknownOperationXmlStatus, SqsWireProtocol.UnknownOperationXml, "application/xml");
@@ -182,32 +166,10 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
             return Refusal(SqsWireProtocol.UnknownOperationJsonStatus, SqsWireProtocol.UnknownOperationJson, SqsWireProtocol.JsonContentType);
         }
 
-#if NET
-        using var activity = InMemoryAwsBus.ActivitySource.StartActivity($"SQS.{operationName}", System.Diagnostics.ActivityKind.Client);
-#endif
-        try
-        {
-            var response = await Handlers.SqsOperationHandler.HandleAsync(request, operationName, _bus, cancellationToken).ConfigureAwait(false);
-            response.Headers.Add("x-amzn-RequestId", Guid.NewGuid().ToString());
-            return response;
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-#pragma warning disable CA1031
-        catch (Exception ex)
-#pragma warning restore CA1031
-        {
-#if NET
-            if (activity is not null)
-            {
-                activity.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-                activity.SetTag("error.type", ex.GetType().FullName);
-            }
-#endif
-            return CreateErrorResponse(ex);
-        }
+        using var output = PooledArrayBufferWriter.Rent();
+        var jsonClient = new InternalSqsClient(_bus, AwsRequestRegion.FromRequest(request)) { Caller = SqsCaller.FromRequest(request) };
+        var wire = await SqsWireProtocol.HandleJsonAsync(operationName, body.Memory, jsonClient, output.Writer, cancellationToken).ConfigureAwait(false);
+        return ToHttpResponse(wire, output.Writer);
     }
 
     /// <summary>
@@ -263,31 +225,6 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         };
         response.Headers.Add("x-amzn-RequestId", Guid.NewGuid().ToString());
         return response;
-    }
-
-    private static HttpResponseMessage CreateErrorResponse(Exception exception)
-    {
-        var errorType = exception.GetType().Name;
-        var errorMessage = exception.Message;
-
-        var errorJson = $$"""
-        {
-            "__type": "{{errorType}}",
-            "message": "{{errorMessage.Replace("\"", "\\\"", StringComparison.Ordinal)}}"
-        }
-        """;
-
-        var statusCode = exception switch
-        {
-            InternalNotFoundException => HttpStatusCode.NotFound,
-            AwsServiceException awsEx => awsEx.StatusCode,
-            _ => HttpStatusCode.InternalServerError
-        };
-
-        return new HttpResponseMessage(statusCode)
-        {
-            Content = new StringContent(errorJson, Encoding.UTF8, "application/x-amz-json-1.0")
-        };
     }
 }
 #endif

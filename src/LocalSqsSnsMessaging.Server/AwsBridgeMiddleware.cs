@@ -132,8 +132,10 @@ internal sealed class AwsBridgeMiddleware
         }
         else
         {
-            SetRequestId(context);
-            await SqsOperationHandler.HandleAsync(context, body, bodyLength, operation, bus, cancellationToken).ConfigureAwait(false);
+            using var output = PooledArrayBufferWriter.Rent();
+            var client = new InternalSqsClient(bus, AwsRequestRegion.FromHttpContext(context)) { Caller = SqsCaller.FromHttpContext(context) };
+            var wire = await SqsWireProtocol.HandleJsonAsync(operation, body.AsMemory(0, bodyLength), client, output.Writer, cancellationToken).ConfigureAwait(false);
+            await WriteAsync(context, wire, output.Writer, cancellationToken).ConfigureAwait(false);
         }
     }
 
