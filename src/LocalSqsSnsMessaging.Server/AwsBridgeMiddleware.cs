@@ -62,10 +62,14 @@ internal sealed class AwsBridgeMiddleware
                 var mediaType = MediaTypeOf(context.Request.ContentType);
                 var hasTarget = TryGetJsonTarget(context.Request, out var targetService, out var jsonOperation);
 
-                // SQS and EventBridge use the JSON protocol with an x-amz-target header, told apart
-                // by the target's prefix (AmazonSQS.* vs AWSEvents.*). SNS, and SQS too, speak the
+                // SQS, EventBridge and DynamoDB use the JSON protocol with an x-amz-target header, told apart
+                // by the target's prefix (AmazonSQS.*, AWSEvents.*, DynamoDB_20120810.*). SNS, and SQS too, speak the
                 // AWS Query protocol: form-encoded parameters, told apart by their API Version.
-                if (hasTarget && string.Equals(targetService, "AWSEvents", StringComparison.Ordinal))
+                if (hasTarget && DynamoDbWireProtocol.IsTarget(context.Request.Headers["x-amz-target"].ToString()))
+                {
+                    await HandleDynamoDbAsync(context, bodyBuffer, bodyLength, bus, cancellationToken).ConfigureAwait(false);
+                }
+                else if (hasTarget && string.Equals(targetService, "AWSEvents", StringComparison.Ordinal))
                 {
                     await EventBridgeOperationHandler.HandleAsync(
                         context, bodyBuffer, bodyLength, jsonOperation, bus, cancellationToken).ConfigureAwait(false);
@@ -137,6 +141,22 @@ internal sealed class AwsBridgeMiddleware
         {
             await SqsOperationHandler.HandleAsync(context, body, bodyLength, operation, bus, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>A DynamoDB or DynamoDB Streams request (see <see cref="DynamoDbWireProtocol"/>).</summary>
+    private static async Task HandleDynamoDbAsync(HttpContext context, byte[] body, int bodyLength, InMemoryAwsBus bus, CancellationToken cancellationToken)
+    {
+        var result = DynamoDbWireProtocol.ConflictingSignatures(context.Request.Headers.ContainsKey("Authorization"), context.Request.Query.ContainsKey("X-Amz-Algorithm"))
+            ?? await DynamoDbWireProtocol.HandleAsync(
+                context.Request.Headers["x-amz-target"].ToString(),
+                body.AsMemory(0, bodyLength),
+                bus,
+                AwsRequestRegion.FromHttpContext(context),
+                cancellationToken).ConfigureAwait(false);
+        context.Response.StatusCode = (int)result.Status;
+        context.Response.ContentType = DynamoDbWireProtocol.ContentType;
+        context.Response.Headers["x-amz-crc32"] = result.Crc32;
+        await context.Response.Body.WriteAsync(result.Body, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>An SQS request over the AWS Query protocol: form-encoded parameters, an XML response.</summary>

@@ -1,6 +1,6 @@
-# AWS emulator evaluation suite (SQS, SNS and EventBridge)
+# AWS emulator evaluation suite (SQS, SNS, EventBridge and DynamoDB)
 
-These are C# ports of the SQS, SNS and EventBridge checks in AWS's
+These are C# ports of the SQS, SNS, EventBridge and DynamoDB checks in AWS's
 [emulator evaluation suite](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1),
 pinned at commit `4df2823`. Each upstream `check_<name>.py` was verified against real AWS. Each one
 becomes one test file here, with the same steps, waits and assertion messages, so the two can be
@@ -13,11 +13,13 @@ compared side by side:
 | [`behavioral/sns__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/sns__sqs) | `SnsSqs/<Name>.cs` | `sns__sqs.<id>` |
 | [`behavioral/events/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/events) | `Events/<Name>.cs` | `events.<id>` |
 | [`behavioral/events__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/events__sqs) | `EventsSqs/<Name>.cs` | `events__sqs.<id>` |
+| [`behavioral/dynamodb/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/dynamodb) | `DynamoDb/<Name>.cs` | `dynamodb.<id>` |
+| [`behavioral/dynamodbstreams/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/dynamodbstreams) | `DynamoDbStreams/<Name>.cs` | `dynamodbstreams.<id>` |
 
 - **Same verdicts:** each test gets the same verdict the Python check got when it was run with boto3
   against `LocalSqsSnsMessaging.Server`.
-- **Real AWS clients:** tests use real `AmazonSQSClient`s, `AmazonSimpleNotificationServiceClient`s and
-  `AmazonEventBridgeClient`s over the in-memory HTTP handler, through `FidelityContext`, the C# version of the Python `ctx`.
+- **Real AWS clients:** tests use real `AmazonSQSClient`s, `AmazonSimpleNotificationServiceClient`s,
+  `AmazonEventBridgeClient`s, `AmazonDynamoDBClient`s and `AmazonDynamoDBStreamsClient`s over the in-memory HTTP handler, through `FidelityContext`, the C# version of the Python `ctx`.
 - **Exactly the check's requests:** the test run's SDK tracing adds trace context to every request
   (a `traceparent` message attribute on Publish, an `AWSTraceHeader` on SendMessage), which boto3
   doesn't, so `FidelityContext` turns that off for the whole check.
@@ -108,6 +110,73 @@ One port passes although its Python check failed against the server:
 about 57 seconds, and the server's real request latency pushed it past the runner's 60-second budget.
 On virtual time it finishes inside the budget, and every assertion holds.
 
+## DynamoDB scope
+
+The DynamoDB ports cover the whole of DynamoDB that needs no other service: tables and indexes,
+item reads and writes, condition, update, projection and filter expressions and the legacy
+parameters, Query and Scan, batches and transactions, PartiQL, consumed capacity, size and
+validation limits, tags, resource policies, backups and point-in-time restore, time to live,
+DynamoDB Streams, the JSON wire protocol (`x-amz-crc32`, `__type`) and concurrency: 853 of the 902
+checks in `behavioral/dynamodb` and `behavioral/dynamodbstreams`. 750 pass and 103 are known gaps.
+
+`DynamoDbFidelity.cs` holds what the ports share:
+
+- **Values as boto3 writes them:** `Ddb` builds attribute values and items
+  (`Item(("pk", S("a")), ("n", N("1")))`), and `Py.Repr` and `Py.Equal` give Python's `repr()` and
+  `==` over what boto3 would hand back, so assertion messages read as the Python's `{x!r}` does.
+- **Waiters:** `WaitForTableExists` and `WaitForTableNotExists` are boto3's `table_exists` and
+  `table_not_exists`, on the check's clock.
+- **Raw requests:** `ctx.DynamoDbRaw(operation, json)` sends a hand-written body, for what the
+  .NET SDK can't send (wrong JSON types, an attribute value with no type or two) and for checks
+  that read the raw response.
+
+The .NET SDK differs from boto3 in a few places the ports work around:
+
+- **Requests boto3 refuses:** boto3 checks requests against the model before sending them. Checks
+  that turn this off (`parameter_validation=False`) send through the ordinary client, which never
+  checks. The SDK's Roslyn analyzers reject some literal constraint violations (`Limit = 0`, an
+  empty table name), so those values come from fields.
+- **Retries:** clients retry as the runner's do (standard mode, 3 attempts). The .NET SDK numbers
+  every attempt `attempt=N; max=M` in `amz-sdk-request`, where botocore leaves `max` off the first,
+  and the two retry checks assert the .NET form.
+- **Refused calls:** an error throws, so a check's assertion that a refused call returned no
+  `Items` stays as a comment.
+
+The 10 checks that call STS only for the account id are ported with `ctx.Account`. These 49 checks
+are not ported, because they need another service:
+
+- **S3 (exports and imports)** (18): `dynamodb.describe-import-not-found-rejected`, `dynamodb.export-client-token-conflict`, `dynamodb.export-conflict-duplicate-rejected`, `dynamodb.export-invalid-export-time-rejected`, `dynamodb.export-invalid-time`, `dynamodb.export-lifecycle`, `dynamodb.export-table-lifecycle-to-completed`, `dynamodb.export-to-point-in-time-invalid-time-rejected`, `dynamodb.import-not-found`, `dynamodb.import-table-conflict-rejected`, `dynamodb.import-table-describe-list-workflow`, `dynamodb.import-table-lifecycle`, `dynamodb.import-table-lifecycle-to-completed`, `dynamodb.import-table-malformed-item-reports-exact-failure`, `dynamodb.import-target-in-use`, `dynamodb.list-exports-pagination-consistent-order`, `dynamodb.list-imports-pagination-consistent-order`, `dynamodb.point-in-time-export-restore-workflow`.
+- **Kinesis streaming destinations** (8): `dynamodb.disable-kinesis-never-enabled`, `dynamodb.disable-kinesis-streaming-destination-not-enabled-rejected`, `dynamodb.disable-kinesis-streaming-destination-omits-configuration`, `dynamodb.enable-kinesis-invalid-arn`, `dynamodb.enable-kinesis-streaming-destination-already-active-rejected`, `dynamodb.kinesis-streaming-destination-enable-disable-lifecycle`, `dynamodb.kinesis-streaming-destination-lifecycle`, `dynamodb.kinesis-streaming-lifecycle`.
+- **CloudFormation stacks** (6): `dynamodb.deploy-cfn-gsi-queryable-after-deploy`, `dynamodb.deploy-cfn-stream-arn-captures-writes`, `dynamodb.deploy-cfn-table-duplicate-name-create-rejected`, `dynamodb.deploy-cfn-table-put-get-roundtrip`, `dynamodb.deploy-cfn-ttl-attribute-expires-item`, `dynamodb.deploy-dynamodb-1-cfn-global-table-bidirectional-then-replica-removal-rejected`.
+- **Application Auto Scaling** (6): `dynamodb.concurrent-table-replica-auto-scaling-race-no-corruption`, `dynamodb.global-table-settings-describe-update`, `dynamodb.global-table-settings-describe-update-roundtrip`, `dynamodb.replica-auto-scaling-describe-update`, `dynamodb.replica-autoscaling-policy-applied`, `dynamodb.table-replica-auto-scaling-update-reflected`.
+- **KMS keys** (5): `dynamodb.create-table-sse-enabled-without-kms-key-uses-aws-managed-key`, `dynamodb.restore-table-from-backup-sse-override-uses-customer-key`, `dynamodb.sse-with-a-kms-alias-reports-the-resolved-key-arn`, `dynamodb.update-table-sse-nonexistent-cmk-rejected`, `dynamodb.update-table-sse-switches-owned-managed-customer-key`.
+- **IAM roles, role assumption and Lambda** (4): `dynamodb.awsjson-epoch-timestamp-survives-two-deserializers`, `dynamodb.awsjson-error-code-carrier-is-body-only-rejected`, `dynamodb.e2e-resource-policy-grant-revoke-access-flow`, `dynamodb.resource-policy-explicit-deny-blocks-access-rejected`.
+- **CloudWatch metrics** (2): `dynamodb.conditional-check-failed-requests-metric-counts-only-the-failures`, `dynamodb.provisioned-write-throttle-reason-and-metric-agreement-rejected`.
+
+The 103 known gaps, by root cause:
+
+| `FidelityGap` | Checks | What the library doesn't do |
+|---|---|---|
+| `DynamoDbVectorSearch` | 43 | Vector indexes and `SearchVectors` |
+| `DynamoDbGlobalTables` | 20 | Replicas, `CreateGlobalTable` and the global-table settings |
+| `DynamoDbDetail` | 13 | One-off differences: a message's wording, the order of checks, an edge case (each attribute says which) |
+| `DynamoDbTransientStates` | 9 | Tables, indexes and backups are ACTIVE (or gone) at once, never CREATING, UPDATING or DELETING |
+| `DynamoDbMultiAttributeKeys` | 8 | Indexes keyed on several attributes per key role |
+| `DynamoDbAuthentication` | 4 | Signature checks: an unsigned, incompletely signed or tampered request is served |
+| `DynamoDbThroughput` | 4 | Throttling: provisioned throughput is reported, never enforced |
+| `EmulatorBudget` | 2 | (see below) |
+
+Two checks, `dynamodb.batch-write-item-and-delete-item-index-capacity-arms-follow-item-estate` and
+`dynamodb.update-item-index-capacity-ladder-follows-key-vs-projected-change`, wait until
+`time_left() - 60` seconds, which is no time at all under the runner's 60-second emulator budget,
+so they fail against any emulator. With a longer budget the rest of the first one passes.
+
+Every port gets its Python check's verdict, except 8 of the 10 checks that call STS only for the
+account id: they errored in Python, because the server has no STS, and pass here. The other two
+still fail, on gaps the Python run never reached: `dynamodb.create-table-with-vector-index-is-described-back`
+(vector search) and `dynamodb.resource-policy-explicit-deny-on-getitem-rejected-put-still-allowed`
+(resource policies are stored and returned but never enforced).
+
 ## Known gaps
 
 A check we don't pass yet carries `[KnownFidelityGap(FidelityGap.X, "why")]` and is skipped, so the
@@ -118,7 +187,7 @@ suite stays green. To work on a gap, run the skipped tests too:
 LOCALSQSSNS_RUN_KNOWN_GAPS=1 dotnet run --project tests/LocalSqsSnsMessaging.Tests -c Release -- \
   --treenode-filter "/*/LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.*/*/*"
 
-# One service: .Sqs, .Sns, .SnsSqs, .Events or .EventsSqs
+# One service: .Sqs, .Sns, .SnsSqs, .Events, .EventsSqs, .DynamoDb or .DynamoDbStreams
 LOCALSQSSNS_RUN_KNOWN_GAPS=1 dotnet run --project tests/LocalSqsSnsMessaging.Tests -c Release -- \
   --treenode-filter "/*/LocalSqsSnsMessaging.Tests.AwsEvaluationSuite.Sns/*/*"
 
@@ -154,7 +223,8 @@ so the whole suite takes seconds:
 SNS runs on the same clock: deliveries to SQS happen during the Publish, and a FIFO topic's
 five-minute deduplication window and its message archive are measured on the bus's clock.
 EventBridge does too: deliveries happen during PutEvents, and the clock drives replays and
-scheduled rules.
+scheduled rules. So does DynamoDB: time to live deletes, transaction token windows, stream
+records' timestamps and point-in-time restore windows are all on the bus's clock.
 
 Write new waits with `FidelityTime`, never `Task.Delay` or `Stopwatch`: a real wait doesn't
 move the bus's clock, so whatever it waits for never happens.

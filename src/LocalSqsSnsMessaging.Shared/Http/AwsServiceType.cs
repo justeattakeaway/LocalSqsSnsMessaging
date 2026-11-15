@@ -18,5 +18,15 @@ public enum AwsServiceType
     /// <summary>
     /// Amazon EventBridge
     /// </summary>
-    EventBridge
+    EventBridge,
+
+    /// <summary>
+    /// Amazon DynamoDB
+    /// </summary>
+    DynamoDb,
+
+    /// <summary>
+    /// Amazon DynamoDB Streams
+    /// </summary>
+    DynamoDbStreams
 }

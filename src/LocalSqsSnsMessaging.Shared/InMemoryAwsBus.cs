@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace LocalSqsSnsMessaging;
 
 /// <summary>
-/// Represents an in-memory implementation of AWS messaging services (SQS and SNS).
+/// Represents an in-memory implementation of AWS services: SQS, SNS, EventBridge and DynamoDB.
 /// </summary>
 public sealed class InMemoryAwsBus
 {
@@ -115,6 +115,22 @@ public sealed class InMemoryAwsBus
     /// alias, unless that alias is listed here.
     /// </remarks>
     public ISet<string>? KmsKeyAliases { get; init; }
+
+    /// <summary>
+    /// Gets or initializes how long a new DynamoDB table (and each of its global secondary
+    /// indexes) stays <c>CREATING</c> before it becomes <c>ACTIVE</c>, measured on
+    /// <see cref="TimeProvider"/>. Defaults to zero: a table is ACTIVE as soon as CreateTable
+    /// returns, so tests needn't wait for it.
+    /// </summary>
+    public TimeSpan DynamoDbTableCreationDelay { get; init; } = TimeSpan.Zero;
+
+    /// <summary>
+    /// Gets or initializes how often DynamoDB time to live looks for expired items in a table
+    /// with time to live enabled, measured on <see cref="TimeProvider"/>. An item expires once
+    /// its TTL attribute (epoch seconds) is in the past; it is deleted on the next sweep.
+    /// AWS deletes expired items within a few days; this defaults to one second.
+    /// </summary>
+    public TimeSpan DynamoDbTimeToLiveSweepInterval { get; init; } = TimeSpan.FromSeconds(1);
 
     private static readonly Lazy<HttpClient> DefaultHttpClient = new(() => new HttpClient());
     private HttpClient? _httpClient;

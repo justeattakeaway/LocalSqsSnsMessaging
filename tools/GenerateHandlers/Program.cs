@@ -66,8 +66,70 @@ GenerateJsonProtocolHandler(
     outputDir,
     writeEmptyResponseLists: true);
 
+// DynamoDB and DynamoDB Streams (JSON protocol, json 1.0). Their AttributeValue holds maps and
+// lists of itself, so they use the shape-per-method generator, with AttributeValue read straight
+// into the immutable DynamoValue the store keeps.
+var attributeValue = new Dictionary<string, ShapeJsonCodeGenerator.CustomShape>(StringComparer.Ordinal)
+{
+    ["AttributeValue"] = new(
+        "LocalSqsSnsMessaging.DynamoDb.DynamoValue",
+        "LocalSqsSnsMessaging.DynamoDb.DynamoValueJson.Read",
+        "LocalSqsSnsMessaging.DynamoDb.DynamoValueJson.Write",
+        "LocalSqsSnsMessaging.DynamoDb.DynamoValueJson.Render"),
+};
+
+GenerateShapeJsonService(
+    Path.Combine(serviceModelsDir, "dynamodb-2012-08-10.normal.json"),
+    "DynamoDb",
+    "LocalSqsSnsMessaging.DynamoDb.Model",
+    "LocalSqsSnsMessaging.DynamoDb.InternalDynamoDbClient",
+    modelsDir,
+    outputDir,
+    attributeValue,
+    "LocalSqsSnsMessaging.DynamoDb.DynamoDbRequestChecks",
+    // DynamoDB's own write requests carry a workload profile the model does not declare.
+    new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["PutRequest"] = "workloadProfileName=null",
+        ["DeleteRequest"] = "workloadProfileName=null",
+    });
+
+GenerateShapeJsonService(
+    Path.Combine(serviceModelsDir, "streams.dynamodb-2012-08-10.normal.json"),
+    "DynamoDbStreams",
+    "LocalSqsSnsMessaging.DynamoDbStreams.Model",
+    "LocalSqsSnsMessaging.DynamoDb.InternalDynamoDbStreamsClient",
+    modelsDir,
+    outputDir,
+    attributeValue);
+
 Console.WriteLine("Code generation completed successfully!");
 return 0;
+
+static void GenerateShapeJsonService(
+    string modelPath,
+    string serviceName,
+    string modelNamespace,
+    string clientType,
+    string modelsDir,
+    string outputDir,
+    IReadOnlyDictionary<string, ShapeJsonCodeGenerator.CustomShape> customShapes,
+    string? requestChecks = null,
+    IReadOnlyDictionary<string, string>? unmodeledMembers = null)
+{
+    Console.WriteLine($"  Processing {serviceName} (JSON protocol, shape per method)...");
+
+    using var doc = JsonDocument.Parse(File.ReadAllText(modelPath));
+    var root = doc.RootElement;
+    var generator = new ShapeJsonCodeGenerator(
+        serviceName, modelNamespace, clientType, root.GetProperty("shapes"), root.GetProperty("operations"), customShapes, requestChecks, unmodeledMembers);
+
+    File.WriteAllText(Path.Combine(modelsDir, $"{serviceName}Models.g.cs"), generator.GenerateModels());
+    File.WriteAllText(Path.Combine(outputDir, $"{serviceName}JsonSerializers.g.cs"), generator.GenerateSerializers());
+    File.WriteAllText(Path.Combine(outputDir, $"{serviceName}OperationDispatcher.g.cs"), generator.GenerateDispatcher());
+
+    Console.WriteLine($"    Generated models, serializers and dispatcher for {serviceName}");
+}
 
 static void GenerateJsonProtocolHandler(string modelPath, string serviceName, string modelNamespace, string outputDir, bool writeEmptyResponseLists = false)
 {

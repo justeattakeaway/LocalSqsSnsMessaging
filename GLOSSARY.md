@@ -1,6 +1,6 @@
 # LocalSqsSnsMessaging
 
-An in-memory emulator of AWS SQS, SNS and EventBridge, answering requests and delivering messages as those services do.
+An in-memory emulator of AWS SQS, SNS, EventBridge and DynamoDB, answering requests and delivering messages as those services do.
 
 ## Delivery
 
@@ -25,3 +25,17 @@ _Avoid_: DLQ (in prose), error queue
 **ARN resolution**:
 Finding the resource an ARN names, in the region and account the ARN names, at the moment it is used. A resource deleted and recreated under the same ARN is the same target.
 _Avoid_: lookup by name
+
+## DynamoDB
+
+**Canonical form**:
+The one way DynamoDB stores a value: a number without redundant zeros or an exponent (`1.50` and `15E-1` are both `1.5`), every number in a set canonical. A request's value is kept as sent until it is canonicalized, because whether a bad number is refused, and how, depends on where it appears.
+_Avoid_: normalised value
+
+**Validation envelope**:
+The `1 validation error detected: ...` (or `N validation errors detected: ...; ...`) wrapping AWS puts around some refusals but not others. Request-model constraint violations, and values an item or condition carries, are enveloped; values a statement spells or an expression computes, and filter, projection and key-condition refusals, are stated bare.
+_Avoid_: prefix
+
+**Item change**:
+One write as streams, `ReturnValues` and point-in-time recovery see it: the item before and after, either of which may be absent.
+_Avoid_: event (EventBridge's term)

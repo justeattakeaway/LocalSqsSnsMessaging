@@ -1,4 +1,5 @@
 #if !ASPNETCORE
+using Amazon.DynamoDBv2;
 using Amazon.EventBridge;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
@@ -7,7 +8,7 @@ using Amazon.SQS;
 namespace LocalSqsSnsMessaging.Http;
 
 /// <summary>
-/// An <see cref="Amazon.Runtime.HttpClientFactory"/> that routes AWS SQS and SNS traffic to an
+/// An <see cref="Amazon.Runtime.HttpClientFactory"/> that routes AWS SQS, SNS, EventBridge and DynamoDB traffic to an
 /// in-memory bus, while delegating every other AWS service to a fallback delegate.
 /// </summary>
 /// <remarks>
@@ -24,6 +25,8 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
     private readonly InMemoryAwsHttpMessageHandler _sqsHandler;
     private readonly InMemoryAwsHttpMessageHandler _snsHandler;
     private readonly InMemoryAwsHttpMessageHandler _eventBridgeHandler;
+    private readonly InMemoryAwsHttpMessageHandler _dynamoDbHandler;
+    private readonly InMemoryAwsHttpMessageHandler _dynamoDbStreamsHandler;
     private bool _disposed;
 
     /// <summary>
@@ -43,6 +46,8 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
         _sqsHandler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.Sqs);
         _snsHandler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.Sns);
         _eventBridgeHandler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.EventBridge);
+        _dynamoDbHandler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.DynamoDb);
+        _dynamoDbStreamsHandler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.DynamoDbStreams);
     }
 
     /// <inheritdoc />
@@ -108,6 +113,10 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
             AmazonSQSConfig => _sqsHandler,
             AmazonSimpleNotificationServiceConfig => _snsHandler,
             AmazonEventBridgeConfig => _eventBridgeHandler,
+            AmazonDynamoDBConfig => _dynamoDbHandler,
+            // By name: in AWS SDK v4 DynamoDB Streams is its own package, which this library doesn't reference.
+            _ when string.Equals(clientConfig.GetType().FullName, "Amazon.DynamoDBStreams.AmazonDynamoDBStreamsConfig", StringComparison.Ordinal)
+                || string.Equals(clientConfig.GetType().FullName, "Amazon.DynamoDBv2.AmazonDynamoDBStreamsConfig", StringComparison.Ordinal) => _dynamoDbStreamsHandler,
             _ => null
         };
 
@@ -123,6 +132,8 @@ public class InMemoryAwsHttpClientFactory : HttpClientFactory, IDisposable
             _sqsHandler.Dispose();
             _snsHandler.Dispose();
             _eventBridgeHandler.Dispose();
+            _dynamoDbHandler.Dispose();
+            _dynamoDbStreamsHandler.Dispose();
         }
         _disposed = true;
     }

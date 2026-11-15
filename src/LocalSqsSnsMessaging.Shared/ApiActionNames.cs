@@ -13,6 +13,9 @@ public static class AwsServiceName
 
     /// <summary>Amazon EventBridge.</summary>
     public const string EventBridge = "events";
+
+    /// <summary>Amazon DynamoDB (and DynamoDB Streams, whose IAM actions share the prefix).</summary>
+    public const string DynamoDb = "dynamodb";
 }
 
 /// <summary>

@@ -47,6 +47,14 @@ internal static class AwsJsonTimestamp
         writer.WriteNumber(propertyName, milliseconds / 1000m);
     }
 
+    /// <summary>Writes <paramref name="value"/> as an epoch-seconds value, to the millisecond.</summary>
+    public static void WriteValue(Utf8JsonWriter writer, DateTime value)
+    {
+        var utc = value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value, DateTimeKind.Utc) : value.ToUniversalTime();
+        var milliseconds = new DateTimeOffset(utc).ToUnixTimeMilliseconds();
+        writer.WriteNumberValue(milliseconds / 1000m);
+    }
+
     private static bool TryFromEpochSeconds(decimal seconds, out DateTime value)
     {
         const decimal MaxSeconds = 253402300799m; // 9999-12-31T23:59:59Z

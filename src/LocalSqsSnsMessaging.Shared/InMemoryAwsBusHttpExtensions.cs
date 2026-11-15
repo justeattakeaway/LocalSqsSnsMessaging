@@ -1,5 +1,6 @@
 #if !ASPNETCORE
 using System.ComponentModel;
+using Amazon.DynamoDBv2;
 using Amazon.EventBridge;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
@@ -113,6 +114,29 @@ public static class InMemoryAwsBusHttpExtensions
             var credentials = new AnonymousAWSCredentials();
 
             return new AmazonEventBridgeClient(credentials, config);
+        }
+
+        /// <summary>
+        /// Creates a real AWS SDK DynamoDB client configured to use the in-memory bus via HTTP message handler.
+        /// This allows testing code that depends on the concrete AmazonDynamoDBClient type, and the
+        /// SDK's higher-level APIs built on it (<c>DynamoDBContext</c>, <c>Table</c>).
+        /// </summary>
+        /// <returns>An AmazonDynamoDBClient configured with the in-memory handler.</returns>
+        public AmazonDynamoDBClient CreateDynamoDbClient()
+        {
+            ArgumentNullException.ThrowIfNull(bus);
+
+            var handler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.DynamoDb);
+            var config = new AmazonDynamoDBConfig
+            {
+                ServiceURL = $"https://dynamodb.{bus.CurrentRegion}.amazonaws.com",
+                AuthenticationRegion = bus.CurrentRegion,
+                UseHttp = false,
+                MaxErrorRetry = 0, // Disable retries for in-memory testing
+                HttpClientFactory = new InMemoryHttpClientFactory(handler)
+            };
+
+            return new AmazonDynamoDBClient(new AnonymousAWSCredentials(), config);
         }
     }
 }
