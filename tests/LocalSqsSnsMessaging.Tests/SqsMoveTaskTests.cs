@@ -79,6 +79,24 @@ public sealed class SqsMoveTaskTests : IDisposable
     }
 
     [Test]
+    public async Task MoveTask_ToADestinationDeletedAndNotRecreated_FailsAndLeavesTheMessages()
+    {
+        var dlqUrl = await CreateQueueAsync("orphaned-dlq");
+        var dlqArn = await ArnOfAsync(dlqUrl);
+        await CreateQueueAsync("orphaned-source", new() { ["RedrivePolicy"] = RedrivePolicy(dlqArn) });
+        var destinationUrl = await CreateQueueAsync("orphaned-destination");
+        await _sqs.SendMessageAsync(dlqUrl, "kept");
+        await _sqs.StartMessageMoveTaskAsync(new StartMessageMoveTaskRequest { SourceArn = dlqArn, DestinationArn = await ArnOfAsync(destinationUrl) });
+
+        await _sqs.DeleteQueueAsync(destinationUrl);
+        _time.Advance(TimeSpan.FromSeconds(1));
+
+        // Settled, so the dead-letter queue can be given a new task.
+        (await LatestTaskAsync(dlqArn)).Status.ShouldBe("FAILED");
+        (await VisibleCountAsync(dlqUrl)).ShouldBe(1);
+    }
+
+    [Test]
     [Repeat(5)]
     public async Task MoveTask_CancelledWhileItIsMovingMessages_EndsCancelledExactlyWhenTheCancelIsAccepted()
     {

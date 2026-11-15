@@ -85,7 +85,10 @@ internal sealed class SqsMoveTask
             SqsQueueResource? destination = null;
             if (DestinationArn is not null && !bus.TryGetQueueByArn(DestinationArn, out destination))
             {
-                // The destination was deleted: the messages wait for a queue of that ARN.
+                // The destination was deleted (and not recreated by this tick): the messages stay,
+                // and the task settles so the dead-letter queue can be given another.
+                FailureReason = "AWS.SimpleQueueService.NonExistentQueue";
+                Finish(MoveTaskStatus.Failed);
                 return;
             }
 

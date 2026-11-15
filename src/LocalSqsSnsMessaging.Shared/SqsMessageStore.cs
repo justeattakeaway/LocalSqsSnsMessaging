@@ -171,17 +171,6 @@ internal sealed class SqsMessageStore
     /// <summary>A point-in-time view of the waiting messages, for the dashboard. Does not consume.</summary>
     public List<Message> Snapshot() => [.. _items];
 
-    /// <summary>Discards every waiting message, for <c>PurgeQueue</c>.</summary>
-    public void Clear()
-    {
-        lock (SyncObj)
-        {
-            while (_items.TryDequeue(out _))
-            {
-            }
-        }
-    }
-
     /// <summary>
     /// Removes and returns a parked receive picked uniformly at random, or <see langword="null"/>
     /// when none are parked. Must be called while holding <see cref="SyncObj"/>.

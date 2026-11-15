@@ -183,9 +183,9 @@ This allows tests to use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvi
 - `DeleteMessage` / `ChangeVisibility` by receipt handle, returning a `SqsReceiptHandleOutcome` that the client maps to SQS's error (`SqsReceiptHandle` mints and parses handles)
 - `Purge`, `RemoveMessage` (the dashboard's delete), `MoveMessages` (move tasks), `CountMessages` (sweeps expired messages first) and `Peek` (the dashboard's view)
 
-Inside, a standard queue's visible messages sit in `SqsMessageStore`, which hands each new message to one parked receive; a FIFO queue keeps one `FifoGroup` per message group, guarded by locking the group. Every way out of flight goes through `LeaveFlight` (timer stopped, FIFO group slot released under the group's lock), and every way out of the queue through `Forget` (receipt handle retired). Keep any new exit on those two paths; `SqsQueueLifecycleTests` checks each exit at the queue's interface.
+Inside, a standard queue's visible messages sit in `SqsMessageStore`, which hands each new message to one parked receive; a FIFO queue keeps one `FifoGroup` per message group, guarded by locking the group. Every way out of flight goes through `LeaveFlight` (timer stopped, FIFO group slot released under the group's lock), and every way out of the queue through `Forget` (receipt handle retired). Keep any new exit on those two paths; `SqsQueueLifecycleTests` checks each exit at the queue's interface. A receive starts its messages' visibility timers only as it returns, and nothing reads the clock while holding a group lock: a `FakeTimeProvider` with `AutoAdvanceAmount` runs due timers from inside `GetUtcNow`.
 
-`SqsMoveTask` runs a move task on a bus `TimeProvider` timer, once a second: it resolves its source and destination ARNs on each tick, and a tick and `TryCancel` take the task's lock, so it settles on exactly one of COMPLETED, FAILED or CANCELLED.
+`SqsMoveTask` runs a move task on a bus `TimeProvider` timer, once a second: it resolves its source and destination ARNs on each tick (a destination gone at a tick fails it), and a tick and `TryCancel` take the task's lock, so it settles on exactly one of COMPLETED, FAILED or CANCELLED.
 
 ### FIFO Queue Handling
 

@@ -139,8 +139,8 @@ internal sealed partial class SqsQueueResource
     /// group's slot. On a FIFO queue the caller holds <paramref name="group"/>'s lock.
     /// </summary>
     /// <remarks>
-    /// A zero <paramref name="visibilityTimeout"/> starts no timer: the receive ends the message's
-    /// visibility itself once it returns (see <see cref="ReceiveAsync"/>).
+    /// An infinite <paramref name="visibilityTimeout"/> starts no timer: a receive starts it once it
+    /// returns (see <see cref="StartVisibilityTimeout"/>).
     /// </remarks>
     private void EnterFlight(Message message, string receiptHandle, TimeSpan visibilityTimeout, string? groupId, FifoGroup? group)
     {
@@ -160,9 +160,25 @@ internal sealed partial class SqsQueueResource
         }
 
         _inFlight[receiptHandle] = new InFlightMessage(message, groupId, timer);
-        if (visibilityTimeout > TimeSpan.Zero)
+        if (visibilityTimeout != Timeout.InfiniteTimeSpan)
         {
             timer.Change(visibilityTimeout, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    /// <summary>
+    /// Starts the visibility timeout of a message a receive just put in flight; a zero timeout
+    /// makes it visible again at once.
+    /// </summary>
+    private void StartVisibilityTimeout(string receiptHandle, TimeSpan visibilityTimeout)
+    {
+        if (visibilityTimeout == TimeSpan.Zero)
+        {
+            LeaveFlight(receiptHandle, discard: false);
+        }
+        else if (_inFlight.TryGetValue(receiptHandle, out var entry))
+        {
+            entry.VisibilityTimer.Change(visibilityTimeout, Timeout.InfiniteTimeSpan);
         }
     }
 
@@ -175,17 +191,22 @@ internal sealed partial class SqsQueueResource
     /// <returns><see langword="false"/> when no message is in flight under the handle.</returns>
     private bool LeaveFlight(string receiptHandle, bool discard)
     {
-        if (!_inFlight.TryRemove(receiptHandle, out var entry))
+        var now = TimeProvider.GetUtcNow();
+        if (!_inFlight.TryGetValue(receiptHandle, out var entry))
         {
             return false;
         }
 
-        entry.VisibilityTimer.Dispose();
-        var message = entry.Message;
-        var visibleAgain = !discard && !IsExpired(message, TimeProvider.GetUtcNow());
         if (entry.GroupId is not { } groupId)
         {
-            if (visibleAgain)
+            if (!_inFlight.TryRemove(receiptHandle, out _))
+            {
+                return false;
+            }
+
+            entry.VisibilityTimer.Dispose();
+            var message = entry.Message;
+            if (!discard && !IsExpired(message, now))
             {
                 _waiting.Enqueue(message);
             }
@@ -197,23 +218,35 @@ internal sealed partial class SqsQueueResource
             return true;
         }
 
-        // Back in the group and the slot released under one lock, so no receive can take a later
-        // message from the group in between.
+        // Out of flight, back in the group and the slot released under one lock, so neither a
+        // receive nor a delete finds the message in between.
+        var left = false;
         InGroup(groupId, group =>
         {
-            group.Held--;
-            if (visibleAgain)
+            if (!_inFlight.TryRemove(receiptHandle, out _))
             {
-                InsertInSequence(group.Waiting, message);
+                return;
+            }
+
+            left = true;
+            entry.VisibilityTimer.Dispose();
+            group.Held--;
+            if (!discard && !IsExpired(entry.Message, now))
+            {
+                InsertInSequence(group.Waiting, entry.Message);
             }
             else
             {
-                Forget(message);
+                Forget(entry.Message);
             }
         });
 
-        SignalFifoMessageAvailable();
-        return true;
+        if (left)
+        {
+            SignalFifoMessageAvailable();
+        }
+
+        return left;
     }
 
     /// <summary>The message has left the queue: no receipt handle acts on it any more.</summary>
@@ -353,8 +386,13 @@ internal sealed partial class SqsQueueResource
         {
             case ReceiptHandleState.Current:
                 MarkReceiveAttemptModified(receiptHandle!);
-                LeaveFlight(receiptHandle!, discard: true);
-                return SqsReceiptHandleOutcome.Done;
+                if (LeaveFlight(receiptHandle!, discard: true))
+                {
+                    return SqsReceiptHandleOutcome.Done;
+                }
+
+                // Its visibility timeout ended meanwhile: the handle has just lapsed.
+                goto case ReceiptHandleState.Lapsed;
             case ReceiptHandleState.Lapsed:
                 MarkReceiveAttemptModified(receiptHandle!);
                 TryTakeWaiting(messageId, (message, _, _) => Forget(message));
@@ -394,14 +432,19 @@ internal sealed partial class SqsQueueResource
             case ReceiptHandleState.Current:
                 if (visibilityTimeout == TimeSpan.Zero)
                 {
+                    // Visible again, now or because its timeout ended meanwhile.
                     LeaveFlight(receiptHandle!, discard: false);
-                }
-                else if (_inFlight.TryGetValue(receiptHandle!, out var entry))
-                {
-                    entry.VisibilityTimer.Change(visibilityTimeout, Timeout.InfiniteTimeSpan);
+                    return SqsReceiptHandleOutcome.Done;
                 }
 
-                return SqsReceiptHandleOutcome.Done;
+                if (_inFlight.TryGetValue(receiptHandle!, out var entry)
+                    && entry.VisibilityTimer.Change(visibilityTimeout, Timeout.InfiniteTimeSpan))
+                {
+                    return SqsReceiptHandleOutcome.Done;
+                }
+
+                // Its visibility timeout ended meanwhile: the handle has just lapsed.
+                goto case ReceiptHandleState.Lapsed;
             case ReceiptHandleState.Lapsed:
                 if (visibilityTimeout > TimeSpan.Zero)
                 {
@@ -431,18 +474,28 @@ internal sealed partial class SqsQueueResource
             LeaveFlight(receiptHandle, discard: true);
         }
 
-        _waiting.Clear();
+        // Each message's handle is retired with it, not all at once: a message a concurrent receive
+        // puts in flight survives the purge with its handle intact.
+        _waiting.RemoveWhere(message =>
+        {
+            Forget(message);
+            return true;
+        });
         foreach (var (groupId, group) in _groups)
         {
             TryInExistingGroup(groupId, group, held =>
             {
+                foreach (var message in held.Waiting)
+                {
+                    Forget(message);
+                }
+
                 held.Waiting.Clear();
                 return true;
             });
         }
 
         DiscardDelayedMessages();
-        _latestReceiptHandles.Clear();
         ClearDeduplication();
         _receiveAttempts.Clear();
         _receiveAttemptsByReceiptHandle.Clear();

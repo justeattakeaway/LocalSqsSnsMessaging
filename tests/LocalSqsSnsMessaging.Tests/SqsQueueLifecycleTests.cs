@@ -82,6 +82,24 @@ public sealed class SqsQueueLifecycleTests
 
     public static IEnumerable<FlightExit> Exits() => Enum.GetValues<FlightExit>();
 
+    [Test]
+    public async Task FifoReceive_WhenReadingTheClockFiresAVisibilityTimer_HandsEachMessageOutOnce()
+    {
+        // A clock that moves on every read runs due timers from inside the read, so a message's
+        // visibility can end while the same receive is still taking messages from its group.
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow) { AutoAdvanceAmount = TimeSpan.FromSeconds(1) };
+        var queue = await CreateFifoQueueAsync(time, retentionSeconds: 3600);
+        foreach (var body in new[] { "a", "b", "c", "d" })
+        {
+            Send(queue, time, body);
+        }
+
+        var batch = await queue.ReceiveAsync(new SqsQueueResource.ReceiveRequest(10, TimeSpan.FromSeconds(1), WaitTime: TimeSpan.Zero, AttemptId: null),
+            CancellationToken.None);
+
+        batch.Select(m => m.Body).ShouldBe(["a", "b", "c", "d"]);
+    }
+
     private static async Task<SqsQueueResource> CreateFifoQueueAsync(TimeProvider time, int retentionSeconds)
     {
         var bus = new InMemoryAwsBus { TimeProvider = time };

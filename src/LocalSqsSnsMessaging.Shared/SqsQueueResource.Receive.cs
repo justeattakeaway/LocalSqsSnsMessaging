@@ -41,15 +41,12 @@ internal sealed partial class SqsQueueResource
             ? await ReceiveFifoAsync(receive, cancellationToken).ConfigureAwait(true)
             : await ReceiveStandardAsync(receive, cancellationToken).ConfigureAwait(true);
 
-        // A zero visibility timeout ends as the receive returns, as on SQS, not on a timer: a timer
-        // could make a message visible again mid-receive, handing it out twice in one batch, or (on
-        // the real clock) only some time after the call has returned.
-        if (receive.VisibilityTimeout == TimeSpan.Zero)
+        // Visibility timeouts start as the receive returns, and a zero one ends then, as on SQS: a
+        // timer running mid-receive could make a message visible again while the receive is still
+        // taking messages, handing it out twice in one batch.
+        foreach (var message in batch)
         {
-            foreach (var message in batch)
-            {
-                LeaveFlight(message.ReceiptHandle!, discard: false);
-            }
+            StartVisibilityTimeout(message.ReceiptHandle!, receive.VisibilityTimeout);
         }
 
         return batch;
@@ -89,15 +86,16 @@ internal sealed partial class SqsQueueResource
             {
                 // Handed to this receive alone. If it was due for the dead-letter queue instead,
                 // the next time round goes back to waiting.
-                TryDeliver(handedMessage, receive.VisibilityTimeout, batch, groupId: null, group: null);
+                TryDeliver(handedMessage, TimeProvider.GetUtcNow(), batch, groupId: null, group: null);
             }
         }
 
         void TakeWaiting()
         {
+            var now = TimeProvider.GetUtcNow();
             while (batch.Count < receive.MaxMessages && _waiting.TryDequeue(out var message))
             {
-                TryDeliver(message, receive.VisibilityTimeout, batch, groupId: null, group: null);
+                TryDeliver(message, now, batch, groupId: null, group: null);
             }
         }
     }
@@ -119,7 +117,7 @@ internal sealed partial class SqsQueueResource
 
     private async Task<List<Message>> ReceiveFifoAsync(ReceiveRequest receive, CancellationToken cancellationToken)
     {
-        if (receive.AttemptId is { } attemptId && TryReplayReceiveAttempt(attemptId, receive.VisibilityTimeout) is { } replayed)
+        if (receive.AttemptId is { } attemptId && TryReplayReceiveAttempt(attemptId) is { } replayed)
         {
             return replayed;
         }
@@ -173,6 +171,10 @@ internal sealed partial class SqsQueueResource
     {
         var batch = new List<Message>();
 
+        // Read before any group is locked: a clock that moves when read can run timers from inside
+        // the read, and those take group locks.
+        var now = TimeProvider.GetUtcNow();
+
         // Start each receive at the next group in turn: always scanning from the same group would
         // let one group that keeps being released (a visibility timeout of 0) starve the rest.
         var groups = _groups.ToArray();
@@ -193,7 +195,7 @@ internal sealed partial class SqsQueueResource
                 while (batch.Count < receive.MaxMessages && held.Waiting.First is { } head)
                 {
                     held.Waiting.RemoveFirst();
-                    TryDeliver(head.Value, receive.VisibilityTimeout, batch, groupId, held);
+                    TryDeliver(head.Value, now, batch, groupId, held);
                 }
 
                 return true;
@@ -208,9 +210,9 @@ internal sealed partial class SqsQueueResource
     /// <paramref name="batch"/>, unless it is past the retention period (discarded) or at its
     /// <see cref="MaxReceiveCount"/> (redriven). On a FIFO queue the caller holds <paramref name="group"/>'s lock.
     /// </summary>
-    private void TryDeliver(Message message, TimeSpan visibilityTimeout, List<Message> batch, string? groupId, FifoGroup? group)
+    /// <remarks>The message's visibility timeout is not started: <see cref="ReceiveAsync"/> starts it once the batch is complete.</remarks>
+    private void TryDeliver(Message message, DateTimeOffset now, List<Message> batch, string? groupId, FifoGroup? group)
     {
-        var now = TimeProvider.GetUtcNow();
         if (IsExpired(message, now))
         {
             Forget(message);
@@ -251,7 +253,7 @@ internal sealed partial class SqsQueueResource
         var received = CopyOf(message);
         received.ReceiptHandle = receiptHandle;
         batch.Add(received);
-        EnterFlight(message, receiptHandle, visibilityTimeout, groupId, group);
+        EnterFlight(message, receiptHandle, Timeout.InfiniteTimeSpan, groupId, group);
     }
 
     private bool IsAtMaxReceiveCount(Message message)
@@ -318,7 +320,7 @@ internal sealed partial class SqsQueueResource
     /// expired id, or a batch whose messages are no longer in flight), and the receive goes ahead
     /// as a new one.
     /// </returns>
-    private List<Message>? TryReplayReceiveAttempt(string attemptId, TimeSpan visibilityTimeout)
+    private List<Message>? TryReplayReceiveAttempt(string attemptId)
     {
         if (!_receiveAttempts.TryGetValue(attemptId, out var attempt))
         {
@@ -337,27 +339,17 @@ internal sealed partial class SqsQueueResource
                 "The receiveRequestAttemptId is not valid anymore since the receive call is not retryable.");
         }
 
-        var inFlight = new List<InFlightMessage>(attempt.Batch.Count);
         foreach (var message in attempt.Batch)
         {
-            if (!_inFlight.TryGetValue(message.ReceiptHandle!, out var entry))
+            if (!_inFlight.ContainsKey(message.ReceiptHandle!))
             {
                 // Its visibility timeout ran out: the messages are back on the queue.
                 ForgetReceiveAttempt(attemptId, attempt);
                 return null;
             }
-
-            inFlight.Add(entry);
         }
 
-        if (visibilityTimeout > TimeSpan.Zero)
-        {
-            foreach (var entry in inFlight)
-            {
-                entry.VisibilityTimer.Change(visibilityTimeout, Timeout.InfiniteTimeSpan);
-            }
-        }
-
+        // ReceiveAsync restarts each message's visibility timeout as it returns.
         return attempt.Batch.ConvertAll(CopyOf);
     }
 
