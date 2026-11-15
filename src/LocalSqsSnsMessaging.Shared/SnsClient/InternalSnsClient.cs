@@ -134,7 +134,7 @@ internal sealed partial class InternalSnsClient
                 var same = name switch
                 {
                     SnsTopicAttributes.FifoTopic => string.Equals(value, existing.IsFifo ? "true" : "false", StringComparison.OrdinalIgnoreCase),
-                    SnsTopicAttributes.Policy => current is not null && SnsPolicyDocument.AreEquivalent(current, value),
+                    SnsTopicAttributes.Policy => current is not null && ResourcePolicy.AreEquivalent(ResourcePolicyKind.Topic, current, value),
                     _ => string.Equals(current ?? string.Empty, value ?? string.Empty, StringComparison.Ordinal),
                 };
                 if (!same)

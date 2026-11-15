@@ -199,7 +199,7 @@ internal sealed class AwsBridgeMiddleware
     private InMemoryAwsBus ResolveBus(HttpRequest request)
     {
         var accessKey = ExtractAccessKey(request);
-        if (accessKey is not null && IsAccountId(accessKey))
+        if (AwsAccountId.IsValid(accessKey))
         {
             return _registry.GetOrCreate(accessKey);
         }
@@ -231,24 +231,6 @@ internal sealed class AwsBridgeMiddleware
         }
 
         return authHeader[start..slashIndex];
-    }
-
-    private static bool IsAccountId(string accessKey)
-    {
-        if (accessKey.Length != 12)
-        {
-            return false;
-        }
-
-        foreach (var c in accessKey)
-        {
-            if (c is < '0' or > '9')
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private static bool TryGetJsonTarget(HttpRequest request, out string service, out string operation)

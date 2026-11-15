@@ -27,29 +27,13 @@ internal sealed partial class InternalSnsClient
 
         lock (topic.SubscriptionGate)
         {
-            var policy = topic.Attributes.TryGetValue(SnsTopicAttributes.Policy, out var policyJson)
-                ? JsonNode.Parse(policyJson)!.AsObject()
-                : new JsonObject
-                {
-                    ["Version"] = "2008-10-17",
-                    ["Id"] = "__default_policy_ID",
-                    ["Statement"] = new JsonArray()
-                };
-
-            if (policy["Statement"] is not JsonArray statements)
+            var policy = ResourcePolicy.ParseOrEmpty(ResourcePolicyKind.Topic, topic.Attributes.GetValueOrDefault(SnsTopicAttributes.Policy), topic.Arn);
+            if (policy.HasStatement(request.Label))
             {
-                statements = [];
-                policy["Statement"] = statements;
+                throw new InternalInvalidParameterException("Invalid parameter: Statement already exists");
             }
 
-            foreach (var stmt in statements)
-            {
-                if (stmt?["Sid"]?.GetValue<string>() == request.Label)
-                {
-                    throw new InternalInvalidParameterException("Invalid parameter: Statement already exists");
-                }
-            }
-
+            // SNS writes the principals and actions as lists, even when there is one of each.
             var principals = new JsonArray();
             foreach (var accountId in request.AWSAccountId ?? [])
             {
@@ -62,17 +46,14 @@ internal sealed partial class InternalSnsClient
                 actions.Add((JsonNode?)$"SNS:{action}");
             }
 
-            var newStatement = new JsonObject
+            topic.Attributes[SnsTopicAttributes.Policy] = policy.WithStatement(new JsonObject
             {
                 ["Sid"] = request.Label,
                 ["Effect"] = "Allow",
                 ["Principal"] = new JsonObject { ["AWS"] = principals },
                 ["Action"] = actions,
                 ["Resource"] = topic.Arn
-            };
-
-            statements.Add((JsonNode)newStatement);
-            topic.Attributes[SnsTopicAttributes.Policy] = policy.ToJsonString();
+            }).ToJson();
         }
 
         _bus.RecordOperation(AwsServiceName.Sns, SnsActionName.AddPermission, topic.Arn);
@@ -85,7 +66,7 @@ internal sealed partial class InternalSnsClient
     /// </summary>
     private static void ValidatePermission(AddPermissionRequest request)
     {
-        if (request.AWSAccountId?.Exists(account => account is not { Length: 12 } || !account.All(c => c is >= '0' and <= '9')) == true)
+        if (request.AWSAccountId?.Exists(account => !AwsAccountId.IsValid(account)) == true)
         {
             throw new InternalInvalidParameterException("Invalid parameter: A provided account ID is not valid");
         }
@@ -105,20 +86,12 @@ internal sealed partial class InternalSnsClient
 
         lock (topic.SubscriptionGate)
         {
-            // Removing a label the policy doesn't have succeeds and changes nothing, as on AWS.
-            if (topic.Attributes.TryGetValue(SnsTopicAttributes.Policy, out var policyJson)
-                && JsonNode.Parse(policyJson) is JsonObject policy
-                && policy["Statement"] is JsonArray statements)
+            // Removing a label the policy doesn't have succeeds and changes nothing, as on AWS. A
+            // policy left with no statements keeps an empty list.
+            if (ResourcePolicy.Parse(ResourcePolicyKind.Topic, topic.Attributes.GetValueOrDefault(SnsTopicAttributes.Policy)) is { } policy
+                && policy.HasStatement(request.Label))
             {
-                for (var i = 0; i < statements.Count; i++)
-                {
-                    if (statements[i]?["Sid"]?.GetValue<string>() == request.Label)
-                    {
-                        statements.RemoveAt(i);
-                        topic.Attributes[SnsTopicAttributes.Policy] = policy.ToJsonString();
-                        break;
-                    }
-                }
+                topic.Attributes[SnsTopicAttributes.Policy] = policy.WithoutStatement(request.Label).ToJson();
             }
         }
 

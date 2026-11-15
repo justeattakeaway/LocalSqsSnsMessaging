@@ -22,35 +22,16 @@ internal sealed partial class InternalSqsClient
 
         SqsQueueValidation.ValidatePermissionActions(request.Actions);
 
-        JsonObject policy;
-        if (queue.Attributes?.TryGetValue("Policy", out var policyJson) == true)
+        var policy = ResourcePolicy.ParseOrEmpty(ResourcePolicyKind.Queue, queue.Attributes?.GetValueOrDefault(InternalQueueAttributeName.Policy), queue.Arn);
+        if (policy.HasStatement(request.Label))
         {
-            policy = JsonNode.Parse(policyJson)!.AsObject();
-        }
-        else
-        {
-            policy = new JsonObject
-            {
-                ["Version"] = "2012-10-17",
-                ["Id"] = $"{queue.Arn}/SQSDefaultPolicy",
-                ["Statement"] = new JsonArray()
-            };
+            throw SqsRequestValidation.InvalidParameterValue("Label", request.Label, "Already exists.");
         }
 
-        var statements = policy["Statement"]!.AsArray();
-
-        foreach (var stmt in statements)
-        {
-            if (stmt?["Sid"]?.GetValue<string>() == request.Label)
-            {
-                throw SqsRequestValidation.InvalidParameterValue("Label", request.Label, "Already exists.");
-            }
-        }
-
-        if (statements.Count >= SqsQueueValidation.MaxPolicyStatements)
+        if (policy.StatementCount >= SqsQueueValidation.MaxPolicyStatements)
         {
             throw SqsRequestValidation.Error("OverLimit",
-                $"{statements.Count + 1} Statements were found, maximum allowed is {SqsQueueValidation.MaxPolicyStatements}. ");
+                $"{policy.StatementCount + 1} Statements were found, maximum allowed is {SqsQueueValidation.MaxPolicyStatements}. ");
         }
 
         var principals = new JsonArray();
@@ -75,9 +56,8 @@ internal sealed partial class InternalSqsClient
             ["Resource"] = queue.Arn
         };
 
-        statements.Add((JsonNode)newStatement);
         queue.Attributes ??= [];
-        queue.Attributes["Policy"] = policy.ToJsonString();
+        queue.Attributes[InternalQueueAttributeName.Policy] = policy.WithStatement(newStatement).ToJson();
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.AddPermission, queue.Arn);
         return Task.FromResult(new AddPermissionResponse().SetCommonProperties());
@@ -107,39 +87,22 @@ internal sealed partial class InternalSqsClient
         }
         Authorize(queue, SqsActionName.RemovePermission);
 
-        if (queue.Attributes?.TryGetValue("Policy", out var policyJson) != true)
+        if (ResourcePolicy.Parse(ResourcePolicyKind.Queue, queue.Attributes?.GetValueOrDefault(InternalQueueAttributeName.Policy)) is not { } policy
+            || !policy.HasStatement(request.Label))
         {
             throw SqsRequestValidation.InvalidParameterValue("Label", request.Label, "can't find label on existing policy.");
         }
 
-        var policy = JsonNode.Parse(policyJson)!.AsObject();
-        var statements = policy["Statement"]!.AsArray();
-
-        int? indexToRemove = null;
-        for (int i = 0; i < statements.Count; i++)
-        {
-            if (statements[i]?["Sid"]?.GetValue<string>() == request.Label)
-            {
-                indexToRemove = i;
-                break;
-            }
-        }
-
-        if (indexToRemove is null)
-        {
-            throw SqsRequestValidation.InvalidParameterValue("Label", request.Label, "can't find label on existing policy.");
-        }
-
-        statements.RemoveAt(indexToRemove.Value);
-
+        // A policy left with no statements is removed.
+        var remaining = policy.WithoutStatement(request.Label);
         queue.Attributes ??= [];
-        if (statements.Count > 0)
+        if (remaining.StatementCount > 0)
         {
-            queue.Attributes["Policy"] = policy.ToJsonString();
+            queue.Attributes[InternalQueueAttributeName.Policy] = remaining.ToJson();
         }
         else
         {
-            queue.Attributes.Remove("Policy");
+            queue.Attributes.Remove(InternalQueueAttributeName.Policy);
         }
 
         _bus.RecordOperation(AwsServiceName.Sqs, SqsActionName.RemovePermission, queue.Arn);
@@ -163,7 +126,7 @@ internal sealed partial class InternalSqsClient
         }
         else
         {
-            attributes[InternalQueueAttributeName.Policy] = SqsQueuePolicy.Normalize(policy);
+            attributes[InternalQueueAttributeName.Policy] = ResourcePolicy.Normalize(ResourcePolicyKind.Queue, policy);
         }
     }
 }
