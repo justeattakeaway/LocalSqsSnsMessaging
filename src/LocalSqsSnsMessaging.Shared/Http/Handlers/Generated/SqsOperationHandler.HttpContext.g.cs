@@ -111,8 +111,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeAddPermissionRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeAddPermissionRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.AddPermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -140,8 +139,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeCancelMessageMoveTaskRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeCancelMessageMoveTaskRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.CancelMessageMoveTaskAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -169,8 +167,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.ChangeMessageVisibilityAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -198,8 +195,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityBatchRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityBatchRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.ChangeMessageVisibilityBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -227,8 +223,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeCreateQueueRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeCreateQueueRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.CreateQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -256,8 +251,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeDeleteMessageRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeDeleteMessageRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.DeleteMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -285,8 +279,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeDeleteMessageBatchRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeDeleteMessageBatchRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.DeleteMessageBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -314,8 +307,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeDeleteQueueRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeDeleteQueueRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.DeleteQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -343,8 +335,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeGetQueueAttributesRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeGetQueueAttributesRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.GetQueueAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -372,8 +363,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeGetQueueUrlRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeGetQueueUrlRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.GetQueueUrlAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -401,8 +391,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeListDeadLetterSourceQueuesRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeListDeadLetterSourceQueuesRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.ListDeadLetterSourceQueuesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -430,8 +419,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeListMessageMoveTasksRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeListMessageMoveTasksRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.ListMessageMoveTasksAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -459,8 +447,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeListQueueTagsRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeListQueueTagsRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.ListQueueTagsAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -488,8 +475,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeListQueuesRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeListQueuesRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.ListQueuesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -517,8 +503,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializePurgeQueueRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializePurgeQueueRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.PurgeQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -546,8 +531,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeReceiveMessageRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeReceiveMessageRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.ReceiveMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -575,8 +559,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeRemovePermissionRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeRemovePermissionRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.RemovePermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -604,8 +587,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeSendMessageRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeSendMessageRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.SendMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -633,8 +615,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeSendMessageBatchRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeSendMessageBatchRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.SendMessageBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -662,8 +643,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeSetQueueAttributesRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeSetQueueAttributesRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.SetQueueAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -691,8 +671,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeStartMessageMoveTaskRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeStartMessageMoveTaskRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.StartMessageMoveTaskAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -720,8 +699,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeTagQueueRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeTagQueueRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.TagQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;
@@ -749,8 +727,7 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = new MemoryStream(requestBody, 0, requestBodyLength, writable: false);
-            var requestObject = SqsJsonSerializers.DeserializeUntagQueueRequest(requestStream);
+            var requestObject = SqsJsonSerializers.DeserializeUntagQueueRequest(requestBody.AsMemory(0, requestBodyLength));
             var result = await client.UntagQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             context.Response.StatusCode = 200;

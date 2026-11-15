@@ -60,8 +60,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeAddPermissionRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeAddPermissionRequest(requestBody.Memory);
             var result = await client.AddPermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -91,8 +91,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeCancelMessageMoveTaskRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeCancelMessageMoveTaskRequest(requestBody.Memory);
             var result = await client.CancelMessageMoveTaskAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -122,8 +122,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityRequest(requestBody.Memory);
             var result = await client.ChangeMessageVisibilityAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -153,8 +153,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityBatchRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeChangeMessageVisibilityBatchRequest(requestBody.Memory);
             var result = await client.ChangeMessageVisibilityBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -184,8 +184,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeCreateQueueRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeCreateQueueRequest(requestBody.Memory);
             var result = await client.CreateQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -215,8 +215,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeDeleteMessageRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeDeleteMessageRequest(requestBody.Memory);
             var result = await client.DeleteMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -246,8 +246,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeDeleteMessageBatchRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeDeleteMessageBatchRequest(requestBody.Memory);
             var result = await client.DeleteMessageBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -277,8 +277,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeDeleteQueueRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeDeleteQueueRequest(requestBody.Memory);
             var result = await client.DeleteQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -308,8 +308,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeGetQueueAttributesRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeGetQueueAttributesRequest(requestBody.Memory);
             var result = await client.GetQueueAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -339,8 +339,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeGetQueueUrlRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeGetQueueUrlRequest(requestBody.Memory);
             var result = await client.GetQueueUrlAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -370,8 +370,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeListDeadLetterSourceQueuesRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeListDeadLetterSourceQueuesRequest(requestBody.Memory);
             var result = await client.ListDeadLetterSourceQueuesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -401,8 +401,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeListMessageMoveTasksRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeListMessageMoveTasksRequest(requestBody.Memory);
             var result = await client.ListMessageMoveTasksAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -432,8 +432,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeListQueueTagsRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeListQueueTagsRequest(requestBody.Memory);
             var result = await client.ListQueueTagsAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -463,8 +463,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeListQueuesRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeListQueuesRequest(requestBody.Memory);
             var result = await client.ListQueuesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -494,8 +494,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializePurgeQueueRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializePurgeQueueRequest(requestBody.Memory);
             var result = await client.PurgeQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -525,8 +525,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeReceiveMessageRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeReceiveMessageRequest(requestBody.Memory);
             var result = await client.ReceiveMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -556,8 +556,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeRemovePermissionRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeRemovePermissionRequest(requestBody.Memory);
             var result = await client.RemovePermissionAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -587,8 +587,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeSendMessageRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeSendMessageRequest(requestBody.Memory);
             var result = await client.SendMessageAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -618,8 +618,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeSendMessageBatchRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeSendMessageBatchRequest(requestBody.Memory);
             var result = await client.SendMessageBatchAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -649,8 +649,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeSetQueueAttributesRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeSetQueueAttributesRequest(requestBody.Memory);
             var result = await client.SetQueueAttributesAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -680,8 +680,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeStartMessageMoveTaskRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeStartMessageMoveTaskRequest(requestBody.Memory);
             var result = await client.StartMessageMoveTaskAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -711,8 +711,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeTagQueueRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeTagQueueRequest(requestBody.Memory);
             var result = await client.TagQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();
@@ -742,8 +742,8 @@ internal static partial class SqsOperationHandler
     {
         try
         {
-            using var requestStream = await request.Content!.ReadAsStreamAsync().ConfigureAwait(false);
-            var requestObject = SqsJsonSerializers.DeserializeUntagQueueRequest(requestStream);
+            using var requestBody = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+            var requestObject = SqsJsonSerializers.DeserializeUntagQueueRequest(requestBody.Memory);
             var result = await client.UntagQueueAsync(requestObject, cancellationToken).ConfigureAwait(false);
 
             using var pooledBuffer = PooledArrayBufferWriter.Rent();

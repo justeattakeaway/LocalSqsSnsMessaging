@@ -15,17 +15,25 @@ namespace LocalSqsSnsMessaging.Http.Handlers;
 /// </summary>
 internal static class EventBridgeJsonSerializers
 {
-    internal static CancelReplayRequest DeserializeCancelReplayRequest(Stream stream)
+    internal static CancelReplayRequest DeserializeCancelReplayRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new CancelReplayRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new CancelReplayRequest();
 
-        // ReplayName
-        if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
-            request.ReplayName = ReplayNameElem.GetString();
+            // ReplayName
+            if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
+                request.ReplayName = ReplayNameElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeCancelReplayResponse(CancelReplayResponse response, IBufferWriter<byte> bufferWriter)
@@ -49,37 +57,45 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static CreateArchiveRequest DeserializeCreateArchiveRequest(Stream stream)
+    internal static CreateArchiveRequest DeserializeCreateArchiveRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new CreateArchiveRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new CreateArchiveRequest();
 
-        // ArchiveName
-        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
-            request.ArchiveName = ArchiveNameElem.GetString();
+            // ArchiveName
+            if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+                request.ArchiveName = ArchiveNameElem.GetString();
 
-        // EventSourceArn
-        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
-            request.EventSourceArn = EventSourceArnElem.GetString();
+            // EventSourceArn
+            if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+                request.EventSourceArn = EventSourceArnElem.GetString();
 
-        // Description
-        if (root.TryGetProperty("Description", out var DescriptionElem))
-            request.Description = DescriptionElem.GetString();
+            // Description
+            if (root.TryGetProperty("Description", out var DescriptionElem))
+                request.Description = DescriptionElem.GetString();
 
-        // EventPattern
-        if (root.TryGetProperty("EventPattern", out var EventPatternElem))
-            request.EventPattern = EventPatternElem.GetString();
+            // EventPattern
+            if (root.TryGetProperty("EventPattern", out var EventPatternElem))
+                request.EventPattern = EventPatternElem.GetString();
 
-        // RetentionDays
-        if (root.TryGetProperty("RetentionDays", out var RetentionDaysElem) && RetentionDaysElem.TryGetInt32(out var RetentionDaysVal))
-            request.RetentionDays = RetentionDaysVal;
+            // RetentionDays
+            if (root.TryGetProperty("RetentionDays", out var RetentionDaysElem) && RetentionDaysElem.TryGetInt32(out var RetentionDaysVal))
+                request.RetentionDays = RetentionDaysVal;
 
-        // KmsKeyIdentifier
-        if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
-            request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
+            // KmsKeyIdentifier
+            if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
+                request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeCreateArchiveResponse(CreateArchiveResponse response, IBufferWriter<byte> bufferWriter)
@@ -107,64 +123,72 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static CreateEventBusRequest DeserializeCreateEventBusRequest(Stream stream)
+    internal static CreateEventBusRequest DeserializeCreateEventBusRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new CreateEventBusRequest();
-
-        // Name
-        if (root.TryGetProperty("Name", out var NameElem))
-            request.Name = NameElem.GetString();
-
-        // EventSourceName
-        if (root.TryGetProperty("EventSourceName", out var EventSourceNameElem))
-            request.EventSourceName = EventSourceNameElem.GetString();
-
-        // Description
-        if (root.TryGetProperty("Description", out var DescriptionElem))
-            request.Description = DescriptionElem.GetString();
-
-        // KmsKeyIdentifier
-        if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
-            request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
-
-        // DeadLetterConfig
-        if (root.TryGetProperty("DeadLetterConfig", out var DeadLetterConfigElem) && DeadLetterConfigElem.ValueKind == JsonValueKind.Object)
+        try
         {
-            var DeadLetterConfigVal = new DeadLetterConfig();
-            if (DeadLetterConfigElem.TryGetProperty("Arn", out var _e0))
-                DeadLetterConfigVal.Arn = _e0.GetString();
-            request.DeadLetterConfig = DeadLetterConfigVal;
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new CreateEventBusRequest();
 
-        // LogConfig
-        if (root.TryGetProperty("LogConfig", out var LogConfigElem) && LogConfigElem.ValueKind == JsonValueKind.Object)
-        {
-            var LogConfigVal = new LogConfig();
-            if (LogConfigElem.TryGetProperty("IncludeDetail", out var _e1))
-                LogConfigVal.IncludeDetail = _e1.GetString();
-            if (LogConfigElem.TryGetProperty("Level", out var _e2))
-                LogConfigVal.Level = _e2.GetString();
-            request.LogConfig = LogConfigVal;
-        }
+            // Name
+            if (root.TryGetProperty("Name", out var NameElem))
+                request.Name = NameElem.GetString();
 
-        // Tags
-        if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
-        {
-            request.Tags = new List<Tag>();
-            foreach (var item in TagsElem.EnumerateArray())
+            // EventSourceName
+            if (root.TryGetProperty("EventSourceName", out var EventSourceNameElem))
+                request.EventSourceName = EventSourceNameElem.GetString();
+
+            // Description
+            if (root.TryGetProperty("Description", out var DescriptionElem))
+                request.Description = DescriptionElem.GetString();
+
+            // KmsKeyIdentifier
+            if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
+                request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
+
+            // DeadLetterConfig
+            if (root.TryGetProperty("DeadLetterConfig", out var DeadLetterConfigElem) && DeadLetterConfigElem.ValueKind == JsonValueKind.Object)
             {
-                var entry3 = new Tag();
-                if (item.TryGetProperty("Key", out var _e4))
-                    entry3.Key = _e4.GetString();
-                if (item.TryGetProperty("Value", out var _e5))
-                    entry3.Value = _e5.GetString();
-                request.Tags.Add(entry3);
+                var DeadLetterConfigVal = new DeadLetterConfig();
+                if (DeadLetterConfigElem.TryGetProperty("Arn", out var _e0))
+                    DeadLetterConfigVal.Arn = _e0.GetString();
+                request.DeadLetterConfig = DeadLetterConfigVal;
             }
-        }
 
-        return request;
+            // LogConfig
+            if (root.TryGetProperty("LogConfig", out var LogConfigElem) && LogConfigElem.ValueKind == JsonValueKind.Object)
+            {
+                var LogConfigVal = new LogConfig();
+                if (LogConfigElem.TryGetProperty("IncludeDetail", out var _e1))
+                    LogConfigVal.IncludeDetail = _e1.GetString();
+                if (LogConfigElem.TryGetProperty("Level", out var _e2))
+                    LogConfigVal.Level = _e2.GetString();
+                request.LogConfig = LogConfigVal;
+            }
+
+            // Tags
+            if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
+            {
+                request.Tags = new List<Tag>();
+                foreach (var item in TagsElem.EnumerateArray())
+                {
+                    var entry3 = new Tag();
+                    if (item.TryGetProperty("Key", out var _e4))
+                        entry3.Key = _e4.GetString();
+                    if (item.TryGetProperty("Value", out var _e5))
+                        entry3.Value = _e5.GetString();
+                    request.Tags.Add(entry3);
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeCreateEventBusResponse(CreateEventBusResponse response, IBufferWriter<byte> bufferWriter)
@@ -210,17 +234,25 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static DeleteArchiveRequest DeserializeDeleteArchiveRequest(Stream stream)
+    internal static DeleteArchiveRequest DeserializeDeleteArchiveRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DeleteArchiveRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DeleteArchiveRequest();
 
-        // ArchiveName
-        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
-            request.ArchiveName = ArchiveNameElem.GetString();
+            // ArchiveName
+            if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+                request.ArchiveName = ArchiveNameElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDeleteArchiveResponse(DeleteArchiveResponse response, IBufferWriter<byte> bufferWriter)
@@ -232,17 +264,25 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static DeleteEventBusRequest DeserializeDeleteEventBusRequest(Stream stream)
+    internal static DeleteEventBusRequest DeserializeDeleteEventBusRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DeleteEventBusRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DeleteEventBusRequest();
 
-        // Name
-        if (root.TryGetProperty("Name", out var NameElem))
-            request.Name = NameElem.GetString();
+            // Name
+            if (root.TryGetProperty("Name", out var NameElem))
+                request.Name = NameElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDeleteEventBusResponse(DeleteEventBusResponse response, IBufferWriter<byte> bufferWriter)
@@ -253,25 +293,33 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static DeleteRuleRequest DeserializeDeleteRuleRequest(Stream stream)
+    internal static DeleteRuleRequest DeserializeDeleteRuleRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DeleteRuleRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DeleteRuleRequest();
 
-        // Name
-        if (root.TryGetProperty("Name", out var NameElem))
-            request.Name = NameElem.GetString();
+            // Name
+            if (root.TryGetProperty("Name", out var NameElem))
+                request.Name = NameElem.GetString();
 
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
 
-        // Force
-        if (root.TryGetProperty("Force", out var ForceElem) && ForceElem.ValueKind == JsonValueKind.True || ForceElem.ValueKind == JsonValueKind.False)
-            request.Force = ForceElem.GetBoolean();
+            // Force
+            if (root.TryGetProperty("Force", out var ForceElem) && ForceElem.ValueKind == JsonValueKind.True || ForceElem.ValueKind == JsonValueKind.False)
+                request.Force = ForceElem.GetBoolean();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDeleteRuleResponse(DeleteRuleResponse response, IBufferWriter<byte> bufferWriter)
@@ -282,17 +330,25 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static DescribeArchiveRequest DeserializeDescribeArchiveRequest(Stream stream)
+    internal static DescribeArchiveRequest DeserializeDescribeArchiveRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DescribeArchiveRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DescribeArchiveRequest();
 
-        // ArchiveName
-        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
-            request.ArchiveName = ArchiveNameElem.GetString();
+            // ArchiveName
+            if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+                request.ArchiveName = ArchiveNameElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDescribeArchiveResponse(DescribeArchiveResponse response, IBufferWriter<byte> bufferWriter)
@@ -352,17 +408,25 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static DescribeEventBusRequest DeserializeDescribeEventBusRequest(Stream stream)
+    internal static DescribeEventBusRequest DeserializeDescribeEventBusRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DescribeEventBusRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DescribeEventBusRequest();
 
-        // Name
-        if (root.TryGetProperty("Name", out var NameElem))
-            request.Name = NameElem.GetString();
+            // Name
+            if (root.TryGetProperty("Name", out var NameElem))
+                request.Name = NameElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDescribeEventBusResponse(DescribeEventBusResponse response, IBufferWriter<byte> bufferWriter)
@@ -424,17 +488,25 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static DescribeReplayRequest DeserializeDescribeReplayRequest(Stream stream)
+    internal static DescribeReplayRequest DeserializeDescribeReplayRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DescribeReplayRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DescribeReplayRequest();
 
-        // ReplayName
-        if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
-            request.ReplayName = ReplayNameElem.GetString();
+            // ReplayName
+            if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
+                request.ReplayName = ReplayNameElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDescribeReplayResponse(DescribeReplayResponse response, IBufferWriter<byte> bufferWriter)
@@ -510,21 +582,29 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static DescribeRuleRequest DeserializeDescribeRuleRequest(Stream stream)
+    internal static DescribeRuleRequest DeserializeDescribeRuleRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DescribeRuleRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DescribeRuleRequest();
 
-        // Name
-        if (root.TryGetProperty("Name", out var NameElem))
-            request.Name = NameElem.GetString();
+            // Name
+            if (root.TryGetProperty("Name", out var NameElem))
+                request.Name = NameElem.GetString();
 
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDescribeRuleResponse(DescribeRuleResponse response, IBufferWriter<byte> bufferWriter)
@@ -576,21 +656,29 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static DisableRuleRequest DeserializeDisableRuleRequest(Stream stream)
+    internal static DisableRuleRequest DeserializeDisableRuleRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DisableRuleRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DisableRuleRequest();
 
-        // Name
-        if (root.TryGetProperty("Name", out var NameElem))
-            request.Name = NameElem.GetString();
+            // Name
+            if (root.TryGetProperty("Name", out var NameElem))
+                request.Name = NameElem.GetString();
 
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDisableRuleResponse(DisableRuleResponse response, IBufferWriter<byte> bufferWriter)
@@ -601,21 +689,29 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static EnableRuleRequest DeserializeEnableRuleRequest(Stream stream)
+    internal static EnableRuleRequest DeserializeEnableRuleRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new EnableRuleRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new EnableRuleRequest();
 
-        // Name
-        if (root.TryGetProperty("Name", out var NameElem))
-            request.Name = NameElem.GetString();
+            // Name
+            if (root.TryGetProperty("Name", out var NameElem))
+                request.Name = NameElem.GetString();
 
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeEnableRuleResponse(EnableRuleResponse response, IBufferWriter<byte> bufferWriter)
@@ -626,33 +722,41 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static ListArchivesRequest DeserializeListArchivesRequest(Stream stream)
+    internal static ListArchivesRequest DeserializeListArchivesRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListArchivesRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListArchivesRequest();
 
-        // NamePrefix
-        if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
-            request.NamePrefix = NamePrefixElem.GetString();
+            // NamePrefix
+            if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
+                request.NamePrefix = NamePrefixElem.GetString();
 
-        // EventSourceArn
-        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
-            request.EventSourceArn = EventSourceArnElem.GetString();
+            // EventSourceArn
+            if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+                request.EventSourceArn = EventSourceArnElem.GetString();
 
-        // State
-        if (root.TryGetProperty("State", out var StateElem))
-            request.State = StateElem.GetString();
+            // State
+            if (root.TryGetProperty("State", out var StateElem))
+                request.State = StateElem.GetString();
 
-        // NextToken
-        if (root.TryGetProperty("NextToken", out var NextTokenElem))
-            request.NextToken = NextTokenElem.GetString();
+            // NextToken
+            if (root.TryGetProperty("NextToken", out var NextTokenElem))
+                request.NextToken = NextTokenElem.GetString();
 
-        // Limit
-        if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
-            request.Limit = LimitVal;
+            // Limit
+            if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
+                request.Limit = LimitVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListArchivesResponse(ListArchivesResponse response, IBufferWriter<byte> bufferWriter)
@@ -697,25 +801,33 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static ListEventBusesRequest DeserializeListEventBusesRequest(Stream stream)
+    internal static ListEventBusesRequest DeserializeListEventBusesRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListEventBusesRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListEventBusesRequest();
 
-        // NamePrefix
-        if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
-            request.NamePrefix = NamePrefixElem.GetString();
+            // NamePrefix
+            if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
+                request.NamePrefix = NamePrefixElem.GetString();
 
-        // NextToken
-        if (root.TryGetProperty("NextToken", out var NextTokenElem))
-            request.NextToken = NextTokenElem.GetString();
+            // NextToken
+            if (root.TryGetProperty("NextToken", out var NextTokenElem))
+                request.NextToken = NextTokenElem.GetString();
 
-        // Limit
-        if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
-            request.Limit = LimitVal;
+            // Limit
+            if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
+                request.Limit = LimitVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListEventBusesResponse(ListEventBusesResponse response, IBufferWriter<byte> bufferWriter)
@@ -756,33 +868,41 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static ListReplaysRequest DeserializeListReplaysRequest(Stream stream)
+    internal static ListReplaysRequest DeserializeListReplaysRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListReplaysRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListReplaysRequest();
 
-        // NamePrefix
-        if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
-            request.NamePrefix = NamePrefixElem.GetString();
+            // NamePrefix
+            if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
+                request.NamePrefix = NamePrefixElem.GetString();
 
-        // State
-        if (root.TryGetProperty("State", out var StateElem))
-            request.State = StateElem.GetString();
+            // State
+            if (root.TryGetProperty("State", out var StateElem))
+                request.State = StateElem.GetString();
 
-        // EventSourceArn
-        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
-            request.EventSourceArn = EventSourceArnElem.GetString();
+            // EventSourceArn
+            if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+                request.EventSourceArn = EventSourceArnElem.GetString();
 
-        // NextToken
-        if (root.TryGetProperty("NextToken", out var NextTokenElem))
-            request.NextToken = NextTokenElem.GetString();
+            // NextToken
+            if (root.TryGetProperty("NextToken", out var NextTokenElem))
+                request.NextToken = NextTokenElem.GetString();
 
-        // Limit
-        if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
-            request.Limit = LimitVal;
+            // Limit
+            if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
+                request.Limit = LimitVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListReplaysResponse(ListReplaysResponse response, IBufferWriter<byte> bufferWriter)
@@ -829,29 +949,37 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static ListRuleNamesByTargetRequest DeserializeListRuleNamesByTargetRequest(Stream stream)
+    internal static ListRuleNamesByTargetRequest DeserializeListRuleNamesByTargetRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListRuleNamesByTargetRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListRuleNamesByTargetRequest();
 
-        // TargetArn
-        if (root.TryGetProperty("TargetArn", out var TargetArnElem))
-            request.TargetArn = TargetArnElem.GetString();
+            // TargetArn
+            if (root.TryGetProperty("TargetArn", out var TargetArnElem))
+                request.TargetArn = TargetArnElem.GetString();
 
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
 
-        // NextToken
-        if (root.TryGetProperty("NextToken", out var NextTokenElem))
-            request.NextToken = NextTokenElem.GetString();
+            // NextToken
+            if (root.TryGetProperty("NextToken", out var NextTokenElem))
+                request.NextToken = NextTokenElem.GetString();
 
-        // Limit
-        if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
-            request.Limit = LimitVal;
+            // Limit
+            if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
+                request.Limit = LimitVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListRuleNamesByTargetResponse(ListRuleNamesByTargetResponse response, IBufferWriter<byte> bufferWriter)
@@ -879,29 +1007,37 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static ListRulesRequest DeserializeListRulesRequest(Stream stream)
+    internal static ListRulesRequest DeserializeListRulesRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListRulesRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListRulesRequest();
 
-        // NamePrefix
-        if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
-            request.NamePrefix = NamePrefixElem.GetString();
+            // NamePrefix
+            if (root.TryGetProperty("NamePrefix", out var NamePrefixElem))
+                request.NamePrefix = NamePrefixElem.GetString();
 
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
 
-        // NextToken
-        if (root.TryGetProperty("NextToken", out var NextTokenElem))
-            request.NextToken = NextTokenElem.GetString();
+            // NextToken
+            if (root.TryGetProperty("NextToken", out var NextTokenElem))
+                request.NextToken = NextTokenElem.GetString();
 
-        // Limit
-        if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
-            request.Limit = LimitVal;
+            // Limit
+            if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
+                request.Limit = LimitVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListRulesResponse(ListRulesResponse response, IBufferWriter<byte> bufferWriter)
@@ -948,17 +1084,25 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static ListTagsForResourceRequest DeserializeListTagsForResourceRequest(Stream stream)
+    internal static ListTagsForResourceRequest DeserializeListTagsForResourceRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListTagsForResourceRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListTagsForResourceRequest();
 
-        // ResourceARN
-        if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
-            request.ResourceARN = ResourceARNElem.GetString();
+            // ResourceARN
+            if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
+                request.ResourceARN = ResourceARNElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListTagsForResourceResponse(ListTagsForResourceResponse response, IBufferWriter<byte> bufferWriter)
@@ -987,29 +1131,37 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static ListTargetsByRuleRequest DeserializeListTargetsByRuleRequest(Stream stream)
+    internal static ListTargetsByRuleRequest DeserializeListTargetsByRuleRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListTargetsByRuleRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListTargetsByRuleRequest();
 
-        // Rule
-        if (root.TryGetProperty("Rule", out var RuleElem))
-            request.Rule = RuleElem.GetString();
+            // Rule
+            if (root.TryGetProperty("Rule", out var RuleElem))
+                request.Rule = RuleElem.GetString();
 
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
 
-        // NextToken
-        if (root.TryGetProperty("NextToken", out var NextTokenElem))
-            request.NextToken = NextTokenElem.GetString();
+            // NextToken
+            if (root.TryGetProperty("NextToken", out var NextTokenElem))
+                request.NextToken = NextTokenElem.GetString();
 
-        // Limit
-        if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
-            request.Limit = LimitVal;
+            // Limit
+            if (root.TryGetProperty("Limit", out var LimitElem) && LimitElem.TryGetInt32(out var LimitVal))
+                request.Limit = LimitVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListTargetsByRuleResponse(ListTargetsByRuleResponse response, IBufferWriter<byte> bufferWriter)
@@ -1368,48 +1520,56 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static PutEventsRequest DeserializePutEventsRequest(Stream stream)
+    internal static PutEventsRequest DeserializePutEventsRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new PutEventsRequest();
-
-        // Entries
-        if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.Entries = new List<PutEventsRequestEntry>();
-            foreach (var item in EntriesElem.EnumerateArray())
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new PutEventsRequest();
+
+            // Entries
+            if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
             {
-                var entry6 = new PutEventsRequestEntry();
-                if (item.TryGetProperty("Time", out var _e7) && Serialization.AwsJsonTimestamp.TryRead(_e7, out var _dt7))
-                    entry6.Time = _dt7;
-                if (item.TryGetProperty("Source", out var _e8))
-                    entry6.Source = _e8.GetString();
-                if (item.TryGetProperty("Resources", out var _e9) && _e9.ValueKind == JsonValueKind.Array)
+                request.Entries = new List<PutEventsRequestEntry>();
+                foreach (var item in EntriesElem.EnumerateArray())
                 {
-                    entry6.Resources = new List<string>();
-                    foreach (var _li9 in _e9.EnumerateArray())
+                    var entry6 = new PutEventsRequestEntry();
+                    if (item.TryGetProperty("Time", out var _e7) && Serialization.AwsJsonTimestamp.TryRead(_e7, out var _dt7))
+                        entry6.Time = _dt7;
+                    if (item.TryGetProperty("Source", out var _e8))
+                        entry6.Source = _e8.GetString();
+                    if (item.TryGetProperty("Resources", out var _e9) && _e9.ValueKind == JsonValueKind.Array)
                     {
-                        entry6.Resources.Add(_li9.GetString()!);
+                        entry6.Resources = new List<string>();
+                        foreach (var _li9 in _e9.EnumerateArray())
+                        {
+                            entry6.Resources.Add(_li9.GetString()!);
+                        }
                     }
+                    if (item.TryGetProperty("DetailType", out var _e10))
+                        entry6.DetailType = _e10.GetString();
+                    if (item.TryGetProperty("Detail", out var _e11))
+                        entry6.Detail = _e11.GetString();
+                    if (item.TryGetProperty("EventBusName", out var _e12))
+                        entry6.EventBusName = _e12.GetString();
+                    if (item.TryGetProperty("TraceHeader", out var _e13))
+                        entry6.TraceHeader = _e13.GetString();
+                    request.Entries.Add(entry6);
                 }
-                if (item.TryGetProperty("DetailType", out var _e10))
-                    entry6.DetailType = _e10.GetString();
-                if (item.TryGetProperty("Detail", out var _e11))
-                    entry6.Detail = _e11.GetString();
-                if (item.TryGetProperty("EventBusName", out var _e12))
-                    entry6.EventBusName = _e12.GetString();
-                if (item.TryGetProperty("TraceHeader", out var _e13))
-                    entry6.TraceHeader = _e13.GetString();
-                request.Entries.Add(entry6);
             }
+
+            // EndpointId
+            if (root.TryGetProperty("EndpointId", out var EndpointIdElem))
+                request.EndpointId = EndpointIdElem.GetString();
+
+
+            return request;
         }
-
-        // EndpointId
-        if (root.TryGetProperty("EndpointId", out var EndpointIdElem))
-            request.EndpointId = EndpointIdElem.GetString();
-
-        return request;
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializePutEventsResponse(PutEventsResponse response, IBufferWriter<byte> bufferWriter)
@@ -1444,46 +1604,54 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static PutPermissionRequest DeserializePutPermissionRequest(Stream stream)
+    internal static PutPermissionRequest DeserializePutPermissionRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new PutPermissionRequest();
-
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
-
-        // Action
-        if (root.TryGetProperty("Action", out var ActionElem))
-            request.Action = ActionElem.GetString();
-
-        // Principal
-        if (root.TryGetProperty("Principal", out var PrincipalElem))
-            request.Principal = PrincipalElem.GetString();
-
-        // StatementId
-        if (root.TryGetProperty("StatementId", out var StatementIdElem))
-            request.StatementId = StatementIdElem.GetString();
-
-        // Condition
-        if (root.TryGetProperty("Condition", out var ConditionElem) && ConditionElem.ValueKind == JsonValueKind.Object)
+        try
         {
-            var ConditionVal = new Condition();
-            if (ConditionElem.TryGetProperty("Type", out var _e14))
-                ConditionVal.Type = _e14.GetString();
-            if (ConditionElem.TryGetProperty("Key", out var _e15))
-                ConditionVal.Key = _e15.GetString();
-            if (ConditionElem.TryGetProperty("Value", out var _e16))
-                ConditionVal.Value = _e16.GetString();
-            request.Condition = ConditionVal;
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new PutPermissionRequest();
+
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
+
+            // Action
+            if (root.TryGetProperty("Action", out var ActionElem))
+                request.Action = ActionElem.GetString();
+
+            // Principal
+            if (root.TryGetProperty("Principal", out var PrincipalElem))
+                request.Principal = PrincipalElem.GetString();
+
+            // StatementId
+            if (root.TryGetProperty("StatementId", out var StatementIdElem))
+                request.StatementId = StatementIdElem.GetString();
+
+            // Condition
+            if (root.TryGetProperty("Condition", out var ConditionElem) && ConditionElem.ValueKind == JsonValueKind.Object)
+            {
+                var ConditionVal = new Condition();
+                if (ConditionElem.TryGetProperty("Type", out var _e14))
+                    ConditionVal.Type = _e14.GetString();
+                if (ConditionElem.TryGetProperty("Key", out var _e15))
+                    ConditionVal.Key = _e15.GetString();
+                if (ConditionElem.TryGetProperty("Value", out var _e16))
+                    ConditionVal.Value = _e16.GetString();
+                request.Condition = ConditionVal;
+            }
+
+            // Policy
+            if (root.TryGetProperty("Policy", out var PolicyElem))
+                request.Policy = PolicyElem.GetString();
+
+
+            return request;
         }
-
-        // Policy
-        if (root.TryGetProperty("Policy", out var PolicyElem))
-            request.Policy = PolicyElem.GetString();
-
-        return request;
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializePutPermissionResponse(PutPermissionResponse response, IBufferWriter<byte> bufferWriter)
@@ -1494,56 +1662,64 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static PutRuleRequest DeserializePutRuleRequest(Stream stream)
+    internal static PutRuleRequest DeserializePutRuleRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new PutRuleRequest();
-
-        // Name
-        if (root.TryGetProperty("Name", out var NameElem))
-            request.Name = NameElem.GetString();
-
-        // ScheduleExpression
-        if (root.TryGetProperty("ScheduleExpression", out var ScheduleExpressionElem))
-            request.ScheduleExpression = ScheduleExpressionElem.GetString();
-
-        // EventPattern
-        if (root.TryGetProperty("EventPattern", out var EventPatternElem))
-            request.EventPattern = EventPatternElem.GetString();
-
-        // State
-        if (root.TryGetProperty("State", out var StateElem))
-            request.State = StateElem.GetString();
-
-        // Description
-        if (root.TryGetProperty("Description", out var DescriptionElem))
-            request.Description = DescriptionElem.GetString();
-
-        // RoleArn
-        if (root.TryGetProperty("RoleArn", out var RoleArnElem))
-            request.RoleArn = RoleArnElem.GetString();
-
-        // Tags
-        if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.Tags = new List<Tag>();
-            foreach (var item in TagsElem.EnumerateArray())
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new PutRuleRequest();
+
+            // Name
+            if (root.TryGetProperty("Name", out var NameElem))
+                request.Name = NameElem.GetString();
+
+            // ScheduleExpression
+            if (root.TryGetProperty("ScheduleExpression", out var ScheduleExpressionElem))
+                request.ScheduleExpression = ScheduleExpressionElem.GetString();
+
+            // EventPattern
+            if (root.TryGetProperty("EventPattern", out var EventPatternElem))
+                request.EventPattern = EventPatternElem.GetString();
+
+            // State
+            if (root.TryGetProperty("State", out var StateElem))
+                request.State = StateElem.GetString();
+
+            // Description
+            if (root.TryGetProperty("Description", out var DescriptionElem))
+                request.Description = DescriptionElem.GetString();
+
+            // RoleArn
+            if (root.TryGetProperty("RoleArn", out var RoleArnElem))
+                request.RoleArn = RoleArnElem.GetString();
+
+            // Tags
+            if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
             {
-                var entry17 = new Tag();
-                if (item.TryGetProperty("Key", out var _e18))
-                    entry17.Key = _e18.GetString();
-                if (item.TryGetProperty("Value", out var _e19))
-                    entry17.Value = _e19.GetString();
-                request.Tags.Add(entry17);
+                request.Tags = new List<Tag>();
+                foreach (var item in TagsElem.EnumerateArray())
+                {
+                    var entry17 = new Tag();
+                    if (item.TryGetProperty("Key", out var _e18))
+                        entry17.Key = _e18.GetString();
+                    if (item.TryGetProperty("Value", out var _e19))
+                        entry17.Value = _e19.GetString();
+                    request.Tags.Add(entry17);
+                }
             }
+
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
+
+
+            return request;
         }
-
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
-
-        return request;
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializePutRuleResponse(PutRuleResponse response, IBufferWriter<byte> bufferWriter)
@@ -1559,318 +1735,326 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static PutTargetsRequest DeserializePutTargetsRequest(Stream stream)
+    internal static PutTargetsRequest DeserializePutTargetsRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new PutTargetsRequest();
-
-        // Rule
-        if (root.TryGetProperty("Rule", out var RuleElem))
-            request.Rule = RuleElem.GetString();
-
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
-
-        // Targets
-        if (root.TryGetProperty("Targets", out var TargetsElem) && TargetsElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.Targets = new List<Target>();
-            foreach (var item in TargetsElem.EnumerateArray())
-            {
-                var entry20 = new Target();
-                if (item.TryGetProperty("Id", out var _e21))
-                    entry20.Id = _e21.GetString();
-                if (item.TryGetProperty("Arn", out var _e22))
-                    entry20.Arn = _e22.GetString();
-                if (item.TryGetProperty("RoleArn", out var _e23))
-                    entry20.RoleArn = _e23.GetString();
-                if (item.TryGetProperty("Input", out var _e24))
-                    entry20.Input = _e24.GetString();
-                if (item.TryGetProperty("InputPath", out var _e25))
-                    entry20.InputPath = _e25.GetString();
-                if (item.TryGetProperty("InputTransformer", out var _e26) && _e26.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns26 = new InputTransformer();
-                    if (_e26.TryGetProperty("InputPathsMap", out var _e27) && _e27.ValueKind == JsonValueKind.Object)
-                    {
-                        _ns26.InputPathsMap = new Dictionary<string, string>();
-                        foreach (var _p27 in _e27.EnumerateObject())
-                        {
-                            _ns26.InputPathsMap[_p27.Name] = _p27.Value.GetString()!;
-                        }
-                    }
-                    if (_e26.TryGetProperty("InputTemplate", out var _e28))
-                        _ns26.InputTemplate = _e28.GetString();
-                    entry20.InputTransformer = _ns26;
-                }
-                if (item.TryGetProperty("KinesisParameters", out var _e29) && _e29.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns29 = new KinesisParameters();
-                    if (_e29.TryGetProperty("PartitionKeyPath", out var _e30))
-                        _ns29.PartitionKeyPath = _e30.GetString();
-                    entry20.KinesisParameters = _ns29;
-                }
-                if (item.TryGetProperty("RunCommandParameters", out var _e31) && _e31.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns31 = new RunCommandParameters();
-                    if (_e31.TryGetProperty("RunCommandTargets", out var _e32) && _e32.ValueKind == JsonValueKind.Array)
-                    {
-                        _ns31.RunCommandTargets = new List<RunCommandTarget>();
-                        foreach (var _li32 in _e32.EnumerateArray())
-                        {
-                            var _le32 = new RunCommandTarget();
-                            if (_li32.TryGetProperty("Key", out var _e33))
-                                _le32.Key = _e33.GetString();
-                            if (_li32.TryGetProperty("Values", out var _e34) && _e34.ValueKind == JsonValueKind.Array)
-                            {
-                                _le32.Values = new List<string>();
-                                foreach (var _li34 in _e34.EnumerateArray())
-                                {
-                                    _le32.Values.Add(_li34.GetString()!);
-                                }
-                            }
-                            _ns31.RunCommandTargets.Add(_le32);
-                        }
-                    }
-                    entry20.RunCommandParameters = _ns31;
-                }
-                if (item.TryGetProperty("EcsParameters", out var _e35) && _e35.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns35 = new EcsParameters();
-                    if (_e35.TryGetProperty("TaskDefinitionArn", out var _e36))
-                        _ns35.TaskDefinitionArn = _e36.GetString();
-                    if (_e35.TryGetProperty("TaskCount", out var _e37) && _e37.TryGetInt32(out var _i37))
-                        _ns35.TaskCount = _i37;
-                    if (_e35.TryGetProperty("LaunchType", out var _e38))
-                        _ns35.LaunchType = _e38.GetString();
-                    if (_e35.TryGetProperty("NetworkConfiguration", out var _e39) && _e39.ValueKind == JsonValueKind.Object)
-                    {
-                        var _ns39 = new NetworkConfiguration();
-                        if (_e39.TryGetProperty("awsvpcConfiguration", out var _e40) && _e40.ValueKind == JsonValueKind.Object)
-                        {
-                            var _ns40 = new AwsVpcConfiguration();
-                            if (_e40.TryGetProperty("Subnets", out var _e41) && _e41.ValueKind == JsonValueKind.Array)
-                            {
-                                _ns40.Subnets = new List<string>();
-                                foreach (var _li41 in _e41.EnumerateArray())
-                                {
-                                    _ns40.Subnets.Add(_li41.GetString()!);
-                                }
-                            }
-                            if (_e40.TryGetProperty("SecurityGroups", out var _e42) && _e42.ValueKind == JsonValueKind.Array)
-                            {
-                                _ns40.SecurityGroups = new List<string>();
-                                foreach (var _li42 in _e42.EnumerateArray())
-                                {
-                                    _ns40.SecurityGroups.Add(_li42.GetString()!);
-                                }
-                            }
-                            if (_e40.TryGetProperty("AssignPublicIp", out var _e43))
-                                _ns40.AssignPublicIp = _e43.GetString();
-                            _ns39.AwsvpcConfiguration = _ns40;
-                        }
-                        _ns35.NetworkConfiguration = _ns39;
-                    }
-                    if (_e35.TryGetProperty("PlatformVersion", out var _e44))
-                        _ns35.PlatformVersion = _e44.GetString();
-                    if (_e35.TryGetProperty("Group", out var _e45))
-                        _ns35.Group = _e45.GetString();
-                    if (_e35.TryGetProperty("CapacityProviderStrategy", out var _e46) && _e46.ValueKind == JsonValueKind.Array)
-                    {
-                        _ns35.CapacityProviderStrategy = new List<CapacityProviderStrategyItem>();
-                        foreach (var _li46 in _e46.EnumerateArray())
-                        {
-                            var _le46 = new CapacityProviderStrategyItem();
-                            if (_li46.TryGetProperty("capacityProvider", out var _e47))
-                                _le46.CapacityProvider = _e47.GetString();
-                            if (_li46.TryGetProperty("weight", out var _e48) && _e48.TryGetInt32(out var _i48))
-                                _le46.Weight = _i48;
-                            if (_li46.TryGetProperty("base", out var _e49) && _e49.TryGetInt32(out var _i49))
-                                _le46.Base = _i49;
-                            _ns35.CapacityProviderStrategy.Add(_le46);
-                        }
-                    }
-                    if (_e35.TryGetProperty("EnableECSManagedTags", out var _e50))
-                        _ns35.EnableECSManagedTags = _e50.GetBoolean();
-                    if (_e35.TryGetProperty("EnableExecuteCommand", out var _e51))
-                        _ns35.EnableExecuteCommand = _e51.GetBoolean();
-                    if (_e35.TryGetProperty("PlacementConstraints", out var _e52) && _e52.ValueKind == JsonValueKind.Array)
-                    {
-                        _ns35.PlacementConstraints = new List<PlacementConstraint>();
-                        foreach (var _li52 in _e52.EnumerateArray())
-                        {
-                            var _le52 = new PlacementConstraint();
-                            if (_li52.TryGetProperty("type", out var _e53))
-                                _le52.Type = _e53.GetString();
-                            if (_li52.TryGetProperty("expression", out var _e54))
-                                _le52.Expression = _e54.GetString();
-                            _ns35.PlacementConstraints.Add(_le52);
-                        }
-                    }
-                    if (_e35.TryGetProperty("PlacementStrategy", out var _e55) && _e55.ValueKind == JsonValueKind.Array)
-                    {
-                        _ns35.PlacementStrategy = new List<PlacementStrategy>();
-                        foreach (var _li55 in _e55.EnumerateArray())
-                        {
-                            var _le55 = new PlacementStrategy();
-                            if (_li55.TryGetProperty("type", out var _e56))
-                                _le55.Type = _e56.GetString();
-                            if (_li55.TryGetProperty("field", out var _e57))
-                                _le55.Field = _e57.GetString();
-                            _ns35.PlacementStrategy.Add(_le55);
-                        }
-                    }
-                    if (_e35.TryGetProperty("PropagateTags", out var _e58))
-                        _ns35.PropagateTags = _e58.GetString();
-                    if (_e35.TryGetProperty("ReferenceId", out var _e59))
-                        _ns35.ReferenceId = _e59.GetString();
-                    if (_e35.TryGetProperty("Tags", out var _e60) && _e60.ValueKind == JsonValueKind.Array)
-                    {
-                        _ns35.Tags = new List<Tag>();
-                        foreach (var _li60 in _e60.EnumerateArray())
-                        {
-                            var _le60 = new Tag();
-                            if (_li60.TryGetProperty("Key", out var _e61))
-                                _le60.Key = _e61.GetString();
-                            if (_li60.TryGetProperty("Value", out var _e62))
-                                _le60.Value = _e62.GetString();
-                            _ns35.Tags.Add(_le60);
-                        }
-                    }
-                    entry20.EcsParameters = _ns35;
-                }
-                if (item.TryGetProperty("BatchParameters", out var _e63) && _e63.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns63 = new BatchParameters();
-                    if (_e63.TryGetProperty("JobDefinition", out var _e64))
-                        _ns63.JobDefinition = _e64.GetString();
-                    if (_e63.TryGetProperty("JobName", out var _e65))
-                        _ns63.JobName = _e65.GetString();
-                    if (_e63.TryGetProperty("ArrayProperties", out var _e66) && _e66.ValueKind == JsonValueKind.Object)
-                    {
-                        var _ns66 = new BatchArrayProperties();
-                        if (_e66.TryGetProperty("Size", out var _e67) && _e67.TryGetInt32(out var _i67))
-                            _ns66.Size = _i67;
-                        _ns63.ArrayProperties = _ns66;
-                    }
-                    if (_e63.TryGetProperty("RetryStrategy", out var _e68) && _e68.ValueKind == JsonValueKind.Object)
-                    {
-                        var _ns68 = new BatchRetryStrategy();
-                        if (_e68.TryGetProperty("Attempts", out var _e69) && _e69.TryGetInt32(out var _i69))
-                            _ns68.Attempts = _i69;
-                        _ns63.RetryStrategy = _ns68;
-                    }
-                    entry20.BatchParameters = _ns63;
-                }
-                if (item.TryGetProperty("SqsParameters", out var _e70) && _e70.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns70 = new SqsParameters();
-                    if (_e70.TryGetProperty("MessageGroupId", out var _e71))
-                        _ns70.MessageGroupId = _e71.GetString();
-                    entry20.SqsParameters = _ns70;
-                }
-                if (item.TryGetProperty("HttpParameters", out var _e72) && _e72.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns72 = new HttpParameters();
-                    if (_e72.TryGetProperty("PathParameterValues", out var _e73) && _e73.ValueKind == JsonValueKind.Array)
-                    {
-                        _ns72.PathParameterValues = new List<string>();
-                        foreach (var _li73 in _e73.EnumerateArray())
-                        {
-                            _ns72.PathParameterValues.Add(_li73.GetString()!);
-                        }
-                    }
-                    if (_e72.TryGetProperty("HeaderParameters", out var _e74) && _e74.ValueKind == JsonValueKind.Object)
-                    {
-                        _ns72.HeaderParameters = new Dictionary<string, string>();
-                        foreach (var _p74 in _e74.EnumerateObject())
-                        {
-                            _ns72.HeaderParameters[_p74.Name] = _p74.Value.GetString()!;
-                        }
-                    }
-                    if (_e72.TryGetProperty("QueryStringParameters", out var _e75) && _e75.ValueKind == JsonValueKind.Object)
-                    {
-                        _ns72.QueryStringParameters = new Dictionary<string, string>();
-                        foreach (var _p75 in _e75.EnumerateObject())
-                        {
-                            _ns72.QueryStringParameters[_p75.Name] = _p75.Value.GetString()!;
-                        }
-                    }
-                    entry20.HttpParameters = _ns72;
-                }
-                if (item.TryGetProperty("RedshiftDataParameters", out var _e76) && _e76.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns76 = new RedshiftDataParameters();
-                    if (_e76.TryGetProperty("SecretManagerArn", out var _e77))
-                        _ns76.SecretManagerArn = _e77.GetString();
-                    if (_e76.TryGetProperty("Database", out var _e78))
-                        _ns76.Database = _e78.GetString();
-                    if (_e76.TryGetProperty("DbUser", out var _e79))
-                        _ns76.DbUser = _e79.GetString();
-                    if (_e76.TryGetProperty("Sql", out var _e80))
-                        _ns76.Sql = _e80.GetString();
-                    if (_e76.TryGetProperty("StatementName", out var _e81))
-                        _ns76.StatementName = _e81.GetString();
-                    if (_e76.TryGetProperty("WithEvent", out var _e82))
-                        _ns76.WithEvent = _e82.GetBoolean();
-                    if (_e76.TryGetProperty("Sqls", out var _e83) && _e83.ValueKind == JsonValueKind.Array)
-                    {
-                        _ns76.Sqls = new List<string>();
-                        foreach (var _li83 in _e83.EnumerateArray())
-                        {
-                            _ns76.Sqls.Add(_li83.GetString()!);
-                        }
-                    }
-                    entry20.RedshiftDataParameters = _ns76;
-                }
-                if (item.TryGetProperty("SageMakerPipelineParameters", out var _e84) && _e84.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns84 = new SageMakerPipelineParameters();
-                    if (_e84.TryGetProperty("PipelineParameterList", out var _e85) && _e85.ValueKind == JsonValueKind.Array)
-                    {
-                        _ns84.PipelineParameterList = new List<SageMakerPipelineParameter>();
-                        foreach (var _li85 in _e85.EnumerateArray())
-                        {
-                            var _le85 = new SageMakerPipelineParameter();
-                            if (_li85.TryGetProperty("Name", out var _e86))
-                                _le85.Name = _e86.GetString();
-                            if (_li85.TryGetProperty("Value", out var _e87))
-                                _le85.Value = _e87.GetString();
-                            _ns84.PipelineParameterList.Add(_le85);
-                        }
-                    }
-                    entry20.SageMakerPipelineParameters = _ns84;
-                }
-                if (item.TryGetProperty("DeadLetterConfig", out var _e88) && _e88.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns88 = new DeadLetterConfig();
-                    if (_e88.TryGetProperty("Arn", out var _e89))
-                        _ns88.Arn = _e89.GetString();
-                    entry20.DeadLetterConfig = _ns88;
-                }
-                if (item.TryGetProperty("RetryPolicy", out var _e90) && _e90.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns90 = new RetryPolicy();
-                    if (_e90.TryGetProperty("MaximumRetryAttempts", out var _e91) && _e91.TryGetInt32(out var _i91))
-                        _ns90.MaximumRetryAttempts = _i91;
-                    if (_e90.TryGetProperty("MaximumEventAgeInSeconds", out var _e92) && _e92.TryGetInt32(out var _i92))
-                        _ns90.MaximumEventAgeInSeconds = _i92;
-                    entry20.RetryPolicy = _ns90;
-                }
-                if (item.TryGetProperty("AppSyncParameters", out var _e93) && _e93.ValueKind == JsonValueKind.Object)
-                {
-                    var _ns93 = new AppSyncParameters();
-                    if (_e93.TryGetProperty("GraphQLOperation", out var _e94))
-                        _ns93.GraphQLOperation = _e94.GetString();
-                    entry20.AppSyncParameters = _ns93;
-                }
-                request.Targets.Add(entry20);
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new PutTargetsRequest();
 
-        return request;
+            // Rule
+            if (root.TryGetProperty("Rule", out var RuleElem))
+                request.Rule = RuleElem.GetString();
+
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
+
+            // Targets
+            if (root.TryGetProperty("Targets", out var TargetsElem) && TargetsElem.ValueKind == JsonValueKind.Array)
+            {
+                request.Targets = new List<Target>();
+                foreach (var item in TargetsElem.EnumerateArray())
+                {
+                    var entry20 = new Target();
+                    if (item.TryGetProperty("Id", out var _e21))
+                        entry20.Id = _e21.GetString();
+                    if (item.TryGetProperty("Arn", out var _e22))
+                        entry20.Arn = _e22.GetString();
+                    if (item.TryGetProperty("RoleArn", out var _e23))
+                        entry20.RoleArn = _e23.GetString();
+                    if (item.TryGetProperty("Input", out var _e24))
+                        entry20.Input = _e24.GetString();
+                    if (item.TryGetProperty("InputPath", out var _e25))
+                        entry20.InputPath = _e25.GetString();
+                    if (item.TryGetProperty("InputTransformer", out var _e26) && _e26.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns26 = new InputTransformer();
+                        if (_e26.TryGetProperty("InputPathsMap", out var _e27) && _e27.ValueKind == JsonValueKind.Object)
+                        {
+                            _ns26.InputPathsMap = new Dictionary<string, string>();
+                            foreach (var _p27 in _e27.EnumerateObject())
+                            {
+                                _ns26.InputPathsMap[_p27.Name] = _p27.Value.GetString()!;
+                            }
+                        }
+                        if (_e26.TryGetProperty("InputTemplate", out var _e28))
+                            _ns26.InputTemplate = _e28.GetString();
+                        entry20.InputTransformer = _ns26;
+                    }
+                    if (item.TryGetProperty("KinesisParameters", out var _e29) && _e29.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns29 = new KinesisParameters();
+                        if (_e29.TryGetProperty("PartitionKeyPath", out var _e30))
+                            _ns29.PartitionKeyPath = _e30.GetString();
+                        entry20.KinesisParameters = _ns29;
+                    }
+                    if (item.TryGetProperty("RunCommandParameters", out var _e31) && _e31.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns31 = new RunCommandParameters();
+                        if (_e31.TryGetProperty("RunCommandTargets", out var _e32) && _e32.ValueKind == JsonValueKind.Array)
+                        {
+                            _ns31.RunCommandTargets = new List<RunCommandTarget>();
+                            foreach (var _li32 in _e32.EnumerateArray())
+                            {
+                                var _le32 = new RunCommandTarget();
+                                if (_li32.TryGetProperty("Key", out var _e33))
+                                    _le32.Key = _e33.GetString();
+                                if (_li32.TryGetProperty("Values", out var _e34) && _e34.ValueKind == JsonValueKind.Array)
+                                {
+                                    _le32.Values = new List<string>();
+                                    foreach (var _li34 in _e34.EnumerateArray())
+                                    {
+                                        _le32.Values.Add(_li34.GetString()!);
+                                    }
+                                }
+                                _ns31.RunCommandTargets.Add(_le32);
+                            }
+                        }
+                        entry20.RunCommandParameters = _ns31;
+                    }
+                    if (item.TryGetProperty("EcsParameters", out var _e35) && _e35.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns35 = new EcsParameters();
+                        if (_e35.TryGetProperty("TaskDefinitionArn", out var _e36))
+                            _ns35.TaskDefinitionArn = _e36.GetString();
+                        if (_e35.TryGetProperty("TaskCount", out var _e37) && _e37.TryGetInt32(out var _i37))
+                            _ns35.TaskCount = _i37;
+                        if (_e35.TryGetProperty("LaunchType", out var _e38))
+                            _ns35.LaunchType = _e38.GetString();
+                        if (_e35.TryGetProperty("NetworkConfiguration", out var _e39) && _e39.ValueKind == JsonValueKind.Object)
+                        {
+                            var _ns39 = new NetworkConfiguration();
+                            if (_e39.TryGetProperty("awsvpcConfiguration", out var _e40) && _e40.ValueKind == JsonValueKind.Object)
+                            {
+                                var _ns40 = new AwsVpcConfiguration();
+                                if (_e40.TryGetProperty("Subnets", out var _e41) && _e41.ValueKind == JsonValueKind.Array)
+                                {
+                                    _ns40.Subnets = new List<string>();
+                                    foreach (var _li41 in _e41.EnumerateArray())
+                                    {
+                                        _ns40.Subnets.Add(_li41.GetString()!);
+                                    }
+                                }
+                                if (_e40.TryGetProperty("SecurityGroups", out var _e42) && _e42.ValueKind == JsonValueKind.Array)
+                                {
+                                    _ns40.SecurityGroups = new List<string>();
+                                    foreach (var _li42 in _e42.EnumerateArray())
+                                    {
+                                        _ns40.SecurityGroups.Add(_li42.GetString()!);
+                                    }
+                                }
+                                if (_e40.TryGetProperty("AssignPublicIp", out var _e43))
+                                    _ns40.AssignPublicIp = _e43.GetString();
+                                _ns39.AwsvpcConfiguration = _ns40;
+                            }
+                            _ns35.NetworkConfiguration = _ns39;
+                        }
+                        if (_e35.TryGetProperty("PlatformVersion", out var _e44))
+                            _ns35.PlatformVersion = _e44.GetString();
+                        if (_e35.TryGetProperty("Group", out var _e45))
+                            _ns35.Group = _e45.GetString();
+                        if (_e35.TryGetProperty("CapacityProviderStrategy", out var _e46) && _e46.ValueKind == JsonValueKind.Array)
+                        {
+                            _ns35.CapacityProviderStrategy = new List<CapacityProviderStrategyItem>();
+                            foreach (var _li46 in _e46.EnumerateArray())
+                            {
+                                var _le46 = new CapacityProviderStrategyItem();
+                                if (_li46.TryGetProperty("capacityProvider", out var _e47))
+                                    _le46.CapacityProvider = _e47.GetString();
+                                if (_li46.TryGetProperty("weight", out var _e48) && _e48.TryGetInt32(out var _i48))
+                                    _le46.Weight = _i48;
+                                if (_li46.TryGetProperty("base", out var _e49) && _e49.TryGetInt32(out var _i49))
+                                    _le46.Base = _i49;
+                                _ns35.CapacityProviderStrategy.Add(_le46);
+                            }
+                        }
+                        if (_e35.TryGetProperty("EnableECSManagedTags", out var _e50))
+                            _ns35.EnableECSManagedTags = _e50.GetBoolean();
+                        if (_e35.TryGetProperty("EnableExecuteCommand", out var _e51))
+                            _ns35.EnableExecuteCommand = _e51.GetBoolean();
+                        if (_e35.TryGetProperty("PlacementConstraints", out var _e52) && _e52.ValueKind == JsonValueKind.Array)
+                        {
+                            _ns35.PlacementConstraints = new List<PlacementConstraint>();
+                            foreach (var _li52 in _e52.EnumerateArray())
+                            {
+                                var _le52 = new PlacementConstraint();
+                                if (_li52.TryGetProperty("type", out var _e53))
+                                    _le52.Type = _e53.GetString();
+                                if (_li52.TryGetProperty("expression", out var _e54))
+                                    _le52.Expression = _e54.GetString();
+                                _ns35.PlacementConstraints.Add(_le52);
+                            }
+                        }
+                        if (_e35.TryGetProperty("PlacementStrategy", out var _e55) && _e55.ValueKind == JsonValueKind.Array)
+                        {
+                            _ns35.PlacementStrategy = new List<PlacementStrategy>();
+                            foreach (var _li55 in _e55.EnumerateArray())
+                            {
+                                var _le55 = new PlacementStrategy();
+                                if (_li55.TryGetProperty("type", out var _e56))
+                                    _le55.Type = _e56.GetString();
+                                if (_li55.TryGetProperty("field", out var _e57))
+                                    _le55.Field = _e57.GetString();
+                                _ns35.PlacementStrategy.Add(_le55);
+                            }
+                        }
+                        if (_e35.TryGetProperty("PropagateTags", out var _e58))
+                            _ns35.PropagateTags = _e58.GetString();
+                        if (_e35.TryGetProperty("ReferenceId", out var _e59))
+                            _ns35.ReferenceId = _e59.GetString();
+                        if (_e35.TryGetProperty("Tags", out var _e60) && _e60.ValueKind == JsonValueKind.Array)
+                        {
+                            _ns35.Tags = new List<Tag>();
+                            foreach (var _li60 in _e60.EnumerateArray())
+                            {
+                                var _le60 = new Tag();
+                                if (_li60.TryGetProperty("Key", out var _e61))
+                                    _le60.Key = _e61.GetString();
+                                if (_li60.TryGetProperty("Value", out var _e62))
+                                    _le60.Value = _e62.GetString();
+                                _ns35.Tags.Add(_le60);
+                            }
+                        }
+                        entry20.EcsParameters = _ns35;
+                    }
+                    if (item.TryGetProperty("BatchParameters", out var _e63) && _e63.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns63 = new BatchParameters();
+                        if (_e63.TryGetProperty("JobDefinition", out var _e64))
+                            _ns63.JobDefinition = _e64.GetString();
+                        if (_e63.TryGetProperty("JobName", out var _e65))
+                            _ns63.JobName = _e65.GetString();
+                        if (_e63.TryGetProperty("ArrayProperties", out var _e66) && _e66.ValueKind == JsonValueKind.Object)
+                        {
+                            var _ns66 = new BatchArrayProperties();
+                            if (_e66.TryGetProperty("Size", out var _e67) && _e67.TryGetInt32(out var _i67))
+                                _ns66.Size = _i67;
+                            _ns63.ArrayProperties = _ns66;
+                        }
+                        if (_e63.TryGetProperty("RetryStrategy", out var _e68) && _e68.ValueKind == JsonValueKind.Object)
+                        {
+                            var _ns68 = new BatchRetryStrategy();
+                            if (_e68.TryGetProperty("Attempts", out var _e69) && _e69.TryGetInt32(out var _i69))
+                                _ns68.Attempts = _i69;
+                            _ns63.RetryStrategy = _ns68;
+                        }
+                        entry20.BatchParameters = _ns63;
+                    }
+                    if (item.TryGetProperty("SqsParameters", out var _e70) && _e70.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns70 = new SqsParameters();
+                        if (_e70.TryGetProperty("MessageGroupId", out var _e71))
+                            _ns70.MessageGroupId = _e71.GetString();
+                        entry20.SqsParameters = _ns70;
+                    }
+                    if (item.TryGetProperty("HttpParameters", out var _e72) && _e72.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns72 = new HttpParameters();
+                        if (_e72.TryGetProperty("PathParameterValues", out var _e73) && _e73.ValueKind == JsonValueKind.Array)
+                        {
+                            _ns72.PathParameterValues = new List<string>();
+                            foreach (var _li73 in _e73.EnumerateArray())
+                            {
+                                _ns72.PathParameterValues.Add(_li73.GetString()!);
+                            }
+                        }
+                        if (_e72.TryGetProperty("HeaderParameters", out var _e74) && _e74.ValueKind == JsonValueKind.Object)
+                        {
+                            _ns72.HeaderParameters = new Dictionary<string, string>();
+                            foreach (var _p74 in _e74.EnumerateObject())
+                            {
+                                _ns72.HeaderParameters[_p74.Name] = _p74.Value.GetString()!;
+                            }
+                        }
+                        if (_e72.TryGetProperty("QueryStringParameters", out var _e75) && _e75.ValueKind == JsonValueKind.Object)
+                        {
+                            _ns72.QueryStringParameters = new Dictionary<string, string>();
+                            foreach (var _p75 in _e75.EnumerateObject())
+                            {
+                                _ns72.QueryStringParameters[_p75.Name] = _p75.Value.GetString()!;
+                            }
+                        }
+                        entry20.HttpParameters = _ns72;
+                    }
+                    if (item.TryGetProperty("RedshiftDataParameters", out var _e76) && _e76.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns76 = new RedshiftDataParameters();
+                        if (_e76.TryGetProperty("SecretManagerArn", out var _e77))
+                            _ns76.SecretManagerArn = _e77.GetString();
+                        if (_e76.TryGetProperty("Database", out var _e78))
+                            _ns76.Database = _e78.GetString();
+                        if (_e76.TryGetProperty("DbUser", out var _e79))
+                            _ns76.DbUser = _e79.GetString();
+                        if (_e76.TryGetProperty("Sql", out var _e80))
+                            _ns76.Sql = _e80.GetString();
+                        if (_e76.TryGetProperty("StatementName", out var _e81))
+                            _ns76.StatementName = _e81.GetString();
+                        if (_e76.TryGetProperty("WithEvent", out var _e82))
+                            _ns76.WithEvent = _e82.GetBoolean();
+                        if (_e76.TryGetProperty("Sqls", out var _e83) && _e83.ValueKind == JsonValueKind.Array)
+                        {
+                            _ns76.Sqls = new List<string>();
+                            foreach (var _li83 in _e83.EnumerateArray())
+                            {
+                                _ns76.Sqls.Add(_li83.GetString()!);
+                            }
+                        }
+                        entry20.RedshiftDataParameters = _ns76;
+                    }
+                    if (item.TryGetProperty("SageMakerPipelineParameters", out var _e84) && _e84.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns84 = new SageMakerPipelineParameters();
+                        if (_e84.TryGetProperty("PipelineParameterList", out var _e85) && _e85.ValueKind == JsonValueKind.Array)
+                        {
+                            _ns84.PipelineParameterList = new List<SageMakerPipelineParameter>();
+                            foreach (var _li85 in _e85.EnumerateArray())
+                            {
+                                var _le85 = new SageMakerPipelineParameter();
+                                if (_li85.TryGetProperty("Name", out var _e86))
+                                    _le85.Name = _e86.GetString();
+                                if (_li85.TryGetProperty("Value", out var _e87))
+                                    _le85.Value = _e87.GetString();
+                                _ns84.PipelineParameterList.Add(_le85);
+                            }
+                        }
+                        entry20.SageMakerPipelineParameters = _ns84;
+                    }
+                    if (item.TryGetProperty("DeadLetterConfig", out var _e88) && _e88.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns88 = new DeadLetterConfig();
+                        if (_e88.TryGetProperty("Arn", out var _e89))
+                            _ns88.Arn = _e89.GetString();
+                        entry20.DeadLetterConfig = _ns88;
+                    }
+                    if (item.TryGetProperty("RetryPolicy", out var _e90) && _e90.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns90 = new RetryPolicy();
+                        if (_e90.TryGetProperty("MaximumRetryAttempts", out var _e91) && _e91.TryGetInt32(out var _i91))
+                            _ns90.MaximumRetryAttempts = _i91;
+                        if (_e90.TryGetProperty("MaximumEventAgeInSeconds", out var _e92) && _e92.TryGetInt32(out var _i92))
+                            _ns90.MaximumEventAgeInSeconds = _i92;
+                        entry20.RetryPolicy = _ns90;
+                    }
+                    if (item.TryGetProperty("AppSyncParameters", out var _e93) && _e93.ValueKind == JsonValueKind.Object)
+                    {
+                        var _ns93 = new AppSyncParameters();
+                        if (_e93.TryGetProperty("GraphQLOperation", out var _e94))
+                            _ns93.GraphQLOperation = _e94.GetString();
+                        entry20.AppSyncParameters = _ns93;
+                    }
+                    request.Targets.Add(entry20);
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializePutTargetsResponse(PutTargetsResponse response, IBufferWriter<byte> bufferWriter)
@@ -1905,25 +2089,33 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static RemovePermissionRequest DeserializeRemovePermissionRequest(Stream stream)
+    internal static RemovePermissionRequest DeserializeRemovePermissionRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new RemovePermissionRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new RemovePermissionRequest();
 
-        // StatementId
-        if (root.TryGetProperty("StatementId", out var StatementIdElem))
-            request.StatementId = StatementIdElem.GetString();
+            // StatementId
+            if (root.TryGetProperty("StatementId", out var StatementIdElem))
+                request.StatementId = StatementIdElem.GetString();
 
-        // RemoveAllPermissions
-        if (root.TryGetProperty("RemoveAllPermissions", out var RemoveAllPermissionsElem) && RemoveAllPermissionsElem.ValueKind == JsonValueKind.True || RemoveAllPermissionsElem.ValueKind == JsonValueKind.False)
-            request.RemoveAllPermissions = RemoveAllPermissionsElem.GetBoolean();
+            // RemoveAllPermissions
+            if (root.TryGetProperty("RemoveAllPermissions", out var RemoveAllPermissionsElem) && RemoveAllPermissionsElem.ValueKind == JsonValueKind.True || RemoveAllPermissionsElem.ValueKind == JsonValueKind.False)
+                request.RemoveAllPermissions = RemoveAllPermissionsElem.GetBoolean();
 
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeRemovePermissionResponse(RemovePermissionResponse response, IBufferWriter<byte> bufferWriter)
@@ -1934,35 +2126,43 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static RemoveTargetsRequest DeserializeRemoveTargetsRequest(Stream stream)
+    internal static RemoveTargetsRequest DeserializeRemoveTargetsRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new RemoveTargetsRequest();
-
-        // Rule
-        if (root.TryGetProperty("Rule", out var RuleElem))
-            request.Rule = RuleElem.GetString();
-
-        // EventBusName
-        if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
-            request.EventBusName = EventBusNameElem.GetString();
-
-        // Ids
-        if (root.TryGetProperty("Ids", out var IdsElem) && IdsElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.Ids = new List<string>();
-            foreach (var item in IdsElem.EnumerateArray())
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new RemoveTargetsRequest();
+
+            // Rule
+            if (root.TryGetProperty("Rule", out var RuleElem))
+                request.Rule = RuleElem.GetString();
+
+            // EventBusName
+            if (root.TryGetProperty("EventBusName", out var EventBusNameElem))
+                request.EventBusName = EventBusNameElem.GetString();
+
+            // Ids
+            if (root.TryGetProperty("Ids", out var IdsElem) && IdsElem.ValueKind == JsonValueKind.Array)
             {
-                request.Ids.Add(item.GetString()!);
+                request.Ids = new List<string>();
+                foreach (var item in IdsElem.EnumerateArray())
+                {
+                    request.Ids.Add(item.GetString()!);
+                }
             }
+
+            // Force
+            if (root.TryGetProperty("Force", out var ForceElem) && ForceElem.ValueKind == JsonValueKind.True || ForceElem.ValueKind == JsonValueKind.False)
+                request.Force = ForceElem.GetBoolean();
+
+
+            return request;
         }
-
-        // Force
-        if (root.TryGetProperty("Force", out var ForceElem) && ForceElem.ValueKind == JsonValueKind.True || ForceElem.ValueKind == JsonValueKind.False)
-            request.Force = ForceElem.GetBoolean();
-
-        return request;
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeRemoveTargetsResponse(RemoveTargetsResponse response, IBufferWriter<byte> bufferWriter)
@@ -1997,50 +2197,58 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static StartReplayRequest DeserializeStartReplayRequest(Stream stream)
+    internal static StartReplayRequest DeserializeStartReplayRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new StartReplayRequest();
-
-        // ReplayName
-        if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
-            request.ReplayName = ReplayNameElem.GetString();
-
-        // Description
-        if (root.TryGetProperty("Description", out var DescriptionElem))
-            request.Description = DescriptionElem.GetString();
-
-        // EventSourceArn
-        if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
-            request.EventSourceArn = EventSourceArnElem.GetString();
-
-        // EventStartTime
-        if (root.TryGetProperty("EventStartTime", out var EventStartTimeElem) && Serialization.AwsJsonTimestamp.TryRead(EventStartTimeElem, out var EventStartTimeVal))
-            request.EventStartTime = EventStartTimeVal;
-
-        // EventEndTime
-        if (root.TryGetProperty("EventEndTime", out var EventEndTimeElem) && Serialization.AwsJsonTimestamp.TryRead(EventEndTimeElem, out var EventEndTimeVal))
-            request.EventEndTime = EventEndTimeVal;
-
-        // Destination
-        if (root.TryGetProperty("Destination", out var DestinationElem) && DestinationElem.ValueKind == JsonValueKind.Object)
+        try
         {
-            var DestinationVal = new ReplayDestination();
-            if (DestinationElem.TryGetProperty("Arn", out var _e95))
-                DestinationVal.Arn = _e95.GetString();
-            if (DestinationElem.TryGetProperty("FilterArns", out var _e96) && _e96.ValueKind == JsonValueKind.Array)
-            {
-                DestinationVal.FilterArns = new List<string>();
-                foreach (var _li96 in _e96.EnumerateArray())
-                {
-                    DestinationVal.FilterArns.Add(_li96.GetString()!);
-                }
-            }
-            request.Destination = DestinationVal;
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new StartReplayRequest();
 
-        return request;
+            // ReplayName
+            if (root.TryGetProperty("ReplayName", out var ReplayNameElem))
+                request.ReplayName = ReplayNameElem.GetString();
+
+            // Description
+            if (root.TryGetProperty("Description", out var DescriptionElem))
+                request.Description = DescriptionElem.GetString();
+
+            // EventSourceArn
+            if (root.TryGetProperty("EventSourceArn", out var EventSourceArnElem))
+                request.EventSourceArn = EventSourceArnElem.GetString();
+
+            // EventStartTime
+            if (root.TryGetProperty("EventStartTime", out var EventStartTimeElem) && Serialization.AwsJsonTimestamp.TryRead(EventStartTimeElem, out var EventStartTimeVal))
+                request.EventStartTime = EventStartTimeVal;
+
+            // EventEndTime
+            if (root.TryGetProperty("EventEndTime", out var EventEndTimeElem) && Serialization.AwsJsonTimestamp.TryRead(EventEndTimeElem, out var EventEndTimeVal))
+                request.EventEndTime = EventEndTimeVal;
+
+            // Destination
+            if (root.TryGetProperty("Destination", out var DestinationElem) && DestinationElem.ValueKind == JsonValueKind.Object)
+            {
+                var DestinationVal = new ReplayDestination();
+                if (DestinationElem.TryGetProperty("Arn", out var _e95))
+                    DestinationVal.Arn = _e95.GetString();
+                if (DestinationElem.TryGetProperty("FilterArns", out var _e96) && _e96.ValueKind == JsonValueKind.Array)
+                {
+                    DestinationVal.FilterArns = new List<string>();
+                    foreach (var _li96 in _e96.EnumerateArray())
+                    {
+                        DestinationVal.FilterArns.Add(_li96.GetString()!);
+                    }
+                }
+                request.Destination = DestinationVal;
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeStartReplayResponse(StartReplayResponse response, IBufferWriter<byte> bufferWriter)
@@ -2068,32 +2276,40 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static TagResourceRequest DeserializeTagResourceRequest(Stream stream)
+    internal static TagResourceRequest DeserializeTagResourceRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new TagResourceRequest();
-
-        // ResourceARN
-        if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
-            request.ResourceARN = ResourceARNElem.GetString();
-
-        // Tags
-        if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.Tags = new List<Tag>();
-            foreach (var item in TagsElem.EnumerateArray())
-            {
-                var entry97 = new Tag();
-                if (item.TryGetProperty("Key", out var _e98))
-                    entry97.Key = _e98.GetString();
-                if (item.TryGetProperty("Value", out var _e99))
-                    entry97.Value = _e99.GetString();
-                request.Tags.Add(entry97);
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new TagResourceRequest();
 
-        return request;
+            // ResourceARN
+            if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
+                request.ResourceARN = ResourceARNElem.GetString();
+
+            // Tags
+            if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
+            {
+                request.Tags = new List<Tag>();
+                foreach (var item in TagsElem.EnumerateArray())
+                {
+                    var entry97 = new Tag();
+                    if (item.TryGetProperty("Key", out var _e98))
+                        entry97.Key = _e98.GetString();
+                    if (item.TryGetProperty("Value", out var _e99))
+                        entry97.Value = _e99.GetString();
+                    request.Tags.Add(entry97);
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeTagResourceResponse(TagResourceResponse response, IBufferWriter<byte> bufferWriter)
@@ -2105,21 +2321,29 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static TestEventPatternRequest DeserializeTestEventPatternRequest(Stream stream)
+    internal static TestEventPatternRequest DeserializeTestEventPatternRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new TestEventPatternRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new TestEventPatternRequest();
 
-        // EventPattern
-        if (root.TryGetProperty("EventPattern", out var EventPatternElem))
-            request.EventPattern = EventPatternElem.GetString();
+            // EventPattern
+            if (root.TryGetProperty("EventPattern", out var EventPatternElem))
+                request.EventPattern = EventPatternElem.GetString();
 
-        // Event
-        if (root.TryGetProperty("Event", out var EventElem))
-            request.Event = EventElem.GetString();
+            // Event
+            if (root.TryGetProperty("Event", out var EventElem))
+                request.Event = EventElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeTestEventPatternResponse(TestEventPatternResponse response, IBufferWriter<byte> bufferWriter)
@@ -2135,27 +2359,35 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static UntagResourceRequest DeserializeUntagResourceRequest(Stream stream)
+    internal static UntagResourceRequest DeserializeUntagResourceRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new UntagResourceRequest();
-
-        // ResourceARN
-        if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
-            request.ResourceARN = ResourceARNElem.GetString();
-
-        // TagKeys
-        if (root.TryGetProperty("TagKeys", out var TagKeysElem) && TagKeysElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.TagKeys = new List<string>();
-            foreach (var item in TagKeysElem.EnumerateArray())
-            {
-                request.TagKeys.Add(item.GetString()!);
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new UntagResourceRequest();
 
-        return request;
+            // ResourceARN
+            if (root.TryGetProperty("ResourceARN", out var ResourceARNElem))
+                request.ResourceARN = ResourceARNElem.GetString();
+
+            // TagKeys
+            if (root.TryGetProperty("TagKeys", out var TagKeysElem) && TagKeysElem.ValueKind == JsonValueKind.Array)
+            {
+                request.TagKeys = new List<string>();
+                foreach (var item in TagKeysElem.EnumerateArray())
+                {
+                    request.TagKeys.Add(item.GetString()!);
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeUntagResourceResponse(UntagResourceResponse response, IBufferWriter<byte> bufferWriter)
@@ -2167,33 +2399,41 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static UpdateArchiveRequest DeserializeUpdateArchiveRequest(Stream stream)
+    internal static UpdateArchiveRequest DeserializeUpdateArchiveRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new UpdateArchiveRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new UpdateArchiveRequest();
 
-        // ArchiveName
-        if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
-            request.ArchiveName = ArchiveNameElem.GetString();
+            // ArchiveName
+            if (root.TryGetProperty("ArchiveName", out var ArchiveNameElem))
+                request.ArchiveName = ArchiveNameElem.GetString();
 
-        // Description
-        if (root.TryGetProperty("Description", out var DescriptionElem))
-            request.Description = DescriptionElem.GetString();
+            // Description
+            if (root.TryGetProperty("Description", out var DescriptionElem))
+                request.Description = DescriptionElem.GetString();
 
-        // EventPattern
-        if (root.TryGetProperty("EventPattern", out var EventPatternElem))
-            request.EventPattern = EventPatternElem.GetString();
+            // EventPattern
+            if (root.TryGetProperty("EventPattern", out var EventPatternElem))
+                request.EventPattern = EventPatternElem.GetString();
 
-        // RetentionDays
-        if (root.TryGetProperty("RetentionDays", out var RetentionDaysElem) && RetentionDaysElem.TryGetInt32(out var RetentionDaysVal))
-            request.RetentionDays = RetentionDaysVal;
+            // RetentionDays
+            if (root.TryGetProperty("RetentionDays", out var RetentionDaysElem) && RetentionDaysElem.TryGetInt32(out var RetentionDaysVal))
+                request.RetentionDays = RetentionDaysVal;
 
-        // KmsKeyIdentifier
-        if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
-            request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
+            // KmsKeyIdentifier
+            if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
+                request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeUpdateArchiveResponse(UpdateArchiveResponse response, IBufferWriter<byte> bufferWriter)
@@ -2221,45 +2461,53 @@ internal static class EventBridgeJsonSerializers
         writer.Flush();
     }
 
-    internal static UpdateEventBusRequest DeserializeUpdateEventBusRequest(Stream stream)
+    internal static UpdateEventBusRequest DeserializeUpdateEventBusRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new UpdateEventBusRequest();
-
-        // Name
-        if (root.TryGetProperty("Name", out var NameElem))
-            request.Name = NameElem.GetString();
-
-        // KmsKeyIdentifier
-        if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
-            request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
-
-        // Description
-        if (root.TryGetProperty("Description", out var DescriptionElem))
-            request.Description = DescriptionElem.GetString();
-
-        // DeadLetterConfig
-        if (root.TryGetProperty("DeadLetterConfig", out var DeadLetterConfigElem) && DeadLetterConfigElem.ValueKind == JsonValueKind.Object)
+        try
         {
-            var DeadLetterConfigVal = new DeadLetterConfig();
-            if (DeadLetterConfigElem.TryGetProperty("Arn", out var _e100))
-                DeadLetterConfigVal.Arn = _e100.GetString();
-            request.DeadLetterConfig = DeadLetterConfigVal;
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new UpdateEventBusRequest();
 
-        // LogConfig
-        if (root.TryGetProperty("LogConfig", out var LogConfigElem) && LogConfigElem.ValueKind == JsonValueKind.Object)
+            // Name
+            if (root.TryGetProperty("Name", out var NameElem))
+                request.Name = NameElem.GetString();
+
+            // KmsKeyIdentifier
+            if (root.TryGetProperty("KmsKeyIdentifier", out var KmsKeyIdentifierElem))
+                request.KmsKeyIdentifier = KmsKeyIdentifierElem.GetString();
+
+            // Description
+            if (root.TryGetProperty("Description", out var DescriptionElem))
+                request.Description = DescriptionElem.GetString();
+
+            // DeadLetterConfig
+            if (root.TryGetProperty("DeadLetterConfig", out var DeadLetterConfigElem) && DeadLetterConfigElem.ValueKind == JsonValueKind.Object)
+            {
+                var DeadLetterConfigVal = new DeadLetterConfig();
+                if (DeadLetterConfigElem.TryGetProperty("Arn", out var _e100))
+                    DeadLetterConfigVal.Arn = _e100.GetString();
+                request.DeadLetterConfig = DeadLetterConfigVal;
+            }
+
+            // LogConfig
+            if (root.TryGetProperty("LogConfig", out var LogConfigElem) && LogConfigElem.ValueKind == JsonValueKind.Object)
+            {
+                var LogConfigVal = new LogConfig();
+                if (LogConfigElem.TryGetProperty("IncludeDetail", out var _e101))
+                    LogConfigVal.IncludeDetail = _e101.GetString();
+                if (LogConfigElem.TryGetProperty("Level", out var _e102))
+                    LogConfigVal.Level = _e102.GetString();
+                request.LogConfig = LogConfigVal;
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
         {
-            var LogConfigVal = new LogConfig();
-            if (LogConfigElem.TryGetProperty("IncludeDetail", out var _e101))
-                LogConfigVal.IncludeDetail = _e101.GetString();
-            if (LogConfigElem.TryGetProperty("Level", out var _e102))
-                LogConfigVal.Level = _e102.GetString();
-            request.LogConfig = LogConfigVal;
+            throw new InternalSerializationException(string.Empty);
         }
-
-        return request;
     }
 
     internal static void SerializeUpdateEventBusResponse(UpdateEventBusResponse response, IBufferWriter<byte> bufferWriter)

@@ -67,11 +67,9 @@ internal sealed class AwsBridgeMiddleware
                 {
                     await HandleDynamoDbAsync(context, bodyBuffer, bodyLength, bus, cancellationToken).ConfigureAwait(false);
                 }
-                else if (hasTarget && string.Equals(targetService, "AWSEvents", StringComparison.Ordinal))
+                else if (hasTarget && string.Equals(targetService, EventBridgeWireProtocol.TargetPrefix, StringComparison.Ordinal))
                 {
-                    SetRequestId(context);
-                    await EventBridgeOperationHandler.HandleAsync(
-                        context, bodyBuffer, bodyLength, jsonOperation, bus, cancellationToken).ConfigureAwait(false);
+                    await HandleEventBridgeAsync(context, jsonOperation, bodyBuffer.AsMemory(0, bodyLength), bus, cancellationToken).ConfigureAwait(false);
                 }
                 else if (SqsWireProtocol.IsForm(mediaType) || parametersInUrl)
                 {
@@ -137,6 +135,16 @@ internal sealed class AwsBridgeMiddleware
             SetRequestId(context);
             await SqsOperationHandler.HandleAsync(context, body, bodyLength, operation, bus, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>An EventBridge request (see <see cref="EventBridgeWireProtocol"/>).</summary>
+    private static async Task HandleEventBridgeAsync(
+        HttpContext context, string operation, ReadOnlyMemory<byte> body, InMemoryAwsBus bus, CancellationToken cancellationToken)
+    {
+        using var output = PooledArrayBufferWriter.Rent();
+        var client = new InternalEventBridgeClient(bus, AwsRequestRegion.FromHttpContext(context));
+        var wire = await EventBridgeWireProtocol.HandleAsync(operation, body, client, output.Writer, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(context, wire, output.Writer, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>An SNS request (see <see cref="SnsWireProtocol"/>).</summary>

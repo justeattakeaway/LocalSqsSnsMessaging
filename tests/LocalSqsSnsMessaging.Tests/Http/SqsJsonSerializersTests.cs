@@ -36,10 +36,10 @@ public sealed class SqsJsonSerializersTests
             "DelaySeconds": 5
         }
         """u8;
-        using var stream = new MemoryStream(json.ToArray());
+        var body = json.ToArray();
 
         // Act
-        var request = SqsJsonSerializers.DeserializeSendMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeSendMessageRequest(body);
 
         // Assert
         request.QueueUrl.ShouldBe("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
@@ -67,10 +67,10 @@ public sealed class SqsJsonSerializersTests
             }
         }
         """u8;
-        using var stream = new MemoryStream(json.ToArray());
+        var body = json.ToArray();
 
         // Act
-        var request = SqsJsonSerializers.DeserializeSendMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeSendMessageRequest(body);
 
         // Assert
         request.QueueUrl.ShouldBe("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
@@ -126,10 +126,10 @@ public sealed class SqsJsonSerializersTests
             "MessageAttributeNames": [".*"]
         }
         """u8;
-        using var stream = new MemoryStream(json.ToArray());
+        var body = json.ToArray();
 
         // Act
-        var request = SqsJsonSerializers.DeserializeReceiveMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeReceiveMessageRequest(body);
 
         // Assert
         request.QueueUrl.ShouldBe("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
@@ -207,10 +207,10 @@ public sealed class SqsJsonSerializersTests
             }
         }
         """u8;
-        using var stream = new MemoryStream(json.ToArray());
+        var body = json.ToArray();
 
         // Act
-        var request = SqsJsonSerializers.DeserializeCreateQueueRequest(stream);
+        var request = SqsJsonSerializers.DeserializeCreateQueueRequest(body);
 
         // Assert
         request.QueueName.ShouldBe("my-test-queue.fifo");
@@ -257,10 +257,10 @@ public sealed class SqsJsonSerializersTests
             "ReceiptHandle": "AQEBxyz123abc=="
         }
         """u8;
-        using var stream = new MemoryStream(json.ToArray());
+        var body = json.ToArray();
 
         // Act
-        var request = SqsJsonSerializers.DeserializeDeleteMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeDeleteMessageRequest(body);
 
         // Assert
         request.QueueUrl.ShouldBe("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
@@ -316,10 +316,10 @@ public sealed class SqsJsonSerializersTests
             }
         }
         """u8;
-        using var stream = new MemoryStream(json.ToArray());
+        var body = json.ToArray();
 
         // Act
-        var request = SqsJsonSerializers.DeserializeSendMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeSendMessageRequest(body);
 
         // Assert
         request.QueueUrl.ShouldBe("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
@@ -359,10 +359,10 @@ public sealed class SqsJsonSerializersTests
             }
         }
         """u8;
-        using var stream = new MemoryStream(json.ToArray());
+        var body = json.ToArray();
 
         // Act
-        var request = SqsJsonSerializers.DeserializeSendMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeSendMessageRequest(body);
 
         // Assert
         request.QueueUrl.ShouldBe("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue");
@@ -409,10 +409,10 @@ public sealed class SqsJsonSerializersTests
             }
         }
         """;
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var body = Encoding.UTF8.GetBytes(json);
 
         // Act
-        var request = SqsJsonSerializers.DeserializeSendMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeSendMessageRequest(body);
 
         // Assert
         request.MessageSystemAttributes.ShouldNotBeNull();
@@ -438,10 +438,10 @@ public sealed class SqsJsonSerializersTests
             }
         }
         """u8;
-        using var stream = new MemoryStream(json.ToArray());
+        var body = json.ToArray();
 
         // Act
-        var request = SqsJsonSerializers.DeserializeSendMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeSendMessageRequest(body);
 
         // Assert
         request.MessageSystemAttributes.ShouldNotBeNull();
@@ -480,10 +480,10 @@ public sealed class SqsJsonSerializersTests
             }
         }
         """;
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        var body = Encoding.UTF8.GetBytes(json);
 
         // Act
-        var request = SqsJsonSerializers.DeserializeSendMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeSendMessageRequest(body);
 
         // Assert
         request.MessageSystemAttributes.ShouldNotBeNull();
@@ -515,10 +515,10 @@ public sealed class SqsJsonSerializersTests
             "MessageGroupId": "group-456"
         }
         """u8;
-        using var stream = new MemoryStream(json.ToArray());
+        var body = json.ToArray();
 
         // Act
-        var request = SqsJsonSerializers.DeserializeSendMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeSendMessageRequest(body);
 
         // Assert
         request.QueueUrl.ShouldBe("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue.fifo");
@@ -552,10 +552,10 @@ public sealed class SqsJsonSerializersTests
             "MessageGroupId": "group-012"
         }
         """u8;
-        using var stream = new MemoryStream(json.ToArray());
+        var body = json.ToArray();
 
         // Act
-        var request = SqsJsonSerializers.DeserializeSendMessageRequest(stream);
+        var request = SqsJsonSerializers.DeserializeSendMessageRequest(body);
 
         // Assert
         request.QueueUrl.ShouldBe("https://sqs.us-east-1.amazonaws.com/123456789012/test-queue.fifo");

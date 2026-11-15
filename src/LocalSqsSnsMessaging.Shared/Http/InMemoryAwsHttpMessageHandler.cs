@@ -21,7 +21,6 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
 {
     private readonly InMemoryAwsBus _bus;
     private readonly AwsServiceType _serviceType;
-    private readonly AwsProtocolType _protocolType;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InMemoryAwsHttpMessageHandler"/> class.
@@ -32,17 +31,10 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
     {
         ArgumentNullException.ThrowIfNull(bus);
         _bus = bus;
-        _serviceType = serviceType;
-
-        // Determine protocol based on service type
-        _protocolType = serviceType switch
-        {
-            AwsServiceType.Sqs => AwsProtocolType.Json,
-            AwsServiceType.EventBridge => AwsProtocolType.Json,
-            AwsServiceType.Sns => AwsProtocolType.Query,
-            AwsServiceType.DynamoDb or AwsServiceType.DynamoDbStreams => AwsProtocolType.Json,
-            _ => throw new NotSupportedException($"Service type {serviceType} is not supported.")
-        };
+        _serviceType = serviceType is AwsServiceType.Sqs or AwsServiceType.Sns or AwsServiceType.EventBridge
+            or AwsServiceType.DynamoDb or AwsServiceType.DynamoDbStreams
+            ? serviceType
+            : throw new NotSupportedException($"Service type {serviceType} is not supported.");
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -66,54 +58,30 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
             return await SendSnsAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
-        // Extract operation name from request
-        string operationName;
-        try
+        return await SendEventBridgeAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Serves an EventBridge request through <see cref="EventBridgeWireProtocol"/>.</summary>
+    private async Task<HttpResponseMessage> SendEventBridgeAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        using var body = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+        using var output = PooledArrayBufferWriter.Rent();
+        var client = new InternalEventBridgeClient(_bus, AwsRequestRegion.FromRequest(request));
+        var wire = await EventBridgeWireProtocol.HandleAsync(
+            EventBridgeWireProtocol.OperationFromTarget(TargetOf(request)), body.Memory, client, output.Writer, cancellationToken).ConfigureAwait(false);
+        return ToHttpResponse(wire, output.Writer);
+    }
+
+    /// <summary>The request's <c>X-Amz-Target</c>, which the SDKs send as a request or a content header.</summary>
+    private static string? TargetOf(HttpRequestMessage request)
+    {
+        if (request.Headers.TryGetValues("x-amz-target", out var targets)
+            || (request.Content?.Headers.TryGetValues("x-amz-target", out targets) ?? false))
         {
-            // For JSON protocol (EventBridge), the operation is in the x-amz-target header
-            operationName = ExtractOperationNameFromHeader(request);
-        }
-#pragma warning disable CA1031
-        catch (Exception ex)
-#pragma warning restore CA1031
-        {
-            return CreateErrorResponse(ex);
+            return targets.FirstOrDefault();
         }
 
-#if NET
-        using var activity = InMemoryAwsBus.ActivitySource.StartActivity(
-            $"EventBridge.{operationName}",
-            System.Diagnostics.ActivityKind.Client);
-#endif
-
-        try
-        {
-            var response = await Handlers.EventBridgeOperationHandler.HandleAsync(
-                request, operationName, _bus, cancellationToken).ConfigureAwait(false);
-
-            // Add AWS response headers
-            response.Headers.Add("x-amzn-RequestId", Guid.NewGuid().ToString());
-
-            return response;
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-#pragma warning disable CA1031
-        catch (Exception ex)
-#pragma warning restore CA1031
-        {
-#if NET
-            if (activity is not null)
-            {
-                activity.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-                activity.SetTag("error.type", ex.GetType().FullName);
-            }
-#endif
-            // Convert exceptions to AWS error responses
-            return CreateErrorResponse(ex);
-        }
+        return null;
     }
 
     /// <summary>
@@ -295,26 +263,6 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         };
         response.Headers.Add("x-amzn-RequestId", Guid.NewGuid().ToString());
         return response;
-    }
-
-    private static string ExtractOperationNameFromHeader(HttpRequestMessage request)
-    {
-        // Try x-amz-target header (used by JSON protocol like SQS)
-        if (request.Headers.TryGetValues("x-amz-target", out var targetValues) ||
-            (request.Content?.Headers.TryGetValues("x-amz-target", out targetValues) ?? false))
-        {
-            var target = targetValues.FirstOrDefault();
-            if (!string.IsNullOrEmpty(target))
-            {
-                var parts = target.Split('.');
-                if (parts.Length == 2)
-                {
-                    return parts[1];
-                }
-            }
-        }
-
-        throw new InvalidOperationException($"Unable to determine operation name from x-amz-target header. URI: {request.RequestUri}");
     }
 
     private static HttpResponseMessage CreateErrorResponse(Exception exception)
