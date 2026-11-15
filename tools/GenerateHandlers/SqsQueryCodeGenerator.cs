@@ -167,7 +167,7 @@ internal sealed class SqsQueryCodeGenerator
         return code.ToString();
     }
 
-    /// <summary>Generates <c>SqsQueryOperationHandler.g.cs</c>: Action name to request, call and response.</summary>
+    /// <summary>Generates <c>SqsWireProtocol.Query.g.cs</c>: Action name to request, call and response.</summary>
     public static string GenerateDispatcher(JsonElement operations)
     {
         var code = new StringBuilder();
@@ -176,16 +176,17 @@ internal sealed class SqsQueryCodeGenerator
         code.AppendLine("#nullable enable");
         code.AppendLine();
         code.AppendLine("using System.Buffers;");
+        code.AppendLine("using LocalSqsSnsMessaging.Http.Handlers;");
         code.AppendLine();
-        code.AppendLine("namespace LocalSqsSnsMessaging.Http.Handlers;");
+        code.AppendLine("namespace LocalSqsSnsMessaging.Http;");
         code.AppendLine();
-        code.AppendLine("internal static partial class SqsQueryOperationHandler");
+        code.AppendLine("internal static partial class SqsWireProtocol");
         code.AppendLine("{");
         code.AppendLine("    /// <summary>");
         code.AppendLine("    /// Runs the SQS operation named <paramref name=\"action\"/> and writes its XML response.");
         code.AppendLine("    /// Returns false, writing nothing, when SQS has no such operation.");
         code.AppendLine("    /// </summary>");
-        code.AppendLine("    private static async Task<bool> TryDispatchAsync(");
+        code.AppendLine("    private static async ValueTask<bool> TryDispatchQueryAsync(");
         code.AppendLine("        string action,");
         code.AppendLine("        Dictionary<string, string> parameters,");
         code.AppendLine("        InternalSqsClient client,");

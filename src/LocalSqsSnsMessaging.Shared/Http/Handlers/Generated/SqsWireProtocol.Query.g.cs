@@ -3,16 +3,17 @@
 #nullable enable
 
 using System.Buffers;
+using LocalSqsSnsMessaging.Http.Handlers;
 
-namespace LocalSqsSnsMessaging.Http.Handlers;
+namespace LocalSqsSnsMessaging.Http;
 
-internal static partial class SqsQueryOperationHandler
+internal static partial class SqsWireProtocol
 {
     /// <summary>
     /// Runs the SQS operation named <paramref name="action"/> and writes its XML response.
     /// Returns false, writing nothing, when SQS has no such operation.
     /// </summary>
-    private static async Task<bool> TryDispatchAsync(
+    private static async ValueTask<bool> TryDispatchQueryAsync(
         string action,
         Dictionary<string, string> parameters,
         InternalSqsClient client,

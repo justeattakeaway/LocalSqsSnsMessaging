@@ -161,7 +161,7 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
             return Refusal(SqsWireProtocol.UnknownOperationXmlStatus, SqsWireProtocol.UnknownOperationXml, "application/xml");
         }
 
-        if (operationName is null || !Handlers.SqsQueryOperationHandler.IsOperation(operationName))
+        if (operationName is null || !SqsWireProtocol.IsOperation(operationName))
         {
             return Refusal(SqsWireProtocol.UnknownOperationJsonStatus, SqsWireProtocol.UnknownOperationJson, SqsWireProtocol.JsonContentType);
         }
@@ -172,49 +172,26 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         return ToHttpResponse(wire, output.Writer);
     }
 
-    /// <summary>
-    /// Serves a DynamoDB or DynamoDB Streams request (see <see cref="DynamoDbWireProtocol"/>), with
-    /// the <c>x-amz-crc32</c> header DynamoDB sends.
-    /// </summary>
+    /// <summary>Serves a DynamoDB or DynamoDB Streams request (see <see cref="DynamoDbWireProtocol"/>).</summary>
     private async Task<HttpResponseMessage> SendDynamoDbAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var body = request.Content is not null ? await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false) : [];
-        if (!request.Headers.TryGetValues("x-amz-target", out var targets))
-        {
-            request.Content?.Headers.TryGetValues("x-amz-target", out targets);
-        }
-
-        var result = DynamoDbWireProtocol.ConflictingSignatures(
+        using var body = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+        using var output = PooledArrayBufferWriter.Rent();
+        var wire = DynamoDbWireProtocol.ConflictingSignatures(
                 // Authorization, not Headers.Authorization: .NET can't parse a SigV4 value, so that is null.
                 request.Headers.Contains("Authorization"),
-                request.RequestUri?.Query.Contains("X-Amz-Algorithm=", StringComparison.Ordinal) == true)
+                request.RequestUri?.Query.Contains("X-Amz-Algorithm=", StringComparison.Ordinal) == true,
+                output.Writer)
             ?? await DynamoDbWireProtocol.HandleAsync(
-                targets?.FirstOrDefault(), body, _bus, AwsRequestRegion.FromRequest(request), cancellationToken).ConfigureAwait(false);
-        var response = new HttpResponseMessage(result.Status) { Content = new ByteArrayContent(result.Body) };
-        response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(DynamoDbWireProtocol.ContentType);
-        response.Headers.Add("x-amzn-RequestId", Guid.NewGuid().ToString());
-        response.Headers.TryAddWithoutValidation("x-amz-crc32", result.Crc32);
-        return response;
+                TargetOf(request), body.Memory, _bus, AwsRequestRegion.FromRequest(request), output.Writer, cancellationToken).ConfigureAwait(false);
+        return ToHttpResponse(wire, output.Writer);
     }
 
     private static async Task<HttpResponseMessage> SendSqsQueryAsync(Dictionary<string, string> parameters, InternalSqsClient client, CancellationToken cancellationToken)
     {
-#if NET
-        using var activity = InMemoryAwsBus.ActivitySource.StartActivity(
-            $"SQS.{parameters.GetValueOrDefault("Action")}", System.Diagnostics.ActivityKind.Client);
-#endif
-        using var buffer = PooledArrayBufferWriter.Rent();
-        var status = await Handlers.SqsQueryOperationHandler.HandleAsync(parameters, client, buffer.Writer, cancellationToken).ConfigureAwait(false);
-#if NET
-        if (activity is not null && status != HttpStatusCode.OK)
-        {
-            activity.SetStatus(System.Diagnostics.ActivityStatusCode.Error);
-        }
-#endif
-        var response = new HttpResponseMessage(status) { Content = new ByteArrayContent(buffer.Writer.WrittenSpan.ToArray()) };
-        response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(Handlers.SqsQueryOperationHandler.ContentType);
-        response.Headers.Add("x-amzn-RequestId", Guid.NewGuid().ToString());
-        return response;
+        using var output = PooledArrayBufferWriter.Rent();
+        var wire = await SqsWireProtocol.HandleQueryAsync(parameters, client, output.Writer, cancellationToken).ConfigureAwait(false);
+        return ToHttpResponse(wire, output.Writer);
     }
 
     private static HttpResponseMessage Refusal(HttpStatusCode statusCode, string body, string contentType)

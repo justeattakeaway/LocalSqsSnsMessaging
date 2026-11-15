@@ -230,7 +230,7 @@ static void GenerateSqsQueryProtocol(string modelPath, string modelNamespace, st
     // The JSON model carries no xmlNamespace; this is the one SQS has always answered Query in.
     var generator = new SqsQueryCodeGenerator(modelNamespace, "http://queue.amazonaws.com/doc/2012-11-05/", root.GetProperty("shapes"));
     File.WriteAllText(Path.Combine(outputDir, "SqsQuerySerializers.g.cs"), generator.GenerateSerializers(operations));
-    File.WriteAllText(Path.Combine(outputDir, "SqsQueryOperationHandler.g.cs"), SqsQueryCodeGenerator.GenerateDispatcher(operations));
+    File.WriteAllText(Path.Combine(outputDir, "SqsWireProtocol.Query.g.cs"), SqsQueryCodeGenerator.GenerateDispatcher(operations));
 
     Console.WriteLine("    Generated Query protocol dispatcher and serializers for Sqs");
 }
