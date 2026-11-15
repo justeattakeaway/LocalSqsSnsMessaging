@@ -1,7 +1,6 @@
 #pragma warning disable CS8600, CS8601, CS8602, CS8604, CS8619 // Nullable reference warnings - internal POCOs use nullable properties but values are set at runtime
 
 using System.Net;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using LocalSqsSnsMessaging.Sqs.Model;
 
@@ -223,38 +222,19 @@ internal sealed partial class InternalSqsClient
 
         if (queue.Attributes?.TryGetValue(InternalQueueAttributeName.RedrivePolicy, out var redrivePolicy) == true)
         {
-            var policy = JsonDocument.Parse(redrivePolicy);
-            var deadLetterTargetArn = policy.RootElement.GetProperty("deadLetterTargetArn").GetString();
-            var maxReceiveCount = 0;
-            var maxReceiveCountProperty = policy.RootElement.GetProperty("maxReceiveCount");
-            if (maxReceiveCountProperty.ValueKind == JsonValueKind.Number)
-            {
-                maxReceiveCount = maxReceiveCountProperty.GetInt32();
-            }
-            else
-            {
-                var maxReceiveCountString = maxReceiveCountProperty.GetString();
-                if (maxReceiveCountString != null)
-                {
-                    maxReceiveCount = int.Parse(maxReceiveCountString, NumberFormatInfo.InvariantInfo);
-                }
-            }
+            // Checked by ValidateRedrivePolicy when set, so it parses. The dead-letter queue may be
+            // deleted later, which leaves the policy in place with nowhere to redrive to until a
+            // queue of the same ARN is created again.
+            var policy = SqsQueueValidation.ParseRedrivePolicy(redrivePolicy);
+            queue.DeadLetterTargetArn = policy.DeadLetterTargetArn;
+            queue.MaxReceiveCount = policy.MaxReceiveCount;
 
-            if (deadLetterTargetArn != null && maxReceiveCount > 0)
+            // SQS stores the policy normalised: compact JSON with a numeric maxReceiveCount.
+            queue.Attributes[InternalQueueAttributeName.RedrivePolicy] = new JsonObject
             {
-                // Checked by ValidateRedrivePolicy when set. The dead-letter queue may be deleted
-                // later, which leaves the policy in place with nowhere to redrive to until a queue
-                // of the same ARN is created again.
-                queue.DeadLetterTargetArn = deadLetterTargetArn;
-                queue.MaxReceiveCount = maxReceiveCount;
-
-                // SQS stores the policy normalised: compact JSON with a numeric maxReceiveCount.
-                queue.Attributes[InternalQueueAttributeName.RedrivePolicy] = new JsonObject
-                {
-                    ["deadLetterTargetArn"] = deadLetterTargetArn,
-                    ["maxReceiveCount"] = maxReceiveCount
-                }.ToJsonString();
-            }
+                ["deadLetterTargetArn"] = policy.DeadLetterTargetArn,
+                ["maxReceiveCount"] = policy.MaxReceiveCount
+            }.ToJsonString();
         }
     }
 }
