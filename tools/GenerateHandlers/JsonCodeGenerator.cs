@@ -80,29 +80,54 @@ internal sealed class JsonCodeGenerator
 
     private void GenerateRequestDeserializer(StringBuilder code, string opName, JsonElement inputShape)
     {
-        code.AppendLine($"    internal static {opName}Request Deserialize{opName}Request(Stream stream)");
+        // A body that is not JSON, or holds a value of the wrong type, is a SerializationException,
+        // as AWS's JSON protocol answers it.
+        code.AppendLine($"    internal static {opName}Request Deserialize{opName}Request(ReadOnlyMemory<byte> body)");
         code.AppendLine("    {");
-        code.AppendLine("        using var doc = JsonDocument.Parse(stream);");
-        code.AppendLine("        var root = doc.RootElement;");
-        code.AppendLine($"        var request = new {opName}Request();");
-        code.AppendLine();
+        code.AppendLine("        try");
+        code.AppendLine("        {");
 
-        if (inputShape.TryGetProperty("members", out var members))
+        var members = new StringBuilder();
+        members.AppendLine("using var doc = JsonDocument.Parse(body);");
+        members.AppendLine("var root = doc.RootElement;");
+        members.AppendLine($"var request = new {opName}Request();");
+        members.AppendLine();
+
+        if (inputShape.TryGetProperty("members", out var memberShapes))
         {
-            foreach (var member in members.EnumerateObject())
+            var memberCode = new StringBuilder();
+            foreach (var member in memberShapes.EnumerateObject())
             {
                 var memberName = member.Name;
                 var shapeName = member.Value.GetProperty("shape").GetString()!;
                 var shape = _shapes.GetProperty(shapeName);
                 var shapeType = shape.GetProperty("type").GetString()!;
 
-                code.AppendLine($"        // {memberName}");
-                GenerateDeserializeMember(code, memberName, shapeName, shape, shapeType);
-                code.AppendLine();
+                memberCode.AppendLine($"        // {memberName}");
+                GenerateDeserializeMember(memberCode, memberName, shapeName, shape, shapeType);
+                memberCode.AppendLine();
+            }
+
+            // The member code is written for a method body (8 spaces); it sits one block deeper here.
+            foreach (var line in memberCode.ToString().Split('\n'))
+            {
+                members.AppendLine(line.Length >= 8 ? line[8..].TrimEnd('\r') : line.TrimEnd('\r'));
             }
         }
 
-        code.AppendLine("        return request;");
+        members.AppendLine("return request;");
+
+        foreach (var line in members.ToString().TrimEnd().Split('\n'))
+        {
+            var trimmed = line.TrimEnd('\r');
+            code.AppendLine(trimmed.Length == 0 ? string.Empty : "            " + trimmed);
+        }
+
+        code.AppendLine("        }");
+        code.AppendLine("        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)");
+        code.AppendLine("        {");
+        code.AppendLine("            throw new InternalSerializationException(string.Empty);");
+        code.AppendLine("        }");
         code.AppendLine("    }");
         code.AppendLine();
     }

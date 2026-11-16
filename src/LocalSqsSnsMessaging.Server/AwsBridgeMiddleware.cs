@@ -7,9 +7,10 @@ using Microsoft.AspNetCore.Http;
 namespace LocalSqsSnsMessaging.Server;
 
 /// <summary>
-/// ASP.NET Core middleware that routes Kestrel requests directly to the
-/// in-memory AWS protocol handlers (SqsOperationHandler/SnsOperationHandler)
-/// using their HttpContext-native overloads, avoiding HttpRequestMessage marshalling.
+/// ASP.NET Core middleware that routes each request to its service's wire protocol
+/// (<see cref="SqsWireProtocol"/>, <see cref="SnsWireProtocol"/>, <see cref="EventBridgeWireProtocol"/>,
+/// <see cref="DynamoDbWireProtocol"/>), the same ones the library's handler calls, and copies the
+/// answer onto the response.
 /// </summary>
 internal sealed class AwsBridgeMiddleware
 {
@@ -57,8 +58,6 @@ internal sealed class AwsBridgeMiddleware
 
             try
             {
-                context.Response.Headers["x-amzn-RequestId"] = Guid.NewGuid().ToString();
-
                 var mediaType = MediaTypeOf(context.Request.ContentType);
                 var hasTarget = TryGetJsonTarget(context.Request, out var targetService, out var jsonOperation);
 
@@ -67,25 +66,22 @@ internal sealed class AwsBridgeMiddleware
                 // AWS Query protocol: form-encoded parameters, told apart by their API Version.
                 if (hasTarget && DynamoDbWireProtocol.IsTarget(context.Request.Headers["x-amz-target"].ToString()))
                 {
-                    await HandleDynamoDbAsync(context, bodyBuffer, bodyLength, bus, cancellationToken).ConfigureAwait(false);
+                    await HandleDynamoDbAsync(context, bodyBuffer.AsMemory(0, bodyLength), bus, cancellationToken).ConfigureAwait(false);
                 }
-                else if (hasTarget && string.Equals(targetService, "AWSEvents", StringComparison.Ordinal))
+                else if (hasTarget && string.Equals(targetService, EventBridgeWireProtocol.TargetPrefix, StringComparison.Ordinal))
                 {
-                    await EventBridgeOperationHandler.HandleAsync(
-                        context, bodyBuffer, bodyLength, jsonOperation, bus, cancellationToken).ConfigureAwait(false);
+                    await HandleEventBridgeAsync(context, jsonOperation, bodyBuffer.AsMemory(0, bodyLength), bus, cancellationToken).ConfigureAwait(false);
                 }
                 else if (SqsWireProtocol.IsForm(mediaType) || parametersInUrl)
                 {
                     var parameters = QueryStringParser.Parse(bodyBuffer.AsSpan(0, bodyLength));
                     if (SqsWireProtocol.IsSqsQueryRequest(parameters, context.Request.Headers.Authorization.ToString()))
                     {
-                        await HandleSqsQueryAsync(context, bodyBuffer, bodyLength, parameters, bus, cancellationToken).ConfigureAwait(false);
+                        await HandleSqsQueryAsync(context, bodyBuffer.AsMemory(0, bodyLength), parameters, bus, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
-                        var operationName = ExtractSnsOperationName(context.Request, bodyBuffer, bodyLength);
-                        await SnsOperationHandler.HandleAsync(
-                            context, bodyBuffer, bodyLength, operationName, bus, cancellationToken).ConfigureAwait(false);
+                        await HandleSnsAsync(context, bodyBuffer.AsMemory(0, bodyLength), bus, cancellationToken).ConfigureAwait(false);
                     }
                 }
                 else if (hasTarget || SqsWireProtocol.IsJson(mediaType))
@@ -94,9 +90,7 @@ internal sealed class AwsBridgeMiddleware
                 }
                 else
                 {
-                    var operationName = ExtractSnsOperationName(context.Request, bodyBuffer, bodyLength);
-                    await SnsOperationHandler.HandleAsync(
-                        context, bodyBuffer, bodyLength, operationName, bus, cancellationToken).ConfigureAwait(false);
+                    await HandleSnsAsync(context, bodyBuffer.AsMemory(0, bodyLength), bus, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -133,52 +127,95 @@ internal sealed class AwsBridgeMiddleware
         {
             await WriteRefusalAsync(context, SqsWireProtocol.UnknownOperationXmlStatus, SqsWireProtocol.UnknownOperationXml, "application/xml", cancellationToken).ConfigureAwait(false);
         }
-        else if (operation is null || !SqsQueryOperationHandler.IsOperation(operation))
+        else if (operation is null || !SqsWireProtocol.IsOperation(operation))
         {
             await WriteRefusalAsync(context, SqsWireProtocol.UnknownOperationJsonStatus, SqsWireProtocol.UnknownOperationJson, SqsWireProtocol.JsonContentType, cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            await SqsOperationHandler.HandleAsync(context, body, bodyLength, operation, bus, cancellationToken).ConfigureAwait(false);
+            using var output = PooledArrayBufferWriter.Rent();
+            var client = new InternalSqsClient(bus, AwsRequestRegion.FromHttpContext(context)) { Caller = SqsCaller.FromHttpContext(context) };
+            var wire = await SqsWireProtocol.HandleJsonAsync(operation, body.AsMemory(0, bodyLength), client, output.Writer, cancellationToken).ConfigureAwait(false);
+            await WriteAsync(context, wire, output.Writer, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    /// <summary>A DynamoDB or DynamoDB Streams request (see <see cref="DynamoDbWireProtocol"/>).</summary>
-    private static async Task HandleDynamoDbAsync(HttpContext context, byte[] body, int bodyLength, InMemoryAwsBus bus, CancellationToken cancellationToken)
+    /// <summary>An EventBridge request (see <see cref="EventBridgeWireProtocol"/>).</summary>
+    private static async Task HandleEventBridgeAsync(
+        HttpContext context, string operation, ReadOnlyMemory<byte> body, InMemoryAwsBus bus, CancellationToken cancellationToken)
     {
-        var result = DynamoDbWireProtocol.ConflictingSignatures(context.Request.Headers.ContainsKey("Authorization"), context.Request.Query.ContainsKey("X-Amz-Algorithm"))
+        using var output = PooledArrayBufferWriter.Rent();
+        var client = new InternalEventBridgeClient(bus, AwsRequestRegion.FromHttpContext(context));
+        var wire = await EventBridgeWireProtocol.HandleAsync(operation, body, client, output.Writer, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(context, wire, output.Writer, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>An SNS request (see <see cref="SnsWireProtocol"/>).</summary>
+    private static async Task HandleSnsAsync(HttpContext context, ReadOnlyMemory<byte> parameters, InMemoryAwsBus bus, CancellationToken cancellationToken)
+    {
+        using var output = PooledArrayBufferWriter.Rent();
+        var client = new InternalSnsClient(bus, AwsRequestRegion.FromHttpContext(context));
+        var wire = await SnsWireProtocol.HandleAsync(parameters, client, output.Writer, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(context, wire, output.Writer, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The <c>x-amzn-RequestId</c> of a response no wire protocol answered.</summary>
+    private static void SetRequestId(HttpContext context) => context.Response.Headers["x-amzn-RequestId"] = WireResponse.NewRequestId();
+
+    /// <summary>Copies a wire protocol's answer onto the response.</summary>
+    private static async Task WriteAsync(HttpContext context, WireResponse wire, ArrayBufferWriter<byte> body, CancellationToken cancellationToken)
+    {
+        var response = context.Response;
+        response.StatusCode = (int)wire.Status;
+        response.ContentType = wire.ContentType;
+        response.Headers["x-amzn-RequestId"] = wire.RequestId;
+        if (wire.QueryError is not null)
+        {
+            response.Headers[SqsQueryCompatibleErrors.HeaderName] = wire.QueryError;
+        }
+
+        if (wire.Crc32 is not null)
+        {
+            response.Headers["x-amz-crc32"] = wire.Crc32;
+        }
+
+        await response.Body.WriteAsync(body.WrittenMemory, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>A DynamoDB or DynamoDB Streams request (see <see cref="DynamoDbWireProtocol"/>).</summary>
+    private static async Task HandleDynamoDbAsync(HttpContext context, ReadOnlyMemory<byte> body, InMemoryAwsBus bus, CancellationToken cancellationToken)
+    {
+        using var output = PooledArrayBufferWriter.Rent();
+        var wire = DynamoDbWireProtocol.ConflictingSignatures(context.Request.Headers.ContainsKey("Authorization"), context.Request.Query.ContainsKey("X-Amz-Algorithm"), output.Writer)
             ?? await DynamoDbWireProtocol.HandleAsync(
                 context.Request.Headers["x-amz-target"].ToString(),
-                body.AsMemory(0, bodyLength),
+                body,
                 bus,
                 AwsRequestRegion.FromHttpContext(context),
+                output.Writer,
                 cancellationToken).ConfigureAwait(false);
-        context.Response.StatusCode = (int)result.Status;
-        context.Response.ContentType = DynamoDbWireProtocol.ContentType;
-        context.Response.Headers["x-amz-crc32"] = result.Crc32;
-        await context.Response.Body.WriteAsync(result.Body, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(context, wire, output.Writer, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>An SQS request over the AWS Query protocol: form-encoded parameters, an XML response.</summary>
     private static async Task HandleSqsQueryAsync(
-        HttpContext context, byte[] body, int bodyLength, Dictionary<string, string> parameters, InMemoryAwsBus bus, CancellationToken cancellationToken)
+        HttpContext context, ReadOnlyMemory<byte> body, Dictionary<string, string> parameters, InMemoryAwsBus bus, CancellationToken cancellationToken)
     {
-        if (SqsWireProtocol.IsTooLarge(body.AsSpan(0, bodyLength), isForm: true))
+        if (SqsWireProtocol.IsTooLarge(body.Span, isForm: true))
         {
             await WriteRefusalAsync(context, SqsWireProtocol.RequestEntityTooLargeStatus, SqsWireProtocol.RequestEntityTooLargeBody, "text/html", cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        using var buffer = PooledArrayBufferWriter.Rent();
+        using var output = PooledArrayBufferWriter.Rent();
         var client = new InternalSqsClient(bus, AwsRequestRegion.FromHttpContext(context)) { Caller = SqsCaller.FromHttpContext(context) };
-        var status = await SqsQueryOperationHandler.HandleAsync(parameters, client, buffer.Writer, cancellationToken).ConfigureAwait(false);
-        context.Response.StatusCode = (int)status;
-        context.Response.ContentType = SqsQueryOperationHandler.ContentType;
-        await context.Response.Body.WriteAsync(buffer.Writer.WrittenMemory, cancellationToken).ConfigureAwait(false);
+        var wire = await SqsWireProtocol.HandleQueryAsync(parameters, client, output.Writer, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(context, wire, output.Writer, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task WriteRefusalAsync(HttpContext context, System.Net.HttpStatusCode status, string body, string contentType, CancellationToken cancellationToken)
     {
+        SetRequestId(context);
         context.Response.StatusCode = (int)status;
         context.Response.ContentType = contentType;
         await context.Response.Body.WriteAsync(SqsWireProtocol.Utf8(body), cancellationToken).ConfigureAwait(false);
@@ -256,51 +293,14 @@ internal sealed class AwsBridgeMiddleware
         return true;
     }
 
-    private static string ExtractSnsOperationName(HttpRequest request, byte[] bodyBytes, int bodyLength)
-    {
-        // Try query string first
-        if (request.Query.TryGetValue("Action", out var actionFromQuery) && !string.IsNullOrEmpty(actionFromQuery))
-        {
-            return actionFromQuery.ToString();
-        }
-
-        // Try form-encoded body
-        if (bodyLength > 0)
-        {
-            var bodyString = Encoding.UTF8.GetString(bodyBytes, 0, bodyLength);
-            var bodyParams = System.Web.HttpUtility.ParseQueryString(bodyString);
-            var action = bodyParams["Action"];
-            if (!string.IsNullOrEmpty(action))
-            {
-                return action;
-            }
-        }
-
-        throw new InvalidOperationException("Unable to determine SNS operation name from request.");
-    }
-
+    /// <summary>
+    /// The answer to a failure outside every wire protocol (each answers its own): an
+    /// <c>InternalFailure</c> in AWS's JSON error format.
+    /// </summary>
     private static async Task WriteErrorResponseAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
     {
-        var errorType = exception.GetType().Name;
-        var errorMessage = exception.Message;
-
-        var errorJson = $$"""
-        {
-            "__type": "{{errorType}}",
-            "message": "{{errorMessage.Replace("\"", "\\\"", StringComparison.Ordinal)}}"
-        }
-        """;
-
-        var statusCode = exception switch
-        {
-            InternalNotFoundException => 404,
-            AwsServiceException awsEx => (int)awsEx.StatusCode,
-            _ => 500
-        };
-
-        context.Response.StatusCode = statusCode;
-        context.Response.ContentType = "application/x-amz-json-1.0";
-        var errorBytes = Encoding.UTF8.GetBytes(errorJson);
-        await context.Response.Body.WriteAsync(errorBytes, cancellationToken).ConfigureAwait(false);
+        using var output = PooledArrayBufferWriter.Rent();
+        var wire = AwsJsonErrors.Write(output.Writer, exception, "com.amazon.coral.service", SqsWireProtocol.JsonContentType, queryCompatible: false);
+        await WriteAsync(context, wire, output.Writer, cancellationToken).ConfigureAwait(false);
     }
 }

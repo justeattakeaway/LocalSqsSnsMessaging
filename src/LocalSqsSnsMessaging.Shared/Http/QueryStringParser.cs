@@ -63,6 +63,59 @@ internal static class QueryStringParser
     }
 
     /// <summary>
+    /// The decoded value of the parameter named <paramref name="key"/> (its last, as <see cref="Parse"/>
+    /// keeps), or null if there is none; decodes no other parameter.
+    /// </summary>
+    public static string? GetValue(ReadOnlySpan<byte> utf8Bytes, string key)
+    {
+        string? value = null;
+        var remaining = utf8Bytes;
+        while (remaining.Length > 0)
+        {
+            var ampersandIndex = remaining.IndexOf((byte)'&');
+            var pair = ampersandIndex >= 0 ? remaining.Slice(0, ampersandIndex) : remaining;
+            var equalsIndex = pair.IndexOf((byte)'=');
+            if (equalsIndex >= 0 && IsKey(pair.Slice(0, equalsIndex), key))
+            {
+                value = UrlDecode(pair.Slice(equalsIndex + 1));
+            }
+
+            if (ampersandIndex < 0)
+            {
+                break;
+            }
+
+            remaining = remaining.Slice(ampersandIndex + 1);
+        }
+
+        return value;
+    }
+
+    /// <summary>True if the encoded <paramref name="keyBytes"/> decode to <paramref name="key"/>.</summary>
+    private static bool IsKey(ReadOnlySpan<byte> keyBytes, string key)
+    {
+        if (keyBytes.IndexOf((byte)'%') >= 0 || keyBytes.IndexOf((byte)'+') >= 0)
+        {
+            return string.Equals(UrlDecode(keyBytes), key, StringComparison.Ordinal);
+        }
+
+        if (keyBytes.Length != key.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < keyBytes.Length; i++)
+        {
+            if (keyBytes[i] != key[i])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// URL decode from UTF-8 bytes to string.
     /// Handles:
     /// - %XX hex encoding

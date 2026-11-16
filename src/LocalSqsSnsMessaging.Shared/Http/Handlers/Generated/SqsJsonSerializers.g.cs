@@ -15,41 +15,49 @@ namespace LocalSqsSnsMessaging.Http.Handlers;
 /// </summary>
 internal static class SqsJsonSerializers
 {
-    internal static AddPermissionRequest DeserializeAddPermissionRequest(Stream stream)
+    internal static AddPermissionRequest DeserializeAddPermissionRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new AddPermissionRequest();
-
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
-
-        // Label
-        if (root.TryGetProperty("Label", out var LabelElem))
-            request.Label = LabelElem.GetString();
-
-        // AWSAccountIds
-        if (root.TryGetProperty("AWSAccountIds", out var AWSAccountIdsElem) && AWSAccountIdsElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.AWSAccountIds = new List<string>();
-            foreach (var item in AWSAccountIdsElem.EnumerateArray())
-            {
-                request.AWSAccountIds.Add(item.GetString()!);
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new AddPermissionRequest();
 
-        // Actions
-        if (root.TryGetProperty("Actions", out var ActionsElem) && ActionsElem.ValueKind == JsonValueKind.Array)
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
+
+            // Label
+            if (root.TryGetProperty("Label", out var LabelElem))
+                request.Label = LabelElem.GetString();
+
+            // AWSAccountIds
+            if (root.TryGetProperty("AWSAccountIds", out var AWSAccountIdsElem) && AWSAccountIdsElem.ValueKind == JsonValueKind.Array)
+            {
+                request.AWSAccountIds = new List<string>();
+                foreach (var item in AWSAccountIdsElem.EnumerateArray())
+                {
+                    request.AWSAccountIds.Add(item.GetString()!);
+                }
+            }
+
+            // Actions
+            if (root.TryGetProperty("Actions", out var ActionsElem) && ActionsElem.ValueKind == JsonValueKind.Array)
+            {
+                request.Actions = new List<string>();
+                foreach (var item in ActionsElem.EnumerateArray())
+                {
+                    request.Actions.Add(item.GetString()!);
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
         {
-            request.Actions = new List<string>();
-            foreach (var item in ActionsElem.EnumerateArray())
-            {
-                request.Actions.Add(item.GetString()!);
-            }
+            throw new InternalSerializationException(string.Empty);
         }
-
-        return request;
     }
 
     internal static void SerializeAddPermissionResponse(AddPermissionResponse response, IBufferWriter<byte> bufferWriter)
@@ -60,17 +68,25 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static CancelMessageMoveTaskRequest DeserializeCancelMessageMoveTaskRequest(Stream stream)
+    internal static CancelMessageMoveTaskRequest DeserializeCancelMessageMoveTaskRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new CancelMessageMoveTaskRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new CancelMessageMoveTaskRequest();
 
-        // TaskHandle
-        if (root.TryGetProperty("TaskHandle", out var TaskHandleElem))
-            request.TaskHandle = TaskHandleElem.GetString();
+            // TaskHandle
+            if (root.TryGetProperty("TaskHandle", out var TaskHandleElem))
+                request.TaskHandle = TaskHandleElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeCancelMessageMoveTaskResponse(CancelMessageMoveTaskResponse response, IBufferWriter<byte> bufferWriter)
@@ -86,25 +102,33 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static ChangeMessageVisibilityRequest DeserializeChangeMessageVisibilityRequest(Stream stream)
+    internal static ChangeMessageVisibilityRequest DeserializeChangeMessageVisibilityRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ChangeMessageVisibilityRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ChangeMessageVisibilityRequest();
 
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
 
-        // ReceiptHandle
-        if (root.TryGetProperty("ReceiptHandle", out var ReceiptHandleElem))
-            request.ReceiptHandle = ReceiptHandleElem.GetString();
+            // ReceiptHandle
+            if (root.TryGetProperty("ReceiptHandle", out var ReceiptHandleElem))
+                request.ReceiptHandle = ReceiptHandleElem.GetString();
 
-        // VisibilityTimeout
-        if (root.TryGetProperty("VisibilityTimeout", out var VisibilityTimeoutElem) && VisibilityTimeoutElem.TryGetInt32(out var VisibilityTimeoutVal))
-            request.VisibilityTimeout = VisibilityTimeoutVal;
+            // VisibilityTimeout
+            if (root.TryGetProperty("VisibilityTimeout", out var VisibilityTimeoutElem) && VisibilityTimeoutElem.TryGetInt32(out var VisibilityTimeoutVal))
+                request.VisibilityTimeout = VisibilityTimeoutVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeChangeMessageVisibilityResponse(ChangeMessageVisibilityResponse response, IBufferWriter<byte> bufferWriter)
@@ -115,34 +139,42 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static ChangeMessageVisibilityBatchRequest DeserializeChangeMessageVisibilityBatchRequest(Stream stream)
+    internal static ChangeMessageVisibilityBatchRequest DeserializeChangeMessageVisibilityBatchRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ChangeMessageVisibilityBatchRequest();
-
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
-
-        // Entries
-        if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.Entries = new List<ChangeMessageVisibilityBatchRequestEntry>();
-            foreach (var item in EntriesElem.EnumerateArray())
-            {
-                var entry0 = new ChangeMessageVisibilityBatchRequestEntry();
-                if (item.TryGetProperty("Id", out var _e1))
-                    entry0.Id = _e1.GetString();
-                if (item.TryGetProperty("ReceiptHandle", out var _e2))
-                    entry0.ReceiptHandle = _e2.GetString();
-                if (item.TryGetProperty("VisibilityTimeout", out var _e3) && _e3.TryGetInt32(out var _i3))
-                    entry0.VisibilityTimeout = _i3;
-                request.Entries.Add(entry0);
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ChangeMessageVisibilityBatchRequest();
 
-        return request;
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
+
+            // Entries
+            if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+            {
+                request.Entries = new List<ChangeMessageVisibilityBatchRequestEntry>();
+                foreach (var item in EntriesElem.EnumerateArray())
+                {
+                    var entry0 = new ChangeMessageVisibilityBatchRequestEntry();
+                    if (item.TryGetProperty("Id", out var _e1))
+                        entry0.Id = _e1.GetString();
+                    if (item.TryGetProperty("ReceiptHandle", out var _e2))
+                        entry0.ReceiptHandle = _e2.GetString();
+                    if (item.TryGetProperty("VisibilityTimeout", out var _e3) && _e3.TryGetInt32(out var _i3))
+                        entry0.VisibilityTimeout = _i3;
+                    request.Entries.Add(entry0);
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeChangeMessageVisibilityBatchResponse(ChangeMessageVisibilityBatchResponse response, IBufferWriter<byte> bufferWriter)
@@ -190,37 +222,45 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static CreateQueueRequest DeserializeCreateQueueRequest(Stream stream)
+    internal static CreateQueueRequest DeserializeCreateQueueRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new CreateQueueRequest();
-
-        // QueueName
-        if (root.TryGetProperty("QueueName", out var QueueNameElem))
-            request.QueueName = QueueNameElem.GetString();
-
-        // Attributes
-        if (root.TryGetProperty("Attributes", out var AttributesElem) && AttributesElem.ValueKind == JsonValueKind.Object)
+        try
         {
-            request.Attributes = new Dictionary<string, string>();
-            foreach (var prop in AttributesElem.EnumerateObject())
-            {
-                request.Attributes[prop.Name] = prop.Value.GetString()!;
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new CreateQueueRequest();
 
-        // tags
-        if (root.TryGetProperty("tags", out var tagsElem) && tagsElem.ValueKind == JsonValueKind.Object)
+            // QueueName
+            if (root.TryGetProperty("QueueName", out var QueueNameElem))
+                request.QueueName = QueueNameElem.GetString();
+
+            // Attributes
+            if (root.TryGetProperty("Attributes", out var AttributesElem) && AttributesElem.ValueKind == JsonValueKind.Object)
+            {
+                request.Attributes = new Dictionary<string, string>();
+                foreach (var prop in AttributesElem.EnumerateObject())
+                {
+                    request.Attributes[prop.Name] = prop.Value.GetString()!;
+                }
+            }
+
+            // tags
+            if (root.TryGetProperty("tags", out var tagsElem) && tagsElem.ValueKind == JsonValueKind.Object)
+            {
+                request.Tags = new Dictionary<string, string>();
+                foreach (var prop in tagsElem.EnumerateObject())
+                {
+                    request.Tags[prop.Name] = prop.Value.GetString()!;
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
         {
-            request.Tags = new Dictionary<string, string>();
-            foreach (var prop in tagsElem.EnumerateObject())
-            {
-                request.Tags[prop.Name] = prop.Value.GetString()!;
-            }
+            throw new InternalSerializationException(string.Empty);
         }
-
-        return request;
     }
 
     internal static void SerializeCreateQueueResponse(CreateQueueResponse response, IBufferWriter<byte> bufferWriter)
@@ -236,21 +276,29 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static DeleteMessageRequest DeserializeDeleteMessageRequest(Stream stream)
+    internal static DeleteMessageRequest DeserializeDeleteMessageRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DeleteMessageRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DeleteMessageRequest();
 
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
 
-        // ReceiptHandle
-        if (root.TryGetProperty("ReceiptHandle", out var ReceiptHandleElem))
-            request.ReceiptHandle = ReceiptHandleElem.GetString();
+            // ReceiptHandle
+            if (root.TryGetProperty("ReceiptHandle", out var ReceiptHandleElem))
+                request.ReceiptHandle = ReceiptHandleElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDeleteMessageResponse(DeleteMessageResponse response, IBufferWriter<byte> bufferWriter)
@@ -261,32 +309,40 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static DeleteMessageBatchRequest DeserializeDeleteMessageBatchRequest(Stream stream)
+    internal static DeleteMessageBatchRequest DeserializeDeleteMessageBatchRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DeleteMessageBatchRequest();
-
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
-
-        // Entries
-        if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.Entries = new List<DeleteMessageBatchRequestEntry>();
-            foreach (var item in EntriesElem.EnumerateArray())
-            {
-                var entry4 = new DeleteMessageBatchRequestEntry();
-                if (item.TryGetProperty("Id", out var _e5))
-                    entry4.Id = _e5.GetString();
-                if (item.TryGetProperty("ReceiptHandle", out var _e6))
-                    entry4.ReceiptHandle = _e6.GetString();
-                request.Entries.Add(entry4);
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DeleteMessageBatchRequest();
 
-        return request;
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
+
+            // Entries
+            if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+            {
+                request.Entries = new List<DeleteMessageBatchRequestEntry>();
+                foreach (var item in EntriesElem.EnumerateArray())
+                {
+                    var entry4 = new DeleteMessageBatchRequestEntry();
+                    if (item.TryGetProperty("Id", out var _e5))
+                        entry4.Id = _e5.GetString();
+                    if (item.TryGetProperty("ReceiptHandle", out var _e6))
+                        entry4.ReceiptHandle = _e6.GetString();
+                    request.Entries.Add(entry4);
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDeleteMessageBatchResponse(DeleteMessageBatchResponse response, IBufferWriter<byte> bufferWriter)
@@ -334,17 +390,25 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static DeleteQueueRequest DeserializeDeleteQueueRequest(Stream stream)
+    internal static DeleteQueueRequest DeserializeDeleteQueueRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new DeleteQueueRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new DeleteQueueRequest();
 
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeDeleteQueueResponse(DeleteQueueResponse response, IBufferWriter<byte> bufferWriter)
@@ -355,27 +419,35 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static GetQueueAttributesRequest DeserializeGetQueueAttributesRequest(Stream stream)
+    internal static GetQueueAttributesRequest DeserializeGetQueueAttributesRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new GetQueueAttributesRequest();
-
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
-
-        // AttributeNames
-        if (root.TryGetProperty("AttributeNames", out var AttributeNamesElem) && AttributeNamesElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.AttributeNames = new List<string>();
-            foreach (var item in AttributeNamesElem.EnumerateArray())
-            {
-                request.AttributeNames.Add(item.GetString()!);
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new GetQueueAttributesRequest();
 
-        return request;
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
+
+            // AttributeNames
+            if (root.TryGetProperty("AttributeNames", out var AttributeNamesElem) && AttributeNamesElem.ValueKind == JsonValueKind.Array)
+            {
+                request.AttributeNames = new List<string>();
+                foreach (var item in AttributeNamesElem.EnumerateArray())
+                {
+                    request.AttributeNames.Add(item.GetString()!);
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeGetQueueAttributesResponse(GetQueueAttributesResponse response, IBufferWriter<byte> bufferWriter)
@@ -399,21 +471,29 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static GetQueueUrlRequest DeserializeGetQueueUrlRequest(Stream stream)
+    internal static GetQueueUrlRequest DeserializeGetQueueUrlRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new GetQueueUrlRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new GetQueueUrlRequest();
 
-        // QueueName
-        if (root.TryGetProperty("QueueName", out var QueueNameElem))
-            request.QueueName = QueueNameElem.GetString();
+            // QueueName
+            if (root.TryGetProperty("QueueName", out var QueueNameElem))
+                request.QueueName = QueueNameElem.GetString();
 
-        // QueueOwnerAWSAccountId
-        if (root.TryGetProperty("QueueOwnerAWSAccountId", out var QueueOwnerAWSAccountIdElem))
-            request.QueueOwnerAWSAccountId = QueueOwnerAWSAccountIdElem.GetString();
+            // QueueOwnerAWSAccountId
+            if (root.TryGetProperty("QueueOwnerAWSAccountId", out var QueueOwnerAWSAccountIdElem))
+                request.QueueOwnerAWSAccountId = QueueOwnerAWSAccountIdElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeGetQueueUrlResponse(GetQueueUrlResponse response, IBufferWriter<byte> bufferWriter)
@@ -429,25 +509,33 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static ListDeadLetterSourceQueuesRequest DeserializeListDeadLetterSourceQueuesRequest(Stream stream)
+    internal static ListDeadLetterSourceQueuesRequest DeserializeListDeadLetterSourceQueuesRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListDeadLetterSourceQueuesRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListDeadLetterSourceQueuesRequest();
 
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
 
-        // NextToken
-        if (root.TryGetProperty("NextToken", out var NextTokenElem))
-            request.NextToken = NextTokenElem.GetString();
+            // NextToken
+            if (root.TryGetProperty("NextToken", out var NextTokenElem))
+                request.NextToken = NextTokenElem.GetString();
 
-        // MaxResults
-        if (root.TryGetProperty("MaxResults", out var MaxResultsElem) && MaxResultsElem.TryGetInt32(out var MaxResultsVal))
-            request.MaxResults = MaxResultsVal;
+            // MaxResults
+            if (root.TryGetProperty("MaxResults", out var MaxResultsElem) && MaxResultsElem.TryGetInt32(out var MaxResultsVal))
+                request.MaxResults = MaxResultsVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListDeadLetterSourceQueuesResponse(ListDeadLetterSourceQueuesResponse response, IBufferWriter<byte> bufferWriter)
@@ -475,21 +563,29 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static ListMessageMoveTasksRequest DeserializeListMessageMoveTasksRequest(Stream stream)
+    internal static ListMessageMoveTasksRequest DeserializeListMessageMoveTasksRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListMessageMoveTasksRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListMessageMoveTasksRequest();
 
-        // SourceArn
-        if (root.TryGetProperty("SourceArn", out var SourceArnElem))
-            request.SourceArn = SourceArnElem.GetString();
+            // SourceArn
+            if (root.TryGetProperty("SourceArn", out var SourceArnElem))
+                request.SourceArn = SourceArnElem.GetString();
 
-        // MaxResults
-        if (root.TryGetProperty("MaxResults", out var MaxResultsElem) && MaxResultsElem.TryGetInt32(out var MaxResultsVal))
-            request.MaxResults = MaxResultsVal;
+            // MaxResults
+            if (root.TryGetProperty("MaxResults", out var MaxResultsElem) && MaxResultsElem.TryGetInt32(out var MaxResultsVal))
+                request.MaxResults = MaxResultsVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListMessageMoveTasksResponse(ListMessageMoveTasksResponse response, IBufferWriter<byte> bufferWriter)
@@ -532,17 +628,25 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static ListQueueTagsRequest DeserializeListQueueTagsRequest(Stream stream)
+    internal static ListQueueTagsRequest DeserializeListQueueTagsRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListQueueTagsRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListQueueTagsRequest();
 
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListQueueTagsResponse(ListQueueTagsResponse response, IBufferWriter<byte> bufferWriter)
@@ -566,25 +670,33 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static ListQueuesRequest DeserializeListQueuesRequest(Stream stream)
+    internal static ListQueuesRequest DeserializeListQueuesRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ListQueuesRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ListQueuesRequest();
 
-        // QueueNamePrefix
-        if (root.TryGetProperty("QueueNamePrefix", out var QueueNamePrefixElem))
-            request.QueueNamePrefix = QueueNamePrefixElem.GetString();
+            // QueueNamePrefix
+            if (root.TryGetProperty("QueueNamePrefix", out var QueueNamePrefixElem))
+                request.QueueNamePrefix = QueueNamePrefixElem.GetString();
 
-        // NextToken
-        if (root.TryGetProperty("NextToken", out var NextTokenElem))
-            request.NextToken = NextTokenElem.GetString();
+            // NextToken
+            if (root.TryGetProperty("NextToken", out var NextTokenElem))
+                request.NextToken = NextTokenElem.GetString();
 
-        // MaxResults
-        if (root.TryGetProperty("MaxResults", out var MaxResultsElem) && MaxResultsElem.TryGetInt32(out var MaxResultsVal))
-            request.MaxResults = MaxResultsVal;
+            // MaxResults
+            if (root.TryGetProperty("MaxResults", out var MaxResultsElem) && MaxResultsElem.TryGetInt32(out var MaxResultsVal))
+                request.MaxResults = MaxResultsVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeListQueuesResponse(ListQueuesResponse response, IBufferWriter<byte> bufferWriter)
@@ -612,17 +724,25 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static PurgeQueueRequest DeserializePurgeQueueRequest(Stream stream)
+    internal static PurgeQueueRequest DeserializePurgeQueueRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new PurgeQueueRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new PurgeQueueRequest();
 
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializePurgeQueueResponse(PurgeQueueResponse response, IBufferWriter<byte> bufferWriter)
@@ -633,63 +753,71 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static ReceiveMessageRequest DeserializeReceiveMessageRequest(Stream stream)
+    internal static ReceiveMessageRequest DeserializeReceiveMessageRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new ReceiveMessageRequest();
-
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
-
-        // AttributeNames
-        if (root.TryGetProperty("AttributeNames", out var AttributeNamesElem) && AttributeNamesElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.AttributeNames = new List<string>();
-            foreach (var item in AttributeNamesElem.EnumerateArray())
-            {
-                request.AttributeNames.Add(item.GetString()!);
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new ReceiveMessageRequest();
 
-        // MessageSystemAttributeNames
-        if (root.TryGetProperty("MessageSystemAttributeNames", out var MessageSystemAttributeNamesElem) && MessageSystemAttributeNamesElem.ValueKind == JsonValueKind.Array)
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
+
+            // AttributeNames
+            if (root.TryGetProperty("AttributeNames", out var AttributeNamesElem) && AttributeNamesElem.ValueKind == JsonValueKind.Array)
+            {
+                request.AttributeNames = new List<string>();
+                foreach (var item in AttributeNamesElem.EnumerateArray())
+                {
+                    request.AttributeNames.Add(item.GetString()!);
+                }
+            }
+
+            // MessageSystemAttributeNames
+            if (root.TryGetProperty("MessageSystemAttributeNames", out var MessageSystemAttributeNamesElem) && MessageSystemAttributeNamesElem.ValueKind == JsonValueKind.Array)
+            {
+                request.MessageSystemAttributeNames = new List<string>();
+                foreach (var item in MessageSystemAttributeNamesElem.EnumerateArray())
+                {
+                    request.MessageSystemAttributeNames.Add(item.GetString()!);
+                }
+            }
+
+            // MessageAttributeNames
+            if (root.TryGetProperty("MessageAttributeNames", out var MessageAttributeNamesElem) && MessageAttributeNamesElem.ValueKind == JsonValueKind.Array)
+            {
+                request.MessageAttributeNames = new List<string>();
+                foreach (var item in MessageAttributeNamesElem.EnumerateArray())
+                {
+                    request.MessageAttributeNames.Add(item.GetString()!);
+                }
+            }
+
+            // MaxNumberOfMessages
+            if (root.TryGetProperty("MaxNumberOfMessages", out var MaxNumberOfMessagesElem) && MaxNumberOfMessagesElem.TryGetInt32(out var MaxNumberOfMessagesVal))
+                request.MaxNumberOfMessages = MaxNumberOfMessagesVal;
+
+            // VisibilityTimeout
+            if (root.TryGetProperty("VisibilityTimeout", out var VisibilityTimeoutElem) && VisibilityTimeoutElem.TryGetInt32(out var VisibilityTimeoutVal))
+                request.VisibilityTimeout = VisibilityTimeoutVal;
+
+            // WaitTimeSeconds
+            if (root.TryGetProperty("WaitTimeSeconds", out var WaitTimeSecondsElem) && WaitTimeSecondsElem.TryGetInt32(out var WaitTimeSecondsVal))
+                request.WaitTimeSeconds = WaitTimeSecondsVal;
+
+            // ReceiveRequestAttemptId
+            if (root.TryGetProperty("ReceiveRequestAttemptId", out var ReceiveRequestAttemptIdElem))
+                request.ReceiveRequestAttemptId = ReceiveRequestAttemptIdElem.GetString();
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
         {
-            request.MessageSystemAttributeNames = new List<string>();
-            foreach (var item in MessageSystemAttributeNamesElem.EnumerateArray())
-            {
-                request.MessageSystemAttributeNames.Add(item.GetString()!);
-            }
+            throw new InternalSerializationException(string.Empty);
         }
-
-        // MessageAttributeNames
-        if (root.TryGetProperty("MessageAttributeNames", out var MessageAttributeNamesElem) && MessageAttributeNamesElem.ValueKind == JsonValueKind.Array)
-        {
-            request.MessageAttributeNames = new List<string>();
-            foreach (var item in MessageAttributeNamesElem.EnumerateArray())
-            {
-                request.MessageAttributeNames.Add(item.GetString()!);
-            }
-        }
-
-        // MaxNumberOfMessages
-        if (root.TryGetProperty("MaxNumberOfMessages", out var MaxNumberOfMessagesElem) && MaxNumberOfMessagesElem.TryGetInt32(out var MaxNumberOfMessagesVal))
-            request.MaxNumberOfMessages = MaxNumberOfMessagesVal;
-
-        // VisibilityTimeout
-        if (root.TryGetProperty("VisibilityTimeout", out var VisibilityTimeoutElem) && VisibilityTimeoutElem.TryGetInt32(out var VisibilityTimeoutVal))
-            request.VisibilityTimeout = VisibilityTimeoutVal;
-
-        // WaitTimeSeconds
-        if (root.TryGetProperty("WaitTimeSeconds", out var WaitTimeSecondsElem) && WaitTimeSecondsElem.TryGetInt32(out var WaitTimeSecondsVal))
-            request.WaitTimeSeconds = WaitTimeSecondsVal;
-
-        // ReceiveRequestAttemptId
-        if (root.TryGetProperty("ReceiveRequestAttemptId", out var ReceiveRequestAttemptIdElem))
-            request.ReceiveRequestAttemptId = ReceiveRequestAttemptIdElem.GetString();
-
-        return request;
     }
 
     internal static void SerializeReceiveMessageResponse(ReceiveMessageResponse response, IBufferWriter<byte> bufferWriter)
@@ -772,21 +900,29 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static RemovePermissionRequest DeserializeRemovePermissionRequest(Stream stream)
+    internal static RemovePermissionRequest DeserializeRemovePermissionRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new RemovePermissionRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new RemovePermissionRequest();
 
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
 
-        // Label
-        if (root.TryGetProperty("Label", out var LabelElem))
-            request.Label = LabelElem.GetString();
+            // Label
+            if (root.TryGetProperty("Label", out var LabelElem))
+                request.Label = LabelElem.GetString();
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeRemovePermissionResponse(RemovePermissionResponse response, IBufferWriter<byte> bufferWriter)
@@ -797,105 +933,113 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static SendMessageRequest DeserializeSendMessageRequest(Stream stream)
+    internal static SendMessageRequest DeserializeSendMessageRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new SendMessageRequest();
-
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
-
-        // MessageBody
-        if (root.TryGetProperty("MessageBody", out var MessageBodyElem))
-            request.MessageBody = MessageBodyElem.GetString();
-
-        // DelaySeconds
-        if (root.TryGetProperty("DelaySeconds", out var DelaySecondsElem) && DelaySecondsElem.TryGetInt32(out var DelaySecondsVal))
-            request.DelaySeconds = DelaySecondsVal;
-
-        // MessageAttributes
-        if (root.TryGetProperty("MessageAttributes", out var MessageAttributesElem) && MessageAttributesElem.ValueKind == JsonValueKind.Object)
+        try
         {
-            request.MessageAttributes = new Dictionary<string, MessageAttributeValue>();
-            foreach (var prop in MessageAttributesElem.EnumerateObject())
-            {
-                var mapVal7 = new MessageAttributeValue();
-                if (prop.Value.TryGetProperty("StringValue", out var _e8))
-                    mapVal7.StringValue = _e8.GetString();
-                if (prop.Value.TryGetProperty("BinaryValue", out var _e9))
-                {
-                    var _b64_9 = _e9.GetString();
-                    if (_b64_9 != null)
-                        mapVal7.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_9));
-                }
-                if (prop.Value.TryGetProperty("StringListValues", out var _e10) && _e10.ValueKind == JsonValueKind.Array)
-                {
-                    mapVal7.StringListValues = new List<string>();
-                    foreach (var _li10 in _e10.EnumerateArray())
-                    {
-                        mapVal7.StringListValues.Add(_li10.GetString()!);
-                    }
-                }
-                if (prop.Value.TryGetProperty("BinaryListValues", out var _e11) && _e11.ValueKind == JsonValueKind.Array)
-                {
-                    mapVal7.BinaryListValues = new List<MemoryStream>();
-                    foreach (var _li11 in _e11.EnumerateArray())
-                    {
-                    }
-                }
-                if (prop.Value.TryGetProperty("DataType", out var _e12))
-                    mapVal7.DataType = _e12.GetString();
-                request.MessageAttributes[prop.Name] = mapVal7;
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new SendMessageRequest();
 
-        // MessageSystemAttributes
-        if (root.TryGetProperty("MessageSystemAttributes", out var MessageSystemAttributesElem) && MessageSystemAttributesElem.ValueKind == JsonValueKind.Object)
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
+
+            // MessageBody
+            if (root.TryGetProperty("MessageBody", out var MessageBodyElem))
+                request.MessageBody = MessageBodyElem.GetString();
+
+            // DelaySeconds
+            if (root.TryGetProperty("DelaySeconds", out var DelaySecondsElem) && DelaySecondsElem.TryGetInt32(out var DelaySecondsVal))
+                request.DelaySeconds = DelaySecondsVal;
+
+            // MessageAttributes
+            if (root.TryGetProperty("MessageAttributes", out var MessageAttributesElem) && MessageAttributesElem.ValueKind == JsonValueKind.Object)
+            {
+                request.MessageAttributes = new Dictionary<string, MessageAttributeValue>();
+                foreach (var prop in MessageAttributesElem.EnumerateObject())
+                {
+                    var mapVal7 = new MessageAttributeValue();
+                    if (prop.Value.TryGetProperty("StringValue", out var _e8))
+                        mapVal7.StringValue = _e8.GetString();
+                    if (prop.Value.TryGetProperty("BinaryValue", out var _e9))
+                    {
+                        var _b64_9 = _e9.GetString();
+                        if (_b64_9 != null)
+                            mapVal7.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_9));
+                    }
+                    if (prop.Value.TryGetProperty("StringListValues", out var _e10) && _e10.ValueKind == JsonValueKind.Array)
+                    {
+                        mapVal7.StringListValues = new List<string>();
+                        foreach (var _li10 in _e10.EnumerateArray())
+                        {
+                            mapVal7.StringListValues.Add(_li10.GetString()!);
+                        }
+                    }
+                    if (prop.Value.TryGetProperty("BinaryListValues", out var _e11) && _e11.ValueKind == JsonValueKind.Array)
+                    {
+                        mapVal7.BinaryListValues = new List<MemoryStream>();
+                        foreach (var _li11 in _e11.EnumerateArray())
+                        {
+                        }
+                    }
+                    if (prop.Value.TryGetProperty("DataType", out var _e12))
+                        mapVal7.DataType = _e12.GetString();
+                    request.MessageAttributes[prop.Name] = mapVal7;
+                }
+            }
+
+            // MessageSystemAttributes
+            if (root.TryGetProperty("MessageSystemAttributes", out var MessageSystemAttributesElem) && MessageSystemAttributesElem.ValueKind == JsonValueKind.Object)
+            {
+                request.MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>();
+                foreach (var prop in MessageSystemAttributesElem.EnumerateObject())
+                {
+                    var mapVal13 = new MessageSystemAttributeValue();
+                    if (prop.Value.TryGetProperty("StringValue", out var _e14))
+                        mapVal13.StringValue = _e14.GetString();
+                    if (prop.Value.TryGetProperty("BinaryValue", out var _e15))
+                    {
+                        var _b64_15 = _e15.GetString();
+                        if (_b64_15 != null)
+                            mapVal13.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_15));
+                    }
+                    if (prop.Value.TryGetProperty("StringListValues", out var _e16) && _e16.ValueKind == JsonValueKind.Array)
+                    {
+                        mapVal13.StringListValues = new List<string>();
+                        foreach (var _li16 in _e16.EnumerateArray())
+                        {
+                            mapVal13.StringListValues.Add(_li16.GetString()!);
+                        }
+                    }
+                    if (prop.Value.TryGetProperty("BinaryListValues", out var _e17) && _e17.ValueKind == JsonValueKind.Array)
+                    {
+                        mapVal13.BinaryListValues = new List<MemoryStream>();
+                        foreach (var _li17 in _e17.EnumerateArray())
+                        {
+                        }
+                    }
+                    if (prop.Value.TryGetProperty("DataType", out var _e18))
+                        mapVal13.DataType = _e18.GetString();
+                    request.MessageSystemAttributes[prop.Name] = mapVal13;
+                }
+            }
+
+            // MessageDeduplicationId
+            if (root.TryGetProperty("MessageDeduplicationId", out var MessageDeduplicationIdElem))
+                request.MessageDeduplicationId = MessageDeduplicationIdElem.GetString();
+
+            // MessageGroupId
+            if (root.TryGetProperty("MessageGroupId", out var MessageGroupIdElem))
+                request.MessageGroupId = MessageGroupIdElem.GetString();
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
         {
-            request.MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>();
-            foreach (var prop in MessageSystemAttributesElem.EnumerateObject())
-            {
-                var mapVal13 = new MessageSystemAttributeValue();
-                if (prop.Value.TryGetProperty("StringValue", out var _e14))
-                    mapVal13.StringValue = _e14.GetString();
-                if (prop.Value.TryGetProperty("BinaryValue", out var _e15))
-                {
-                    var _b64_15 = _e15.GetString();
-                    if (_b64_15 != null)
-                        mapVal13.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_15));
-                }
-                if (prop.Value.TryGetProperty("StringListValues", out var _e16) && _e16.ValueKind == JsonValueKind.Array)
-                {
-                    mapVal13.StringListValues = new List<string>();
-                    foreach (var _li16 in _e16.EnumerateArray())
-                    {
-                        mapVal13.StringListValues.Add(_li16.GetString()!);
-                    }
-                }
-                if (prop.Value.TryGetProperty("BinaryListValues", out var _e17) && _e17.ValueKind == JsonValueKind.Array)
-                {
-                    mapVal13.BinaryListValues = new List<MemoryStream>();
-                    foreach (var _li17 in _e17.EnumerateArray())
-                    {
-                    }
-                }
-                if (prop.Value.TryGetProperty("DataType", out var _e18))
-                    mapVal13.DataType = _e18.GetString();
-                request.MessageSystemAttributes[prop.Name] = mapVal13;
-            }
+            throw new InternalSerializationException(string.Empty);
         }
-
-        // MessageDeduplicationId
-        if (root.TryGetProperty("MessageDeduplicationId", out var MessageDeduplicationIdElem))
-            request.MessageDeduplicationId = MessageDeduplicationIdElem.GetString();
-
-        // MessageGroupId
-        if (root.TryGetProperty("MessageGroupId", out var MessageGroupIdElem))
-            request.MessageGroupId = MessageGroupIdElem.GetString();
-
-        return request;
     }
 
     internal static void SerializeSendMessageResponse(SendMessageResponse response, IBufferWriter<byte> bufferWriter)
@@ -927,106 +1071,114 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static SendMessageBatchRequest DeserializeSendMessageBatchRequest(Stream stream)
+    internal static SendMessageBatchRequest DeserializeSendMessageBatchRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new SendMessageBatchRequest();
-
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
-
-        // Entries
-        if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.Entries = new List<SendMessageBatchRequestEntry>();
-            foreach (var item in EntriesElem.EnumerateArray())
-            {
-                var entry19 = new SendMessageBatchRequestEntry();
-                if (item.TryGetProperty("Id", out var _e20))
-                    entry19.Id = _e20.GetString();
-                if (item.TryGetProperty("MessageBody", out var _e21))
-                    entry19.MessageBody = _e21.GetString();
-                if (item.TryGetProperty("DelaySeconds", out var _e22) && _e22.TryGetInt32(out var _i22))
-                    entry19.DelaySeconds = _i22;
-                if (item.TryGetProperty("MessageAttributes", out var _e23) && _e23.ValueKind == JsonValueKind.Object)
-                {
-                    entry19.MessageAttributes = new Dictionary<string, MessageAttributeValue>();
-                    foreach (var _p23 in _e23.EnumerateObject())
-                    {
-                        var _mv23 = new MessageAttributeValue();
-                        if (_p23.Value.TryGetProperty("StringValue", out var _e24))
-                            _mv23.StringValue = _e24.GetString();
-                        if (_p23.Value.TryGetProperty("BinaryValue", out var _e25))
-                        {
-                            var _b64_25 = _e25.GetString();
-                            if (_b64_25 != null)
-                                _mv23.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_25));
-                        }
-                        if (_p23.Value.TryGetProperty("StringListValues", out var _e26) && _e26.ValueKind == JsonValueKind.Array)
-                        {
-                            _mv23.StringListValues = new List<string>();
-                            foreach (var _li26 in _e26.EnumerateArray())
-                            {
-                                _mv23.StringListValues.Add(_li26.GetString()!);
-                            }
-                        }
-                        if (_p23.Value.TryGetProperty("BinaryListValues", out var _e27) && _e27.ValueKind == JsonValueKind.Array)
-                        {
-                            _mv23.BinaryListValues = new List<MemoryStream>();
-                            foreach (var _li27 in _e27.EnumerateArray())
-                            {
-                            }
-                        }
-                        if (_p23.Value.TryGetProperty("DataType", out var _e28))
-                            _mv23.DataType = _e28.GetString();
-                        entry19.MessageAttributes[_p23.Name] = _mv23;
-                    }
-                }
-                if (item.TryGetProperty("MessageSystemAttributes", out var _e29) && _e29.ValueKind == JsonValueKind.Object)
-                {
-                    entry19.MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>();
-                    foreach (var _p29 in _e29.EnumerateObject())
-                    {
-                        var _mv29 = new MessageSystemAttributeValue();
-                        if (_p29.Value.TryGetProperty("StringValue", out var _e30))
-                            _mv29.StringValue = _e30.GetString();
-                        if (_p29.Value.TryGetProperty("BinaryValue", out var _e31))
-                        {
-                            var _b64_31 = _e31.GetString();
-                            if (_b64_31 != null)
-                                _mv29.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_31));
-                        }
-                        if (_p29.Value.TryGetProperty("StringListValues", out var _e32) && _e32.ValueKind == JsonValueKind.Array)
-                        {
-                            _mv29.StringListValues = new List<string>();
-                            foreach (var _li32 in _e32.EnumerateArray())
-                            {
-                                _mv29.StringListValues.Add(_li32.GetString()!);
-                            }
-                        }
-                        if (_p29.Value.TryGetProperty("BinaryListValues", out var _e33) && _e33.ValueKind == JsonValueKind.Array)
-                        {
-                            _mv29.BinaryListValues = new List<MemoryStream>();
-                            foreach (var _li33 in _e33.EnumerateArray())
-                            {
-                            }
-                        }
-                        if (_p29.Value.TryGetProperty("DataType", out var _e34))
-                            _mv29.DataType = _e34.GetString();
-                        entry19.MessageSystemAttributes[_p29.Name] = _mv29;
-                    }
-                }
-                if (item.TryGetProperty("MessageDeduplicationId", out var _e35))
-                    entry19.MessageDeduplicationId = _e35.GetString();
-                if (item.TryGetProperty("MessageGroupId", out var _e36))
-                    entry19.MessageGroupId = _e36.GetString();
-                request.Entries.Add(entry19);
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new SendMessageBatchRequest();
 
-        return request;
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
+
+            // Entries
+            if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+            {
+                request.Entries = new List<SendMessageBatchRequestEntry>();
+                foreach (var item in EntriesElem.EnumerateArray())
+                {
+                    var entry19 = new SendMessageBatchRequestEntry();
+                    if (item.TryGetProperty("Id", out var _e20))
+                        entry19.Id = _e20.GetString();
+                    if (item.TryGetProperty("MessageBody", out var _e21))
+                        entry19.MessageBody = _e21.GetString();
+                    if (item.TryGetProperty("DelaySeconds", out var _e22) && _e22.TryGetInt32(out var _i22))
+                        entry19.DelaySeconds = _i22;
+                    if (item.TryGetProperty("MessageAttributes", out var _e23) && _e23.ValueKind == JsonValueKind.Object)
+                    {
+                        entry19.MessageAttributes = new Dictionary<string, MessageAttributeValue>();
+                        foreach (var _p23 in _e23.EnumerateObject())
+                        {
+                            var _mv23 = new MessageAttributeValue();
+                            if (_p23.Value.TryGetProperty("StringValue", out var _e24))
+                                _mv23.StringValue = _e24.GetString();
+                            if (_p23.Value.TryGetProperty("BinaryValue", out var _e25))
+                            {
+                                var _b64_25 = _e25.GetString();
+                                if (_b64_25 != null)
+                                    _mv23.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_25));
+                            }
+                            if (_p23.Value.TryGetProperty("StringListValues", out var _e26) && _e26.ValueKind == JsonValueKind.Array)
+                            {
+                                _mv23.StringListValues = new List<string>();
+                                foreach (var _li26 in _e26.EnumerateArray())
+                                {
+                                    _mv23.StringListValues.Add(_li26.GetString()!);
+                                }
+                            }
+                            if (_p23.Value.TryGetProperty("BinaryListValues", out var _e27) && _e27.ValueKind == JsonValueKind.Array)
+                            {
+                                _mv23.BinaryListValues = new List<MemoryStream>();
+                                foreach (var _li27 in _e27.EnumerateArray())
+                                {
+                                }
+                            }
+                            if (_p23.Value.TryGetProperty("DataType", out var _e28))
+                                _mv23.DataType = _e28.GetString();
+                            entry19.MessageAttributes[_p23.Name] = _mv23;
+                        }
+                    }
+                    if (item.TryGetProperty("MessageSystemAttributes", out var _e29) && _e29.ValueKind == JsonValueKind.Object)
+                    {
+                        entry19.MessageSystemAttributes = new Dictionary<string, MessageSystemAttributeValue>();
+                        foreach (var _p29 in _e29.EnumerateObject())
+                        {
+                            var _mv29 = new MessageSystemAttributeValue();
+                            if (_p29.Value.TryGetProperty("StringValue", out var _e30))
+                                _mv29.StringValue = _e30.GetString();
+                            if (_p29.Value.TryGetProperty("BinaryValue", out var _e31))
+                            {
+                                var _b64_31 = _e31.GetString();
+                                if (_b64_31 != null)
+                                    _mv29.BinaryValue = new MemoryStream(Convert.FromBase64String(_b64_31));
+                            }
+                            if (_p29.Value.TryGetProperty("StringListValues", out var _e32) && _e32.ValueKind == JsonValueKind.Array)
+                            {
+                                _mv29.StringListValues = new List<string>();
+                                foreach (var _li32 in _e32.EnumerateArray())
+                                {
+                                    _mv29.StringListValues.Add(_li32.GetString()!);
+                                }
+                            }
+                            if (_p29.Value.TryGetProperty("BinaryListValues", out var _e33) && _e33.ValueKind == JsonValueKind.Array)
+                            {
+                                _mv29.BinaryListValues = new List<MemoryStream>();
+                                foreach (var _li33 in _e33.EnumerateArray())
+                                {
+                                }
+                            }
+                            if (_p29.Value.TryGetProperty("DataType", out var _e34))
+                                _mv29.DataType = _e34.GetString();
+                            entry19.MessageSystemAttributes[_p29.Name] = _mv29;
+                        }
+                    }
+                    if (item.TryGetProperty("MessageDeduplicationId", out var _e35))
+                        entry19.MessageDeduplicationId = _e35.GetString();
+                    if (item.TryGetProperty("MessageGroupId", out var _e36))
+                        entry19.MessageGroupId = _e36.GetString();
+                    request.Entries.Add(entry19);
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeSendMessageBatchResponse(SendMessageBatchResponse response, IBufferWriter<byte> bufferWriter)
@@ -1084,27 +1236,35 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static SetQueueAttributesRequest DeserializeSetQueueAttributesRequest(Stream stream)
+    internal static SetQueueAttributesRequest DeserializeSetQueueAttributesRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new SetQueueAttributesRequest();
-
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
-
-        // Attributes
-        if (root.TryGetProperty("Attributes", out var AttributesElem) && AttributesElem.ValueKind == JsonValueKind.Object)
+        try
         {
-            request.Attributes = new Dictionary<string, string>();
-            foreach (var prop in AttributesElem.EnumerateObject())
-            {
-                request.Attributes[prop.Name] = prop.Value.GetString()!;
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new SetQueueAttributesRequest();
 
-        return request;
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
+
+            // Attributes
+            if (root.TryGetProperty("Attributes", out var AttributesElem) && AttributesElem.ValueKind == JsonValueKind.Object)
+            {
+                request.Attributes = new Dictionary<string, string>();
+                foreach (var prop in AttributesElem.EnumerateObject())
+                {
+                    request.Attributes[prop.Name] = prop.Value.GetString()!;
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeSetQueueAttributesResponse(SetQueueAttributesResponse response, IBufferWriter<byte> bufferWriter)
@@ -1115,25 +1275,33 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static StartMessageMoveTaskRequest DeserializeStartMessageMoveTaskRequest(Stream stream)
+    internal static StartMessageMoveTaskRequest DeserializeStartMessageMoveTaskRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new StartMessageMoveTaskRequest();
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new StartMessageMoveTaskRequest();
 
-        // SourceArn
-        if (root.TryGetProperty("SourceArn", out var SourceArnElem))
-            request.SourceArn = SourceArnElem.GetString();
+            // SourceArn
+            if (root.TryGetProperty("SourceArn", out var SourceArnElem))
+                request.SourceArn = SourceArnElem.GetString();
 
-        // DestinationArn
-        if (root.TryGetProperty("DestinationArn", out var DestinationArnElem))
-            request.DestinationArn = DestinationArnElem.GetString();
+            // DestinationArn
+            if (root.TryGetProperty("DestinationArn", out var DestinationArnElem))
+                request.DestinationArn = DestinationArnElem.GetString();
 
-        // MaxNumberOfMessagesPerSecond
-        if (root.TryGetProperty("MaxNumberOfMessagesPerSecond", out var MaxNumberOfMessagesPerSecondElem) && MaxNumberOfMessagesPerSecondElem.TryGetInt32(out var MaxNumberOfMessagesPerSecondVal))
-            request.MaxNumberOfMessagesPerSecond = MaxNumberOfMessagesPerSecondVal;
+            // MaxNumberOfMessagesPerSecond
+            if (root.TryGetProperty("MaxNumberOfMessagesPerSecond", out var MaxNumberOfMessagesPerSecondElem) && MaxNumberOfMessagesPerSecondElem.TryGetInt32(out var MaxNumberOfMessagesPerSecondVal))
+                request.MaxNumberOfMessagesPerSecond = MaxNumberOfMessagesPerSecondVal;
 
-        return request;
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeStartMessageMoveTaskResponse(StartMessageMoveTaskResponse response, IBufferWriter<byte> bufferWriter)
@@ -1149,27 +1317,35 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static TagQueueRequest DeserializeTagQueueRequest(Stream stream)
+    internal static TagQueueRequest DeserializeTagQueueRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new TagQueueRequest();
-
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
-
-        // Tags
-        if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Object)
+        try
         {
-            request.Tags = new Dictionary<string, string>();
-            foreach (var prop in TagsElem.EnumerateObject())
-            {
-                request.Tags[prop.Name] = prop.Value.GetString()!;
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new TagQueueRequest();
 
-        return request;
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
+
+            // Tags
+            if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Object)
+            {
+                request.Tags = new Dictionary<string, string>();
+                foreach (var prop in TagsElem.EnumerateObject())
+                {
+                    request.Tags[prop.Name] = prop.Value.GetString()!;
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeTagQueueResponse(TagQueueResponse response, IBufferWriter<byte> bufferWriter)
@@ -1180,27 +1356,35 @@ internal static class SqsJsonSerializers
         writer.Flush();
     }
 
-    internal static UntagQueueRequest DeserializeUntagQueueRequest(Stream stream)
+    internal static UntagQueueRequest DeserializeUntagQueueRequest(ReadOnlyMemory<byte> body)
     {
-        using var doc = JsonDocument.Parse(stream);
-        var root = doc.RootElement;
-        var request = new UntagQueueRequest();
-
-        // QueueUrl
-        if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
-            request.QueueUrl = QueueUrlElem.GetString();
-
-        // TagKeys
-        if (root.TryGetProperty("TagKeys", out var TagKeysElem) && TagKeysElem.ValueKind == JsonValueKind.Array)
+        try
         {
-            request.TagKeys = new List<string>();
-            foreach (var item in TagKeysElem.EnumerateArray())
-            {
-                request.TagKeys.Add(item.GetString()!);
-            }
-        }
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var request = new UntagQueueRequest();
 
-        return request;
+            // QueueUrl
+            if (root.TryGetProperty("QueueUrl", out var QueueUrlElem))
+                request.QueueUrl = QueueUrlElem.GetString();
+
+            // TagKeys
+            if (root.TryGetProperty("TagKeys", out var TagKeysElem) && TagKeysElem.ValueKind == JsonValueKind.Array)
+            {
+                request.TagKeys = new List<string>();
+                foreach (var item in TagKeysElem.EnumerateArray())
+                {
+                    request.TagKeys.Add(item.GetString()!);
+                }
+            }
+
+
+            return request;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new InternalSerializationException(string.Empty);
+        }
     }
 
     internal static void SerializeUntagQueueResponse(UntagQueueResponse response, IBufferWriter<byte> bufferWriter)
