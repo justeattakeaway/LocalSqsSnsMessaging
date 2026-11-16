@@ -79,7 +79,6 @@ public sealed class PutItemAndSearchVectorsReturnConsumedCapacityInvalidEnumReje
     /// alike, and a well-formed retry of each still performs its write or search correctly.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "Vector indexes are not emulated: the table never reports an ACTIVE vector index")]
     [DisplayName("dynamodb.put-item-and-search-vectors-return-consumed-capacity-invalid-enum-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

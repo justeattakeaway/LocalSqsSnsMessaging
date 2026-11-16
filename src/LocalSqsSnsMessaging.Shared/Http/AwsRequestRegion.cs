@@ -97,14 +97,16 @@ internal static class AwsRequestRegion
             return labels[0];
         }
 
-        // DynamoDB: dynamodb.us-east-1.amazonaws.com, streams.dynamodb.us-east-1.amazonaws.com, and
-        // the account-based endpoints SDKs resolve to, 123456789012.ddb.us-east-1.amazonaws.com.
-        if (labels.Length >= 4 && labels[0] == "dynamodb" && IsRegionName(labels[1]))
+        // DynamoDB: dynamodb.us-east-1.amazonaws.com, streams.dynamodb.us-east-1.amazonaws.com, the
+        // account-based endpoints SDKs resolve to, 123456789012.ddb.us-east-1.amazonaws.com, and the
+        // SearchVectors endpoints, search-dynamodb.us-east-1.amazonaws.com and
+        // 123456789012.search-ddb.us-east-1.amazonaws.com.
+        if (labels.Length >= 4 && labels[0] is "dynamodb" or "search-dynamodb" && IsRegionName(labels[1]))
         {
             return labels[1];
         }
 
-        if (labels.Length >= 5 && labels[1] is "dynamodb" or "ddb" && IsRegionName(labels[2]))
+        if (labels.Length >= 5 && labels[1] is "dynamodb" or "ddb" or "search-ddb" && IsRegionName(labels[2]))
         {
             return labels[2];
         }

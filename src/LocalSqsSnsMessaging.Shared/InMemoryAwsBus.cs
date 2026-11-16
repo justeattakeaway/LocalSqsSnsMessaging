@@ -125,6 +125,17 @@ public sealed class InMemoryAwsBus
     public TimeSpan DynamoDbTableCreationDelay { get; init; } = TimeSpan.Zero;
 
     /// <summary>
+    /// Gets or initializes how long a DynamoDB vector index that UpdateTable adds stays
+    /// <c>CREATING</c> before it becomes <c>ACTIVE</c>, measured on <see cref="TimeProvider"/>:
+    /// the first half allocating resources (when the index can't be deleted), the second half
+    /// backfilling (<c>Backfilling</c> is true). A <c>CREATING</c> index takes writes but can't be
+    /// searched, and the table can't be deleted. Defaults to zero: the index is ACTIVE as soon as
+    /// UpdateTable returns. (AWS takes minutes.) A vector index created with its table is ACTIVE
+    /// when the table is.
+    /// </summary>
+    public TimeSpan DynamoDbVectorIndexCreationDelay { get; init; } = TimeSpan.Zero;
+
+    /// <summary>
     /// Gets or initializes how often DynamoDB time to live looks for expired items in a table
     /// with time to live enabled, measured on <see cref="TimeProvider"/>. An item expires once
     /// its TTL attribute (epoch seconds) is in the past; it is deleted on the next sweep.

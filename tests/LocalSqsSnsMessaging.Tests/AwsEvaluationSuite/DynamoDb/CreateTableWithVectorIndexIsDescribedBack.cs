@@ -15,7 +15,6 @@ public sealed class CreateTableWithVectorIndexIsDescribedBack
     /// distance function and the vector attribute it was created with.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them: DescribeTable reports none")]
     [DisplayName("dynamodb.create-table-with-vector-index-is-described-back")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

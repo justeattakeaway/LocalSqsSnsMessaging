@@ -235,7 +235,8 @@ internal sealed partial class InternalDynamoDbClient
                 request.OnDemandThroughputOverride,
                 request.GlobalSecondaryIndexOverride,
                 request.LocalSecondaryIndexOverride,
-                request.SSESpecificationOverride);
+                request.SSESpecificationOverride,
+                request.VectorIndexOverride);
             table.Restore = new DynamoRestore(backup.Arn, backup.TableArn, Now);
             Store.Tables[name] = table;
             Record("RestoreTableFromBackup", table.Arn);
@@ -322,7 +323,8 @@ internal sealed partial class InternalDynamoDbClient
                 request.OnDemandThroughputOverride,
                 request.GlobalSecondaryIndexOverride,
                 request.LocalSecondaryIndexOverride,
-                request.SSESpecificationOverride);
+                request.SSESpecificationOverride,
+                request.VectorIndexOverride);
             table.Restore = new DynamoRestore(null, source.Arn, point);
             Store.Tables[name] = table;
             Record("RestoreTableToPointInTime", table.Arn);
@@ -342,7 +344,8 @@ internal sealed partial class InternalDynamoDbClient
         OnDemandThroughput? onDemandThroughput,
         List<GlobalSecondaryIndex>? globalIndexes,
         List<LocalSecondaryIndex>? localIndexes,
-        SSESpecification? sse)
+        SSESpecification? sse,
+        List<VectorIndex>? vectorIndexes)
     {
         if (localIndexes is not null)
         {
@@ -382,10 +385,23 @@ internal sealed partial class InternalDynamoDbClient
             table.GlobalIndexes.AddRange(kept);
         }
 
-        if (localIndexes is not null || globalIndexes is not null)
+        if (vectorIndexes is not null)
+        {
+            var kept = new List<DynamoVectorIndex>();
+            foreach (var vector in vectorIndexes)
+            {
+                kept.Add(table.FindVectorIndex(vector.IndexName!)
+                    ?? throw DynamoDbErrors.InvalidParameter($"VectorIndexOverride names an index the source table does not have: {vector.IndexName}"));
+            }
+
+            table.VectorIndexes.Clear();
+            table.VectorIndexes.AddRange(kept);
+        }
+
+        if (localIndexes is not null || globalIndexes is not null || vectorIndexes is not null)
         {
             // An attribute only a dropped index was keyed on is no longer defined.
-            var used = new HashSet<string>(table.KeySchema.Attributes.Concat(table.Indexes.SelectMany(i => i.KeySchema.Attributes)).Select(a => a.Name), StringComparer.Ordinal);
+            var used = table.UsedAttributeNames();
             table.AttributeDefinitions = table.AttributeDefinitions.Where(a => used.Contains(a.Name)).ToList();
         }
 
@@ -462,6 +478,21 @@ internal sealed partial class InternalDynamoDbClient
                 Throughput = index.Throughput is null ? null : new DynamoThroughput { ReadCapacityUnits = index.Throughput.ReadCapacityUnits, WriteCapacityUnits = index.Throughput.WriteCapacityUnits },
                 MaxReadRequestUnits = index.MaxReadRequestUnits,
                 MaxWriteRequestUnits = index.MaxWriteRequestUnits,
+            });
+        }
+
+        // Only a vector index that is built is restored: one still CREATING has nothing to restore yet.
+        foreach (var index in source.VectorIndexes.Where(v => v.Status == "ACTIVE"))
+        {
+            copy.VectorIndexes.Add(new DynamoVectorIndex
+            {
+                Name = index.Name,
+                Arn = $"{arn}/index/{index.Name}",
+                VectorAttribute = index.VectorAttribute,
+                Dimensions = index.Dimensions,
+                DistanceFunction = index.DistanceFunction,
+                Projection = index.Projection,
+                SearchSchema = index.SearchSchema,
             });
         }
 

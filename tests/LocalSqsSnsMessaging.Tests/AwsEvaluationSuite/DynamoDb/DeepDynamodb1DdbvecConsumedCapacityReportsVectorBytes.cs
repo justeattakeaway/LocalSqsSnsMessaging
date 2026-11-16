@@ -21,7 +21,6 @@ public sealed class DeepDynamodb1DdbvecConsumedCapacityReportsVectorBytes
     /// VectorSearchRequestBytes when asked for TOTAL and omits ConsumedCapacity otherwise.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them: DescribeTable reports none")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-consumed-capacity-reports-vector-bytes")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

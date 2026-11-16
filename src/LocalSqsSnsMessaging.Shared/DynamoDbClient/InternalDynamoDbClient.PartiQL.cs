@@ -40,7 +40,7 @@ internal sealed partial class InternalDynamoDbClient
             return Task.FromResult(new ExecuteStatementResponse
             {
                 Items = write.Returned is null ? [] : [write.Returned],
-                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, WriteUnits(write.Before, write.After), write: true, IndexWriteUnits(table, write.Before, write.After)),
+                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, WriteUnits(table, write.Before, write.After), write: true, IndexWriteUnits(table, write.Before, write.After), vectorBytes: VectorWriteBytes(table, write.Before, write.After)),
             });
         }
     }
@@ -58,6 +58,12 @@ internal sealed partial class InternalDynamoDbClient
         DynamoIndex? index = null;
         if (select.Index is not null)
         {
+            // A vector index is read only by SearchVectors.
+            if (table.FindVectorIndex(select.Index) is not null)
+            {
+                throw DynamoDbErrors.Validation("Scan operation not supported on this index type");
+            }
+
             index = table.FindIndex(select.Index) ?? throw DynamoDbErrors.Validation("The table does not have the specified index");
             if (index.IsGlobal && request.ConsistentRead == true)
             {
@@ -177,10 +183,10 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             var held = index is null || index.Projection.Type == "ALL" ? item : ProjectForIndex(table, index, item);
-            bytes += DynamoValueRules.ItemSize(held);
+            bytes += table.BilledSize(held);
             if (fetches)
             {
-                fetchUnits += ReadUnits(DynamoValueRules.ItemSize(item), consistent);
+                fetchUnits += ReadUnits(table.BilledSize(item), consistent);
             }
 
             evaluated++;
@@ -409,7 +415,7 @@ internal sealed partial class InternalDynamoDbClient
         {
             case PartiQLInsert insert:
             {
-                var item = CanonicalItem(insert.Item);
+                var item = WithVectorsAsWritten(table, CanonicalItem(insert.Item), insert.Item);
                 CheckIndexKeys(table, item, update: false);
                 CheckLocalIndexEntrySizes(table, item);
                 var key = KeyFromItem(table, item);
@@ -598,6 +604,7 @@ internal sealed partial class InternalDynamoDbClient
             var responses = new List<BatchStatementResponse>();
             var units = new Dictionary<DynamoTable, double>();
             var indexUnits = new Dictionary<DynamoTable, Dictionary<string, double>>();
+            var vectorBytes = new Dictionary<DynamoTable, Dictionary<string, double>>();
             foreach (var (statementRequest, statement, parseError) in parsed)
             {
                 if (statement is null)
@@ -649,7 +656,7 @@ internal sealed partial class InternalDynamoDbClient
                         }
 
                         var item = table.Get(key);
-                        units[table] = (units.TryGetValue(table, out var read) ? read : 0) + ReadUnits(item is null ? 0 : DynamoValueRules.ItemSize(item), statementRequest.ConsistentRead ?? false);
+                        units[table] = (units.TryGetValue(table, out var read) ? read : 0) + ReadUnits(table.BilledSize(item), statementRequest.ConsistentRead ?? false);
                         var matched = item is not null && (select.Where is null || select.Where.Evaluate(item));
                         responses.Add(new BatchStatementResponse
                         {
@@ -680,8 +687,9 @@ internal sealed partial class InternalDynamoDbClient
                         }
 
                         ApplyWrite(write);
-                        units[table] = (units.TryGetValue(table, out var written) ? written : 0) + WriteUnits(write.Before, write.After);
+                        units[table] = (units.TryGetValue(table, out var written) ? written : 0) + WriteUnits(table, write.Before, write.After);
                         AddIndexWriteUnits(indexUnits, table, write.Before, write.After);
+                        AddVectorWriteBytes(vectorBytes, table, write.Before, write.After);
                         responses.Add(new BatchStatementResponse { TableName = table.Name, Item = write.Returned });
                     }
 
@@ -693,7 +701,7 @@ internal sealed partial class InternalDynamoDbClient
                 }
             }
 
-            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value, write: kinds == 1 && !parsed.First(p => p.Statement is not null).Statement!.IsRead, indexUnits.TryGetValue(u.Key, out var indexes) ? indexes : null)).Where(c => c is not null).Select(c => c!).ToList();
+            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value, write: kinds == 1 && !parsed.First(p => p.Statement is not null).Statement!.IsRead, indexUnits.TryGetValue(u.Key, out var indexes) ? indexes : null, vectorBytes: vectorBytes.TryGetValue(u.Key, out var vectors) ? vectors : null)).Where(c => c is not null).Select(c => c!).ToList();
             return Task.FromResult(new BatchExecuteStatementResponse
             {
                 Responses = responses,
@@ -825,7 +833,7 @@ internal sealed partial class InternalDynamoDbClient
                     var item = table.Get(key);
                     var matched = item is not null && (select.Where is null || select.Where.Evaluate(item));
                     responses.Add(new ItemResponse { Item = matched ? (select.Projection is null ? item : ProjectStatement(item!, select.Projection)) : null });
-                    readUnits[table] = (readUnits.TryGetValue(table, out var running) ? running : 0) + ReadUnits(item is null ? 0 : DynamoValueRules.ItemSize(item), consistent: true, transactional: true);
+                    readUnits[table] = (readUnits.TryGetValue(table, out var running) ? running : 0) + ReadUnits(table.BilledSize(item), consistent: true, transactional: true);
                     Record("ExecuteTransaction", table.Arn);
                 }
 
@@ -854,16 +862,18 @@ internal sealed partial class InternalDynamoDbClient
 
             var units = new Dictionary<DynamoTable, double>();
             var indexUnits = new Dictionary<DynamoTable, Dictionary<string, double>>();
+            var vectorBytes = new Dictionary<DynamoTable, Dictionary<string, double>>();
             foreach (var write in writes)
             {
                 ApplyWrite(write);
                 var cost = write.Check
-                    ? ReadUnits(write.Before is null ? 0 : DynamoValueRules.ItemSize(write.Before), consistent: true, transactional: true)
-                    : WriteUnits(write.Before, write.After, transactional: true);
+                    ? ReadUnits(write.Table.BilledSize(write.Before), consistent: true, transactional: true)
+                    : WriteUnits(write.Table, write.Before, write.After, transactional: true);
                 units[write.Table] = (units.TryGetValue(write.Table, out var running) ? running : 0) + cost;
                 if (!write.Check)
                 {
                     AddIndexWriteUnits(indexUnits, write.Table, write.Before, write.After);
+                    AddVectorWriteBytes(vectorBytes, write.Table, write.Before, write.After);
                 }
                 Record("ExecuteTransaction", write.Table.Arn);
             }
@@ -874,7 +884,7 @@ internal sealed partial class InternalDynamoDbClient
                 Store.TransactionTokens[requestToken] = new DynamoTransactionToken(fingerprint!, now + TransactionTokenLifetime, ledger);
             }
 
-            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value, write: true, indexUnits.TryGetValue(u.Key, out var indexes) ? indexes : null, transactional: true)).Where(c => c is not null).Select(c => c!).ToList();
+            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value, write: true, indexUnits.TryGetValue(u.Key, out var indexes) ? indexes : null, transactional: true, vectorBytes.TryGetValue(u.Key, out var vectors) ? vectors : null)).Where(c => c is not null).Select(c => c!).ToList();
             return Task.FromResult(new ExecuteTransactionResponse
             {
                 // A write transaction answers only the items its RETURNING clauses asked for.

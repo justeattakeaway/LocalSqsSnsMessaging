@@ -21,7 +21,6 @@ public sealed class DeepDynamodb1DdbvecSearchVectorDimensionMismatchRejected
     /// The model allows 1..4096 elements; the service checks against the index's declared Dimensions.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them: DescribeTable reports none")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-search-vector-dimension-mismatch-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

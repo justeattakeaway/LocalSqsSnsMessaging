@@ -17,7 +17,6 @@ public sealed class CreateTableVectorIndexIncludeProjectionRequiresNonKeyAttribu
     /// table it would have created never exists.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them, so the control table's vector index never shows up as ACTIVE")]
     [DisplayName("dynamodb.create-table-vector-index-include-projection-requires-non-key-attributes-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

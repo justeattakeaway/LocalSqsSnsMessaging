@@ -18,7 +18,6 @@ public sealed class CreateTableVectorIndexValidationRejected
     /// on one table, and two indexes on the same attribute at different Dimensions.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them, so the control table never describes an ACTIVE vector index")]
     [DisplayName("dynamodb.create-table-vector-index-validation-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

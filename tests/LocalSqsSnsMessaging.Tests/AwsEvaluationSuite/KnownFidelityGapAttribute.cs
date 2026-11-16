@@ -25,9 +25,6 @@ public enum FidelityGap
     /// </summary>
     EmulatorBudget,
 
-    /// <summary>DynamoDB vector indexes and <c>SearchVectors</c> are not emulated.</summary>
-    DynamoDbVectorSearch,
-
     /// <summary>DynamoDB global tables (replicas in other regions) are not emulated.</summary>
     DynamoDbGlobalTables,
 

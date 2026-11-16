@@ -68,7 +68,6 @@ public sealed class SearchVectorsExpressionAttributeValueMismatchRejected
     /// and an ExpressionAttributeValues entry no placeholder references, both refuse the search.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "Vector indexes are not emulated: CreateTable ignores VectorIndexes and refuses the attribute definition only its search schema uses")]
     [DisplayName("dynamodb.search-vectors-expression-attribute-value-mismatch-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

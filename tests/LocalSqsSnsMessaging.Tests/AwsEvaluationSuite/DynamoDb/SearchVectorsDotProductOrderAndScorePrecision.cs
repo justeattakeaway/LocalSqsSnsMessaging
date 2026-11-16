@@ -73,7 +73,6 @@ public sealed class SearchVectorsDotProductOrderAndScorePrecision
     /// LastEvaluatedKey. Score reflects float32 math; a projected vector keeps full precision.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores VectorIndexes and SearchVectors is not emulated")]
     [DisplayName("dynamodb.search-vectors-dot-product-order-and-score-precision")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

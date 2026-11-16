@@ -18,7 +18,6 @@ public sealed class VectorIndexQueryAndScanRejected
     /// SearchVectors on the same index still succeeds.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "vector indexes are not emulated: DescribeTable never reports the vector index CreateTable was given")]
     [DisplayName("dynamodb.vector-index-query-and-scan-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

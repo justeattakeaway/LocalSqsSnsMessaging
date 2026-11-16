@@ -32,7 +32,6 @@ public sealed class VectorWriteRequestBytesNameAndProjectionTerms
     /// indexes each below the 1 KB floor in the same PutItem are floored independently.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "vector indexes are not emulated: CreateTable accepts VectorIndexes but DescribeTable reports none")]
     [DisplayName("dynamodb.vector-write-request-bytes-name-and-projection-terms")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

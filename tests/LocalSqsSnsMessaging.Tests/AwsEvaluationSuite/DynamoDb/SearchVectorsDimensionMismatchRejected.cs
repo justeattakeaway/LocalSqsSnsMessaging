@@ -22,7 +22,6 @@ public sealed class SearchVectorsDimensionMismatchRejected
     /// states both dimensions so a caller can fix the call.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores VectorIndexes and SearchVectors is not emulated")]
     [DisplayName("dynamodb.search-vectors-dimension-mismatch-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

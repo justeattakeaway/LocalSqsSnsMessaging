@@ -21,7 +21,6 @@ public sealed class DeepDynamodb1DdbvecTopkAbove100Rejected
     /// returns the three stored items; the model declares no maximum, so only AWS's answer shows the cap.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them: DescribeTable reports none")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-topk-above-100-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

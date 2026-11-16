@@ -13,7 +13,6 @@ public sealed class SearchVectorsUnknownIndexRejected
 {
     /// <summary>SearchVectors against an index the table does not have is refused, naming the index.</summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores VectorIndexes, so DescribeTable reports none")]
     [DisplayName("dynamodb.search-vectors-unknown-index-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

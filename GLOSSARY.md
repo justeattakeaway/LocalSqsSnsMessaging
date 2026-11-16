@@ -86,6 +86,10 @@ _Avoid_: normalised value
 The `1 validation error detected: ...` (or `N validation errors detected: ...; ...`) wrapping AWS puts around some refusals but not others. Request-model constraint violations, and values an item or condition carries, are enveloped; values a statement spells or an expression computes, and filter, projection and key-condition refusals, are stated bare.
 _Avoid_: prefix
 
+**Vector index**:
+An index over one attribute holding a list of numbers (a vector), searched by `SearchVectors` for the items nearest a query vector by its distance function. Its search schema names the attributes a search can be scoped by: one `HASH` attribute a search must name, and `INLINE_FILTER` attributes it may.
+_Avoid_: embedding index, KNN index
+
 **Item change**:
 One write as streams, `ReturnValues` and point-in-time recovery see it: the item before and after, either of which may be absent.
 _Avoid_: event (EventBridge's term)

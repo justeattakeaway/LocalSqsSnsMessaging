@@ -23,7 +23,6 @@ public sealed class VectorWriteRequestBytesFloorAndPerDimensionCost
     /// A later write that changes only one of the two vector attributes meters only that index.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "vector indexes are not emulated: CreateTable accepts VectorIndexes but DescribeTable reports none")]
     [DisplayName("dynamodb.vector-write-request-bytes-floor-and-per-dimension-cost")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

@@ -17,7 +17,6 @@ public sealed class SearchVectorsResourceNotFoundRejected
     /// naming the index, and the table's vector index list never gains that name.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "SearchVectors is answered as UnknownOperationException, not ValidationException naming the index")]
     [DisplayName("dynamodb.search-vectors-resource-not-found-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

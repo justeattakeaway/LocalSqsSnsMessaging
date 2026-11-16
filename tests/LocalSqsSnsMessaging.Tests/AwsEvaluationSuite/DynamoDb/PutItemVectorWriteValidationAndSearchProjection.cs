@@ -50,7 +50,6 @@ public sealed class PutItemVectorWriteValidationAndSearchProjection
     /// SearchVectors omits the vector attribute from a result unless ProjectionExpression names it.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "Vector indexes are not emulated: CreateTable ignores VectorIndexes, so the SearchSchema attribute in AttributeDefinitions is refused as unused")]
     [DisplayName("dynamodb.put-item-vector-write-validation-and-search-projection")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

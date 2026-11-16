@@ -22,7 +22,6 @@ public sealed class UpdateTableVectorIndexRequiresPayPerRequest
     /// table that already has a vector index to PROVISIONED; each leaves the table unchanged.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "vector indexes are not emulated: UpdateTable ignores VectorIndexUpdates and answers that no update was given")]
     [DisplayName("dynamodb.update-table-vector-index-requires-pay-per-request")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

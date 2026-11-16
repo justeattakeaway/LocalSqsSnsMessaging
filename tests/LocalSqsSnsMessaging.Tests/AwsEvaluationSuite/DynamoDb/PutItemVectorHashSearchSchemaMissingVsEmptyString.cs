@@ -62,7 +62,6 @@ public sealed class PutItemVectorHashSearchSchemaMissingVsEmptyString
     /// string is a ValidationException naming the index and the key, and leaves no item behind.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "Vector indexes are not emulated: CreateTable ignores VectorIndexes, so the SearchSchema attribute in AttributeDefinitions is refused as unused")]
     [DisplayName("dynamodb.put-item-vector-hash-search-schema-missing-vs-empty-string")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

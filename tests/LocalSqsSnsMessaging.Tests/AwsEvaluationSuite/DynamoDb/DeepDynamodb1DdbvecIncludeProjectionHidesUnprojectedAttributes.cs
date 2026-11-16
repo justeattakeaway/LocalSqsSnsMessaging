@@ -22,7 +22,6 @@ public sealed class DeepDynamodb1DdbvecIncludeProjectionHidesUnprojectedAttribut
     /// reading it from the base table.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores a vector index's SearchSchema, so an attribute defined only for it is refused as unused in the KeySchema")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-include-projection-hides-unprojected-attributes")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
