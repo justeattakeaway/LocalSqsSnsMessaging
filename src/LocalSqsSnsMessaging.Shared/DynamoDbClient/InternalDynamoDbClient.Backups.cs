@@ -12,10 +12,14 @@ namespace LocalSqsSnsMessaging.DynamoDb;
 /// </summary>
 internal sealed partial class InternalDynamoDbClient
 {
+    /// <summary>
+    /// The table a backup operation names. One still being created, or being deleted, is not
+    /// there as far as backups go.
+    /// </summary>
     private DynamoTable TableForBackup(string? tableName)
     {
         var name = TableName(tableName!);
-        return Store.Tables.TryGetValue(name, out var table)
+        return FindTable(name) is { Status: not ("CREATING" or "DELETING") } table
             ? table
             : throw new DynamoDbException("TableNotFoundException", $"Table not found: {name}");
     }
@@ -205,6 +209,11 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var backup = FindBackup(request.BackupArn);
+            if (AllTables().Any(t => t.Status == "CREATING" && string.Equals(t.Restore?.SourceBackupArn, backup.Arn, StringComparison.Ordinal)))
+            {
+                throw new DynamoDbException("BackupInUseException", $"Backup is being used to restore table: {backup.Arn}");
+            }
+
             Store.Backups.Remove(backup.Arn);
             backup.Status = "DELETED";
             Record("DeleteBackup", backup.Arn);
@@ -222,7 +231,7 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var backup = FindBackup(request.BackupArn);
-            if (Store.Tables.ContainsKey(name))
+            if (FindTable(name) is not null)
             {
                 throw new DynamoDbException("TableAlreadyExistsException", $"Table already exists: {name}");
             }
@@ -238,6 +247,11 @@ internal sealed partial class InternalDynamoDbClient
                 request.SSESpecificationOverride,
                 request.VectorIndexOverride);
             table.Restore = new DynamoRestore(backup.Arn, backup.TableArn, Now);
+            if (TransitionsTakeTime)
+            {
+                table.StartCreating(TransitionEnd);
+            }
+
             Store.Tables[name] = table;
             Record("RestoreTableFromBackup", table.Arn);
             return Task.FromResult(new RestoreTableFromBackupResponse { TableDescription = Describe(table) });
@@ -310,7 +324,7 @@ internal sealed partial class InternalDynamoDbClient
                     $"RestoreDateTime '{JavaRendering.Timestamp(point)}' must be within EarliestRestorableDateTime '{JavaRendering.Timestamp(earliest)}' and LatestRestorableDateTime '{JavaRendering.Timestamp(latest)}' for table '{source.Name}'");
             }
 
-            if (Store.Tables.ContainsKey(name))
+            if (FindTable(name) is not null)
             {
                 throw new DynamoDbException("TableAlreadyExistsException", $"Table already exists: {name}");
             }
@@ -326,6 +340,11 @@ internal sealed partial class InternalDynamoDbClient
                 request.SSESpecificationOverride,
                 request.VectorIndexOverride);
             table.Restore = new DynamoRestore(null, source.Arn, point);
+            if (TransitionsTakeTime)
+            {
+                table.StartCreating(TransitionEnd);
+            }
+
             Store.Tables[name] = table;
             Record("RestoreTableToPointInTime", table.Arn);
             return Task.FromResult(new RestoreTableToPointInTimeResponse { TableDescription = Describe(table) });
@@ -555,7 +574,7 @@ internal sealed partial class InternalDynamoDbClient
             throw outOfScope;
         }
 
-        if (!Store.Tables.TryGetValue(name, out var table))
+        if (FindTable(name) is not { } table)
         {
             throw DynamoDbErrors.TableNotFound(name);
         }
@@ -677,15 +696,20 @@ internal sealed partial class InternalDynamoDbClient
             var table = ExistingTable(request.TableName!);
             Authorize(table, "UpdateContributorInsights", IndexArn(table, request.IndexName));
             var setting = ContributorInsights(table, request.IndexName);
-            setting.Status = request.ContributorInsightsAction == "ENABLE" ? "ENABLED" : "DISABLED";
-            setting.Mode = request.ContributorInsightsMode ?? "ACCESSED_AND_THROTTLED_KEYS";
+            var enable = request.ContributorInsightsAction == "ENABLE";
+            if (!enable && setting.Status is "ENABLING" or "DISABLING")
+            {
+                throw DynamoDbErrors.Validation("Table or Index is not in a valid state to update Key Access Insights: ContributorInsights Status must be ENABLED or FAILED to perform DISABLE operation.");
+            }
+
+            setting.Start(enable, request.ContributorInsightsMode ?? "ACCESSED_AND_THROTTLED_KEYS", TransitionEnd);
             setting.LastUpdate = Now;
             Record("UpdateContributorInsights", table.Arn);
             return Task.FromResult(new UpdateContributorInsightsResponse
             {
                 TableName = table.Name,
                 IndexName = request.IndexName,
-                ContributorInsightsStatus = setting.Status == "ENABLED" ? "ENABLING" : "DISABLING",
+                ContributorInsightsStatus = enable ? "ENABLING" : "DISABLING",
                 ContributorInsightsMode = setting.Mode,
             });
         }
@@ -695,7 +719,7 @@ internal sealed partial class InternalDynamoDbClient
     {
         lock (Store.Gate)
         {
-            var tables = request.TableName is null ? Store.Tables.Values.ToList() : [ExistingTable(request.TableName)];
+            var tables = request.TableName is null ? AllTables() : [ExistingTable(request.TableName)];
             var summaries = tables
                 .SelectMany(t => t.ContributorInsights.Select(c => new ContributorInsightsSummary
                 {
@@ -753,12 +777,39 @@ internal sealed partial class InternalDynamoDbClient
         throw new DynamoDbException("ImportNotFoundException", $"Import not found: {request.ImportArn}");
 }
 
-/// <summary>A table's (or index's) contributor insights setting.</summary>
+/// <summary>
+/// A table's (or index's) contributor insights setting: <c>ENABLING</c> or <c>DISABLING</c> for a
+/// while after a change, then <c>ENABLED</c> or <c>DISABLED</c>.
+/// </summary>
 internal sealed class DynamoContributorInsights
 {
-    public string Status { get; set; } = "DISABLED";
+    private DateTimeOffset _settlesAt;
 
-    public string Mode { get; set; } = "ACCESSED_AND_THROTTLED_KEYS";
+    public string Status { get; private set; } = "DISABLED";
+
+    public string Mode { get; private set; } = "ACCESSED_AND_THROTTLED_KEYS";
+
+    /// <summary>Starts enabling or disabling the setting, done at <paramref name="settlesAt"/>.</summary>
+    public void Start(bool enable, string mode, DateTimeOffset settlesAt)
+    {
+        Status = enable ? "ENABLING" : "DISABLING";
+        Mode = mode;
+        _settlesAt = settlesAt;
+    }
+
+    /// <summary>Settles an <c>ENABLING</c> or <c>DISABLING</c> setting once its time has come.</summary>
+    public void Settle(DateTimeOffset now)
+    {
+        if (now >= _settlesAt)
+        {
+            Status = Status switch
+            {
+                "ENABLING" => "ENABLED",
+                "DISABLING" => "DISABLED",
+                _ => Status,
+            };
+        }
+    }
 
     public DateTime? LastUpdate { get; set; }
 }

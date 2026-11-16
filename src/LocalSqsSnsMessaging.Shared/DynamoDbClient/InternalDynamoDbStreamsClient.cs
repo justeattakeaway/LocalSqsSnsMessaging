@@ -69,8 +69,9 @@ internal sealed class InternalDynamoDbStreamsClient
         {
             TrimmedStore();
             var stream = FindStream(request.StreamArn);
+            var enabling = stream.EnablingUntil is { } enablingUntil && _bus.TimeProvider.GetUtcNow() < enablingUntil;
             var shards = new List<Shard>();
-            if (request.ExclusiveStartShardId is null || string.CompareOrdinal(stream.ShardId, request.ExclusiveStartShardId) > 0)
+            if (!enabling && (request.ExclusiveStartShardId is null || string.CompareOrdinal(stream.ShardId, request.ExclusiveStartShardId) > 0))
             {
                 shards.Add(new Shard
                 {
@@ -96,7 +97,7 @@ internal sealed class InternalDynamoDbStreamsClient
                 {
                     StreamArn = stream.Arn,
                     StreamLabel = stream.Label,
-                    StreamStatus = stream.Enabled ? "ENABLED" : "DISABLED",
+                    StreamStatus = !stream.Enabled ? "DISABLED" : enabling ? "ENABLING" : "ENABLED",
                     StreamViewType = stream.ViewType,
                     CreationRequestDateTime = stream.CreatedAt.UtcDateTime,
                     TableName = stream.TableName,

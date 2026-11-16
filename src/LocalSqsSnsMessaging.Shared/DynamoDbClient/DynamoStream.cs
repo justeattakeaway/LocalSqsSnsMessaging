@@ -33,6 +33,7 @@ internal sealed class DynamoStream
 
     public DynamoStream(DynamoTable table, string viewType, DateTimeOffset createdAt, string region)
     {
+        EnablingUntil = table.ActiveAt;
         TableName = table.Name;
         KeySchema = table.KeySchema;
         ViewType = viewType;
@@ -77,6 +78,12 @@ internal sealed class DynamoStream
     public string? EndingSequenceNumber { get; private set; }
 
     public bool Enabled => EndingSequenceNumber is null;
+
+    /// <summary>
+    /// For the stream of a table still being created, when the table becomes ACTIVE: until then
+    /// the stream is <c>ENABLING</c> and has no shards to read.
+    /// </summary>
+    public DateTimeOffset? EnablingUntil { get; init; }
 
     /// <summary>When the stream was disabled, if it has been.</summary>
     public DateTime? DisabledAt { get; private set; }

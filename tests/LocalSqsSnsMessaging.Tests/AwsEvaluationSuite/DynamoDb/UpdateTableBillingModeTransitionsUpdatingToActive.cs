@@ -20,7 +20,6 @@ public sealed class UpdateTableBillingModeTransitionsUpdatingToActive
     /// pin a table in UPDATING for many minutes and cannot be cancelled).
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbTransientStates, "UpdateTable answers a billing-mode change with the table already ACTIVE, not UPDATING")]
     [DisplayName("dynamodb.update-table-billing-mode-transitions-updating-to-active")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

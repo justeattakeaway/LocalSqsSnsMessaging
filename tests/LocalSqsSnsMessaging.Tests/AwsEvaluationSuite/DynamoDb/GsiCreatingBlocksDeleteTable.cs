@@ -16,7 +16,6 @@ public sealed class GsiCreatingBlocksDeleteTable
     /// message and leaves the table; once the GSI is ACTIVE, DeleteTable removes the table.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbTransientStates, "a GSI added by UpdateTable is ACTIVE at once, never CREATING, so DeleteTable is never blocked by its build")]
     [DisplayName("dynamodb.gsi-creating-blocks-delete-table")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

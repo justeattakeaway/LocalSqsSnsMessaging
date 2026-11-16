@@ -88,7 +88,52 @@ internal sealed class DynamoIndex
 
     public long? MaxWriteRequestUnits { get; set; }
 
-    public string Status { get; set; } = "ACTIVE";
+    /// <summary>
+    /// <c>CREATING</c>, <c>ACTIVE</c> or (a global index UpdateTable deletes) <c>DELETING</c>. An
+    /// index created with its table is <c>CREATING</c> while the table is.
+    /// </summary>
+    public string Status { get; private set; } = "ACTIVE";
+
+    /// <summary>While an index UpdateTable adds is <c>CREATING</c>, when it becomes <c>ACTIVE</c>.</summary>
+    public DateTimeOffset? ActiveAt { get; private set; }
+
+    /// <summary>While <c>DELETING</c>, when the index is gone.</summary>
+    public DateTimeOffset? GoneAt { get; private set; }
+
+    /// <summary>Starts the index <c>CREATING</c>: until <paramref name="activeAt"/>, or with its table when null.</summary>
+    public void StartCreating(DateTimeOffset? activeAt)
+    {
+        Status = "CREATING";
+        ActiveAt = activeAt;
+    }
+
+    /// <summary>Starts the index <c>DELETING</c>, until <paramref name="goneAt"/>.</summary>
+    public void StartDeleting(DateTimeOffset goneAt)
+    {
+        Status = "DELETING";
+        ActiveAt = null;
+        GoneAt = goneAt;
+    }
+
+    /// <summary>
+    /// Moves the index on as its time comes (<paramref name="tableActive"/>: the table has finished
+    /// creating, for an index created with it); false once a deleted index is gone.
+    /// </summary>
+    public bool Settle(DateTimeOffset now, bool tableActive)
+    {
+        if (GoneAt is { } goneAt)
+        {
+            return now < goneAt;
+        }
+
+        if (Status == "CREATING" && (ActiveAt is { } activeAt ? now >= activeAt : tableActive))
+        {
+            Status = "ACTIVE";
+            ActiveAt = null;
+        }
+
+        return true;
+    }
 
     public SortedSet<DynamoIndexEntry> Entries { get; } = new(DynamoIndexEntry.Comparer);
 
@@ -151,8 +196,6 @@ internal sealed class DynamoTable
 
     /// <summary>Every attribute the table and its indexes declare a type for, in declaration order.</summary>
     public required List<DynamoKeyAttribute> AttributeDefinitions { get; set; }
-
-    public string Status { get; set; } = "ACTIVE";
 
     /// <summary><c>PROVISIONED</c> or <c>PAY_PER_REQUEST</c>.</summary>
     public string BillingMode { get; set; } = "PROVISIONED";
@@ -227,8 +270,104 @@ internal sealed class DynamoTable
     /// <summary>Contributor insights settings, by index name (empty for the table itself).</summary>
     public Dictionary<string, DynamoContributorInsights> ContributorInsights { get; } = new(StringComparer.Ordinal);
 
-    /// <summary>When the table becomes ACTIVE, if it was created with a creation delay.</summary>
-    public DateTimeOffset? ActiveAt { get; set; }
+    // Lifecycle: DynamoDB's asynchronous changes take a while (the bus's DynamoDbTransitionDelay),
+    // and the table passes through a transient status meanwhile. Each change stores when it is
+    // done; Settle moves the table on once that time has come, so nothing waits on a timer.
+
+    /// <summary><c>CREATING</c>, <c>UPDATING</c>, <c>DELETING</c> or <c>ACTIVE</c>, as of the last <see cref="Settle"/>.</summary>
+    public string Status { get; private set; } = "ACTIVE";
+
+    /// <summary>While <c>CREATING</c>, when the table (and the indexes created with it) becomes <c>ACTIVE</c>.</summary>
+    public DateTimeOffset? ActiveAt { get; private set; }
+
+    /// <summary>While a throughput or billing-mode change is being applied (the table <c>UPDATING</c>), when it is done.</summary>
+    public DateTimeOffset? ThroughputSettlesAt { get; private set; }
+
+    /// <summary>While <c>DELETING</c>, when the table is gone.</summary>
+    public DateTimeOffset? GoneAt { get; private set; }
+
+    /// <summary>Whether a global or vector index is being created or deleted, which keeps the table <c>UPDATING</c>.</summary>
+    public bool IndexInTransition =>
+        GlobalIndexes.Any(i => i.Status != "ACTIVE") || VectorIndexes.Any(v => v.Status != "ACTIVE");
+
+    /// <summary>Starts the table, and its global and vector indexes, <c>CREATING</c> until <paramref name="activeAt"/>.</summary>
+    public void StartCreating(DateTimeOffset activeAt)
+    {
+        ActiveAt = activeAt;
+        foreach (var index in GlobalIndexes)
+        {
+            index.StartCreating(null);
+        }
+
+        foreach (var vectorIndex in VectorIndexes)
+        {
+            vectorIndex.Status = "CREATING";
+        }
+
+        Status = "CREATING";
+    }
+
+    /// <summary>Starts a throughput or billing-mode change, done at <paramref name="settlesAt"/>.</summary>
+    public void StartThroughputChange(DateTimeOffset settlesAt)
+    {
+        ThroughputSettlesAt = settlesAt;
+        Status = "UPDATING";
+    }
+
+    /// <summary>Starts the table <c>DELETING</c>, until <paramref name="goneAt"/>.</summary>
+    public void StartDeleting(DateTimeOffset goneAt)
+    {
+        GoneAt = goneAt;
+        Status = "DELETING";
+    }
+
+    /// <summary>
+    /// Moves the table, its indexes and its contributor insights on through every change whose
+    /// time has come; false once a deleted table is gone.
+    /// </summary>
+    public bool Settle(DateTimeOffset now)
+    {
+        if (GoneAt is { } goneAt)
+        {
+            return now < goneAt;
+        }
+
+        if (ActiveAt is { } activeAt && now >= activeAt)
+        {
+            ActiveAt = null;
+            foreach (var vectorIndex in VectorIndexes.Where(v => v.ActiveAt is null))
+            {
+                vectorIndex.Status = "ACTIVE";
+            }
+        }
+
+        var removed = GlobalIndexes.RemoveAll(index => !index.Settle(now, tableActive: ActiveAt is null));
+        if (removed > 0)
+        {
+            var stillUsed = UsedAttributeNames();
+            AttributeDefinitions.RemoveAll(a => !stillUsed.Contains(a.Name));
+        }
+
+        foreach (var vectorIndex in VectorIndexes)
+        {
+            vectorIndex.Refresh(now);
+        }
+
+        if (ThroughputSettlesAt is { } settlesAt && now >= settlesAt)
+        {
+            ThroughputSettlesAt = null;
+        }
+
+        foreach (var insights in ContributorInsights.Values)
+        {
+            insights.Settle(now);
+        }
+
+        Status = ActiveAt is not null ? "CREATING"
+            : ThroughputSettlesAt is not null || IndexInTransition ? "UPDATING"
+            : "ACTIVE";
+        return true;
+    }
 
     public SortedSet<DynamoKey> Keys { get; } = new(DynamoKey.Comparer);
 
