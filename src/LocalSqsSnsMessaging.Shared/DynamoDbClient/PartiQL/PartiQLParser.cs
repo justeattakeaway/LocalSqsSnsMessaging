@@ -669,6 +669,13 @@ internal sealed class PartiQLParser
             }
 
             var checkedItem = Select();
+
+            // EXISTS reads the table's item, never an index, so its source can't excuse a function call.
+            if (checkedItem.SourceRefusal is { } refusal)
+            {
+                throw refusal;
+            }
+
             Expect(Kind.Close);
             return new PartiQLExists { Table = checkedItem.Table, Where = checkedItem.Where, Equalities = checkedItem.Equalities };
         }
