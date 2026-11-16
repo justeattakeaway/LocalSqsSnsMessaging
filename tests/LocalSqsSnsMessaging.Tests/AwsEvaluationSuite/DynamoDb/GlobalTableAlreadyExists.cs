@@ -23,7 +23,6 @@ public sealed class GlobalTableAlreadyExists
     /// the version-support ValidationException repeats identically on a second attempt.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "the legacy (2017.11.29) global-table operations are not emulated: CreateGlobalTable answers UnknownOperationException, not the version-support ValidationException")]
     [DisplayName("dynamodb.global-table-already-exists")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

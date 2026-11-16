@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 
 namespace LocalSqsSnsMessaging.Http;
 
@@ -9,6 +10,8 @@ namespace LocalSqsSnsMessaging.Http;
 /// </summary>
 internal readonly struct WireResponse
 {
+    private static readonly RandomNumberGenerator Random = RandomNumberGenerator.Create();
+
     public WireResponse(HttpStatusCode status, string contentType, string requestId, string? queryError = null, string? crc32 = null)
     {
         Status = status;
@@ -37,4 +40,21 @@ internal readonly struct WireResponse
 
     /// <summary>A new request id, as AWS writes one.</summary>
     public static string NewRequestId() => Guid.NewGuid().ToString();
+
+    /// <summary>A new DynamoDB request id: 52 upper-case letters and digits, as DynamoDB writes one.</summary>
+    public static string NewDynamoDbRequestId()
+    {
+        const string Alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const int Length = 52;
+        var bytes = new byte[Length];
+        Random.GetBytes(bytes);
+
+        var chars = new char[Length];
+        for (var i = 0; i < Length; i++)
+        {
+            chars[i] = Alphabet[bytes[i] % Alphabet.Length];
+        }
+
+        return new string(chars);
+    }
 }

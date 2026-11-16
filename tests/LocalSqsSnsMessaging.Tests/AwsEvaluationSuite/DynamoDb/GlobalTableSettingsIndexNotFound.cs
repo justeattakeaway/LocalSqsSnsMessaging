@@ -23,7 +23,6 @@ public sealed class GlobalTableSettingsIndexNotFound
     /// does not list the table.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "the legacy (2017.11.29) global-table operations are not emulated: CreateGlobalTable answers UnknownOperationException, not the version-support ValidationException")]
     [DisplayName("dynamodb.global-table-settings-index-not-found")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

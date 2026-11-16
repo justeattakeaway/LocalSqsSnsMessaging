@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Net;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using LocalSqsSnsMessaging.DynamoDb;
 using LocalSqsSnsMessaging.Http.Handlers;
@@ -26,6 +27,13 @@ internal static class DynamoDbWireProtocol
     /// DynamoDB's own nesting refusal is what such an item gets.
     /// </summary>
     private static readonly JsonDocumentOptions DocumentOptions = new() { MaxDepth = 512 };
+
+    /// <summary>
+    /// DynamoDB writes text as UTF-8, escaping only what JSON requires, so a response's bytes (and
+    /// the <c>x-amz-crc32</c> over them) carry its strings as stored. The relaxed encoder comes
+    /// closest: it still escapes characters outside the Basic Multilingual Plane.
+    /// </summary>
+    private static readonly JavaScriptEncoder ResponseEncoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
 
     /// <summary>Whether <paramref name="target"/> is a DynamoDB or DynamoDB Streams <c>X-Amz-Target</c>.</summary>
     public static bool IsTarget(string? target) =>
@@ -90,7 +98,7 @@ internal static class DynamoDbWireProtocol
             }
 
             using (document)
-            using (var writer = new Utf8JsonWriter(output, new JsonWriterOptions { SkipValidation = true }))
+            using (var writer = new Utf8JsonWriter(output, new JsonWriterOptions { SkipValidation = true, Encoder = ResponseEncoder }))
             {
                 if (isStreams)
                 {
@@ -170,7 +178,7 @@ internal static class DynamoDbWireProtocol
     private static WireResponse Error(ArrayBufferWriter<byte> output, string code, string message, HttpStatusCode status, IAwsJsonErrorMembers? members)
     {
         output.ResetWrittenCount();
-        using (var writer = new Utf8JsonWriter(output))
+        using (var writer = new Utf8JsonWriter(output, new JsonWriterOptions { Encoder = ResponseEncoder }))
         {
             writer.WriteStartObject();
             writer.WriteString("__type", $"{ErrorNamespace(code)}#{code}");
@@ -188,7 +196,7 @@ internal static class DynamoDbWireProtocol
 
     /// <summary>The answer for the body <paramref name="output"/> holds, with that body's CRC32.</summary>
     private static WireResponse Answer(ArrayBufferWriter<byte> output, HttpStatusCode status) =>
-        new(status, ContentType, WireResponse.NewRequestId(), crc32: Http.Crc32.Compute(output.WrittenSpan).ToString(CultureInfo.InvariantCulture));
+        new(status, ContentType, WireResponse.NewDynamoDbRequestId(), crc32: Http.Crc32.Compute(output.WrittenSpan).ToString(CultureInfo.InvariantCulture));
 
     /// <summary>
     /// The namespace DynamoDB's <c>__type</c> names an error in: its request validation and

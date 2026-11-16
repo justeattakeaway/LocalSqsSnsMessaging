@@ -33,7 +33,6 @@ public sealed class ReplicaAutoscalingNotFound
     /// default/empty success (overly-permissive boundary).
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "Replica auto scaling is not emulated: a missing table is ResourceNotFoundException with the table message, not \"Global table with name: ... does not exist.\"")]
     [DisplayName("dynamodb.replica-autoscaling-not-found")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

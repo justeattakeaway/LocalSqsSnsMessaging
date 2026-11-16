@@ -23,13 +23,15 @@ internal sealed partial class InternalDynamoDbClient
             throw DynamoDbErrors.ValidationClause("ReturnValues can only be ALL_OLD or NONE");
         }
 
-        var item = CanonicalItem(request.Item!);
+        // PutItem sizes the item only once it has found the table (BatchWriteItem sizes it first).
+        var item = CanonicalItem(request.Item!, sized: false);
         var condition = WriteCondition(request.ConditionExpression, request.Expected, request.ConditionalOperator, attributes);
 
         lock (Store.Gate)
         {
             var table = ActiveTable(name);
             Authorize(table, "PutItem");
+            CheckItemSize(item);
             item = WithVectorsAsWritten(table, item, request.Item!);
             CheckIndexKeys(table, item, update: false);
             var key = KeyFromItem(table, item);
@@ -319,8 +321,11 @@ internal sealed partial class InternalDynamoDbClient
         }
     }
 
-    /// <summary>An item a write carries, held to DynamoDB's value rules and canonicalized.</summary>
-    private static Dictionary<string, DynamoValue> CanonicalItem(Dictionary<string, DynamoValue> item)
+    /// <summary>
+    /// An item a write carries, held to DynamoDB's value rules and canonicalized; unless
+    /// <paramref name="sized"/> is false, also refused when it is over 400 KB.
+    /// </summary>
+    private static Dictionary<string, DynamoValue> CanonicalItem(Dictionary<string, DynamoValue> item, bool sized = true)
     {
         if (DynamoValueRules.ExceedsDepth(item))
         {
@@ -328,12 +333,21 @@ internal sealed partial class InternalDynamoDbClient
         }
 
         var canonical = DynamoValueRules.CanonicalizeItem(item);
-        if (DynamoValueRules.ItemSize(canonical) > DynamoValueRules.MaxItemBytes)
+        if (sized)
         {
-            throw DynamoDbErrors.Validation(DynamoValueRules.ItemSizeExceeded);
+            CheckItemSize(canonical);
         }
 
         return canonical;
+    }
+
+    /// <summary>Refuses an item over 400 KB.</summary>
+    private static void CheckItemSize(Dictionary<string, DynamoValue> item)
+    {
+        if (DynamoValueRules.ItemSize(item) > DynamoValueRules.MaxItemBytes)
+        {
+            throw DynamoDbErrors.Validation(DynamoValueRules.ItemSizeExceeded);
+        }
     }
 
     /// <summary>A write's condition: its <c>ConditionExpression</c> or legacy <c>Expected</c>, or none.</summary>

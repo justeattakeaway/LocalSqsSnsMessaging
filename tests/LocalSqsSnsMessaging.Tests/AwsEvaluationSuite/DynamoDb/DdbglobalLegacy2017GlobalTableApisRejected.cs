@@ -26,7 +26,6 @@ public sealed class DdbglobalLegacy2017GlobalTableApisRejected
     /// region keeps only its own item, and no aws:rep:* attributes appear.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "CreateGlobalTable is not emulated: it answers UnknownOperationException, not the legacy-version ValidationException")]
     [DisplayName("dynamodb.ddbglobal-legacy-2017-global-table-apis-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

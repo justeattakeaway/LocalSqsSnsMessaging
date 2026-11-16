@@ -77,7 +77,7 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
         var before = new Dictionary<string, DynamoValue>(item, StringComparer.Ordinal);
         var changed = new List<DocumentPath>();
         var removals = new List<DocumentPath>();
-        foreach (var action in Actions)
+        foreach (var action in InApplyOrder(Actions))
         {
             switch (action)
             {
@@ -127,6 +127,37 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
         }
 
         return changed;
+    }
+
+    /// <summary>
+    /// The actions in the order they apply: as written, except that <c>SET</c>s of elements of the
+    /// same list apply in ascending index order, so several past the list's end append in index
+    /// order, whatever order the clauses name them in.
+    /// </summary>
+    private static UpdateAction[] InApplyOrder(IReadOnlyList<UpdateAction> actions)
+    {
+        static string? ListOf(UpdateAction action) =>
+            action is SetAction { Path: { Steps: { Count: > 1 } steps } path } && steps[^1].IsIndex
+                ? path.RenderPrefix(steps.Count - 1)
+                : null;
+
+        var ordered = actions.ToArray();
+        foreach (var group in Enumerable.Range(0, ordered.Length)
+                     .Select(position => (Position: position, List: ListOf(ordered[position])))
+                     .Where(entry => entry.List is not null)
+                     .GroupBy(entry => entry.List, StringComparer.Ordinal)
+                     .Where(group => group.Count() > 1)
+                     .ToList())
+        {
+            var positions = group.Select(entry => entry.Position).ToList();
+            var byIndex = positions.Select(position => ordered[position]).OrderBy(action => action.Path.Steps[^1].Index).ToList();
+            for (var i = 0; i < positions.Count; i++)
+            {
+                ordered[positions[i]] = byIndex[i];
+            }
+        }
+
+        return ordered;
     }
 
     /// <summary>
@@ -201,8 +232,8 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
         var right = Evaluate(value.Right, before);
         if (left.Type != DynamoType.N || right.Type != DynamoType.N)
         {
-            var offending = left.Type == DynamoType.N ? right : left;
-            throw IncorrectOperand(value.Subtract ? "-" : "+", offending.Type);
+            var (offending, operand) = left.Type == DynamoType.N ? (right, value.Right) : (left, value.Left);
+            throw IncorrectOperand(value.Subtract ? "-" : "+", offending.Type, operand);
         }
 
         return DynamoValue.FromNumber(Arithmetic(left, right, value.Subtract));
@@ -235,8 +266,8 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
                 var second = Evaluate(append.Second, before);
                 if (first.Type != DynamoType.L || second.Type != DynamoType.L)
                 {
-                    var offending = first.Type == DynamoType.L ? second : first;
-                    throw IncorrectOperand("list_append", offending.Type);
+                    var (offending, offendingOperand) = first.Type == DynamoType.L ? (second, append.Second) : (first, append.First);
+                    throw IncorrectOperand("list_append", offending.Type, offendingOperand);
                 }
 
                 var appended = DynamoValue.FromList(first.L.Concat(second.L).ToList());
@@ -267,11 +298,28 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
         _ => "BOOL",
     };
 
-    /// <summary>An operand of the wrong type: inside the UpdateExpression envelope, or bare for a PartiQL statement.</summary>
-    private DynamoDbException IncorrectOperand(string operatorOrFunction, DynamoType type) =>
-        Member == "UpdateExpression"
-            ? ExpressionErrors.IncorrectOperand(Member, operatorOrFunction, type)
-            : DynamoDbErrors.Validation($"Incorrect operand type for operator or function; operator or function: {operatorOrFunction}, operand type: {type}");
+    /// <summary>
+    /// An operand of the wrong type. A value the expression itself supplies is refused as an
+    /// invalid UpdateExpression (inside the envelope), or bare for a PartiQL statement; a value
+    /// read from the stored item is refused as an operand of the wrong type, as DynamoDB refuses it
+    /// only once it has read the item.
+    /// </summary>
+    private DynamoDbException IncorrectOperand(string operatorOrFunction, DynamoType type, SetOperand operand) =>
+        Member != "UpdateExpression"
+            ? DynamoDbErrors.Validation($"Incorrect operand type for operator or function; operator or function: {operatorOrFunction}, operand type: {type}")
+            : ReadsItem(operand)
+                ? DynamoDbErrors.Validation(IncorrectOperandType)
+                : ExpressionErrors.IncorrectOperand(Member, operatorOrFunction, type);
+
+    /// <summary>Whether an operand's value came from the stored item rather than from the expression.</summary>
+    private static bool ReadsItem(SetOperand operand) => operand switch
+    {
+        PathSetOperand => true,
+        IfNotExistsOperand => true,
+        ListAppendOperand append => ReadsItem(append.First) || ReadsItem(append.Second),
+        GroupSetOperand group => ReadsItem(group.Value.Left) || (group.Value.Right is { } right && ReadsItem(right)),
+        _ => false,
+    };
 
     private DynamoDbException OperandTypeFor(string op, string typeSet, DynamoValue value) =>
         Member == "UpdateExpression"

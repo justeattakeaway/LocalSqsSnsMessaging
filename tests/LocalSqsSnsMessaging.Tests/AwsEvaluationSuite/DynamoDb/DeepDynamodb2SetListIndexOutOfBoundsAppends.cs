@@ -20,7 +20,6 @@ public sealed class DeepDynamodb2SetListIndexOutOfBoundsAppends
     /// `SET l[99] = X, l[98] = Y` yields [..., Y, X].
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "Two out-of-bounds list indices in one SET append in clause order, not ascending index order")]
     [DisplayName("dynamodb.deep-dynamodb-2-set-list-index-out-of-bounds-appends")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

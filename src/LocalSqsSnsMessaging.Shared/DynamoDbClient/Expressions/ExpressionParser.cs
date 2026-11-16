@@ -184,6 +184,19 @@ internal static class ExpressionTokenizer
 
                 case '[':
                 {
+                    if (at + 1 < text.Length && text[at + 1] == '-')
+                    {
+                        // A negative index: DynamoDB's grammar reads '[' and then fails on the '-',
+                        // naming the tokens around it ('[', '-' and the number after it).
+                        var digits = at + 2;
+                        while (digits < text.Length && text[digits] is >= '0' and <= '9')
+                        {
+                            digits++;
+                        }
+
+                        throw ExpressionErrors.Syntax(member, "-", text[at..digits]);
+                    }
+
                     var end = at + 1;
                     while (end < text.Length && text[end] is >= '0' and <= '9')
                     {
@@ -649,6 +662,25 @@ internal sealed class ExpressionParser
                 return token.Text;
             case TokenKind.Alias:
                 return ResolveAlias(token.Text);
+            case TokenKind.Open:
+            {
+                // DynamoDB's grammar reads an opening parenthesis where it expects an operand, so a
+                // defect after it is reported at the token that follows: attribute_exists(( fails
+                // at <EOF>. A parenthesized path stays refused at its parenthesis.
+                var open = _at - 1;
+                while (Peek() is { Kind: TokenKind.Open })
+                {
+                    _at++;
+                }
+
+                if (Peek() is { Kind: TokenKind.Word or TokenKind.Alias })
+                {
+                    _at = open;
+                }
+
+                throw SyntaxError();
+            }
+
             default:
                 _at--;
                 throw SyntaxError();
@@ -986,6 +1018,14 @@ internal sealed class ExpressionParser
     private SetValue SetValue()
     {
         var left = SetOperand();
+
+        // A parenthesized sum or difference is a whole value, not an operand of another:
+        // SET n = (n + :a) - :b is a syntax error at the '-'.
+        if (left is GroupSetOperand && Peek() is { Kind: TokenKind.Plus or TokenKind.Minus })
+        {
+            throw SyntaxError();
+        }
+
         if (Eat(TokenKind.Plus))
         {
             _operators++;

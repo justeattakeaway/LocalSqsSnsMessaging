@@ -14,7 +14,6 @@ public sealed class AutoscalingAndKinesisDestinationDefaults
 
     /// <summary>DescribeTableReplicaAutoScaling rejects a non-replicated table, and a fresh table has zero Kinesis destinations.</summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "DescribeTableReplicaAutoScaling on a plain table says 'Requested resource not found: Table: <name> is not a global table', not \"Global table with name: '<name>' does not exist.\"")]
     [DisplayName("dynamodb.autoscaling-and-kinesis-destination-defaults")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

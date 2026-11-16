@@ -42,9 +42,18 @@ internal sealed partial class InternalDynamoDbClient
             var attributes = ReadAttributes(keys.ExpressionAttributeNames, null, keys.ProjectionExpression);
             var projection = keys.ProjectionExpression is null ? null : ExpressionParser.ParseProjection(keys.ProjectionExpression, attributes);
             CheckAttributesToGet(keys.AttributesToGet);
+            var seen = new List<Dictionary<string, DynamoValue>>();
             foreach (var key in keys.Keys ?? [])
             {
                 CheckKeyValues(key, enveloped: false);
+
+                // The same key twice is refused before any table is looked up.
+                if (seen.Any(other => SameAttributes(other, key)))
+                {
+                    throw DynamoDbErrors.Validation("Provided list of item keys contains duplicates");
+                }
+
+                seen.Add(key);
             }
 
             plans.Add((tableName, TableName(tableName), keys, projection));
@@ -573,9 +582,22 @@ internal sealed partial class InternalDynamoDbClient
                 }
             }
 
+            // As UpdateItem: the update's own request shape is held to the item limit first, and
+            // refuses the whole request. An item that only grows past the limit once the update is
+            // applied cancels the transaction instead.
+            if (update.RequestShapeBytes() > DynamoValueRules.MaxItemBytes)
+            {
+                throw DynamoDbErrors.Validation(DynamoValueRules.UpdateItemSizeExceeded);
+            }
+
             var updated = old is null ? table.KeySchema.ToAttributes(key) : new Dictionary<string, DynamoValue>(old, StringComparer.Ordinal);
             InElement(() => update.Apply(updated));
-            InElement(() => DynamoValueRules.CheckItemLimits(updated, DynamoValueRules.UpdateItemSizeExceeded));
+            if (DynamoValueRules.ExceedsDepth(updated))
+            {
+                throw DynamoDbErrors.Validation(DynamoValueRules.NestingExceeded);
+            }
+
+            CancelledBy(at, count, () => DynamoValueRules.CheckItemLimits(updated, DynamoValueRules.UpdateItemSizeExceeded));
             InElement(() => CheckLocalIndexEntrySizes(table, updated, DynamoValueRules.UpdateItemSizeExceeded));
             CancelledBy(at, count, () => CheckIndexKeyTypes(table, updated));
             CheckIndexKeyValues(table, updated, update: true);
@@ -636,6 +658,10 @@ internal sealed partial class InternalDynamoDbClient
         CheckTableName(name, path);
         return name;
     }
+
+    /// <summary>Whether two key maps name the same attributes with equal values.</summary>
+    private static bool SameAttributes(Dictionary<string, DynamoValue> a, Dictionary<string, DynamoValue> b) =>
+        a.Count == b.Count && a.All(entry => b.TryGetValue(entry.Key, out var other) && entry.Value.Equals(other));
 
     /// <summary>Refuses a key whose key attribute holds an empty string or binary, before the key is matched to the schema.</summary>
     private static void CheckKeyValuesNotEmpty(DynamoTable table, Dictionary<string, DynamoValue> map)
