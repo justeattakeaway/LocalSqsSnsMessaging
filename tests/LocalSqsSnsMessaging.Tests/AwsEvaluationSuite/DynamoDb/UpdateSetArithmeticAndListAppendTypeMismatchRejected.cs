@@ -22,7 +22,6 @@ public sealed class UpdateSetArithmeticAndListAppendTypeMismatchRejected
     /// on a sibling attribute still applies.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "SET word = word + :one on a String attribute is refused with another message than AWS's 'An operand in the update expression has an incorrect data type'")]
     [DisplayName("dynamodb.update-set-arithmetic-and-list-append-type-mismatch-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

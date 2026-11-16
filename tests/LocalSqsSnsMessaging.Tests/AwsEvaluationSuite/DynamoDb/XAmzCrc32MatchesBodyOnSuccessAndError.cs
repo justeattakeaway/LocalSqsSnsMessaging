@@ -24,7 +24,6 @@ public sealed class XAmzCrc32MatchesBodyOnSuccessAndError
     /// including a body with multi-byte UTF-8; SDKs that validate the header reject any other value.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "response JSON escapes non-ASCII characters as \\uXXXX, so a GetItem body carries no multi-byte UTF-8")]
     [DisplayName("dynamodb.x-amz-crc32-matches-body-on-success-and-error")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

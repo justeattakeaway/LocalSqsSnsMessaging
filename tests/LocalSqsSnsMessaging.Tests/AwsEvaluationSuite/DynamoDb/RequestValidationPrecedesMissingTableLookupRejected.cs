@@ -58,7 +58,6 @@ public sealed class RequestValidationPrecedesMissingTableLookupRejected
     /// Reference: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Programming.Errors.html
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "BatchGetItem with a duplicated key on a missing table answers ResourceNotFoundException before refusing the duplicate keys")]
     [DisplayName("dynamodb.request-validation-precedes-missing-table-lookup-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

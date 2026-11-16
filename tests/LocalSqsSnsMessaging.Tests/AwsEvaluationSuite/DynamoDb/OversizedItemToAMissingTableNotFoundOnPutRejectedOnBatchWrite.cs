@@ -55,7 +55,6 @@ public sealed class OversizedItemToAMissingTableNotFoundOnPutRejectedOnBatchWrit
     /// Reference: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ServiceQuotas.html
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "PutItem of an oversized item to a missing table is refused for its size before the table lookup, where AWS answers ResourceNotFoundException")]
     [DisplayName("dynamodb.oversized-item-to-a-missing-table-not-found-on-put-rejected-on-batch-write")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

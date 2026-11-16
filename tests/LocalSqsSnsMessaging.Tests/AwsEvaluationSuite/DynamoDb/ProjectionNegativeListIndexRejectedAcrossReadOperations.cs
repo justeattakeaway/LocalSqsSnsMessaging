@@ -38,7 +38,6 @@ public sealed class ProjectionNegativeListIndexRejectedAcrossReadOperations
     /// index returns that element.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "A negative list index in a ProjectionExpression is refused with token \"[\" near \"#l[-1]\", not token \"-\" near \"[-1\"")]
     [DisplayName("dynamodb.projection-negative-list-index-rejected-across-read-operations")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

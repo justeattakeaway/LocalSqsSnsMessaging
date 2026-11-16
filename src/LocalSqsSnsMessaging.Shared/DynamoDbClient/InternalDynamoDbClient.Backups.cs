@@ -740,12 +740,6 @@ internal sealed partial class InternalDynamoDbClient
         }
     }
 
-    public Task<ListGlobalTablesResponse> ListGlobalTablesAsync(ListGlobalTablesRequest request, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new ListGlobalTablesResponse { GlobalTables = [] });
-
-    public Task<DescribeGlobalTableResponse> DescribeGlobalTableAsync(DescribeGlobalTableRequest request, CancellationToken cancellationToken = default) =>
-        throw new DynamoDbException("GlobalTableNotFoundException", "Global table not found");
-
     public Task<ListExportsResponse> ListExportsAsync(ListExportsRequest request, CancellationToken cancellationToken = default) =>
         Task.FromResult(new ListExportsResponse { ExportSummaries = [] });
 
@@ -757,16 +751,6 @@ internal sealed partial class InternalDynamoDbClient
 
     public Task<DescribeImportResponse> DescribeImportAsync(DescribeImportRequest request, CancellationToken cancellationToken = default) =>
         throw new DynamoDbException("ImportNotFoundException", $"Import not found: {request.ImportArn}");
-
-    public Task<DescribeTableReplicaAutoScalingResponse> DescribeTableReplicaAutoScalingAsync(DescribeTableReplicaAutoScalingRequest request, CancellationToken cancellationToken = default)
-    {
-        lock (Store.Gate)
-        {
-            var table = ExistingTable(request.TableName!);
-            Authorize(table, "DescribeTableReplicaAutoScaling");
-            throw DynamoDbErrors.ResourceNotFound($"Requested resource not found: Table: {table.Name} is not a global table");
-        }
-    }
 }
 
 /// <summary>A table's (or index's) contributor insights setting.</summary>

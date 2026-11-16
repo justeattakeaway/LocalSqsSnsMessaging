@@ -21,7 +21,6 @@ public sealed class GlobalTableNotFound
     /// 2017.11.29 global table or CreateGlobalTable's version-support ValidationException.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "the legacy (2017.11.29) global-table operations are not emulated: CreateGlobalTable answers UnknownOperationException, not the version-support ValidationException")]
     [DisplayName("dynamodb.global-table-not-found")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

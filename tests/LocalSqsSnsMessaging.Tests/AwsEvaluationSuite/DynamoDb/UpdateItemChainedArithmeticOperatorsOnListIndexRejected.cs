@@ -22,7 +22,6 @@ public sealed class UpdateItemChainedArithmeticOperatorsOnListIndexRejected
     /// a single operator wrapped in one set of parentheses on the same index succeeds.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "The emulator accepts SET a[0] = (a[0] + :x) - :y, which DynamoDB refuses as a syntax error")]
     [DisplayName("dynamodb.update-item-chained-arithmetic-operators-on-list-index-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

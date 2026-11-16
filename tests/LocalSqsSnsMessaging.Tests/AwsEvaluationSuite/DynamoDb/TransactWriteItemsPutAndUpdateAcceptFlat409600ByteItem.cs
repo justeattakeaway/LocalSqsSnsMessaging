@@ -63,7 +63,6 @@ public sealed class TransactWriteItemsPutAndUpdateAcceptFlat409600ByteItem
     /// Reference: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ServiceQuotas.html#limits-items
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "an Update in TransactWriteItems growing an item past 400 KB is refused top-level, not cancelled with a ValidationError reason")]
     [DisplayName("dynamodb.transact-write-items-put-and-update-accept-flat-409600-byte-item")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

@@ -27,7 +27,6 @@ public sealed partial class ResponseRequestidFormatAndContentLengthMatchBodyOnEr
     /// Content-Length as a successful one; its error code and message never move.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "x-amzn-RequestId is not DynamoDB's 52 upper-case alphanumerics")]
     [DisplayName("dynamodb.response-requestid-format-and-content-length-match-body-on-error")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

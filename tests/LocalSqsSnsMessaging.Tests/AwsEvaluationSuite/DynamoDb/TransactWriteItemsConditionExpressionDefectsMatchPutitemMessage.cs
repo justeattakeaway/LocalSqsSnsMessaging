@@ -30,7 +30,6 @@ public sealed class TransactWriteItemsConditionExpressionDefectsMatchPutitemMess
     /// Reference: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "PutItem's message for a defective ConditionExpression differs from AWS's exact wording")]
     [DisplayName("dynamodb.transact-write-items-condition-expression-defects-match-putitem-message")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
