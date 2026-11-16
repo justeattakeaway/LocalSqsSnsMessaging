@@ -19,7 +19,6 @@ public sealed class ListGlobalTablesReflectsCreatedTables
     /// in another region ACTIVE.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable with only ReplicaUpdates is refused with ValidationException, since replicas are not emulated")]
     [DisplayName("dynamodb.list-global-tables-reflects-created-tables")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

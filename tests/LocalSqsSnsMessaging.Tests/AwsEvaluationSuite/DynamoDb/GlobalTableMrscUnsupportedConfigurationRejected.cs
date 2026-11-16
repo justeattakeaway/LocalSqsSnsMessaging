@@ -34,7 +34,6 @@ public sealed class GlobalTableMrscUnsupportedConfigurationRejected
     /// table then accepts a STRONG request with one replica and one witness.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable's ReplicaUpdates and MultiRegionConsistency are not emulated: a STRONG request with one replica is refused \"At least one of ProvisionedThroughput, ... is required\", not with the replica-count message")]
     [DisplayName("dynamodb.global-table-mrsc-unsupported-configuration-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

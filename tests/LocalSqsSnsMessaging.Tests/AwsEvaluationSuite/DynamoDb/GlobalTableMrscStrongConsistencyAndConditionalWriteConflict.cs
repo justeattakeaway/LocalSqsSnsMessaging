@@ -34,7 +34,6 @@ public sealed class GlobalTableMrscStrongConsistencyAndConditionalWriteConflict
     /// stale conditional write from a different Region fails against the cross-Region-latest version.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable's ReplicaUpdates, GlobalTableWitnessUpdates and MultiRegionConsistency are not emulated: it is refused with \"At least one of ProvisionedThroughput, ... is required\"")]
     [DisplayName("dynamodb.global-table-mrsc-strong-consistency-and-conditional-write-conflict")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

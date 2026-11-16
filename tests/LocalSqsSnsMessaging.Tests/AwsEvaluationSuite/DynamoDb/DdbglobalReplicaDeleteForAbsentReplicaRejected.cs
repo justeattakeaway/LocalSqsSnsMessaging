@@ -21,7 +21,6 @@ public sealed class DdbglobalReplicaDeleteForAbsentReplicaRejected
     /// Reference: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateTable.html
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable doesn't take ReplicaUpdates: a Delete for an absent replica is answered as an UpdateTable with no supported update, not AWS's replica-not-found message")]
     [DisplayName("dynamodb.ddbglobal-replica-delete-for-absent-replica-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

@@ -502,34 +502,50 @@ internal sealed partial class InternalDynamoDbClient
                     throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being updated: {table.Name}");
             }
 
+            if (table.Replication?.Member(table) is { SourceUntil: { } sourceUntil } && _bus.TimeProvider.GetUtcNow() < sourceUntil)
+            {
+                throw DynamoDbErrors.Validation("Replica cannot be deleted because it has acted as a source region for new replica(s) being added to the table in the last 24 hours.");
+            }
+
             if (table.DeletionProtectionEnabled)
             {
                 throw DynamoDbErrors.Validation("Resource cannot be deleted as it is currently protected against deletion. Disable deletion protection first.");
             }
 
-            table.StartDeleting(TransitionEnd);
             var description = Describe(table);
+            description.TableStatus = "DELETING";
 
             // The deleting table's answer leaves its global indexes out.
             description.GlobalSecondaryIndexes = null;
-            if (!TransitionsTakeTime)
-            {
-                Store.Tables.Remove(table.Name);
-            }
-
-            if (table.LatestStream is { } stream)
-            {
-                stream.Disable(Now);
-            }
-
-            if (Store.TimeToLiveJobs.TryGetValue(table.Name, out var timeToLiveJob))
-            {
-                timeToLiveJob.Dispose();
-                Store.TimeToLiveJobs.Remove(table.Name);
-            }
-
+            StartDeleting(Store, table);
             Record("DeleteTable", table.Arn);
             return Task.FromResult(new DeleteTableResponse { TableDescription = description });
+        }
+    }
+
+    /// <summary>
+    /// Starts deleting a table of <paramref name="store"/>'s region (this one's, or a replica's
+    /// elsewhere): <c>DELETING</c> until the transition delay passes, or gone at once. Its stream
+    /// and time to live stop now.
+    /// </summary>
+    private void StartDeleting(DynamoDbStore store, DynamoTable table)
+    {
+        table.StartDeleting(TransitionEnd);
+        if (!TransitionsTakeTime)
+        {
+            store.Tables.Remove(table.Name);
+            table.Replication?.Leave(table);
+        }
+
+        if (table.LatestStream is { } stream)
+        {
+            stream.Disable(Now);
+        }
+
+        if (store.TimeToLiveJobs.TryGetValue(table.Name, out var timeToLiveJob))
+        {
+            timeToLiveJob.Dispose();
+            store.TimeToLiveJobs.Remove(table.Name);
         }
     }
 
@@ -624,6 +640,7 @@ internal sealed partial class InternalDynamoDbClient
                 }
             }
 
+            var replicaUpdates = PrepareReplicaUpdates(table, request);
             var indexUpdates = (request.GlobalSecondaryIndexUpdates ?? [])
                 .Select(update => PrepareIndexUpdate(table, update, request.AttributeDefinitions, billingMode, TransitionsTakeTime ? TransitionEnd : null))
                 .ToList();
@@ -670,7 +687,8 @@ internal sealed partial class InternalDynamoDbClient
                 || request.SSESpecification is not null
                 || request.TableClass is not null
                 || request.DeletionProtectionEnabled is not null
-                || request.WarmThroughput is not null;
+                || request.WarmThroughput is not null
+                || replicaUpdates is not null;
             if (!changes)
             {
                 throw DynamoDbErrors.Validation("At least one of ProvisionedThroughput, BillingMode, UpdateStreamEnabled, GlobalSecondaryIndexUpdates or SSESpecification or ReplicaUpdates is required");
@@ -769,7 +787,9 @@ internal sealed partial class InternalDynamoDbClient
                 table.DeletionProtectionEnabled = protection;
             }
 
+            replicaUpdates?.Invoke();
             Record("UpdateTable", table.Arn);
+            table.Replication?.Settle(_bus.TimeProvider.GetUtcNow());
             table.Settle(_bus.TimeProvider.GetUtcNow());
             var description = Describe(table);
 

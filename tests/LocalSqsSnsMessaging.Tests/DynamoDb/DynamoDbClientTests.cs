@@ -395,4 +395,50 @@ public sealed class DynamoDbClientTests
         // Ordered by day, then numerically by seq.
         pks.ShouldBe(["c", "b", "a"]);
     }
+
+    [Test]
+    public async Task ReplicaUpdates_MakeAGlobalTableWhoseWritesReachEveryRegion()
+    {
+        var bus = new InMemoryAwsBus { CurrentRegion = "us-east-1" };
+        var east = await CreateTableAsync(bus);
+        using var west = new AmazonDynamoDBClient(
+            new Amazon.Runtime.BasicAWSCredentials("test", "test"),
+            new AmazonDynamoDBConfig
+            {
+                RegionEndpoint = Amazon.RegionEndpoint.USWest2,
+                HttpClientFactory = new LocalSqsSnsMessaging.Http.InMemoryAwsHttpClientFactory(bus),
+            });
+        await east.PutItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("before"), ["sk"] = new() { N = "1" } });
+
+        await east.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "orders",
+            ReplicaUpdates = [new ReplicationGroupUpdate { Create = new CreateReplicationGroupMemberAction { RegionName = "us-west-2" } }],
+        });
+
+        var described = (await east.DescribeTableAsync("orders")).Table;
+        described.GlobalTableVersion.ShouldBe("2019.11.21");
+        described.Replicas.Select(r => (r.RegionName, r.ReplicaStatus.Value)).ShouldBe([("us-west-2", "ACTIVE")]);
+        (await west.DescribeTableAsync("orders")).Table.Replicas.Single().RegionName.ShouldBe("us-east-1");
+
+        // The items the table had are copied, and each region's writes reach the other.
+        var key = new Dictionary<string, AttributeValue> { ["pk"] = new("before"), ["sk"] = new() { N = "1" } };
+        (await west.GetItemAsync("orders", key)).Item.ShouldNotBeEmpty();
+        await west.PutItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("west"), ["sk"] = new() { N = "2" } });
+        (await east.GetItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("west"), ["sk"] = new() { N = "2" } })).Item.ShouldNotBeEmpty();
+        await east.DeleteItemAsync("orders", key);
+        (await west.GetItemAsync("orders", key)).Item.ShouldBeNull();
+
+        // The region a replica was added from can't be deleted for a day; removing the replica frees it.
+        var refused = await Should.ThrowAsync<AmazonDynamoDBException>(() => east.DeleteTableAsync("orders"));
+        refused.ErrorCode.ShouldBe("ValidationException");
+        await east.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "orders",
+            ReplicaUpdates = [new ReplicationGroupUpdate { Delete = new DeleteReplicationGroupMemberAction { RegionName = "us-west-2" } }],
+        });
+        (await east.DescribeTableAsync("orders")).Table.Replicas.ShouldBeNull();
+        await Should.ThrowAsync<ResourceNotFoundException>(() => west.DescribeTableAsync("orders"));
+        await east.DeleteTableAsync("orders");
+    }
 }

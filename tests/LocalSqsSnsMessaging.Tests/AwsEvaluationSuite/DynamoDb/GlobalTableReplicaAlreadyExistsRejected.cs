@@ -17,7 +17,6 @@ public sealed class GlobalTableReplicaAlreadyExistsRejected
     /// ValidationException with the exact message and leaves the replica set unchanged.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable's ReplicaUpdates are not emulated: it is refused with \"At least one of ProvisionedThroughput, BillingMode, UpdateStreamEnabled, GlobalSecondaryIndexUpdates or SSESpecification ...\"")]
     [DisplayName("dynamodb.global-table-replica-already-exists-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

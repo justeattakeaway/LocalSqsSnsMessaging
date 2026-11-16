@@ -7,7 +7,9 @@ namespace LocalSqsSnsMessaging;
 /// served from the resources of the region it was made in, and same-named resources in two regions
 /// are separate resources.
 /// </summary>
-internal sealed class AwsRegionResources(string region)
+/// <param name="region">The region's name.</param>
+/// <param name="dynamoDbGate">The bus's DynamoDB lock, which every region's <see cref="DynamoDb"/> shares.</param>
+internal sealed class AwsRegionResources(string region, object dynamoDbGate)
 {
     /// <summary>The region's name, e.g. <c>us-east-1</c>.</summary>
     public string Region { get; } = region;
@@ -34,6 +36,6 @@ internal sealed class AwsRegionResources(string region)
     /// <summary>The region's EventBridge replays (EventBridge keeps finished replays too), keyed by replay name.</summary>
     public ConcurrentDictionary<string, ReplayResource> EventBridgeReplays { get; } = [];
 
-    /// <summary>The region's DynamoDB tables, streams and backups, behind one lock.</summary>
-    public DynamoDb.DynamoDbStore DynamoDb { get; } = new();
+    /// <summary>The region's DynamoDB tables, streams and backups, behind the bus's DynamoDB lock.</summary>
+    public DynamoDb.DynamoDbStore DynamoDb { get; } = new(region, dynamoDbGate);
 }

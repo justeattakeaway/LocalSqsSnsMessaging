@@ -185,7 +185,13 @@ public sealed class InMemoryAwsBus
     /// empty for <see cref="CurrentRegion"/>.
     /// </summary>
     internal AwsRegionResources Region(string? region) =>
-        _regions.GetOrAdd(string.IsNullOrEmpty(region) ? CurrentRegion : region!, static name => new AwsRegionResources(name));
+        _regions.GetOrAdd(string.IsNullOrEmpty(region) ? CurrentRegion : region!, static (name, gate) => new AwsRegionResources(name, gate), _dynamoDbGate);
+
+    /// <summary>
+    /// The lock every region's DynamoDB requests hold (<see cref="DynamoDb.DynamoDbStore.Gate"/>): one
+    /// for the bus, because a global table's write changes its replicas in other regions too.
+    /// </summary>
+    private readonly object _dynamoDbGate = new();
 
     /// <summary>Every region a resource has been looked up or created in.</summary>
     internal IEnumerable<AwsRegionResources> Regions => _regions.Values;

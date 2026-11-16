@@ -18,7 +18,6 @@ public sealed class GlobalTableLifecycleCreateDescribeUpdate
     /// again is reflected on each later DescribeTable.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable's ReplicaUpdates are not emulated: it is refused with \"At least one of ProvisionedThroughput, BillingMode, UpdateStreamEnabled, GlobalSecondaryIndexUpdates or SSESpecification ...\"")]
     [DisplayName("dynamodb.global-table-lifecycle-create-describe-update")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

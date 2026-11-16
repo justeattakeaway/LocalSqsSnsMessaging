@@ -21,7 +21,6 @@ public sealed class DdbglobalReplicaUpdatesLocalRegionRejected
     /// UpdateTable on the same table then succeeds.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable doesn't take ReplicaUpdates: naming the local region is answered as an UpdateTable with no supported update, not AWS's local-region message")]
     [DisplayName("dynamodb.ddbglobal-replica-updates-local-region-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
