@@ -22,7 +22,6 @@ public sealed class DeepDynamodb1DdbvecDeleteUnknownVectorIndexRejected
     /// ValidationException with the exact message.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them: DescribeTable reports none")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-delete-unknown-vector-index-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

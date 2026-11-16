@@ -65,7 +65,6 @@ public sealed class PutItemVectorIndexChargedOnlyWhenProjectionChanges
     /// index, and ReturnConsumedCapacity=TOTAL carries no VectorIndexes or Table field.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "Vector indexes are not emulated: CreateTable ignores VectorIndexes, so DescribeTable never reports them ACTIVE")]
     [DisplayName("dynamodb.put-item-vector-index-charged-only-when-projection-changes")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

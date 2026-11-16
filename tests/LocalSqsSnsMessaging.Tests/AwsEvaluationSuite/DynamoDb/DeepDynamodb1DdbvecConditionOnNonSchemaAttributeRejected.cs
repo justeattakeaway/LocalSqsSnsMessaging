@@ -21,7 +21,6 @@ public sealed class DeepDynamodb1DdbvecConditionOnNonSchemaAttributeRejected
     /// on a projected attribute outside the SearchSchema raises ValidationException with the exact message.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores a vector index's SearchSchema, so an attribute defined only for it is refused as unused in the KeySchema")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-condition-on-non-schema-attribute-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

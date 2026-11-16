@@ -7,8 +7,8 @@ namespace LocalSqsSnsMessaging.DynamoDb;
 /// </summary>
 /// <remarks>
 /// Split into partial files by area: tables, items, reads (Query and Scan), batches and
-/// transactions, PartiQL, time to live, backups, authorization against a table's resource policy,
-/// and the operations the bus doesn't emulate. Every operation runs under its region's
+/// transactions, PartiQL, time to live, backups, vector search, authorization against a table's
+/// resource policy, and the operations the bus doesn't emulate. Every operation runs under its region's
 /// <see cref="DynamoDbStore.Gate"/>.
 /// </remarks>
 internal sealed partial class InternalDynamoDbClient
@@ -132,7 +132,10 @@ internal sealed partial class InternalDynamoDbClient
         return table;
     }
 
-    /// <summary>Moves a table created with a creation delay to ACTIVE once its time has come.</summary>
+    /// <summary>
+    /// Moves a table created with a creation delay to ACTIVE once its time has come, and its vector
+    /// indexes on through creating, backfilling and ACTIVE.
+    /// </summary>
     private void ApplyDueTransitions(DynamoTable table)
     {
         if (table.ActiveAt is { } activeAt && _bus.TimeProvider.GetUtcNow() >= activeAt)
@@ -143,7 +146,14 @@ internal sealed partial class InternalDynamoDbClient
             {
                 index.Status = "ACTIVE";
             }
+
+            foreach (var vectorIndex in table.VectorIndexes.Where(v => v.ActiveAt is null))
+            {
+                vectorIndex.Status = "ACTIVE";
+            }
         }
+
+        RefreshVectorIndexes(table);
     }
 
     // Capacity: reads cost a unit per 4 KB (half for an eventually consistent read), writes a unit per 1 KB.
@@ -161,9 +171,9 @@ internal sealed partial class InternalDynamoDbClient
         return transactional ? units * 2.0 : units;
     }
 
-    /// <summary>What an item write costs: the larger of the item before and after.</summary>
-    private static double WriteUnits(IReadOnlyDictionary<string, DynamoValue>? before, IReadOnlyDictionary<string, DynamoValue>? after, bool transactional = false) =>
-        WriteUnits(Math.Max(before is null ? 0 : DynamoValueRules.ItemSize(before), after is null ? 0 : DynamoValueRules.ItemSize(after)), transactional);
+    /// <summary>What an item write costs: the larger of the item before and after, as the table bills them.</summary>
+    private static double WriteUnits(DynamoTable table, IReadOnlyDictionary<string, DynamoValue>? before, IReadOnlyDictionary<string, DynamoValue>? after, bool transactional = false) =>
+        WriteUnits(Math.Max(table.BilledSize(before), table.BilledSize(after)), transactional);
 
     /// <summary>
     /// The <c>ConsumedCapacity</c> to answer with: none for <c>NONE</c>, the total for
@@ -174,13 +184,18 @@ internal sealed partial class InternalDynamoDbClient
     /// (<c>ReadCapacityUnits</c>, <c>WriteCapacityUnits</c>), every other operation's as
     /// <c>CapacityUnits</c> alone.
     /// </param>
+    /// <param name="vectorBytes">
+    /// What a write cost each vector index, in bytes (<c>VectorWriteRequestBytes</c>), reported
+    /// for <c>INDEXES</c> and not counted in the capacity units.
+    /// </param>
     private static ConsumedCapacity? Consumed(
         string? returnConsumedCapacity,
         DynamoTable table,
         double tableUnits,
         bool write,
         IReadOnlyDictionary<string, double>? indexUnits = null,
-        bool transactional = false)
+        bool transactional = false,
+        IReadOnlyDictionary<string, double>? vectorBytes = null)
     {
         if (returnConsumedCapacity is null or "NONE")
         {
@@ -213,6 +228,11 @@ internal sealed partial class InternalDynamoDbClient
                         (consumed.LocalSecondaryIndexes ??= new Dictionary<string, Model.Capacity>(StringComparer.Ordinal))[name] = Capacity(units, write, transactional);
                     }
                 }
+            }
+
+            if (vectorBytes is { Count: > 0 })
+            {
+                consumed.VectorIndexes = vectorBytes.ToDictionary(e => e.Key, e => new VectorCapacity { VectorWriteRequestBytes = e.Value }, StringComparer.Ordinal);
             }
         }
 
@@ -423,6 +443,11 @@ internal sealed partial class InternalDynamoDbClient
                     Status = index.Status == "CREATING" ? "UPDATING" : "ACTIVE",
                 },
             }).ToList();
+        }
+
+        if (table.VectorIndexes.Count > 0)
+        {
+            description.VectorIndexes = table.VectorIndexes.Select(DescribeVectorIndex).ToList();
         }
 
         if (table.StreamEnabled)

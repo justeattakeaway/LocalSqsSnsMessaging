@@ -22,7 +22,6 @@ public sealed class DeepDynamodb1DdbvecInlineFilterRangeComparatorRejected
     /// The model says range operators are supported; real AWS rejects them with ValidationException.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores a vector index's SearchSchema, so an attribute defined only for it is refused as unused in the KeySchema")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-inline-filter-range-comparator-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

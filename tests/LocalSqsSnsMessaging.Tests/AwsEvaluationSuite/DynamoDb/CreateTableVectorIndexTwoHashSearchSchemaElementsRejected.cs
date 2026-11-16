@@ -17,7 +17,6 @@ public sealed class CreateTableVectorIndexTwoHashSearchSchemaElementsRejected
     /// one with the exact ValidationException, and the table it would have created never exists.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores a vector index's SearchSchema, so an attribute defined only for it is refused as unused in the KeySchema")]
     [DisplayName("dynamodb.create-table-vector-index-two-hash-search-schema-elements-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

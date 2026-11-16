@@ -97,7 +97,7 @@ internal sealed partial class InternalDynamoDbClient
 
                     processed++;
                     bytes += size;
-                    units += ReadUnits(item is null ? 0 : DynamoValueRules.ItemSize(item), keys.ConsistentRead ?? false);
+                    units += ReadUnits(table.BilledSize(item), keys.ConsistentRead ?? false);
                     if (projected is not null)
                     {
                         found.Add(projected);
@@ -142,7 +142,7 @@ internal sealed partial class InternalDynamoDbClient
             throw DynamoDbErrors.Validation("Too many items requested for the BatchWriteItem call");
         }
 
-        var writes = new List<(string Name, Dictionary<string, DynamoValue>? Item, Dictionary<string, DynamoValue>? Key)>();
+        var writes = new List<(string Name, Dictionary<string, DynamoValue>? Item, Dictionary<string, DynamoValue>? Written, Dictionary<string, DynamoValue>? Key)>();
         foreach (var (tableName, requests) in requestItems)
         {
             foreach (var write in requests)
@@ -160,16 +160,17 @@ internal sealed partial class InternalDynamoDbClient
                         return CanonicalItem(putItem);
                     })
                     : null;
-                writes.Add((TableName(tableName), item, write.DeleteRequest?.Key));
+                writes.Add((TableName(tableName), item, write.PutRequest?.Item, write.DeleteRequest?.Key));
             }
         }
 
         lock (Store.Gate)
         {
             var planned = new List<(DynamoTable Table, DynamoKey Key, Dictionary<string, DynamoValue>? Item)>();
-            foreach (var (name, item, key) in writes)
+            foreach (var (name, canonical, written, key) in writes)
             {
                 var table = ActiveTable(name);
+                var item = canonical is null ? null : WithVectorsAsWritten(table, canonical, written!);
                 DynamoKey tableKey;
                 if (item is not null)
                 {
@@ -191,6 +192,7 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             var units = new Dictionary<DynamoTable, (double Table, Dictionary<string, double> Indexes)>();
+            var vectorBytes = new Dictionary<DynamoTable, Dictionary<string, double>>();
             var metrics = new Dictionary<string, List<ItemCollectionMetrics>>(StringComparer.Ordinal);
             foreach (var (table, key, item) in planned)
             {
@@ -202,11 +204,13 @@ internal sealed partial class InternalDynamoDbClient
                 }
 
                 var (tableUnits, indexUnits) = units.TryGetValue(table, out var sum) ? sum : (0.0, new Dictionary<string, double>(StringComparer.Ordinal));
-                tableUnits += WriteUnits(old, item);
+                tableUnits += WriteUnits(table, old, item);
                 foreach (var (index, cost) in IndexWriteUnits(table, old, item))
                 {
                     indexUnits[index] = indexUnits.TryGetValue(index, out var running) ? running + cost : cost;
                 }
+
+                AddVectorWriteBytes(vectorBytes, table, old, item);
 
                 units[table] = (tableUnits, indexUnits);
                 if (CollectionMetrics(request.ReturnItemCollectionMetrics, table, key) is { } metric)
@@ -217,7 +221,7 @@ internal sealed partial class InternalDynamoDbClient
                 Record("BatchWriteItem", table.Arn);
             }
 
-            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value.Table, write: true, u.Value.Indexes)).Where(c => c is not null).Select(c => c!).ToList();
+            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value.Table, write: true, u.Value.Indexes, vectorBytes: vectorBytes.TryGetValue(u.Key, out var vectors) ? vectors : null)).Where(c => c is not null).Select(c => c!).ToList();
             return Task.FromResult(new BatchWriteItemResponse
             {
                 UnprocessedItems = new Dictionary<string, List<WriteRequest>>(StringComparer.Ordinal),
@@ -311,7 +315,7 @@ internal sealed partial class InternalDynamoDbClient
                 var projected = item is null ? null : NonEmpty(Project(item, projection, null));
                 payload += projected is null ? 0 : DynamoValueRules.ItemSize(projected);
                 responses.Add(new ItemResponse { Item = projected });
-                units[table] = (units.TryGetValue(table, out var running) ? running : 0) + ReadUnits(item is null ? 0 : DynamoValueRules.ItemSize(item), consistent: true, transactional: true);
+                units[table] = (units.TryGetValue(table, out var running) ? running : 0) + ReadUnits(table.BilledSize(item), consistent: true, transactional: true);
             }
 
             if (payload > MaxTransactionPayloadBytes)
@@ -439,6 +443,7 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             var units = new Dictionary<DynamoTable, (double Table, Dictionary<string, double> Indexes)>();
+            var vectorBytes = new Dictionary<DynamoTable, Dictionary<string, double>>();
             foreach (var write in writes)
             {
                 if (write.Delete)
@@ -455,8 +460,8 @@ internal sealed partial class InternalDynamoDbClient
 
                 var (tableUnits, indexUnits) = units.TryGetValue(write.Table, out var sum) ? sum : (0.0, new Dictionary<string, double>(StringComparer.Ordinal));
                 tableUnits += write.Check
-                    ? ReadUnits(write.Old is null ? 0 : DynamoValueRules.ItemSize(write.Old), consistent: true, transactional: true)
-                    : WriteUnits(write.Old, write.After, transactional: true);
+                    ? ReadUnits(write.Table.BilledSize(write.Old), consistent: true, transactional: true)
+                    : WriteUnits(write.Table, write.Old, write.After, transactional: true);
                 if (!write.Check)
                 {
                     // Index entries are written once the transaction commits, at the standard rate.
@@ -464,6 +469,8 @@ internal sealed partial class InternalDynamoDbClient
                     {
                         indexUnits[index] = (indexUnits.TryGetValue(index, out var indexSum) ? indexSum : 0) + cost;
                     }
+
+                    AddVectorWriteBytes(vectorBytes, write.Table, write.Old, write.Delete ? null : write.After);
                 }
 
                 units[write.Table] = (tableUnits, indexUnits);
@@ -475,7 +482,7 @@ internal sealed partial class InternalDynamoDbClient
                 Store.TransactionTokens[requestToken] = new DynamoTransactionToken(fingerprint!, now + TransactionTokenLifetime);
             }
 
-            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value.Table, write: true, u.Value.Indexes, transactional: true)).Where(c => c is not null).Select(c => c!).ToList();
+            var capacity = units.Select(u => Consumed(request.ReturnConsumedCapacity, u.Key, u.Value.Table, write: true, u.Value.Indexes, transactional: true, vectorBytes.TryGetValue(u.Key, out var vectors) ? vectors : null)).Where(c => c is not null).Select(c => c!).ToList();
             return Task.FromResult(new TransactWriteItemsResponse
             {
                 ConsumedCapacity = capacity.Count > 0 ? capacity : null,

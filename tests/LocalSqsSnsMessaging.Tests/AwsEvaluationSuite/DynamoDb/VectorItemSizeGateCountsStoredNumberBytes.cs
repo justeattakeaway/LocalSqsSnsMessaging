@@ -22,7 +22,6 @@ public sealed class VectorItemSizeGateCountsStoredNumberBytes
     /// the fixed 4-bytes-per-dimension rate the write-capacity meter uses for the same attribute.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "vector indexes are not emulated: PutItem reports no VectorIndexes capacity")]
     [DisplayName("dynamodb.vector-item-size-gate-counts-stored-number-bytes")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

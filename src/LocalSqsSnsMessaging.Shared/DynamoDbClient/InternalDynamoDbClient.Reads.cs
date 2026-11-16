@@ -250,6 +250,12 @@ internal sealed partial class InternalDynamoDbClient
         DynamoIndex? index = null;
         if (indexName is not null)
         {
+            // A vector index is read only by SearchVectors.
+            if (table.FindVectorIndex(indexName) is not null)
+            {
+                throw DynamoDbErrors.Validation($"{action} operation not supported on this index type.");
+            }
+
             index = table.FindIndex(indexName) ?? throw DynamoDbErrors.Validation($"The table does not have the specified index: {indexName}");
             if (index.IsGlobal && consistentRead == true)
             {
@@ -517,10 +523,10 @@ internal sealed partial class InternalDynamoDbClient
                 : ProjectForIndex(plan.Table, plan.Index, candidate.Item);
             var indexView = plan.Index is null ? source : ProjectForIndex(plan.Table, plan.Index, candidate.Item);
             scanned++;
-            bytes += DynamoValueRules.ItemSize(indexView);
+            bytes += plan.Table.BilledSize(indexView);
             if (fetches)
             {
-                fetchedUnits += ReadUnits(DynamoValueRules.ItemSize(candidate.Item), plan.Consistent);
+                fetchedUnits += ReadUnits(plan.Table.BilledSize(candidate.Item), plan.Consistent);
             }
 
             last = candidate;

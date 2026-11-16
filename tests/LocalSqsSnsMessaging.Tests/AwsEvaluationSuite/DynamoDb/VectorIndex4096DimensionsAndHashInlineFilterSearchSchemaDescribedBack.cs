@@ -17,7 +17,6 @@ public sealed class VectorIndex4096DimensionsAndHashInlineFilterSearchSchemaDesc
     /// SearchSchema combining a HASH and an INLINE_FILTER element round-trips both, in order.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "vector indexes are not emulated: CreateTable refuses AttributeDefinitions only a vector index's SearchSchema uses")]
     [DisplayName("dynamodb.vector-index-4096-dimensions-and-hash-inline-filter-search-schema-described-back")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

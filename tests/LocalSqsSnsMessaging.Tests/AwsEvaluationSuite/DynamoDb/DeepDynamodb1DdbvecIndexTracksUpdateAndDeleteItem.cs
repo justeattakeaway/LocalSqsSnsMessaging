@@ -20,7 +20,6 @@ public sealed class DeepDynamodb1DdbvecIndexTracksUpdateAndDeleteItem
     /// returns exactly [x4, x3] with scores 0.5 and 3, while x2 stays in the table without its vector.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them: DescribeTable reports none")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-index-tracks-update-and-delete-item")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

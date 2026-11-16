@@ -22,7 +22,6 @@ public sealed class VectorCapacitySizedByDimensionCountNotNumberWidth
     /// capacity tracks that same billed size rather than the numbers' real stored width.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "vector indexes are not emulated: CreateTable accepts VectorIndexes but DescribeTable reports none")]
     [DisplayName("dynamodb.vector-capacity-sized-by-dimension-count-not-number-width")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

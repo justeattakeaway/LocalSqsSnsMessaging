@@ -50,7 +50,6 @@ public sealed class DeepDynamodb1DdbvecDistanceFunctionsInvertTopkSelection
     /// Three indexes over one attribute must select three different top-3 sets for the same query.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them: DescribeTable reports none")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-distance-functions-invert-topk-selection")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

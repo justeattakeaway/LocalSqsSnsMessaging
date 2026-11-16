@@ -21,7 +21,6 @@ public sealed class DeepDynamodb1DdbvecUnknownIndexNameRejected
     /// exact message naming it, while the three real indexes answer before and remain afterwards.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them: DescribeTable reports none")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-unknown-index-name-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

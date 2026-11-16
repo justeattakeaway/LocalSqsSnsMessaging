@@ -106,7 +106,6 @@ public sealed class SearchVectorsConsumedCapacityIsVectorBytesOnlyFlooredAndScal
     /// and that figure grows with TopK and with returning the searched vector attribute itself.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores VectorIndexes and SearchVectors is not emulated")]
     [DisplayName("dynamodb.search-vectors-consumed-capacity-is-vector-bytes-only-floored-and-scales")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

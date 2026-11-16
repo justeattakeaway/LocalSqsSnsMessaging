@@ -17,7 +17,6 @@ public sealed class SearchVectorsOrdersByCosineDistance
     /// orthogonal one 1 and an opposite one 2, so ordering and scale are both pinned.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores VectorIndexes, so DescribeTable reports none")]
     [DisplayName("dynamodb.search-vectors-orders-by-cosine-distance")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

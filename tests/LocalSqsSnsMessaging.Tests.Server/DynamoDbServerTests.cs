@@ -118,6 +118,46 @@ public sealed class DynamoDbServerTests : IAsyncDisposable
         (await account1.DescribeTableAsync("tbl")).Table.TableArn.ShouldBe("arn:aws:dynamodb:us-east-1:111111111111:table/tbl");
     }
 
+    [Test]
+    public async Task SearchVectorsReachesTheServerInTheSignedRegion()
+    {
+        // The SDK sends SearchVectors to a search endpoint of its own unless ServiceURL is set; with
+        // it, the request still comes here, and the signed region picks the tables.
+        using var client = Client(region: "eu-west-1");
+        await client.CreateTableAsync(new CreateTableRequest
+        {
+            TableName = "docs",
+            KeySchema = [new KeySchemaElement("pk", KeyType.HASH)],
+            AttributeDefinitions = [new AttributeDefinition("pk", ScalarAttributeType.S)],
+            BillingMode = BillingMode.PAY_PER_REQUEST,
+            VectorIndexes =
+            [
+                new VectorIndex
+                {
+                    IndexName = "vec",
+                    VectorAttribute = new VectorAttributeDefinition { AttributeName = "v" },
+                    Dimensions = 2,
+                    DistanceFunction = VectorDistanceFunction.DOT_PRODUCT,
+                    Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                },
+            ],
+        });
+        await client.PutItemAsync("docs", new Dictionary<string, AttributeValue> { ["pk"] = new("a"), ["v"] = new() { L = [new() { N = "1" }, new() { N = "2" }] } });
+        await client.PutItemAsync("docs", new Dictionary<string, AttributeValue> { ["pk"] = new("b"), ["v"] = new() { L = [new() { N = "3" }, new() { N = "0" }] } });
+
+        var response = await client.SearchVectorsAsync(new SearchVectorsRequest
+        {
+            TableName = "docs",
+            IndexName = "vec",
+            SearchVector = [new() { N = "1" }, new() { N = "1" }],
+            TopK = 2,
+            ReturnConsumedCapacity = ReturnConsumedCapacity.TOTAL,
+        });
+
+        response.SearchResults.Select(r => (r.Item["pk"].S, r.Score)).ShouldBe([("a", (double?)3.0), ("b", 3.0)]);
+        response.ConsumedCapacity.VectorSearchRequestBytes.ShouldBe(1024);
+    }
+
     private static int GetAvailablePort()
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);

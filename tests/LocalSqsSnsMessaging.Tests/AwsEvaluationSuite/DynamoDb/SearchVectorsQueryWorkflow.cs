@@ -18,7 +18,6 @@ public sealed class SearchVectorsQueryWorkflow
     /// the vectors written via PutItem.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores VectorIndexes, so DescribeTable never reports the index and the wait for it runs out")]
     [DisplayName("dynamodb.search-vectors-query-workflow")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

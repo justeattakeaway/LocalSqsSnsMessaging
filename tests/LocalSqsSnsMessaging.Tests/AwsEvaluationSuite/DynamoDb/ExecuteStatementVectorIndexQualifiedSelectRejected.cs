@@ -19,7 +19,6 @@ public sealed class ExecuteStatementVectorIndexQualifiedSelectRejected
     /// base table returns the vector attribute as an ordinary list of numbers.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable's VectorIndexes are not emulated: DescribeTable never lists the vector index, so the wait for it to become ACTIVE runs out")]
     [DisplayName("dynamodb.execute-statement-vector-index-qualified-select-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

@@ -163,6 +163,8 @@ internal sealed partial class InternalDynamoDbClient
             }
         }
 
+        AddVectorIndexes(table, request.VectorIndexes, definitions, indexNames, used);
+
         // The 100-attribute projection budget is the table's, and a name projected into two indexes counts twice.
         var projected = table.LocalIndexes.Concat(table.GlobalIndexes).Sum(i => i.Projection.NonKeyAttributes?.Count ?? 0);
         if (projected > MaxProjectedAttributes)
@@ -218,6 +220,11 @@ internal sealed partial class InternalDynamoDbClient
                 foreach (var index in table.GlobalIndexes)
                 {
                     index.Status = "CREATING";
+                }
+
+                foreach (var vectorIndex in table.VectorIndexes)
+                {
+                    vectorIndex.Status = "CREATING";
                 }
             }
 
@@ -469,6 +476,11 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being deleted: {table.Name}");
             }
 
+            if (table.VectorIndexes.Any(v => v.Status == "CREATING"))
+            {
+                throw DynamoDbErrors.ResourceInUse("Attempt to change a resource which is still in use: Cannot delete table while indexes are being created, updated, or deleted.");
+            }
+
             if (table.DeletionProtectionEnabled)
             {
                 throw DynamoDbErrors.Validation("Resource cannot be deleted as it is currently protected against deletion. Disable deletion protection first.");
@@ -499,6 +511,7 @@ internal sealed partial class InternalDynamoDbClient
     public Task<UpdateTableResponse> UpdateTableAsync(UpdateTableRequest request, CancellationToken cancellationToken = default)
     {
         CheckIndexUpdates(request.GlobalSecondaryIndexUpdates);
+        CheckVectorIndexUpdates(request.VectorIndexUpdates, request.GlobalSecondaryIndexUpdates);
         CheckTableClass(request.TableClass);
         lock (Store.Gate)
         {
@@ -515,6 +528,11 @@ internal sealed partial class InternalDynamoDbClient
             if (request.BillingMode is { } requestedBillingMode)
             {
                 var onDemand = requestedBillingMode == "PAY_PER_REQUEST";
+                if (!onDemand && table.VectorIndexes.Count > 0)
+                {
+                    throw DynamoDbErrors.InvalidParameter(VectorIndexesNeedOnDemand);
+                }
+
                 if (onDemand && request.ProvisionedThroughput is not null)
                 {
                     throw DynamoDbErrors.InvalidParameter("ProvisionedThroughput cannot be specified when BillingMode is PAY_PER_REQUEST");
@@ -574,6 +592,9 @@ internal sealed partial class InternalDynamoDbClient
             var indexUpdates = (request.GlobalSecondaryIndexUpdates ?? [])
                 .Select(update => PrepareIndexUpdate(table, update, request.AttributeDefinitions, billingMode))
                 .ToList();
+            var vectorIndexUpdates = (request.VectorIndexUpdates ?? [])
+                .Select(update => PrepareVectorIndexUpdate(table, update, request.AttributeDefinitions, billingMode))
+                .ToList();
 
             if (request.StreamSpecification is { } stream)
             {
@@ -609,6 +630,7 @@ internal sealed partial class InternalDynamoDbClient
                 || request.ProvisionedThroughput is not null
                 || request.OnDemandThroughput is not null
                 || indexUpdates.Count > 0
+                || vectorIndexUpdates.Count > 0
                 || request.StreamSpecification is not null
                 || request.SSESpecification is not null
                 || request.TableClass is not null
@@ -667,6 +689,11 @@ internal sealed partial class InternalDynamoDbClient
                 applyIndexUpdate();
             }
 
+            foreach (var (applyVectorIndexUpdate, _) in vectorIndexUpdates)
+            {
+                applyVectorIndexUpdate();
+            }
+
             if (request.StreamSpecification is { } streamChange)
             {
                 if (streamChange.StreamEnabled == true)
@@ -701,7 +728,16 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             Record("UpdateTable", table.Arn);
-            return Task.FromResult(new UpdateTableResponse { TableDescription = Describe(table) });
+            var description = Describe(table);
+
+            // A deleted vector index is gone at once, but the answer still describes it, DELETING.
+            var deletedVectorIndexes = vectorIndexUpdates.Where(u => u.Deleted is not null).Select(u => u.Deleted!).ToList();
+            if (deletedVectorIndexes.Count > 0)
+            {
+                description.VectorIndexes = [.. description.VectorIndexes ?? [], .. deletedVectorIndexes];
+            }
+
+            return Task.FromResult(new UpdateTableResponse { TableDescription = description });
         }
     }
 
@@ -714,11 +750,12 @@ internal sealed partial class InternalDynamoDbClient
         if (update.Create is { } create)
         {
             var indexName = create.IndexName!;
-            if (table.FindIndex(indexName) is not null)
+            if (table.HasIndexNamed(indexName))
             {
                 throw DynamoDbErrors.Validation("Attempting to create an index which already exists");
             }
 
+            CheckNoVectorIndexCreating(table);
             if (table.GlobalIndexes.Count >= MaxGlobalIndexes)
             {
                 throw DynamoDbErrors.LimitExceeded($"Subscriber limit exceeded: Number of global secondary indexes exceeds per-table limit of {MaxGlobalIndexes}");
@@ -793,10 +830,11 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation($"Cannot delete an index that is not a GlobalSecondaryIndex: {index.Name}");
             }
 
+            CheckNoVectorIndexCreating(table);
             return () =>
             {
                 table.GlobalIndexes.Remove(index);
-                var stillUsed = new HashSet<string>(table.KeySchema.Attributes.Concat(table.Indexes.SelectMany(i => i.KeySchema.Attributes)).Select(a => a.Name), StringComparer.Ordinal);
+                var stillUsed = table.UsedAttributeNames();
                 table.AttributeDefinitions.RemoveAll(a => !stillUsed.Contains(a.Name));
             };
         }

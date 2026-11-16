@@ -34,7 +34,6 @@ public sealed class DeepDynamodb1DdbvecTwoIndexUpdatesInOneCallRejected
     /// search on that index is a ValidationException.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable accepts VectorIndexes but drops them: DescribeTable reports none")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-two-index-updates-in-one-call-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

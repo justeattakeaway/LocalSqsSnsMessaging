@@ -23,7 +23,6 @@ public sealed class PutItemVectorOfWrongDimensionRejected
     /// accepted and silently left out of the index.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "Vector indexes are not emulated: CreateTable ignores VectorIndexes, so DescribeTable reports none")]
     [DisplayName("dynamodb.put-item-vector-of-wrong-dimension-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

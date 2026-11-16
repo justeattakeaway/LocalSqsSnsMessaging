@@ -38,7 +38,6 @@ public sealed class DeepDynamodb1DdbvecUpdateTableBackfillsPreexistingItems
     /// ACTIVE, and then returns all 30 pre-existing items plus one written mid-backfill, nearest-first.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "UpdateTable doesn't take VectorIndexUpdates: it answers that no supported update was given")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-update-table-backfills-preexisting-items")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

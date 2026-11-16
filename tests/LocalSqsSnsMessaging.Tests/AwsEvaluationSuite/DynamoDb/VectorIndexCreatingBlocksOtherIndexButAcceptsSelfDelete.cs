@@ -27,7 +27,6 @@ public sealed class VectorIndexCreatingBlocksOtherIndexButAcceptsSelfDelete
     /// and the index disappears.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "vector indexes are not emulated: UpdateTable ignores VectorIndexUpdates and answers that no update was given")]
     [DisplayName("dynamodb.vector-index-creating-blocks-other-index-but-accepts-self-delete")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

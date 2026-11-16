@@ -4,8 +4,8 @@ namespace LocalSqsSnsMessaging.DynamoDb;
 
 /// <summary>
 /// Operations for features that need services or infrastructure the bus doesn't emulate: S3
-/// exports and imports, Kinesis destinations, global tables, contributor insights, auto scaling,
-/// vector search and bulk operations. Each answers <c>UnknownOperationException</c>.
+/// exports and imports, Kinesis destinations, global tables, contributor insights, auto scaling
+/// and bulk operations. Each answers <c>UnknownOperationException</c>.
 /// </summary>
 internal sealed partial class InternalDynamoDbClient
 {
@@ -35,9 +35,6 @@ internal sealed partial class InternalDynamoDbClient
 
     public Task<ListBulkOperationsResponse> ListBulkOperationsAsync(ListBulkOperationsRequest request, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("ListBulkOperations is not supported by the in-memory DynamoDB.");
-
-    public Task<SearchVectorsResponse> SearchVectorsAsync(SearchVectorsRequest request, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException("SearchVectors is not supported by the in-memory DynamoDB.");
 
     public Task<StartBulkPutItemsResponse> StartBulkPutItemsAsync(StartBulkPutItemsRequest request, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("StartBulkPutItems is not supported by the in-memory DynamoDB.");

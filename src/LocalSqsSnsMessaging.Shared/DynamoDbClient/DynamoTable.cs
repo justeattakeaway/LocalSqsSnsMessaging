@@ -174,6 +174,9 @@ internal sealed class DynamoTable
 
     public IEnumerable<DynamoIndex> Indexes => LocalIndexes.Concat(GlobalIndexes);
 
+    /// <summary>The vector indexes, in creation order.</summary>
+    public List<DynamoVectorIndex> VectorIndexes { get; } = [];
+
     public bool StreamEnabled { get; set; }
 
     public string? StreamViewType { get; set; }
@@ -236,6 +239,66 @@ internal sealed class DynamoTable
     public DynamoIndex? FindIndex(string name) =>
         Indexes.FirstOrDefault(i => string.Equals(i.Name, name, StringComparison.Ordinal));
 
+    public DynamoVectorIndex? FindVectorIndex(string name) =>
+        VectorIndexes.FirstOrDefault(i => string.Equals(i.Name, name, StringComparison.Ordinal));
+
+    /// <summary>Whether any index of the table, secondary or vector, has this name.</summary>
+    public bool HasIndexNamed(string name) => FindIndex(name) is not null || FindVectorIndex(name) is not null;
+
+    /// <summary>
+    /// Every attribute the table's key schema or an index's key schema or search schema names:
+    /// the attributes the table's <c>AttributeDefinitions</c> may hold.
+    /// </summary>
+    public HashSet<string> UsedAttributeNames() =>
+        new(
+            KeySchema.Attributes.Concat(Indexes.SelectMany(i => i.KeySchema.Attributes)).Select(a => a.Name)
+                .Concat(VectorIndexes.SelectMany(v => v.SearchSchema).Select(e => e.Name)),
+            StringComparer.Ordinal);
+
+    /// <summary>
+    /// An attribute's size as DynamoDB bills it: a vector a vector index holds counts its name and
+    /// four bytes a dimension, however many digits its numbers have; any other attribute counts
+    /// its name and value, as <see cref="DynamoValueRules.ItemSize"/> does.
+    /// </summary>
+    public long BilledSize(string name, DynamoValue value)
+    {
+        foreach (var index in VectorIndexes)
+        {
+            if (string.Equals(index.VectorAttribute, name, StringComparison.Ordinal) && DynamoVectorIndex.IsShaped(value, index.Dimensions))
+            {
+                return Encoding.UTF8.GetByteCount(name) + (4L * index.Dimensions);
+            }
+        }
+
+        return Encoding.UTF8.GetByteCount(name) + value.Size();
+    }
+
+    /// <summary>An item's size as DynamoDB bills reads and writes of it (see <see cref="BilledSize(string, DynamoValue)"/>).</summary>
+    public long BilledSize(IReadOnlyDictionary<string, DynamoValue>? item)
+    {
+        if (item is null)
+        {
+            return 0;
+        }
+
+        if (VectorIndexes.Count == 0)
+        {
+            return DynamoValueRules.ItemSize(item);
+        }
+
+        var size = 0L;
+        foreach (var attribute in item)
+        {
+            size += BilledSize(attribute.Key, attribute.Value);
+        }
+
+        return size;
+    }
+
+    /// <summary>The billed size of the entry <paramref name="index"/> holds for <paramref name="item"/>.</summary>
+    public long VectorEntrySize(DynamoVectorIndex index, IReadOnlyDictionary<string, DynamoValue> item) =>
+        BilledSize(index.Entry(KeySchema, item));
+
     public DynamoType? DeclaredType(string attribute) =>
         AttributeDefinitions.FirstOrDefault(a => string.Equals(a.Name, attribute, StringComparison.Ordinal))?.Type;
 
@@ -256,6 +319,11 @@ internal sealed class DynamoTable
         foreach (var index in Indexes)
         {
             index.Add(key, item);
+        }
+
+        foreach (var vectorIndex in VectorIndexes)
+        {
+            AddToVectorIndex(vectorIndex, key, item);
         }
 
         return new DynamoItemChange(key, old, item);
@@ -308,6 +376,11 @@ internal sealed class DynamoTable
             index.Remove(key, old);
         }
 
+        foreach (var vectorIndex in VectorIndexes)
+        {
+            vectorIndex.Remove(key);
+        }
+
         return old;
     }
 
@@ -318,6 +391,25 @@ internal sealed class DynamoTable
         foreach (var (key, item) in All())
         {
             index.Add(key, item);
+        }
+    }
+
+    /// <summary>Fills a new vector index from the items already in the table; items without a vector it can take are left out.</summary>
+    public void Backfill(DynamoVectorIndex index)
+    {
+        index.Clear();
+        foreach (var (key, item) in All())
+        {
+            AddToVectorIndex(index, key, item);
+        }
+    }
+
+    /// <summary>Indexes the item's vector, if it holds one the index can take.</summary>
+    private void AddToVectorIndex(DynamoVectorIndex index, DynamoKey key, Dictionary<string, DynamoValue> item)
+    {
+        if (index.IndexableVector(item) is { } vector)
+        {
+            index.Add(key, vector, VectorEntrySize(index, item));
         }
     }
 }

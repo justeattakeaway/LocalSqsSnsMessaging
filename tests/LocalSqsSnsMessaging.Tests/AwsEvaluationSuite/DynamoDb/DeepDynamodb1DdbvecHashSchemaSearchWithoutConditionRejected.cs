@@ -23,7 +23,6 @@ public sealed class DeepDynamodb1DdbvecHashSchemaSearchWithoutConditionRejected
     /// cross-tenant result.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "CreateTable ignores a vector index's SearchSchema, so an attribute defined only for it is refused as unused in the KeySchema")]
     [DisplayName("dynamodb.deep-dynamodb-1-ddbvec-hash-schema-search-without-condition-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

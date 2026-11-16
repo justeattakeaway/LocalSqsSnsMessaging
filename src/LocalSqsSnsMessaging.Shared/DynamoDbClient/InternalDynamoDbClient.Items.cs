@@ -30,6 +30,7 @@ internal sealed partial class InternalDynamoDbClient
         {
             var table = ActiveTable(name);
             Authorize(table, "PutItem");
+            item = WithVectorsAsWritten(table, item, request.Item!);
             CheckIndexKeys(table, item, update: false);
             var key = KeyFromItem(table, item);
             CheckLocalIndexEntrySizes(table, item);
@@ -41,7 +42,7 @@ internal sealed partial class InternalDynamoDbClient
             return Task.FromResult(new PutItemResponse
             {
                 Attributes = request.ReturnValues == "ALL_OLD" ? old : null,
-                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, WriteUnits(old, item), write: true, IndexWriteUnits(table, old, item)),
+                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, WriteUnits(table, old, item), write: true, IndexWriteUnits(table, old, item), vectorBytes: VectorWriteBytes(table, old, item)),
                 ItemCollectionMetrics = CollectionMetrics(request.ReturnItemCollectionMetrics, table, key),
             });
         }
@@ -68,7 +69,7 @@ internal sealed partial class InternalDynamoDbClient
             return Task.FromResult(new GetItemResponse
             {
                 Item = item is null ? null : Project(item, projection, request.AttributesToGet),
-                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, ReadUnits(item is null ? 0 : DynamoValueRules.ItemSize(item), consistent), write: false),
+                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, ReadUnits(table.BilledSize(item), consistent), write: false),
             });
         }
     }
@@ -105,7 +106,7 @@ internal sealed partial class InternalDynamoDbClient
             return Task.FromResult(new DeleteItemResponse
             {
                 Attributes = request.ReturnValues == "ALL_OLD" ? old : null,
-                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, WriteUnits(old, null), write: true, IndexWriteUnits(table, old, null)),
+                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, WriteUnits(table, old, null), write: true, IndexWriteUnits(table, old, null), vectorBytes: VectorWriteBytes(table, old, null)),
                 ItemCollectionMetrics = CollectionMetrics(request.ReturnItemCollectionMetrics, table, key),
             });
         }
@@ -207,7 +208,7 @@ internal sealed partial class InternalDynamoDbClient
             return Task.FromResult(new UpdateItemResponse
             {
                 Attributes = returned,
-                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, WriteUnits(old, createsNothing ? null : updated), write: true, IndexWriteUnits(table, old, createsNothing ? null : updated)),
+                ConsumedCapacity = Consumed(request.ReturnConsumedCapacity, table, WriteUnits(table, old, createsNothing ? null : updated), write: true, IndexWriteUnits(table, old, createsNothing ? null : updated), vectorBytes: VectorWriteBytes(table, old, createsNothing ? null : updated)),
                 ItemCollectionMetrics = createsNothing ? null : CollectionMetrics(request.ReturnItemCollectionMetrics, table, key),
             });
         }
@@ -504,8 +505,17 @@ internal sealed partial class InternalDynamoDbClient
         CheckIndexKeyValues(table, item, update);
     }
 
-    /// <summary>Refuses an item whose secondary index key attribute has another type than the index declares; global indexes are checked first.</summary>
+    /// <summary>
+    /// Refuses an item whose secondary index key attribute has another type than the index
+    /// declares (global indexes are checked first), or that a vector index can't take.
+    /// </summary>
     private static void CheckIndexKeyTypes(DynamoTable table, Dictionary<string, DynamoValue> item)
+    {
+        CheckIndexKeyTypesOnly(table, item);
+        CheckVectorAttributes(table, item);
+    }
+
+    private static void CheckIndexKeyTypesOnly(DynamoTable table, Dictionary<string, DynamoValue> item)
     {
         foreach (var index in table.GlobalIndexes.Concat(table.LocalIndexes))
         {
@@ -519,14 +529,16 @@ internal sealed partial class InternalDynamoDbClient
         }
     }
 
-    /// <summary>Refuses an item whose secondary index key attribute is an empty string or binary.</summary>
+    /// <summary>Refuses an item whose secondary index key attribute (or vector index <c>HASH</c> attribute) is an empty string or binary.</summary>
     private static void CheckIndexKeyValues(DynamoTable table, Dictionary<string, DynamoValue> item, bool update)
     {
-        foreach (var index in table.Indexes)
+        var keyed = table.Indexes.Select(i => (i.Name, Attributes: i.KeySchema.Attributes.Select(a => a.Name)))
+            .Concat(table.VectorIndexes.Select(v => (v.Name, Attributes: v.SearchSchema.Where(e => e.Type == DynamoSearchSchemaElement.Hash).Select(e => e.Name))));
+        foreach (var index in keyed)
         {
-            foreach (var attribute in index.KeySchema.Attributes)
+            foreach (var attribute in index.Attributes)
             {
-                if (table.KeySchema.IsKeyAttribute(attribute.Name) || !item.TryGetValue(attribute.Name, out var value))
+                if (table.KeySchema.IsKeyAttribute(attribute) || !item.TryGetValue(attribute, out var value))
                 {
                     continue;
                 }
@@ -536,7 +548,7 @@ internal sealed partial class InternalDynamoDbClient
                     var kind = value.Type == DynamoType.S ? "string" : "binary";
                     throw DynamoDbErrors.Validation(update
                         ? $"One or more parameter values are not valid. The update expression attempted to update a secondary index key to a value that is not supported. The AttributeValue for a key attribute cannot contain an empty {kind} value."
-                        : $"One or more parameter values are not valid. A value specified for a secondary index key is not supported. The AttributeValue for a key attribute cannot contain an empty {kind} value. IndexName: {index.Name}, IndexKey: {attribute.Name}");
+                        : $"One or more parameter values are not valid. A value specified for a secondary index key is not supported. The AttributeValue for a key attribute cannot contain an empty {kind} value. IndexName: {index.Name}, IndexKey: {attribute}");
                 }
             }
         }

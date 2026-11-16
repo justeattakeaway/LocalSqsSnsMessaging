@@ -104,6 +104,11 @@ public sealed class FidelityContext : IAsyncDisposable
             TimeProvider = Time,
             // As in AWS, only existing KMS keys work.
             KmsKeyAliases = new HashSet<string>(StringComparer.Ordinal),
+
+            // As in AWS, a vector index UpdateTable adds is CREATING for a while (allocating, then
+            // backfilling) before it is ACTIVE. AWS takes minutes; this is short enough for a
+            // check's budget and long enough for a check to see each phase.
+            DynamoDbVectorIndexCreationDelay = TimeSpan.FromSeconds(10),
         };
         _handler = new RequestLatencyHandler(this, AwsServiceType.Sqs);
         _snsHandler = new RequestLatencyHandler(this, AwsServiceType.Sns);

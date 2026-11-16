@@ -29,7 +29,6 @@ public sealed class VectorIndexCreatingBlocksTableAndIndexDelete
     /// DescribeTable no longer carries a Backfilling key, and DeleteTable then succeeds.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbVectorSearch, "vector indexes are not emulated: UpdateTable ignores VectorIndexUpdates and answers that no update was given")]
     [DisplayName("dynamodb.vector-index-creating-blocks-table-and-index-delete")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

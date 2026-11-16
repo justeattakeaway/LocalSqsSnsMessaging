@@ -50,6 +50,18 @@ internal static class DynamoDbRequestChecks
 
     public static void Check(UpdateItemRequest request, List<string> violations) => CheckReturnValues(request.ReturnValues, violations);
 
+    /// <summary>SearchVectors states a <c>ReturnConsumedCapacity</c> outside its enum bare, not in the validation envelope.</summary>
+    public static void Check(SearchVectorsRequest request, List<string> violations)
+    {
+        var returnConsumedCapacity = violations.Find(v => v.Contains("' at 'returnConsumedCapacity' failed to satisfy constraint", StringComparison.Ordinal));
+        if (returnConsumedCapacity is not null)
+        {
+            throw DynamoDbErrors.Validation(returnConsumedCapacity);
+        }
+
+        _ = request;
+    }
+
     public static void Check(DeleteItemRequest request, List<string> violations) => CheckReturnValues(request.ReturnValues, violations);
 
     public static void Check(QueryRequest request, List<string> violations)
