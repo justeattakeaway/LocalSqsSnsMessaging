@@ -112,11 +112,26 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         return ToHttpResponse(wire, output.Writer);
     }
 
+    /// <summary>
+    /// The header for a wire protocol's Content-Type: a media type with at most a charset. Built,
+    /// rather than added as text that HttpClient would parse when the SDK reads it.
+    /// </summary>
+    private static System.Net.Http.Headers.MediaTypeHeaderValue ContentTypeHeader(string contentType)
+    {
+        var semicolon = contentType.IndexOf(';', StringComparison.Ordinal);
+        return semicolon < 0
+            ? new System.Net.Http.Headers.MediaTypeHeaderValue(contentType)
+            : new System.Net.Http.Headers.MediaTypeHeaderValue(contentType.Substring(0, semicolon))
+            {
+                CharSet = contentType.Substring(contentType.IndexOf('=', semicolon) + 1),
+            };
+    }
+
     /// <summary>A wire protocol's answer as an <see cref="HttpResponseMessage"/>, its body copied out of the pooled buffer.</summary>
     private static HttpResponseMessage ToHttpResponse(in WireResponse wire, ArrayBufferWriter<byte> body)
     {
         var response = new HttpResponseMessage(wire.Status) { Content = new ByteArrayContent(body.WrittenSpan.ToArray()) };
-        response.Content.Headers.TryAddWithoutValidation("Content-Type", wire.ContentType);
+        response.Content.Headers.ContentType = ContentTypeHeader(wire.ContentType);
         response.Headers.TryAddWithoutValidation("x-amzn-RequestId", wire.RequestId);
         if (wire.QueryError is not null)
         {
