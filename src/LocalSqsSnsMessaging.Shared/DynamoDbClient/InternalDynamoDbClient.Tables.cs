@@ -502,34 +502,50 @@ internal sealed partial class InternalDynamoDbClient
                     throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being updated: {table.Name}");
             }
 
+            if (table.Replication?.Member(table) is { SourceUntil: { } sourceUntil } && _bus.TimeProvider.GetUtcNow() < sourceUntil)
+            {
+                throw DynamoDbErrors.Validation("Replica cannot be deleted because it has acted as a source region for new replica(s) being added to the table in the last 24 hours.");
+            }
+
             if (table.DeletionProtectionEnabled)
             {
                 throw DynamoDbErrors.Validation("Resource cannot be deleted as it is currently protected against deletion. Disable deletion protection first.");
             }
 
-            table.StartDeleting(TransitionEnd);
             var description = Describe(table);
+            description.TableStatus = "DELETING";
 
             // The deleting table's answer leaves its global indexes out.
             description.GlobalSecondaryIndexes = null;
-            if (!TransitionsTakeTime)
-            {
-                Store.Tables.Remove(table.Name);
-            }
-
-            if (table.LatestStream is { } stream)
-            {
-                stream.Disable(Now);
-            }
-
-            if (Store.TimeToLiveJobs.TryGetValue(table.Name, out var timeToLiveJob))
-            {
-                timeToLiveJob.Dispose();
-                Store.TimeToLiveJobs.Remove(table.Name);
-            }
-
+            StartDeleting(Store, table);
             Record("DeleteTable", table.Arn);
             return Task.FromResult(new DeleteTableResponse { TableDescription = description });
+        }
+    }
+
+    /// <summary>
+    /// Starts deleting a table of <paramref name="store"/>'s region (this one's, or a replica's
+    /// elsewhere): <c>DELETING</c> until the transition delay passes, or gone at once. Its stream
+    /// and time to live stop now.
+    /// </summary>
+    private void StartDeleting(DynamoDbStore store, DynamoTable table)
+    {
+        table.StartDeleting(TransitionEnd);
+        if (!TransitionsTakeTime)
+        {
+            store.Tables.Remove(table.Name);
+            table.Replication?.Leave(table);
+        }
+
+        if (table.LatestStream is { } stream)
+        {
+            stream.Disable(Now);
+        }
+
+        if (store.TimeToLiveJobs.TryGetValue(table.Name, out var timeToLiveJob))
+        {
+            timeToLiveJob.Dispose();
+            store.TimeToLiveJobs.Remove(table.Name);
         }
     }
 
@@ -624,11 +640,21 @@ internal sealed partial class InternalDynamoDbClient
                 }
             }
 
+            var replicaUpdates = PrepareReplicaUpdates(table, request);
             var indexUpdates = (request.GlobalSecondaryIndexUpdates ?? [])
                 .Select(update => PrepareIndexUpdate(table, update, request.AttributeDefinitions, billingMode, TransitionsTakeTime ? TransitionEnd : null))
                 .ToList();
             var vectorIndexUpdates = (request.VectorIndexUpdates ?? [])
                 .Select(update => PrepareVectorIndexUpdate(table, update, request.AttributeDefinitions, billingMode))
+                .ToList();
+
+            // A global table keeps its indexes, capacity and stream the same in every region, so
+            // DynamoDB makes these changes to every replica: each replica's index changes are
+            // checked against it too, before anything changes.
+            var replicas = table.Replication?.Members.Where(m => !ReferenceEquals(m.Table, table)).ToList() ?? [];
+            var replicaIndexUpdates = replicas
+                .SelectMany(m => (request.GlobalSecondaryIndexUpdates ?? [])
+                    .Select(update => PrepareIndexUpdate(m.Table, update, request.AttributeDefinitions, billingMode, TransitionsTakeTime ? TransitionEnd : null)))
                 .ToList();
 
             if (request.StreamSpecification is { } stream)
@@ -670,63 +696,20 @@ internal sealed partial class InternalDynamoDbClient
                 || request.SSESpecification is not null
                 || request.TableClass is not null
                 || request.DeletionProtectionEnabled is not null
-                || request.WarmThroughput is not null;
+                || request.WarmThroughput is not null
+                || replicaUpdates is not null;
             if (!changes)
             {
                 throw DynamoDbErrors.Validation("At least one of ProvisionedThroughput, BillingMode, UpdateStreamEnabled, GlobalSecondaryIndexUpdates or SSESpecification or ReplicaUpdates is required");
             }
 
-            // Every check has passed: make the changes. A change of capacity (throughput or
-            // billing mode) takes a while to apply, the table UPDATING meanwhile.
-            var capacityChanges = throughputChange is not null || billingMode != table.BillingMode;
-            if (request.BillingMode is not null)
+            // Every check has passed: make the changes.
+            foreach (var target in replicas.Select(m => m.Table).Prepend(table))
             {
-                if (billingMode != table.BillingMode)
-                {
-                    table.BillingMode = billingMode;
-                    if (billingMode == "PAY_PER_REQUEST")
-                    {
-                        table.LastUpdateToPayPerRequestDateTime = Now;
-                        table.Throughput = new DynamoThroughput();
-                        foreach (var index in table.GlobalIndexes)
-                        {
-                            index.Throughput = new DynamoThroughput();
-                        }
-                    }
-                }
-
-                table.BillingModeStated = true;
+                ApplyCapacity(target, request, billingMode, throughputChange);
             }
 
-            if (TransitionsTakeTime && capacityChanges)
-            {
-                table.StartThroughputChange(TransitionEnd);
-            }
-
-            if (throughputChange is var (newRead, newWrite))
-            {
-                if (newRead > table.Throughput.ReadCapacityUnits || newWrite > table.Throughput.WriteCapacityUnits)
-                {
-                    table.Throughput.LastIncreaseDateTime = Now;
-                }
-
-                if (newRead < table.Throughput.ReadCapacityUnits || newWrite < table.Throughput.WriteCapacityUnits)
-                {
-                    table.Throughput.LastDecreaseDateTime = Now;
-                    table.Throughput.NumberOfDecreasesToday++;
-                }
-
-                table.Throughput.ReadCapacityUnits = newRead;
-                table.Throughput.WriteCapacityUnits = newWrite;
-            }
-
-            if (request.OnDemandThroughput is { } onDemandThroughput)
-            {
-                table.MaxReadRequestUnits = onDemandThroughput.MaxReadRequestUnits ?? table.MaxReadRequestUnits;
-                table.MaxWriteRequestUnits = onDemandThroughput.MaxWriteRequestUnits ?? table.MaxWriteRequestUnits;
-            }
-
-            foreach (var applyIndexUpdate in indexUpdates)
+            foreach (var applyIndexUpdate in indexUpdates.Concat(replicaIndexUpdates))
             {
                 applyIndexUpdate();
             }
@@ -738,17 +721,10 @@ internal sealed partial class InternalDynamoDbClient
 
             if (request.StreamSpecification is { } streamChange)
             {
-                if (streamChange.StreamEnabled == true)
+                ChangeStream(Store, table, streamChange);
+                foreach (var member in replicas)
                 {
-                    table.StreamEnabled = true;
-                    table.StreamViewType = streamChange.StreamViewType;
-                    StartStream(table);
-                }
-                else
-                {
-                    table.StreamEnabled = false;
-                    table.StreamViewType = null;
-                    table.LatestStream?.Disable(Now);
+                    ChangeStream(member.Store, member.Table, streamChange);
                 }
             }
 
@@ -769,7 +745,9 @@ internal sealed partial class InternalDynamoDbClient
                 table.DeletionProtectionEnabled = protection;
             }
 
+            replicaUpdates?.Invoke();
             Record("UpdateTable", table.Arn);
+            table.Replication?.Settle(_bus.TimeProvider.GetUtcNow());
             table.Settle(_bus.TimeProvider.GetUtcNow());
             var description = Describe(table);
 
@@ -781,6 +759,80 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             return Task.FromResult(new UpdateTableResponse { TableDescription = description });
+        }
+    }
+
+    /// <summary>
+    /// Makes UpdateTable's billing mode and capacity changes, already checked, to
+    /// <paramref name="target"/>: the table, or one of its replicas.
+    /// </summary>
+    private void ApplyCapacity(DynamoTable target, UpdateTableRequest request, string billingMode, (long Read, long Write)? throughputChange)
+    {
+        // A change of capacity (throughput or billing mode) takes a while to apply, the table
+        // UPDATING meanwhile.
+        var capacityChanges = throughputChange is not null || billingMode != target.BillingMode;
+        if (request.BillingMode is not null)
+        {
+            if (billingMode != target.BillingMode)
+            {
+                target.BillingMode = billingMode;
+                if (billingMode == "PAY_PER_REQUEST")
+                {
+                    target.LastUpdateToPayPerRequestDateTime = Now;
+                    target.Throughput = new DynamoThroughput();
+                    foreach (var index in target.GlobalIndexes)
+                    {
+                        index.Throughput = new DynamoThroughput();
+                    }
+                }
+            }
+
+            target.BillingModeStated = true;
+        }
+
+        if (TransitionsTakeTime && capacityChanges)
+        {
+            target.StartThroughputChange(TransitionEnd);
+        }
+
+        if (throughputChange is var (newRead, newWrite))
+        {
+            if (newRead > target.Throughput.ReadCapacityUnits || newWrite > target.Throughput.WriteCapacityUnits)
+            {
+                target.Throughput.LastIncreaseDateTime = Now;
+            }
+
+            if (newRead < target.Throughput.ReadCapacityUnits || newWrite < target.Throughput.WriteCapacityUnits)
+            {
+                target.Throughput.LastDecreaseDateTime = Now;
+                target.Throughput.NumberOfDecreasesToday++;
+            }
+
+            target.Throughput.ReadCapacityUnits = newRead;
+            target.Throughput.WriteCapacityUnits = newWrite;
+        }
+
+        if (request.OnDemandThroughput is { } onDemandThroughput)
+        {
+            target.MaxReadRequestUnits = onDemandThroughput.MaxReadRequestUnits ?? target.MaxReadRequestUnits;
+            target.MaxWriteRequestUnits = onDemandThroughput.MaxWriteRequestUnits ?? target.MaxWriteRequestUnits;
+        }
+    }
+
+    /// <summary>Enables or disables the stream of a table of <paramref name="store"/>'s region (this one's, or a replica's).</summary>
+    private void ChangeStream(DynamoDbStore store, DynamoTable target, StreamSpecification change)
+    {
+        if (change.StreamEnabled == true)
+        {
+            target.StreamEnabled = true;
+            target.StreamViewType = change.StreamViewType;
+            StartStream(target, store);
+        }
+        else
+        {
+            target.StreamEnabled = false;
+            target.StreamViewType = null;
+            target.LatestStream?.Disable(Now);
         }
     }
 

@@ -357,6 +357,9 @@ internal sealed class DynamoTable
     /// <summary>While <c>DELETING</c>, when the table is gone.</summary>
     public DateTimeOffset? GoneAt { get; private set; }
 
+    /// <summary>The global table the table is a replica of, if it is one.</summary>
+    public DynamoReplicationGroup? Replication { get; set; }
+
     /// <summary>Whether a global or vector index is being created or deleted, which keeps the table <c>UPDATING</c>.</summary>
     public bool IndexInTransition =>
         GlobalIndexes.Any(i => i.Status != "ACTIVE") || VectorIndexes.Any(v => v.Status != "ACTIVE");
@@ -435,7 +438,7 @@ internal sealed class DynamoTable
         }
 
         Status = ActiveAt is not null ? "CREATING"
-            : ThroughputSettlesAt is not null || IndexInTransition ? "UPDATING"
+            : ThroughputSettlesAt is not null || IndexInTransition || Replication?.InTransition == true ? "UPDATING"
             : "ACTIVE";
         return true;
     }

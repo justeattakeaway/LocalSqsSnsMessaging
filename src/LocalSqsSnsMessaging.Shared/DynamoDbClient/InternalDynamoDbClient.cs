@@ -139,12 +139,19 @@ internal sealed partial class InternalDynamoDbClient
             return null;
         }
 
-        if (table.Settle(_bus.TimeProvider.GetUtcNow()))
+        var now = _bus.TimeProvider.GetUtcNow();
+        table.Replication?.Settle(now);
+        if (table.Settle(now))
         {
             return table;
         }
 
-        Store.Tables.Remove(name);
+        if (Store.Tables.TryGetValue(name, out var held) && ReferenceEquals(held, table))
+        {
+            Store.Tables.Remove(name);
+        }
+
+        table.Replication?.Leave(table);
         return null;
     }
 
@@ -475,6 +482,23 @@ internal sealed partial class InternalDynamoDbClient
                 RestoreDateTime = restore.RestoreDateTime,
                 RestoreInProgress = table.Status == "CREATING",
             };
+        }
+
+        if (table.Replication is { } group)
+        {
+            // Replicas lists the other regions; a replica's status is its regional table's.
+            description.GlobalTableVersion = "2019.11.21";
+            description.Replicas = group.Members
+                .Where(m => !ReferenceEquals(m.Table, table))
+                .Select(m => new ReplicaDescription { RegionName = m.Store.Region, ReplicaStatus = m.Table.Status })
+                .ToList();
+            description.MultiRegionConsistency = group.MultiRegionConsistency;
+            if (group.Witnesses.Count > 0)
+            {
+                description.GlobalTableWitnesses = group.Witnesses
+                    .Select(w => new GlobalTableWitnessDescription { RegionName = w.Region, WitnessStatus = w.Status })
+                    .ToList();
+            }
         }
 
         if (table.TableClass is not null)

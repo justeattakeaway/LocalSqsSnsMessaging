@@ -25,9 +25,6 @@ public enum FidelityGap
     /// </summary>
     EmulatorBudget,
 
-    /// <summary>DynamoDB global tables (replicas in other regions) are not emulated.</summary>
-    DynamoDbGlobalTables,
-
     /// <summary>DynamoDB provisioned throughput is reported, never enforced: nothing is throttled.</summary>
     DynamoDbThroughput,
 

@@ -142,13 +142,16 @@ public sealed class SnsTopicFanOutTests : IDisposable
 
         // Each subscription joins while publishes are under way, so a live message can be ready to
         // deliver at the moment it joins the fan-out. The publishes go to the topic itself: through
-        // SNS, validating a publish waits for the subscribe, which hides most of the race.
+        // SNS, validating a publish waits for the subscribe, which hides most of the race. They
+        // stop at a cap, because the loop retakes the topic's FIFO gate at once and can keep a
+        // subscribe waiting for it on a machine with few cores, the archive growing all the while.
         _bus.TryGetTopicByArn(topicArn, out var topic).ShouldBeTrue();
         using var subscribed = new CancellationTokenSource();
         var published = 20;
+        const int MaxPublished = 2_020;
         var publishing = Task.Factory.StartNew(() =>
         {
-            while (!subscribed.IsCancellationRequested)
+            while (!subscribed.IsCancellationRequested && published < MaxPublished)
             {
                 topic!.Publish(new TopicPublishRequest { TopicArn = topicArn, Message = $"m{published}", MessageGroupId = "g" });
                 published++;

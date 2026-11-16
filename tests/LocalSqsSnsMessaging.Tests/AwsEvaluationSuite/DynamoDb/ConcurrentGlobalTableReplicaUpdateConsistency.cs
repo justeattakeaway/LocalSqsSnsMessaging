@@ -18,7 +18,6 @@ public sealed class ConcurrentGlobalTableReplicaUpdateConsistency
     /// DescribeTable's Replicas listing that region exactly once: never duplicated, never lost.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "replicas are not emulated: UpdateTable ignores ReplicaUpdates and refuses the request ValidationException 'At least one of ProvisionedThroughput, ... is required'")]
     [DisplayName("dynamodb.concurrent-global-table-replica-update-consistency")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

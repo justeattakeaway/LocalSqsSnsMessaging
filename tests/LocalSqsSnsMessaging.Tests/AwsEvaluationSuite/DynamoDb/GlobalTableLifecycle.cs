@@ -23,7 +23,6 @@ public sealed class GlobalTableLifecycle
     /// UpdateTable ReplicaUpdates then adds the second-region replica.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "the legacy (2017.11.29) global-table operations are not emulated: CreateGlobalTable answers UnknownOperationException, not the version-support ValidationException; UpdateTable's ReplicaUpdates are not emulated either")]
     [DisplayName("dynamodb.global-table-lifecycle")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

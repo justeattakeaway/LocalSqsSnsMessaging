@@ -11,6 +11,11 @@ internal sealed partial class InternalDynamoDbClient
         {
             var table = ExistingTable(request.TableName!);
             Authorize(table, "UpdateTimeToLive");
+            if (table.Replication is { MultiRegionConsistency: "STRONG" })
+            {
+                throw DynamoDbErrors.Validation("Time To Live is not supported for global tables with MultiRegionConsistency set to STRONG.");
+            }
+
             var specification = request.TimeToLiveSpecification!;
             var enable = specification.Enabled ?? false;
             if (table.TimeToLiveEnabled && !string.Equals(table.TimeToLiveAttribute, specification.AttributeName, StringComparison.Ordinal))
@@ -36,17 +41,16 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation("Time to live has been modified multiple times within a fixed interval");
             }
 
-            table.TimeToLiveModifiedAt = now;
-            table.TimeToLiveEnabled = enable;
-            table.TimeToLiveAttribute = enable ? specification.AttributeName : null;
-            if (enable)
+            var attribute = enable ? specification.AttributeName : null;
+            SetTimeToLive(Store, table, attribute, now);
+
+            // A global table's time to live is one setting for every replica.
+            foreach (var member in table.Replication?.Members ?? [])
             {
-                Store.TimeToLiveJobs[table.Name] = new DynamoTimeToLiveJob(_bus, Store, table);
-            }
-            else if (Store.TimeToLiveJobs.TryGetValue(table.Name, out var job))
-            {
-                job.Dispose();
-                Store.TimeToLiveJobs.Remove(table.Name);
+                if (!ReferenceEquals(member.Table, table))
+                {
+                    SetTimeToLive(member.Store, member.Table, attribute, now);
+                }
             }
 
             Record("UpdateTimeToLive", table.Arn);
@@ -54,6 +58,27 @@ internal sealed partial class InternalDynamoDbClient
             {
                 TimeToLiveSpecification = new TimeToLiveSpecification { Enabled = enable, AttributeName = specification.AttributeName },
             });
+        }
+    }
+
+    /// <summary>
+    /// Turns a table of <paramref name="store"/>'s region on to time to live on
+    /// <paramref name="attribute"/> (off when null), starting or stopping its sweep.
+    /// </summary>
+    private void SetTimeToLive(DynamoDbStore store, DynamoTable table, string? attribute, DateTimeOffset? modifiedAt)
+    {
+        table.TimeToLiveModifiedAt = modifiedAt;
+        table.TimeToLiveEnabled = attribute is not null;
+        table.TimeToLiveAttribute = attribute;
+        if (store.TimeToLiveJobs.TryGetValue(table.Name, out var job))
+        {
+            job.Dispose();
+            store.TimeToLiveJobs.Remove(table.Name);
+        }
+
+        if (attribute is not null)
+        {
+            store.TimeToLiveJobs[table.Name] = new DynamoTimeToLiveJob(_bus, store, table);
         }
     }
 
@@ -74,7 +99,10 @@ internal sealed partial class InternalDynamoDbClient
     }
 
     /// <summary>Starts a new stream for a table whose stream was just enabled.</summary>
-    private void StartStream(DynamoTable table)
+    private void StartStream(DynamoTable table) => StartStream(table, Store);
+
+    /// <summary>Starts a new stream for a table of <paramref name="store"/>'s region (a replica's, say).</summary>
+    private void StartStream(DynamoTable table, DynamoDbStore store)
     {
         var now = _bus.TimeProvider.GetUtcNow();
         if (table.LatestStream is { } previous && previous.CreatedAt >= now)
@@ -85,15 +113,15 @@ internal sealed partial class InternalDynamoDbClient
 
         // A table deleted and recreated under its name has the same ARN, and its old streams stay
         // readable (for a day), so the new stream's label must also differ from theirs.
-        Store.TrimStreams(now);
-        while (Store.Streams.ContainsKey(DynamoStream.ArnFor(table.Arn, now)))
+        store.TrimStreams(now);
+        while (store.Streams.ContainsKey(DynamoStream.ArnFor(table.Arn, now)))
         {
             now = now.AddMilliseconds(1);
         }
 
-        var stream = new DynamoStream(table, table.StreamViewType!, now, Region);
+        var stream = new DynamoStream(table, table.StreamViewType!, now, store.Region);
         table.LatestStream = stream;
-        Store.Streams[stream.Arn] = stream;
+        store.Streams[stream.Arn] = stream;
     }
 }
 
@@ -146,10 +174,13 @@ internal sealed class DynamoTimeToLiveJob : IDisposable
             foreach (var key in expired)
             {
                 var change = _table.Delete(key, byTimeToLive: true);
+                var at = _bus.TimeProvider.GetUtcNow();
                 if (_table.StreamEnabled && _table.LatestStream is { Enabled: true } stream)
                 {
-                    stream.Append(change, _table, _bus.TimeProvider.GetUtcNow());
+                    stream.Append(change, _table, at);
                 }
+
+                _table.Replication?.Replicate(_table, change, at);
             }
         }
     }

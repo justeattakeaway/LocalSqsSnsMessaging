@@ -31,7 +31,6 @@ public sealed class DeleteTableSourceRegionWithin24hOfReplicaAddRejected
     /// stays ACTIVE. Removing the (non-source) replica region does not need the restriction to lift.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable doesn't take ReplicaUpdates: it answers that no supported update was given")]
     [DisplayName("dynamodb.delete-table-source-region-within-24h-of-replica-add-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

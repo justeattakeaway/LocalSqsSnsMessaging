@@ -598,12 +598,15 @@ internal sealed partial class InternalDynamoDbClient
         };
     }
 
-    /// <summary>Hands a write to the table's stream, if it has one enabled.</summary>
+    /// <summary>Hands a write to the table's stream, if it has one enabled, and to its replicas, if it has any.</summary>
     private void Changed(DynamoTable table, DynamoItemChange change)
     {
+        var now = _bus.TimeProvider.GetUtcNow();
         if (table.StreamEnabled && table.LatestStream is { Enabled: true } stream)
         {
-            stream.Append(change, table, _bus.TimeProvider.GetUtcNow());
+            stream.Append(change, table, now);
         }
+
+        table.Replication?.Replicate(table, change, now);
     }
 }

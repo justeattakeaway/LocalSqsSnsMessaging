@@ -116,8 +116,8 @@ The DynamoDB ports cover the whole of DynamoDB that needs no other service: tabl
 item reads and writes, condition, update, projection and filter expressions and the legacy
 parameters, Query and Scan, batches and transactions, PartiQL, consumed capacity, size and
 validation limits, tags, resource policies, backups and point-in-time restore, time to live,
-vector indexes and `SearchVectors`, DynamoDB Streams, the JSON wire protocol (`x-amz-crc32`, `__type`) and concurrency: 853 of the 902
-checks in `behavioral/dynamodb` and `behavioral/dynamodbstreams`. 827 pass and 26 are known gaps.
+vector indexes and `SearchVectors`, global tables (replicas in other regions), DynamoDB Streams, the JSON wire protocol (`x-amz-crc32`, `__type`) and concurrency: 853 of the 902
+checks in `behavioral/dynamodb` and `behavioral/dynamodbstreams`. 842 pass and 11 are known gaps.
 
 `DynamoDbFidelity.cs` holds what the ports share:
 
@@ -153,11 +153,10 @@ are not ported, because they need another service:
 - **IAM roles, role assumption and Lambda** (4): `dynamodb.awsjson-epoch-timestamp-survives-two-deserializers`, `dynamodb.awsjson-error-code-carrier-is-body-only-rejected`, `dynamodb.e2e-resource-policy-grant-revoke-access-flow`, `dynamodb.resource-policy-explicit-deny-blocks-access-rejected`.
 - **CloudWatch metrics** (2): `dynamodb.conditional-check-failed-requests-metric-counts-only-the-failures`, `dynamodb.provisioned-write-throttle-reason-and-metric-agreement-rejected`.
 
-The 26 known gaps, by root cause:
+The 11 known gaps, by root cause:
 
 | `FidelityGap` | Checks | What the library doesn't do |
 |---|---|---|
-| `DynamoDbGlobalTables` | 15 | Replicas: UpdateTable's `ReplicaUpdates`, and multi-Region strong consistency. The withdrawn 2017.11.29 operations (`CreateGlobalTable`, the global-table settings) are answered as AWS answers them now |
 | `DynamoDbAuthentication` | 4 | Signature checks: an unsigned, incompletely signed or tampered request is served |
 | `DynamoDbThroughput` | 4 | Throttling: provisioned throughput is reported, never enforced |
 | `DynamoDbDetail` | 1 | Several constraint violations are listed in the model's member order, not in AWS's own order |

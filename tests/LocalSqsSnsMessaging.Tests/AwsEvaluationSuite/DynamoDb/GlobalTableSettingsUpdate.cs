@@ -19,7 +19,6 @@ public sealed class GlobalTableSettingsUpdate
     /// (UpdateTable ReplicaUpdates), which the legacy API never tracks, and for a name never a table.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable's ReplicaUpdates are not emulated: it is refused with \"At least one of ProvisionedThroughput, BillingMode, UpdateStreamEnabled, GlobalSecondaryIndexUpdates or SSESpecification ...\"")]
     [DisplayName("dynamodb.global-table-settings-update")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

@@ -2,13 +2,19 @@ namespace LocalSqsSnsMessaging.DynamoDb;
 
 /// <summary>
 /// One region's DynamoDB: its tables, their streams and backups, and the transaction tokens it
-/// remembers. Everything is behind one lock (<see cref="Gate"/>), because a transaction spans
-/// tables and must see and change them all at once.
+/// remembers. Everything is behind one lock (<see cref="Gate"/>), shared by every region of the bus,
+/// because a transaction spans tables and a global table's write spans regions, and each must see
+/// and change them all at once.
 /// </summary>
-internal sealed class DynamoDbStore
+/// <param name="region">The region's name.</param>
+/// <param name="gate">The bus's DynamoDB lock.</param>
+internal sealed class DynamoDbStore(string region, object gate)
 {
-    /// <summary>The lock every DynamoDB request in the region holds while it reads or writes.</summary>
-    public object Gate { get; } = new();
+    /// <summary>The region's name.</summary>
+    public string Region { get; } = region;
+
+    /// <summary>The lock every DynamoDB request holds while it reads or writes: the bus's, shared by its regions.</summary>
+    public object Gate { get; } = gate;
 
     /// <summary>The tables, in creation order (ListTables sorts by name).</summary>
     public Dictionary<string, DynamoTable> Tables { get; } = new(StringComparer.Ordinal);

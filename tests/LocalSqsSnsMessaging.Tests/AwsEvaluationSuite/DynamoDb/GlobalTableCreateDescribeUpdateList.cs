@@ -18,7 +18,6 @@ public sealed class GlobalTableCreateDescribeUpdateList
     /// the current (version 2019.11.21) global table mechanism; CreateGlobalTable serves only version 2017.11.29.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable's ReplicaUpdates are not emulated: it is refused with \"At least one of ProvisionedThroughput, BillingMode, UpdateStreamEnabled, GlobalSecondaryIndexUpdates or SSESpecification ...\"")]
     [DisplayName("dynamodb.global-table-create-describe-update-list")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

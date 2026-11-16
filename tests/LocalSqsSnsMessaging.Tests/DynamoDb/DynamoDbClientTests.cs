@@ -395,4 +395,171 @@ public sealed class DynamoDbClientTests
         // Ordered by day, then numerically by seq.
         pks.ShouldBe(["c", "b", "a"]);
     }
+
+    [Test]
+    public async Task ReplicaUpdates_MakeAGlobalTableWhoseWritesReachEveryRegion()
+    {
+        var bus = new InMemoryAwsBus { CurrentRegion = "us-east-1" };
+        var east = await CreateTableAsync(bus);
+        using var west = new AmazonDynamoDBClient(
+            new Amazon.Runtime.BasicAWSCredentials("test", "test"),
+            new AmazonDynamoDBConfig
+            {
+                RegionEndpoint = Amazon.RegionEndpoint.USWest2,
+                HttpClientFactory = new LocalSqsSnsMessaging.Http.InMemoryAwsHttpClientFactory(bus),
+            });
+        await east.PutItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("before"), ["sk"] = new() { N = "1" } });
+
+        await east.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "orders",
+            ReplicaUpdates = [new ReplicationGroupUpdate { Create = new CreateReplicationGroupMemberAction { RegionName = "us-west-2" } }],
+        });
+
+        var described = (await east.DescribeTableAsync("orders")).Table;
+        described.GlobalTableVersion.ShouldBe("2019.11.21");
+        described.Replicas.Select(r => (r.RegionName, r.ReplicaStatus.Value)).ShouldBe([("us-west-2", "ACTIVE")]);
+        (await west.DescribeTableAsync("orders")).Table.Replicas.Single().RegionName.ShouldBe("us-east-1");
+
+        // The items the table had are copied, and each region's writes reach the other.
+        var key = new Dictionary<string, AttributeValue> { ["pk"] = new("before"), ["sk"] = new() { N = "1" } };
+        (await west.GetItemAsync("orders", key)).Item.ShouldNotBeEmpty();
+        await west.PutItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("west"), ["sk"] = new() { N = "2" } });
+        (await east.GetItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("west"), ["sk"] = new() { N = "2" } })).Item.ShouldNotBeEmpty();
+        await east.DeleteItemAsync("orders", key);
+        (await west.GetItemAsync("orders", key)).Item.ShouldBeNull();
+
+        // The region a replica was added from can't be deleted for a day; removing the replica frees it.
+        var refused = await Should.ThrowAsync<AmazonDynamoDBException>(() => east.DeleteTableAsync("orders"));
+        refused.ErrorCode.ShouldBe("ValidationException");
+        await east.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "orders",
+            ReplicaUpdates = [new ReplicationGroupUpdate { Delete = new DeleteReplicationGroupMemberAction { RegionName = "us-west-2" } }],
+        });
+        (await east.DescribeTableAsync("orders")).Table.Replicas.ShouldBeNull();
+        await Should.ThrowAsync<ResourceNotFoundException>(() => west.DescribeTableAsync("orders"));
+        await east.DeleteTableAsync("orders");
+    }
+
+    private static AmazonDynamoDBClient CreateWestClient(InMemoryAwsBus bus) => new(
+        new Amazon.Runtime.BasicAWSCredentials("test", "test"),
+        new AmazonDynamoDBConfig
+        {
+            RegionEndpoint = Amazon.RegionEndpoint.USWest2,
+            HttpClientFactory = new LocalSqsSnsMessaging.Http.InMemoryAwsHttpClientFactory(bus),
+        });
+
+    private static Task<UpdateTableResponse> AddWestReplicaAsync(AmazonDynamoDBClient client) => client.UpdateTableAsync(new UpdateTableRequest
+    {
+        TableName = "orders",
+        ReplicaUpdates = [new ReplicationGroupUpdate { Create = new CreateReplicationGroupMemberAction { RegionName = "us-west-2" } }],
+    });
+
+    [Test]
+    public async Task ReplicaUpdates_KeepIndexesCapacityStreamAndTimeToLiveTheSameInEveryRegion()
+    {
+        var bus = new InMemoryAwsBus { CurrentRegion = "us-east-1" };
+        var east = await CreateTableAsync(bus);
+        using var west = CreateWestClient(bus);
+        await AddWestReplicaAsync(east);
+
+        // An index one region adds is built in every region, and queryable there.
+        await east.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "orders",
+            AttributeDefinitions = [new AttributeDefinition("status", ScalarAttributeType.S)],
+            GlobalSecondaryIndexUpdates =
+            [
+                new GlobalSecondaryIndexUpdate
+                {
+                    Create = new CreateGlobalSecondaryIndexAction
+                    {
+                        IndexName = "by-status",
+                        KeySchema = [new KeySchemaElement("status", KeyType.HASH)],
+                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                    },
+                },
+            ],
+        });
+        await east.PutItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("a"), ["sk"] = new() { N = "1" }, ["status"] = new("open") });
+        var found = await west.QueryAsync(new QueryRequest
+        {
+            TableName = "orders",
+            IndexName = "by-status",
+            KeyConditionExpression = "#s = :s",
+            ExpressionAttributeNames = new Dictionary<string, string> { ["#s"] = "status" },
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue> { [":s"] = new("open") },
+        });
+        found.Items.Select(i => i["pk"].S).ShouldBe(["a"]);
+
+        // So do a stream and a change of capacity, from whichever region makes them.
+        await east.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "orders",
+            StreamSpecification = new StreamSpecification { StreamEnabled = true, StreamViewType = StreamViewType.NEW_AND_OLD_IMAGES },
+        });
+        await west.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "orders",
+            BillingMode = BillingMode.PROVISIONED,
+            ProvisionedThroughput = new ProvisionedThroughput(5, 5),
+            GlobalSecondaryIndexUpdates =
+            [
+                new GlobalSecondaryIndexUpdate
+                {
+                    Update = new UpdateGlobalSecondaryIndexAction { IndexName = "by-status", ProvisionedThroughput = new ProvisionedThroughput(5, 5) },
+                },
+            ],
+        });
+        var westTable = (await west.DescribeTableAsync("orders")).Table;
+        westTable.StreamSpecification.StreamEnabled.ShouldBe(true);
+        westTable.LatestStreamArn.ShouldStartWith("arn:aws:dynamodb:us-west-2:");
+        var eastTable = (await east.DescribeTableAsync("orders")).Table;
+        eastTable.BillingModeSummary.BillingMode.Value.ShouldBe("PROVISIONED");
+        eastTable.ProvisionedThroughput.WriteCapacityUnits.ShouldBe(5);
+        eastTable.GlobalSecondaryIndexes.Single().ProvisionedThroughput.WriteCapacityUnits.ShouldBe(5);
+
+        // Time to live, too.
+        await west.UpdateTimeToLiveAsync(new UpdateTimeToLiveRequest
+        {
+            TableName = "orders",
+            TimeToLiveSpecification = new TimeToLiveSpecification { Enabled = true, AttributeName = "expiresAt" },
+        });
+        var eastTimeToLive = (await east.DescribeTimeToLiveAsync(new DescribeTimeToLiveRequest { TableName = "orders" })).TimeToLiveDescription;
+        eastTimeToLive.TimeToLiveStatus.Value.ShouldBe("ENABLED");
+        eastTimeToLive.AttributeName.ShouldBe("expiresAt");
+    }
+
+    [Test]
+    public async Task ReplicaUpdates_GiveANewReplicaTheTablesTimeToLive_WhichOutlivesTheSourceRegion()
+    {
+        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var time = new FakeTimeProvider(start);
+        var bus = new InMemoryAwsBus { CurrentRegion = "us-east-1", TimeProvider = time };
+        var east = await CreateTableAsync(bus);
+        using var west = CreateWestClient(bus);
+        await east.UpdateTimeToLiveAsync(new UpdateTimeToLiveRequest
+        {
+            TableName = "orders",
+            TimeToLiveSpecification = new TimeToLiveSpecification { Enabled = true, AttributeName = "expiresAt" },
+        });
+
+        await AddWestReplicaAsync(east);
+
+        var westTimeToLive = (await west.DescribeTimeToLiveAsync(new DescribeTimeToLiveRequest { TableName = "orders" })).TimeToLiveDescription;
+        westTimeToLive.TimeToLiveStatus.Value.ShouldBe("ENABLED");
+        westTimeToLive.AttributeName.ShouldBe("expiresAt");
+
+        // Once the source region's table is gone, the replica still expires its items itself.
+        time.Advance(TimeSpan.FromHours(25));
+        await east.DeleteTableAsync("orders");
+        var expiresAt = time.GetUtcNow().AddMinutes(5).ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var key = new Dictionary<string, AttributeValue> { ["pk"] = new("a"), ["sk"] = new() { N = "1" } };
+        await west.PutItemAsync("orders", new Dictionary<string, AttributeValue>(key) { ["expiresAt"] = new() { N = expiresAt } });
+
+        time.Advance(TimeSpan.FromMinutes(10));
+
+        (await west.GetItemAsync("orders", key)).Item.ShouldBeNull();
+    }
 }

@@ -16,7 +16,6 @@ public sealed class CreateGlobalTableAlreadyExistsRejected
     /// regions in place.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbGlobalTables, "UpdateTable with only ReplicaUpdates is refused as a ValidationException (no update), so the table never becomes global")]
     [DisplayName("dynamodb.create-global-table-already-exists-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
