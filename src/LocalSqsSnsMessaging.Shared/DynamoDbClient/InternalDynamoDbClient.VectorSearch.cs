@@ -325,8 +325,8 @@ internal sealed partial class InternalDynamoDbClient
         Dictionary<string, double>? charged = null;
         foreach (var index in table.VectorIndexes)
         {
-            var oldEntry = before is not null && index.VectorOf(before) is not null ? index.Entry(table.KeySchema, before) : null;
-            var newEntry = after is not null && index.VectorOf(after) is not null ? index.Entry(table.KeySchema, after) : null;
+            var oldEntry = before is not null && index.HoldsVector(before) ? index.Entry(table.KeySchema, before) : null;
+            var newEntry = after is not null && index.HoldsVector(after) ? index.Entry(table.KeySchema, after) : null;
             if (oldEntry is null && newEntry is null)
             {
                 continue;
@@ -406,7 +406,7 @@ internal sealed partial class InternalDynamoDbClient
 
             var lowerIsCloser = index.LowerIsCloser;
             var scored = new List<(DynamoKey Key, Dictionary<string, DynamoValue> Item, float Score)>();
-            foreach (var (key, vector) in index.Vectors)
+            foreach (var (key, vector) in index.ReadVectors())
             {
                 var item = table.Get(key)!;
                 if (condition is null || condition.Evaluate(item))

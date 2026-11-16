@@ -264,7 +264,7 @@ internal sealed class DynamoTable
     {
         foreach (var index in VectorIndexes)
         {
-            if (string.Equals(index.VectorAttribute, name, StringComparison.Ordinal) && DynamoVectorIndex.Read(value, index.Dimensions) is not null)
+            if (string.Equals(index.VectorAttribute, name, StringComparison.Ordinal) && DynamoVectorIndex.IsShaped(value, index.Dimensions))
             {
                 return Encoding.UTF8.GetByteCount(name) + (4L * index.Dimensions);
             }
@@ -323,7 +323,7 @@ internal sealed class DynamoTable
 
         foreach (var vectorIndex in VectorIndexes)
         {
-            vectorIndex.Add(key, item, VectorEntrySize(vectorIndex, item));
+            AddToVectorIndex(vectorIndex, key, item);
         }
 
         return new DynamoItemChange(key, old, item);
@@ -378,7 +378,7 @@ internal sealed class DynamoTable
 
         foreach (var vectorIndex in VectorIndexes)
         {
-            vectorIndex.Remove(key, VectorEntrySize(vectorIndex, old));
+            vectorIndex.Remove(key);
         }
 
         return old;
@@ -400,7 +400,16 @@ internal sealed class DynamoTable
         index.Clear();
         foreach (var (key, item) in All())
         {
-            index.Add(key, item, VectorEntrySize(index, item));
+            AddToVectorIndex(index, key, item);
+        }
+    }
+
+    /// <summary>Indexes the item's vector, if it holds one the index can take.</summary>
+    private void AddToVectorIndex(DynamoVectorIndex index, DynamoKey key, Dictionary<string, DynamoValue> item)
+    {
+        if (index.IndexableVector(item) is { } vector)
+        {
+            index.Add(key, vector, VectorEntrySize(index, item));
         }
     }
 }

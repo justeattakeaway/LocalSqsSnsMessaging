@@ -29,7 +29,12 @@ internal sealed class DynamoVectorIndex
 {
     public const int MaxDimensions = 4096;
 
-    private readonly Dictionary<DynamoKey, float[]> _vectors = [];
+    /// <summary>
+    /// Each indexed item's vector as written, its floats once a search has read them (a write
+    /// only checks the numbers fit, so writing to a vector index that is never searched costs
+    /// little more than writing to a table without one), and the entry's size.
+    /// </summary>
+    private readonly Dictionary<DynamoKey, (DynamoValue Value, float[]? Vector, long Size)> _entries = [];
 
     public required string Name { get; init; }
 
@@ -64,9 +69,38 @@ internal sealed class DynamoVectorIndex
 
     public long SizeBytes { get; private set; }
 
-    public int ItemCount => _vectors.Count;
+    public int ItemCount => _entries.Count;
 
-    public IReadOnlyDictionary<DynamoKey, float[]> Vectors => _vectors;
+    /// <summary>Each indexed item's vector as floats, by table key, read (and kept) on first use.</summary>
+    public List<(DynamoKey Key, float[] Vector)> ReadVectors()
+    {
+        var vectors = new List<(DynamoKey Key, float[] Vector)>(_entries.Count);
+        List<DynamoKey>? unread = null;
+        foreach (var (key, entry) in _entries)
+        {
+            if (entry.Vector is null)
+            {
+                (unread ??= []).Add(key);
+            }
+
+            // Every indexed value passed IsVector, so it reads as floats.
+            vectors.Add((key, entry.Vector ?? Read(entry.Value, Dimensions)!));
+        }
+
+        if (unread is not null)
+        {
+            foreach (var (key, vector) in vectors)
+            {
+                var entry = _entries[key];
+                if (entry.Vector is null)
+                {
+                    _entries[key] = entry with { Vector = vector };
+                }
+            }
+        }
+
+        return vectors;
+    }
 
     /// <summary>The <c>HASH</c> element of the search schema, if it has one.</summary>
     public DynamoSearchSchemaElement? HashElement => SearchSchema.FirstOrDefault(e => e.Type == DynamoSearchSchemaElement.Hash);
@@ -116,9 +150,36 @@ internal sealed class DynamoVectorIndex
         return entry;
     }
 
-    /// <summary>The item's vector, when it holds one this index can take.</summary>
-    public float[]? VectorOf(IReadOnlyDictionary<string, DynamoValue> item) =>
-        item.TryGetValue(VectorAttribute, out var value) ? Read(value, Dimensions) : null;
+    /// <summary>The item's vector, when it holds one this index can take (a backfill skips any other).</summary>
+    public DynamoValue? IndexableVector(IReadOnlyDictionary<string, DynamoValue> item) =>
+        item.TryGetValue(VectorAttribute, out var value) && IsShaped(value, Dimensions) && value.L.All(e => FitsFloat(e.N)) ? value : null;
+
+    /// <summary>
+    /// Whether the item holds a vector of this index's shape, without reading its numbers: every
+    /// write's vector has passed <see cref="Refusal"/>, so a stored or validated item's list of
+    /// <see cref="Dimensions"/> numbers is one.
+    /// </summary>
+    public bool HoldsVector(IReadOnlyDictionary<string, DynamoValue> item) =>
+        item.TryGetValue(VectorAttribute, out var value) && IsShaped(value, Dimensions);
+
+    /// <summary>A list of <paramref name="dimensions"/> numbers, its numbers unread.</summary>
+    public static bool IsShaped(DynamoValue value, int dimensions)
+    {
+        if (value.Type != DynamoType.L || value.L.Count != dimensions)
+        {
+            return false;
+        }
+
+        foreach (var element in value.L)
+        {
+            if (element.Type != DynamoType.N)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     /// <summary>A list of <paramref name="dimensions"/> numbers, each a finite 32-bit float, as floats; null for anything else.</summary>
     public static float[]? Read(DynamoValue value, int dimensions)
@@ -138,6 +199,34 @@ internal sealed class DynamoVectorIndex
         }
 
         return vector;
+    }
+
+    /// <summary>
+    /// Whether a number DynamoDB accepted is a finite 32-bit float, reading it only when it might
+    /// not be: one with an exponent, or more than 38 digits before its point.
+    /// </summary>
+    public static bool FitsFloat(string number)
+    {
+        var integerDigits = 0;
+        foreach (var c in number)
+        {
+            if (c is 'e' or 'E')
+            {
+                return TryFloat(number, out _);
+            }
+
+            if (c == '.')
+            {
+                break;
+            }
+
+            if (c is >= '1' and <= '9' || (c == '0' && integerDigits > 0))
+            {
+                integerDigits++;
+            }
+        }
+
+        return integerDigits <= 38 || TryFloat(number, out _);
     }
 
     /// <summary>A number's 32-bit float, refused when it overflows one.</summary>
@@ -178,7 +267,7 @@ internal sealed class DynamoVectorIndex
         for (var i = 0; i < value.L.Count; i++)
         {
             var element = value.L[i];
-            if (element.Type != DynamoType.N || !TryFloat(element.N, out _))
+            if (element.Type != DynamoType.N || !FitsFloat(element.N))
             {
                 return $"{Invalid}Invalid type for parameter {VectorAttribute}[{i.ToString(CultureInfo.InvariantCulture)}], Expected: 32-bit floating point number, Actual: {element.Type}. IndexName: {Name}";
             }
@@ -187,27 +276,24 @@ internal sealed class DynamoVectorIndex
         return null;
     }
 
-    /// <summary>Indexes the item's vector, if it holds one; <paramref name="entryBytes"/> is the entry's size.</summary>
-    public void Add(DynamoKey tableKey, IReadOnlyDictionary<string, DynamoValue> item, long entryBytes)
+    /// <summary>Indexes an item's vector; <paramref name="entryBytes"/> is the size of its entry.</summary>
+    public void Add(DynamoKey tableKey, DynamoValue vector, long entryBytes)
     {
-        if (VectorOf(item) is { } vector)
-        {
-            _vectors[tableKey] = vector;
-            SizeBytes += entryBytes;
-        }
+        _entries[tableKey] = (vector, null, entryBytes);
+        SizeBytes += entryBytes;
     }
 
-    public void Remove(DynamoKey tableKey, long entryBytes)
+    public void Remove(DynamoKey tableKey)
     {
-        if (_vectors.Remove(tableKey))
+        if (_entries.Remove(tableKey, out var entry))
         {
-            SizeBytes -= entryBytes;
+            SizeBytes -= entry.Size;
         }
     }
 
     public void Clear()
     {
-        _vectors.Clear();
+        _entries.Clear();
         SizeBytes = 0;
     }
 
