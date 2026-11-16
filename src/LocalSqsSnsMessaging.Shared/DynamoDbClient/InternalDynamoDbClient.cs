@@ -100,18 +100,20 @@ internal sealed partial class InternalDynamoDbClient
         AwsValidation.ThrowIfAny(clauses);
     }
 
-    /// <summary>A table a data-plane request names: refused as "Requested resource not found" when absent or not yet ACTIVE.</summary>
+    /// <summary>
+    /// A table a data-plane request names: refused as "Requested resource not found" when absent
+    /// or still being created. A table being deleted serves requests until it is gone.
+    /// </summary>
     private DynamoTable ActiveTable(string tableName)
     {
         var name = TableName(tableName);
-        if (!Store.Tables.TryGetValue(name, out var table))
+        if (FindTable(name) is not { } table)
         {
             CheckTableName(name);
             throw DynamoDbErrors.TableNotFound();
         }
 
-        ApplyDueTransitions(table);
-        if (table.Status is "CREATING" or "DELETING")
+        if (table.Status == "CREATING")
         {
             throw DynamoDbErrors.TableNotFound();
         }
@@ -123,38 +125,38 @@ internal sealed partial class InternalDynamoDbClient
     private DynamoTable ExistingTable(string tableName)
     {
         var name = TableName(tableName);
-        if (!Store.Tables.TryGetValue(name, out var table))
-        {
-            throw DynamoDbErrors.TableNotFound(name);
-        }
-
-        ApplyDueTransitions(table);
-        return table;
+        return FindTable(name) ?? throw DynamoDbErrors.TableNotFound(name);
     }
 
     /// <summary>
-    /// Moves a table created with a creation delay to ACTIVE once its time has come, and its vector
-    /// indexes on through creating, backfilling and ACTIVE.
+    /// The table of this name, moved on through every change whose time has come (see
+    /// <see cref="DynamoTable.Settle"/>); null when there is none, or a deleted one is now gone.
     /// </summary>
-    private void ApplyDueTransitions(DynamoTable table)
+    private DynamoTable? FindTable(string name)
     {
-        if (table.ActiveAt is { } activeAt && _bus.TimeProvider.GetUtcNow() >= activeAt)
+        if (!Store.Tables.TryGetValue(name, out var table))
         {
-            table.ActiveAt = null;
-            table.Status = "ACTIVE";
-            foreach (var index in table.Indexes)
-            {
-                index.Status = "ACTIVE";
-            }
-
-            foreach (var vectorIndex in table.VectorIndexes.Where(v => v.ActiveAt is null))
-            {
-                vectorIndex.Status = "ACTIVE";
-            }
+            return null;
         }
 
-        RefreshVectorIndexes(table);
+        if (table.Settle(_bus.TimeProvider.GetUtcNow()))
+        {
+            return table;
+        }
+
+        Store.Tables.Remove(name);
+        return null;
     }
+
+    /// <summary>Every table, each moved on as <see cref="FindTable"/> moves it, in creation order.</summary>
+    private List<DynamoTable> AllTables() =>
+        Store.Tables.Keys.ToList().Select(FindTable).OfType<DynamoTable>().ToList();
+
+    /// <summary>When a change started now is done: <see cref="InMemoryAwsBus.DynamoDbTransitionDelay"/> from now.</summary>
+    private DateTimeOffset TransitionEnd => _bus.TimeProvider.GetUtcNow() + _bus.DynamoDbTransitionDelay;
+
+    /// <summary>Whether changes take a while (<see cref="InMemoryAwsBus.DynamoDbTransitionDelay"/> is set), rather than being done at once.</summary>
+    private bool TransitionsTakeTime => _bus.DynamoDbTransitionDelay > TimeSpan.Zero;
 
     // Capacity: reads cost a unit per 4 KB (half for an eventually consistent read), writes a unit per 1 KB.
 
@@ -473,7 +475,7 @@ internal sealed partial class InternalDynamoDbClient
                 SourceBackupArn = restore.SourceBackupArn,
                 SourceTableArn = restore.SourceTableArn,
                 RestoreDateTime = restore.RestoreDateTime,
-                RestoreInProgress = false,
+                RestoreInProgress = table.Status == "CREATING",
             };
         }
 

@@ -23,7 +23,6 @@ public sealed class DeleteBackupInUseDuringRestoreRejected
     /// same backup succeeds (positive control) and the backup transitions to DELETED.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbTransientStates, "RestoreTableFromBackup's target is ACTIVE at once, never CREATING, so the backup is never in use")]
     [DisplayName("dynamodb.delete-backup-in-use-during-restore-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

@@ -31,7 +31,6 @@ public sealed class ContributorInsightsDisableWhileEnablingRejected
     /// and its exact message, and the refused request leaves the insights to settle ENABLED.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbTransientStates, "Contributor insights go straight to ENABLED, so there is no ENABLING window in which to refuse DISABLE")]
     [DisplayName("dynamodb.contributor-insights-disable-while-enabling-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

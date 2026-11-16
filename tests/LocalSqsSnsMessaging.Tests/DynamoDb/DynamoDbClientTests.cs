@@ -183,10 +183,10 @@ public sealed class DynamoDbClientTests
     }
 
     [Test]
-    public async Task TableCreationDelay_KeepsANewTableCreatingUntilItPasses()
+    public async Task TransitionDelay_KeepsANewTableCreatingUntilItPasses()
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
-        var bus = new InMemoryAwsBus { TimeProvider = time, DynamoDbTableCreationDelay = TimeSpan.FromSeconds(5) };
+        var bus = new InMemoryAwsBus { TimeProvider = time, DynamoDbTransitionDelay = TimeSpan.FromSeconds(5) };
         var client = bus.CreateDynamoDbClient();
 
         var created = await client.CreateTableAsync(new CreateTableRequest
@@ -205,5 +205,95 @@ public sealed class DynamoDbClientTests
 
         (await client.DescribeTableAsync("orders")).Table.TableStatus.ShouldBe(TableStatus.ACTIVE);
         await client.PutItemAsync("orders", item);
+    }
+
+    [Test]
+    public async Task TransitionDelay_KeepsADeletedTableDeletingUntilItIsGone()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var bus = new InMemoryAwsBus { TimeProvider = time, DynamoDbTransitionDelay = TimeSpan.FromSeconds(5) };
+        var client = await CreateTableAsync(bus);
+        time.Advance(TimeSpan.FromSeconds(5));
+
+        (await client.DeleteTableAsync("orders")).TableDescription.TableStatus.ShouldBe(TableStatus.DELETING);
+        (await client.DescribeTableAsync("orders")).Table.TableStatus.ShouldBe(TableStatus.DELETING);
+        var again = await Should.ThrowAsync<ResourceInUseException>(() => client.DeleteTableAsync("orders"));
+        again.Message.ShouldBe("Attempt to change a resource which is still in use: Table is being deleted: orders");
+
+        time.Advance(TimeSpan.FromSeconds(5));
+
+        await Should.ThrowAsync<ResourceNotFoundException>(() => client.DescribeTableAsync("orders"));
+        (await client.ListTablesAsync(new ListTablesRequest())).TableNames.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task TransitionDelay_KeepsATableUpdatingWhileItsThroughputChanges()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var bus = new InMemoryAwsBus { TimeProvider = time, DynamoDbTransitionDelay = TimeSpan.FromSeconds(5) };
+        var client = await CreateTableAsync(bus);
+        time.Advance(TimeSpan.FromSeconds(5));
+
+        var updated = await client.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "orders",
+            BillingMode = BillingMode.PROVISIONED,
+            ProvisionedThroughput = new ProvisionedThroughput(3, 3),
+        });
+
+        updated.TableDescription.TableStatus.ShouldBe(TableStatus.UPDATING);
+        var refused = await Should.ThrowAsync<ResourceInUseException>(() => client.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "orders",
+            ProvisionedThroughput = new ProvisionedThroughput(5, 5),
+        }));
+        refused.Message.ShouldBe("Attempt to change a resource which is still in use: Table IOPS are currently being updated. Table: orders");
+        await client.PutItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("a"), ["sk"] = new() { N = "1" } });
+
+        time.Advance(TimeSpan.FromSeconds(5));
+
+        (await client.DescribeTableAsync("orders")).Table.TableStatus.ShouldBe(TableStatus.ACTIVE);
+    }
+
+    [Test]
+    public async Task TransitionDelay_BuildsAnIndexUpdateTableAddsOneAtATime()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var bus = new InMemoryAwsBus { TimeProvider = time, DynamoDbTransitionDelay = TimeSpan.FromSeconds(5) };
+        var client = await CreateTableAsync(bus);
+        time.Advance(TimeSpan.FromSeconds(5));
+
+        UpdateTableRequest AddIndex(string name) => new()
+        {
+            TableName = "orders",
+            AttributeDefinitions = [new AttributeDefinition(name, ScalarAttributeType.S)],
+            GlobalSecondaryIndexUpdates =
+            [
+                new GlobalSecondaryIndexUpdate
+                {
+                    Create = new CreateGlobalSecondaryIndexAction
+                    {
+                        IndexName = name,
+                        KeySchema = [new KeySchemaElement(name, KeyType.HASH)],
+                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                    },
+                },
+            ],
+        };
+
+        var added = await client.UpdateTableAsync(AddIndex("by-a"));
+
+        added.TableDescription.TableStatus.ShouldBe(TableStatus.UPDATING);
+        added.TableDescription.GlobalSecondaryIndexes.Single().IndexStatus.ShouldBe(IndexStatus.CREATING);
+        await Should.ThrowAsync<LimitExceededException>(() => client.UpdateTableAsync(AddIndex("by-b")));
+        var blocked = await Should.ThrowAsync<ResourceInUseException>(() => client.DeleteTableAsync("orders"));
+        blocked.Message.ShouldBe("Attempt to change a resource which is still in use: Cannot delete table while indexes are being created, updated, or deleted.");
+
+        time.Advance(TimeSpan.FromSeconds(5));
+
+        var settled = (await client.DescribeTableAsync("orders")).Table;
+        settled.TableStatus.ShouldBe(TableStatus.ACTIVE);
+        settled.GlobalSecondaryIndexes.Single().IndexStatus.ShouldBe(IndexStatus.ACTIVE);
+        await client.UpdateTableAsync(AddIndex("by-b"));
     }
 }

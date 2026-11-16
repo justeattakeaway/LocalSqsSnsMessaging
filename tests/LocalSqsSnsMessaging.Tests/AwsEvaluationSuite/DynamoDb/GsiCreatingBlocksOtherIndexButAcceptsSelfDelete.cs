@@ -21,7 +21,6 @@ public sealed class GsiCreatingBlocksOtherIndexButAcceptsSelfDelete
     /// and the index disappears.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbTransientStates, "a GSI added by UpdateTable is ACTIVE at once, never CREATING, so UpdateTable reports it ACTIVE and never refuses a second index build")]
     [DisplayName("dynamodb.gsi-creating-blocks-other-index-but-accepts-self-delete")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

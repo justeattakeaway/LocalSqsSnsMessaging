@@ -208,24 +208,16 @@ internal sealed partial class InternalDynamoDbClient
 
         lock (Store.Gate)
         {
-            if (Store.Tables.ContainsKey(name))
+            if (FindTable(name) is { } existing)
             {
-                throw DynamoDbErrors.ResourceInUse($"Table already exists: {name}");
+                throw DynamoDbErrors.ResourceInUse(existing.Status == "CREATING"
+                    ? $"Attempt to change a resource which is still in use: Table is being created: {name}"
+                    : $"Table already exists: {name}");
             }
 
-            if (_bus.DynamoDbTableCreationDelay > TimeSpan.Zero)
+            if (TransitionsTakeTime)
             {
-                table.Status = "CREATING";
-                table.ActiveAt = _bus.TimeProvider.GetUtcNow() + _bus.DynamoDbTableCreationDelay;
-                foreach (var index in table.GlobalIndexes)
-                {
-                    index.Status = "CREATING";
-                }
-
-                foreach (var vectorIndex in table.VectorIndexes)
-                {
-                    vectorIndex.Status = "CREATING";
-                }
+                table.StartCreating(TransitionEnd);
             }
 
             if (table.StreamEnabled)
@@ -451,7 +443,8 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var limit = request.Limit ?? 100;
-            var names = Store.Tables.Keys
+            var names = AllTables()
+                .Select(t => t.Name)
                 .OrderBy(n => n, StringComparer.Ordinal)
                 .Where(n => request.ExclusiveStartTableName is null || string.CompareOrdinal(n, request.ExclusiveStartTableName) > 0)
                 .ToList();
@@ -471,14 +464,16 @@ internal sealed partial class InternalDynamoDbClient
         {
             var table = ExistingTable(request.TableName!);
             Authorize(table, "DeleteTable");
-            if (table.Status == "DELETING")
+            switch (table.Status)
             {
-                throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being deleted: {table.Name}");
-            }
-
-            if (table.VectorIndexes.Any(v => v.Status == "CREATING"))
-            {
-                throw DynamoDbErrors.ResourceInUse("Attempt to change a resource which is still in use: Cannot delete table while indexes are being created, updated, or deleted.");
+                case "CREATING":
+                    throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being created: {table.Name}");
+                case "DELETING":
+                    throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being deleted: {table.Name}");
+                case "UPDATING" when table.IndexInTransition:
+                    throw DynamoDbErrors.ResourceInUse("Attempt to change a resource which is still in use: Cannot delete table while indexes are being created, updated, or deleted.");
+                case "UPDATING":
+                    throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being updated: {table.Name}");
             }
 
             if (table.DeletionProtectionEnabled)
@@ -486,12 +481,16 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation("Resource cannot be deleted as it is currently protected against deletion. Disable deletion protection first.");
             }
 
-            table.Status = "DELETING";
+            table.StartDeleting(TransitionEnd);
             var description = Describe(table);
 
             // The deleting table's answer leaves its global indexes out.
             description.GlobalSecondaryIndexes = null;
-            Store.Tables.Remove(table.Name);
+            if (!TransitionsTakeTime)
+            {
+                Store.Tables.Remove(table.Name);
+            }
+
             if (table.LatestStream is { } stream)
             {
                 stream.Disable(Now);
@@ -517,9 +516,19 @@ internal sealed partial class InternalDynamoDbClient
         {
             var table = ExistingTable(request.TableName!);
             Authorize(table, "UpdateTable");
-            if (table.Status != "ACTIVE")
+            switch (table.Status)
             {
-                throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being {(table.Status == "CREATING" ? "created" : "updated")}: {table.Name}");
+                case "CREATING":
+                    throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table is being created: {table.Name}");
+                case "DELETING":
+                    throw DynamoDbErrors.TableNotFound(table.Name);
+            }
+
+            // An index build leaves the table UPDATING but open to other changes (a second build
+            // is refused by the index rules); a throughput change in flight refuses them all.
+            if (table.ThroughputSettlesAt is not null)
+            {
+                throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Table IOPS are currently being updated. Table: {table.Name}");
             }
 
             // DynamoDB refuses a request without changing the table, so every check runs before
@@ -590,7 +599,7 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             var indexUpdates = (request.GlobalSecondaryIndexUpdates ?? [])
-                .Select(update => PrepareIndexUpdate(table, update, request.AttributeDefinitions, billingMode))
+                .Select(update => PrepareIndexUpdate(table, update, request.AttributeDefinitions, billingMode, TransitionsTakeTime ? TransitionEnd : null))
                 .ToList();
             var vectorIndexUpdates = (request.VectorIndexUpdates ?? [])
                 .Select(update => PrepareVectorIndexUpdate(table, update, request.AttributeDefinitions, billingMode))
@@ -661,6 +670,12 @@ internal sealed partial class InternalDynamoDbClient
                 table.BillingModeStated = true;
             }
 
+            // A change of capacity takes a while to apply, the table UPDATING meanwhile.
+            if (TransitionsTakeTime && (throughputChange is not null || (request.BillingMode is not null && billingMode != table.BillingMode)))
+            {
+                table.StartThroughputChange(TransitionEnd);
+            }
+
             if (throughputChange is var (newRead, newWrite))
             {
                 if (newRead > table.Throughput.ReadCapacityUnits || newWrite > table.Throughput.WriteCapacityUnits)
@@ -728,6 +743,7 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             Record("UpdateTable", table.Arn);
+            table.Settle(_bus.TimeProvider.GetUtcNow());
             var description = Describe(table);
 
             // A deleted vector index is gone at once, but the answer still describes it, DELETING.
@@ -745,7 +761,8 @@ internal sealed partial class InternalDynamoDbClient
     /// Checks one index update against the table as it stands, under the table's
     /// <paramref name="billingMode"/> once this request applies, and returns the change to make.
     /// </summary>
-    private static Action PrepareIndexUpdate(DynamoTable table, GlobalSecondaryIndexUpdate update, List<AttributeDefinition>? definitions, string billingMode)
+    /// <param name="transitionEnd">When an index build or deletion started now is done; null when it is done at once.</param>
+    private static Action PrepareIndexUpdate(DynamoTable table, GlobalSecondaryIndexUpdate update, List<AttributeDefinition>? definitions, string billingMode, DateTimeOffset? transitionEnd)
     {
         if (update.Create is { } create)
         {
@@ -755,7 +772,7 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation("Attempting to create an index which already exists");
             }
 
-            CheckNoVectorIndexCreating(table);
+            CheckNoIndexInTransition(table);
             if (table.GlobalIndexes.Count >= MaxGlobalIndexes)
             {
                 throw DynamoDbErrors.LimitExceeded($"Subscriber limit exceeded: Number of global secondary indexes exceeds per-table limit of {MaxGlobalIndexes}");
@@ -814,6 +831,10 @@ internal sealed partial class InternalDynamoDbClient
 
                 table.GlobalIndexes.Add(index);
                 table.Backfill(index);
+                if (transitionEnd is { } activeAt)
+                {
+                    index.StartCreating(activeAt);
+                }
             };
         }
 
@@ -830,9 +851,16 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation($"Cannot delete an index that is not a GlobalSecondaryIndex: {index.Name}");
             }
 
-            CheckNoVectorIndexCreating(table);
+            // An index still being built can be deleted; any other index on the move holds the delete up.
+            CheckNoIndexInTransition(table, except: index.Status == "CREATING" ? index : null);
             return () =>
             {
+                if (transitionEnd is { } goneAt)
+                {
+                    index.StartDeleting(goneAt);
+                    return;
+                }
+
                 table.GlobalIndexes.Remove(index);
                 var stillUsed = table.UsedAttributeNames();
                 table.AttributeDefinitions.RemoveAll(a => !stillUsed.Contains(a.Name));
@@ -943,7 +971,7 @@ internal sealed partial class InternalDynamoDbClient
 
         if (!string.Equals(arn.Region, Region, StringComparison.Ordinal)
             || !string.Equals(arn.Account, _bus.CurrentAccountId, StringComparison.Ordinal)
-            || !Store.Tables.TryGetValue(name, out var table))
+            || FindTable(name) is not { Status: not "CREATING" } table)
         {
             throw DynamoDbErrors.ResourceNotFound($"Requested resource not found: ResourcArn: {resourceArn} not found");
         }

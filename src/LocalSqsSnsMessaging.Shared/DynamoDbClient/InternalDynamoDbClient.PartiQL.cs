@@ -613,7 +613,7 @@ internal sealed partial class InternalDynamoDbClient
                     continue;
                 }
 
-                if (!Store.Tables.TryGetValue(statement.Table, out var table) || table.Status is "CREATING" or "DELETING")
+                if (FindTable(statement.Table) is not { Status: not "CREATING" } table)
                 {
                     responses.Add(new BatchStatementResponse { Error = new BatchStatementError { Code = "ResourceNotFound", Message = DynamoDbErrors.RequestedResourceNotFound } });
                     continue;

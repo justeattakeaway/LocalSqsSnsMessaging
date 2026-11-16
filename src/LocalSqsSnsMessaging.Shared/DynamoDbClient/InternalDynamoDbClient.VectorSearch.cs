@@ -136,12 +136,15 @@ internal sealed partial class InternalDynamoDbClient
     }
 
     /// <summary>
-    /// A global index is created or deleted only while no vector index is <c>CREATING</c>: the
-    /// one online index build at a time is shared by both kinds.
+    /// An index is created or deleted only while no other index, global or vector, is being
+    /// created or deleted: the one online index build at a time is shared by both kinds.
     /// </summary>
-    private static void CheckNoVectorIndexCreating(DynamoTable table)
+    /// <param name="table">The table.</param>
+    /// <param name="except">The index the update is about, whose own build doesn't count.</param>
+    private static void CheckNoIndexInTransition(DynamoTable table, object? except = null)
     {
-        if (table.VectorIndexes.Any(v => v.Status == "CREATING"))
+        if (table.VectorIndexes.Any(v => v != except && v.Status != "ACTIVE")
+            || table.GlobalIndexes.Any(i => i != except && i.Status != "ACTIVE"))
         {
             throw DynamoDbErrors.LimitExceeded(OneIndexAtATime);
         }
@@ -170,11 +173,7 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation("Attempting to create an index which already exists");
             }
 
-            if (table.VectorIndexes.Any(v => v.Status == "CREATING") || table.GlobalIndexes.Any(i => i.Status == "CREATING"))
-            {
-                throw DynamoDbErrors.LimitExceeded(OneIndexAtATime);
-            }
-
+            CheckNoIndexInTransition(table);
             if (table.VectorIndexes.Count >= MaxVectorIndexes)
             {
                 throw DynamoDbErrors.InvalidParameter($"VectorIndex count exceeds the per-table limit of {MaxVectorIndexes.ToString(CultureInfo.InvariantCulture)}");
@@ -225,10 +224,7 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.ResourceInUse($"Attempt to change a resource which is still in use: Index creation is in resource allocation phase. Retry deletion during backfilling phase or when the index is active. Table: {table.Name} Index: {index.Name}");
             }
 
-            if (table.VectorIndexes.Any(v => v != index && v.Status == "CREATING") || table.GlobalIndexes.Any(i => i.Status == "CREATING"))
-            {
-                throw DynamoDbErrors.LimitExceeded(OneIndexAtATime);
-            }
+            CheckNoIndexInTransition(table, except: index);
 
             var deleted = DescribeVectorIndex(index);
             deleted.IndexStatus = "DELETING";
@@ -242,21 +238,6 @@ internal sealed partial class InternalDynamoDbClient
         }
 
         return (() => { }, null);
-    }
-
-    /// <summary>Moves the table's <c>CREATING</c> vector indexes on as their times come.</summary>
-    private void RefreshVectorIndexes(DynamoTable table)
-    {
-        if (table.VectorIndexes.Count == 0)
-        {
-            return;
-        }
-
-        var now = _bus.TimeProvider.GetUtcNow();
-        foreach (var index in table.VectorIndexes)
-        {
-            index.Refresh(now);
-        }
     }
 
     private static VectorIndexDescription DescribeVectorIndex(DynamoVectorIndex index) => new()

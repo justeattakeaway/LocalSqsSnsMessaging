@@ -109,6 +109,11 @@ public sealed class FidelityContext : IAsyncDisposable
             // backfilling) before it is ACTIVE. AWS takes minutes; this is short enough for a
             // check's budget and long enough for a check to see each phase.
             DynamoDbVectorIndexCreationDelay = TimeSpan.FromSeconds(10),
+
+            // As in AWS, tables pass through CREATING, UPDATING and DELETING, and global indexes
+            // through CREATING and DELETING, and the checks see each status and the refusals that
+            // go with it. AWS takes seconds to minutes; the checks' waiters poll every second or two.
+            DynamoDbTransitionDelay = TimeSpan.FromSeconds(2),
         };
         _handler = new RequestLatencyHandler(this, AwsServiceType.Sqs);
         _snsHandler = new RequestLatencyHandler(this, AwsServiceType.Sns);

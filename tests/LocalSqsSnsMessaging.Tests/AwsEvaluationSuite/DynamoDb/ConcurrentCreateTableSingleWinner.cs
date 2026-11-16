@@ -19,7 +19,6 @@ public sealed class ConcurrentCreateTableSingleWinner
     /// existing exactly once. Tagged axis:rejection: the graded half is the losers' error code.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbTransientStates, "the winning table is ACTIVE at once, so losers get 'Table already exists: <name>' instead of 'Attempt to change a resource which is still in use: Table is being created: <name>'")]
     [DisplayName("dynamodb.concurrent-create-table-single-winner")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

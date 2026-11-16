@@ -31,12 +31,6 @@ public enum FidelityGap
     /// <summary>A DynamoDB index keyed on more than one attribute per key role is refused.</summary>
     DynamoDbMultiAttributeKeys,
 
-    /// <summary>
-    /// DynamoDB tables, indexes and backups are ACTIVE (or gone) at once: they never pass through
-    /// CREATING, UPDATING or DELETING unless <c>DynamoDbTableCreationDelay</c> is set.
-    /// </summary>
-    DynamoDbTransientStates,
-
     /// <summary>DynamoDB provisioned throughput is reported, never enforced: nothing is throttled.</summary>
     DynamoDbThroughput,
 

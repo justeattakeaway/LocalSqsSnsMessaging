@@ -29,7 +29,6 @@ public sealed class DdbctlTableRefusesChangesWhileCreatingAndDeleting
     /// describes as DELETING and refuses a second DeleteTable with ResourceInUseException (being deleted).
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbTransientStates, "CreateTable answers ACTIVE at once, never CREATING")]
     [DisplayName("dynamodb.ddbctl-table-refuses-changes-while-creating-and-deleting")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

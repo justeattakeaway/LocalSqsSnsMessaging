@@ -17,7 +17,6 @@ public sealed class OnDemandTableAcceptsANewIndexWithNoThroughput
     /// inherits the base table's capacity mode.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbTransientStates, "A GSI added by UpdateTable is ACTIVE at once instead of starting CREATING")]
     [DisplayName("dynamodb.on-demand-table-accepts-a-new-index-with-no-throughput")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

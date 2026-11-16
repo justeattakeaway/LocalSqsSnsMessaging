@@ -17,7 +17,6 @@ public sealed class UpdateTableRejectedWhileAPriorThroughputChangeIsStillApplyin
     /// ResourceInUseException, and the first change still settles at the capacity it asked for.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbTransientStates, "a throughput change applies at once: UpdateTable answers ACTIVE, never UPDATING")]
     [DisplayName("dynamodb.update-table-rejected-while-a-prior-throughput-change-is-still-applying")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

@@ -117,12 +117,18 @@ public sealed class InMemoryAwsBus
     public ISet<string>? KmsKeyAliases { get; init; }
 
     /// <summary>
-    /// Gets or initializes how long a new DynamoDB table (and each of its global secondary
-    /// indexes) stays <c>CREATING</c> before it becomes <c>ACTIVE</c>, measured on
-    /// <see cref="TimeProvider"/>. Defaults to zero: a table is ACTIVE as soon as CreateTable
-    /// returns, so tests needn't wait for it.
+    /// Gets or initializes how long DynamoDB's asynchronous changes take, measured on
+    /// <see cref="TimeProvider"/>: a table CreateTable or a restore makes stays <c>CREATING</c>
+    /// (with its global secondary indexes), a table whose throughput or billing mode UpdateTable
+    /// changes stays <c>UPDATING</c>, a global secondary index UpdateTable adds or deletes stays
+    /// <c>CREATING</c> or <c>DELETING</c> (and its table <c>UPDATING</c>), a deleted table stays
+    /// <c>DELETING</c>, and contributor insights stay <c>ENABLING</c> or <c>DISABLING</c>.
+    /// Meanwhile DynamoDB's refusals apply: a <c>CREATING</c> table serves no reads or writes, a
+    /// second throughput change or index build waits for the first, and a backup a table is
+    /// being restored from can't be deleted. Defaults to zero: every change is done when its
+    /// request returns, so tests needn't wait. (AWS takes seconds to minutes.)
     /// </summary>
-    public TimeSpan DynamoDbTableCreationDelay { get; init; } = TimeSpan.Zero;
+    public TimeSpan DynamoDbTransitionDelay { get; init; } = TimeSpan.Zero;
 
     /// <summary>
     /// Gets or initializes how long a DynamoDB vector index that UpdateTable adds stays

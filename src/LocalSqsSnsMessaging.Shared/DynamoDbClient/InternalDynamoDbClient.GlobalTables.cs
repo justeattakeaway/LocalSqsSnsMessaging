@@ -41,7 +41,7 @@ internal sealed partial class InternalDynamoDbClient
     {
         lock (Store.Gate)
         {
-            if (Store.Tables.TryGetValue(TableName(request.TableName!), out var table))
+            if (FindTable(TableName(request.TableName!)) is { } table)
             {
                 Authorize(table, "DescribeTableReplicaAutoScaling");
             }
