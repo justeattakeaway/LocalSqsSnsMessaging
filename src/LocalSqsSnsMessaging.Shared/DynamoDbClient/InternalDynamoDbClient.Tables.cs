@@ -755,6 +755,7 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation("Attempting to create an index which already exists");
             }
 
+            CheckNoVectorIndexCreating(table);
             if (table.GlobalIndexes.Count >= MaxGlobalIndexes)
             {
                 throw DynamoDbErrors.LimitExceeded($"Subscriber limit exceeded: Number of global secondary indexes exceeds per-table limit of {MaxGlobalIndexes}");
@@ -829,6 +830,7 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation($"Cannot delete an index that is not a GlobalSecondaryIndex: {index.Name}");
             }
 
+            CheckNoVectorIndexCreating(table);
             return () =>
             {
                 table.GlobalIndexes.Remove(index);

@@ -407,6 +407,12 @@ internal sealed partial class InternalDynamoDbClient
 
         if (billingMode is not null)
         {
+            // Vector indexes need on-demand billing, so a provisioned restore must leave them all out.
+            if (billingMode != "PAY_PER_REQUEST" && table.VectorIndexes.Count > 0)
+            {
+                throw DynamoDbErrors.InvalidParameter(VectorIndexesNeedOnDemand);
+            }
+
             if (billingMode == "PAY_PER_REQUEST" && table.BillingMode != "PAY_PER_REQUEST")
             {
                 table.LastUpdateToPayPerRequestDateTime = Now;

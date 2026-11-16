@@ -136,6 +136,18 @@ internal sealed partial class InternalDynamoDbClient
     }
 
     /// <summary>
+    /// A global index is created or deleted only while no vector index is <c>CREATING</c>: the
+    /// one online index build at a time is shared by both kinds.
+    /// </summary>
+    private static void CheckNoVectorIndexCreating(DynamoTable table)
+    {
+        if (table.VectorIndexes.Any(v => v.Status == "CREATING"))
+        {
+            throw DynamoDbErrors.LimitExceeded(OneIndexAtATime);
+        }
+    }
+
+    /// <summary>
     /// Checks a vector index update against the table as it stands, under the table's
     /// <paramref name="billingMode"/> once this request applies, and returns the change to make
     /// and, for a delete, how the response describes the index it removes.

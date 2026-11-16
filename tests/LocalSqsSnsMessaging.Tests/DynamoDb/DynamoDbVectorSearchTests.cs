@@ -234,4 +234,103 @@ public sealed class DynamoDbVectorSearchTests
         deleted.TableDescription.VectorIndexes.Single().IndexStatus.ShouldBe(IndexStatus.DELETING);
         (await client.DescribeTableAsync("Late")).Table.VectorIndexes.ShouldBeNull();
     }
+
+    [Test]
+    public async Task UpdateTable_GlobalIndexChangeWaitsForACreatingVectorIndex()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 3, 1, 12, 0, 0, TimeSpan.Zero));
+        var bus = new InMemoryAwsBus { TimeProvider = time, DynamoDbVectorIndexCreationDelay = TimeSpan.FromMinutes(10) };
+        using var client = bus.CreateDynamoDbClient();
+        await client.CreateTableAsync(new CreateTableRequest
+        {
+            TableName = "Busy",
+            KeySchema = [new KeySchemaElement("pk", KeyType.HASH)],
+            AttributeDefinitions = [new AttributeDefinition("pk", ScalarAttributeType.S), new AttributeDefinition("g", ScalarAttributeType.S)],
+            BillingMode = BillingMode.PAY_PER_REQUEST,
+            GlobalSecondaryIndexes =
+            [
+                new GlobalSecondaryIndex
+                {
+                    IndexName = "by-g",
+                    KeySchema = [new KeySchemaElement("g", KeyType.HASH)],
+                    Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                },
+            ],
+        });
+        await client.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "Busy",
+            VectorIndexUpdates =
+            [
+                new VectorIndexUpdate
+                {
+                    Create = new CreateVectorIndexAction
+                    {
+                        IndexName = "vectors",
+                        VectorAttribute = new VectorAttributeDefinition { AttributeName = "v" },
+                        Dimensions = 2,
+                        DistanceFunction = VectorDistanceFunction.EUCLIDEAN,
+                        Projection = new Projection { ProjectionType = ProjectionType.KEYS_ONLY },
+                    },
+                },
+            ],
+        });
+
+        Task<UpdateTableResponse> CreateGlobalIndex() => client.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "Busy",
+            AttributeDefinitions = [new AttributeDefinition("h", ScalarAttributeType.S)],
+            GlobalSecondaryIndexUpdates =
+            [
+                new GlobalSecondaryIndexUpdate
+                {
+                    Create = new CreateGlobalSecondaryIndexAction
+                    {
+                        IndexName = "by-h",
+                        KeySchema = [new KeySchemaElement("h", KeyType.HASH)],
+                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                    },
+                },
+            ],
+        });
+
+        const string OneAtATime = "Subscriber limit exceeded: Only 1 online index can be created or deleted simultaneously per table";
+        (await Should.ThrowAsync<LimitExceededException>(CreateGlobalIndex)).Message.ShouldBe(OneAtATime);
+        (await Should.ThrowAsync<LimitExceededException>(() => client.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "Busy",
+            GlobalSecondaryIndexUpdates = [new GlobalSecondaryIndexUpdate { Delete = new DeleteGlobalSecondaryIndexAction { IndexName = "by-g" } }],
+        }))).Message.ShouldBe(OneAtATime);
+
+        time.Advance(TimeSpan.FromMinutes(10));
+        var created = await CreateGlobalIndex();
+        created.TableDescription.GlobalSecondaryIndexes.Select(i => i.IndexName).ShouldContain("by-h");
+    }
+
+    [Test]
+    public async Task RestoreTableFromBackup_ProvisionedOverrideKeepingAVectorIndexIsRefused()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateArticlesTableAsync(bus);
+        var backupArn = (await client.CreateBackupAsync(new CreateBackupRequest { TableName = "Articles", BackupName = "articles" })).BackupDetails.BackupArn;
+
+        RestoreTableFromBackupRequest Restore(string target, List<VectorIndex>? vectorIndexes) => new()
+        {
+            BackupArn = backupArn,
+            TargetTableName = target,
+            BillingModeOverride = BillingMode.PROVISIONED,
+            ProvisionedThroughputOverride = new ProvisionedThroughput(5, 5),
+            VectorIndexOverride = vectorIndexes,
+        };
+
+        var error = await Should.ThrowAsync<AmazonDynamoDBException>(() => client.RestoreTableFromBackupAsync(Restore("Provisioned", null)));
+        error.ErrorCode.ShouldBe("ValidationException");
+        error.Message.ShouldBe("One or more parameter values were invalid: Vector indexes are only supported for PAY_PER_REQUEST tables");
+        (await client.ListTablesAsync()).TableNames.ShouldNotContain("Provisioned");
+
+        // Leaving every vector index out lets the restored table be provisioned.
+        var restored = (await client.RestoreTableFromBackupAsync(Restore("ProvisionedWithoutVectors", []))).TableDescription;
+        restored.BillingModeSummary?.BillingMode.ShouldNotBe(BillingMode.PAY_PER_REQUEST);
+        restored.VectorIndexes.ShouldBeNull();
+    }
 }
