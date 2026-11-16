@@ -182,6 +182,12 @@ internal sealed partial class InternalDynamoDbClient
                     StartStream(replica, store);
                 }
 
+                // Time to live is a global table setting: the replica expires items on its own.
+                if (table.TimeToLiveEnabled)
+                {
+                    SetTimeToLive(store, replica, table.TimeToLiveAttribute, table.TimeToLiveModifiedAt);
+                }
+
                 store.Tables[table.Name] = replica;
                 group.Join(store, replica);
                 group.Member(table)!.SourceUntil = now + DynamoReplicationGroup.SourceRetention;

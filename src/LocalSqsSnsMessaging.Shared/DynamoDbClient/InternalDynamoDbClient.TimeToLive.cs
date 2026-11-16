@@ -41,17 +41,16 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation("Time to live has been modified multiple times within a fixed interval");
             }
 
-            table.TimeToLiveModifiedAt = now;
-            table.TimeToLiveEnabled = enable;
-            table.TimeToLiveAttribute = enable ? specification.AttributeName : null;
-            if (enable)
+            var attribute = enable ? specification.AttributeName : null;
+            SetTimeToLive(Store, table, attribute, now);
+
+            // A global table's time to live is one setting for every replica.
+            foreach (var member in table.Replication?.Members ?? [])
             {
-                Store.TimeToLiveJobs[table.Name] = new DynamoTimeToLiveJob(_bus, Store, table);
-            }
-            else if (Store.TimeToLiveJobs.TryGetValue(table.Name, out var job))
-            {
-                job.Dispose();
-                Store.TimeToLiveJobs.Remove(table.Name);
+                if (!ReferenceEquals(member.Table, table))
+                {
+                    SetTimeToLive(member.Store, member.Table, attribute, now);
+                }
             }
 
             Record("UpdateTimeToLive", table.Arn);
@@ -59,6 +58,27 @@ internal sealed partial class InternalDynamoDbClient
             {
                 TimeToLiveSpecification = new TimeToLiveSpecification { Enabled = enable, AttributeName = specification.AttributeName },
             });
+        }
+    }
+
+    /// <summary>
+    /// Turns a table of <paramref name="store"/>'s region on to time to live on
+    /// <paramref name="attribute"/> (off when null), starting or stopping its sweep.
+    /// </summary>
+    private void SetTimeToLive(DynamoDbStore store, DynamoTable table, string? attribute, DateTimeOffset? modifiedAt)
+    {
+        table.TimeToLiveModifiedAt = modifiedAt;
+        table.TimeToLiveEnabled = attribute is not null;
+        table.TimeToLiveAttribute = attribute;
+        if (store.TimeToLiveJobs.TryGetValue(table.Name, out var job))
+        {
+            job.Dispose();
+            store.TimeToLiveJobs.Remove(table.Name);
+        }
+
+        if (attribute is not null)
+        {
+            store.TimeToLiveJobs[table.Name] = new DynamoTimeToLiveJob(_bus, store, table);
         }
     }
 
