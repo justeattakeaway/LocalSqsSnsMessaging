@@ -1,0 +1,49 @@
+name: evaluation-suite-drift
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_NOLOGO: true
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: Compare with upstream
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+
+    - name: Compare UPSTREAM.md with the evaluation suite's main branch
+      run: dotnet run --project tools/SyncEvaluationSuite --configuration Release -- --ref main --check
+
+    - name: Summarize the drift
+      if: failure()
+      run: |
+        {
+          echo "The evaluation suite has drifted from UPSTREAM.md. To catch up, run"
+          echo '`dotnet run --project tools/SyncEvaluationSuite -- --ref main` and work through the list'
+          echo "(see tests/LocalSqsSnsMessaging.Tests/AwsEvaluationSuite/README.md#keeping-up-with-upstream)."
+          echo
+          head -c 900000 artifacts/evaluation-suite/drift.md
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Publish the work list
+      if: failure()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: evaluation-suite-drift
+        path: |
+          artifacts/evaluation-suite/drift.md
+          artifacts/evaluation-suite/upstream/
