@@ -77,7 +77,6 @@ public sealed class QueryGsiFourRangeKeySchemaSkippingTwoAttributesRejected
     /// naming every skipped attribute, while the full equality prefix still returns the item.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbMultiAttributeKeys, "CreateTable refuses a GSI key schema with four RANGE attributes")]
     [DisplayName("dynamodb.query-gsi-four-range-key-schema-skipping-two-attributes-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

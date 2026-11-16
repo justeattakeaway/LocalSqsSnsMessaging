@@ -28,9 +28,6 @@ public enum FidelityGap
     /// <summary>DynamoDB global tables (replicas in other regions) are not emulated.</summary>
     DynamoDbGlobalTables,
 
-    /// <summary>A DynamoDB index keyed on more than one attribute per key role is refused.</summary>
-    DynamoDbMultiAttributeKeys,
-
     /// <summary>DynamoDB provisioned throughput is reported, never enforced: nothing is throttled.</summary>
     DynamoDbThroughput,
 

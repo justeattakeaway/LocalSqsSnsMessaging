@@ -77,7 +77,6 @@ public sealed class QueryGsiFourRangeKeySchemaOrdersNarrowsAndReverses
     /// attribute equality prefix or a range condition right after one, free of clause order.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbMultiAttributeKeys, "CreateTable refuses a GSI key schema with four RANGE attributes")]
     [DisplayName("dynamodb.query-gsi-four-range-key-schema-orders-narrows-and-reverses")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

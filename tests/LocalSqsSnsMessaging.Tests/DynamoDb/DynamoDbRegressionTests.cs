@@ -237,6 +237,28 @@ public sealed class DynamoDbRegressionTests
     }
 
     [Test]
+    public async Task ExecuteTransaction_ExistsWithAFunctionInItsSelectListIsRefused()
+    {
+        var bus = new InMemoryAwsBus();
+        using var client = await CreateTableAsync(bus);
+        await client.PutItemAsync("tbl", Item("A", 1));
+        await client.PutItemAsync("tbl", Item("B", 1));
+
+        var error = await Should.ThrowAsync<AmazonDynamoDBException>(() => client.ExecuteTransactionAsync(new ExecuteTransactionRequest
+        {
+            TransactStatements =
+            [
+                new ParameterizedStatement { Statement = "EXISTS(SELECT COUNT(*) FROM \"tbl\" WHERE pk = 'A' AND sk = 1)" },
+                new ParameterizedStatement { Statement = "UPDATE \"tbl\" SET note = 'changed' WHERE pk = 'B' AND sk = 1" },
+            ],
+        }));
+
+        error.ErrorCode.ShouldBe("ValidationException");
+        error.Message.ShouldContain("Unexpected path component");
+        (await client.GetItemAsync("tbl", Item("B", 1))).Item.ShouldNotContainKey("note");
+    }
+
+    [Test]
     public async Task TransactUpdate_ThatOnlyRemovesCreatesNoItem()
     {
         var bus = new InMemoryAwsBus();

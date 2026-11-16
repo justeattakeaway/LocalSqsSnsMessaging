@@ -25,7 +25,6 @@ public sealed class GsiFourHashAttributeKeyQueryOrderFreeAndTracksMovesAndDelete
     /// Reference: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.html
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbMultiAttributeKeys, "a GSI keyed on four HASH attributes is refused at CreateTable with the KeySchema length validation")]
     [DisplayName("dynamodb.gsi-four-hash-attribute-key-query-order-free-and-tracks-moves-and-deletes")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

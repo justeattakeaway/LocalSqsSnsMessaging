@@ -122,8 +122,25 @@ internal static class DynamoKeyOrder
                 ? a.CompareTo(b)
                 : string.CompareOrdinal(x.N, y.N),
             DynamoType.B => CompareBytes(x.B, y.B),
+            DynamoType.L => CompareLists(x.L, y.L),
             _ => 0,
         };
+    }
+
+    /// <summary>Compares the composite values of a multi-attribute key, attribute by attribute.</summary>
+    private static int CompareLists(IReadOnlyList<DynamoValue> a, IReadOnlyList<DynamoValue> b)
+    {
+        var length = Math.Min(a.Count, b.Count);
+        for (var i = 0; i < length; i++)
+        {
+            var order = Compare(a[i], b[i]);
+            if (order != 0)
+            {
+                return order;
+            }
+        }
+
+        return a.Count.CompareTo(b.Count);
     }
 
     /// <summary>Compares two strings in the order of their UTF-8 encodings, which is code point order.</summary>

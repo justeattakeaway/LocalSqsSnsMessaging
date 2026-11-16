@@ -25,7 +25,6 @@ public sealed class CreateTableGsiKeySchemaHashAfterRangeRejected
     /// Reference: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_CreateTable.html
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbMultiAttributeKeys, "A three-element index KeySchema is refused by the model's length-2 constraint, so HASH, RANGE, HASH never gets the HASH-after-RANGE message and HASH, HASH, RANGE is refused too")]
     [DisplayName("dynamodb.create-table-gsi-key-schema-hash-after-range-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
