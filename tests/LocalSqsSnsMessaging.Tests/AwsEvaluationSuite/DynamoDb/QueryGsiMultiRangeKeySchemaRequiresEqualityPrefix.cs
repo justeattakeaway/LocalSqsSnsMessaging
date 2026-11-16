@@ -58,7 +58,6 @@ public sealed class QueryGsiMultiRangeKeySchemaRequiresEqualityPrefix
     /// is ValidationException naming it, while the full equality prefix returns the matching item.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbMultiAttributeKeys, "CreateTable refuses a GSI key schema with three RANGE attributes")]
     [DisplayName("dynamodb.query-gsi-multi-range-key-schema-requires-equality-prefix")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

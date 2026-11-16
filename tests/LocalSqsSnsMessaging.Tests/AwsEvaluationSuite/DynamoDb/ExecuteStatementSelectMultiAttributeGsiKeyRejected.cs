@@ -33,7 +33,6 @@ public sealed class ExecuteStatementSelectMultiAttributeGsiKeyRejected
     /// error is reported first; the base table, a single-attribute GSI and an LSI are unaffected.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbMultiAttributeKeys, "a GSI keyed on several HASH or RANGE attributes is refused at CreateTable with the KeySchema length validation")]
     [DisplayName("dynamodb.execute-statement-select-multi-attribute-gsi-key-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

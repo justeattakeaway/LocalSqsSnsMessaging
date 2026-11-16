@@ -25,7 +25,6 @@ public sealed class BatchExecuteStatementMultiAttributeGsiSelectRejectedPerSlot
     /// single-attribute index's WHERE clause would give; a sibling base-table slot still succeeds.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbMultiAttributeKeys, "CreateTable refuses a GSI with two HASH attributes, so the check never gets to its BatchExecuteStatement")]
     [DisplayName("dynamodb.batch-execute-statement-multi-attribute-gsi-select-rejected-per-slot")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

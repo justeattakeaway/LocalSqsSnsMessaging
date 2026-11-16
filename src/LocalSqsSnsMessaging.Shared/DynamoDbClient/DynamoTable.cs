@@ -3,26 +3,60 @@ namespace LocalSqsSnsMessaging.DynamoDb;
 /// <summary>One attribute of a key schema: its name and declared scalar type.</summary>
 internal sealed record DynamoKeyAttribute(string Name, DynamoType Type);
 
-/// <summary>A table's or an index's key schema: a partition (HASH) key and an optional sort (RANGE) key.</summary>
-internal sealed record DynamoKeySchema(DynamoKeyAttribute Partition, DynamoKeyAttribute? Sort)
+/// <summary>
+/// A table's or an index's key schema: its partition (HASH) attributes and its sort (RANGE)
+/// attributes, in schema order. A table, and a local index, has one of the first and at most one
+/// of the second; a global index up to four of each (a multi-attribute key).
+/// </summary>
+/// <remarks>
+/// A key of several attributes in one role is held as one composite value, a list of the
+/// attributes' values in schema order (see <see cref="KeyOf"/>), so a <see cref="DynamoKey"/> has
+/// a partition and a sort value either way, and keys order by their attributes in schema order
+/// (<see cref="DynamoKeyOrder"/> compares lists element by element).
+/// </remarks>
+internal sealed class DynamoKeySchema
 {
-    public IEnumerable<DynamoKeyAttribute> Attributes =>
-        Sort is null ? [Partition] : [Partition, Sort];
+    public DynamoKeySchema(DynamoKeyAttribute partition, DynamoKeyAttribute? sort)
+        : this([partition], sort is null ? [] : [sort])
+    {
+    }
+
+    public DynamoKeySchema(IReadOnlyList<DynamoKeyAttribute> hash, IReadOnlyList<DynamoKeyAttribute> range)
+    {
+        Hash = hash;
+        Range = range;
+    }
+
+    /// <summary>The partition (HASH) attributes, in schema order; at least one.</summary>
+    public IReadOnlyList<DynamoKeyAttribute> Hash { get; }
+
+    /// <summary>The sort (RANGE) attributes, in schema order; possibly none.</summary>
+    public IReadOnlyList<DynamoKeyAttribute> Range { get; }
+
+    /// <summary>The first partition attribute: a table's (or a single-attribute index's) partition key.</summary>
+    public DynamoKeyAttribute Partition => Hash[0];
+
+    /// <summary>The first sort attribute, if any: a table's (or a single-attribute index's) sort key.</summary>
+    public DynamoKeyAttribute? Sort => Range.Count > 0 ? Range[0] : null;
+
+    /// <summary>Whether a role has several attributes, so its key values are composite.</summary>
+    public bool IsMultiAttribute => Hash.Count > 1 || Range.Count > 1;
+
+    public IEnumerable<DynamoKeyAttribute> Attributes => Hash.Concat(Range);
 
     public bool IsKeyAttribute(string name) =>
-        string.Equals(Partition.Name, name, StringComparison.Ordinal)
-        || (Sort is not null && string.Equals(Sort.Name, name, StringComparison.Ordinal));
+        Attributes.Any(a => string.Equals(a.Name, name, StringComparison.Ordinal));
 
     /// <summary>The key of <paramref name="item"/> under this schema, or null when it lacks a key attribute or has one of the wrong type.</summary>
     public DynamoKey? KeyOf(IReadOnlyDictionary<string, DynamoValue> item)
     {
-        if (!item.TryGetValue(Partition.Name, out var partition) || partition.Type != Partition.Type)
+        if (Value(Hash, item) is not { } partition)
         {
             return null;
         }
 
         DynamoValue? sort = null;
-        if (Sort is not null && (!item.TryGetValue(Sort.Name, out sort) || sort.Type != Sort.Type))
+        if (Range.Count > 0 && (sort = Value(Range, item)) is null)
         {
             return null;
         }
@@ -30,16 +64,53 @@ internal sealed record DynamoKeySchema(DynamoKeyAttribute Partition, DynamoKeyAt
         return new DynamoKey(partition, sort);
     }
 
+    /// <summary>The value of one role's attributes in <paramref name="item"/>: the value itself, or (for several) a list of them.</summary>
+    private static DynamoValue? Value(IReadOnlyList<DynamoKeyAttribute> attributes, IReadOnlyDictionary<string, DynamoValue> item)
+    {
+        if (attributes.Count == 1)
+        {
+            return item.TryGetValue(attributes[0].Name, out var single) && single.Type == attributes[0].Type ? single : null;
+        }
+
+        var values = new DynamoValue[attributes.Count];
+        for (var i = 0; i < attributes.Count; i++)
+        {
+            if (!item.TryGetValue(attributes[i].Name, out var value) || value.Type != attributes[i].Type)
+            {
+                return null;
+            }
+
+            values[i] = value;
+        }
+
+        return DynamoValue.FromList(values);
+    }
+
     /// <summary>The key attributes of <paramref name="key"/> as an item fragment.</summary>
     public Dictionary<string, DynamoValue> ToAttributes(DynamoKey key)
     {
-        var attributes = new Dictionary<string, DynamoValue>(StringComparer.Ordinal) { [Partition.Name] = key.Partition };
-        if (Sort is not null && key.Sort is not null)
+        var attributes = new Dictionary<string, DynamoValue>(StringComparer.Ordinal);
+        Spread(Hash, key.Partition, attributes);
+        if (Range.Count > 0 && key.Sort is not null)
         {
-            attributes[Sort.Name] = key.Sort;
+            Spread(Range, key.Sort, attributes);
         }
 
         return attributes;
+    }
+
+    private static void Spread(IReadOnlyList<DynamoKeyAttribute> attributes, DynamoValue value, Dictionary<string, DynamoValue> into)
+    {
+        if (attributes.Count == 1)
+        {
+            into[attributes[0].Name] = value;
+            return;
+        }
+
+        for (var i = 0; i < attributes.Count; i++)
+        {
+            into[attributes[i].Name] = value.L[i];
+        }
     }
 }
 

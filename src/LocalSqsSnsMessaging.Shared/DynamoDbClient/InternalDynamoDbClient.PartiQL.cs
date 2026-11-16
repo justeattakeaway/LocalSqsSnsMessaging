@@ -14,7 +14,7 @@ internal sealed partial class InternalDynamoDbClient
     public Task<ExecuteStatementResponse> ExecuteStatementAsync(ExecuteStatementRequest request, CancellationToken cancellationToken = default)
     {
         CheckReturnValuesOnConditionCheckFailure(request.ReturnValuesOnConditionCheckFailure);
-        var statement = PartiQLParser.Parse(request.Statement!, request.Parameters);
+        var statement = PartiQLParser.ParseDeferringSourceChecks(request.Statement!, request.Parameters);
         if (statement is PartiQLExists)
         {
             // EXISTS is a transaction's condition check; on its own it checks nothing.
@@ -23,6 +23,12 @@ internal sealed partial class InternalDynamoDbClient
 
         lock (Store.Gate)
         {
+            if (statement is PartiQLSelect { SourceRefusal: { } refusal } deferred
+                && !(deferred.Index is not null && FindTable(deferred.Table)?.FindIndex(deferred.Index) is { KeySchema.IsMultiAttribute: true }))
+            {
+                throw refusal;
+            }
+
             var table = ActiveTable(statement.Table);
             Record("PartiQL" + StatementVerb(statement), table.Arn);
             if (statement is PartiQLSelect select)
@@ -45,6 +51,9 @@ internal sealed partial class InternalDynamoDbClient
         }
     }
 
+    /// <summary>PartiQL's refusal of any read of an index keyed on several attributes in a role.</summary>
+    private const string MultiAttributeKeyRefusal = "PartiQL statements cannot be executed on tables with multi-attribute HASH keys or multi-attribute RANGE keys.";
+
     private static string StatementVerb(PartiQLStatement statement) => statement switch
     {
         PartiQLSelect => "Select",
@@ -65,6 +74,11 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             index = table.FindIndex(select.Index) ?? throw DynamoDbErrors.Validation("The table does not have the specified index");
+            if (index.KeySchema.IsMultiAttribute)
+            {
+                throw DynamoDbErrors.Validation(MultiAttributeKeyRefusal);
+            }
+
             if (index.IsGlobal && request.ConsistentRead == true)
             {
                 throw DynamoDbErrors.Validation("Strongly consistent read is not supported on Global Secondary Indexes");
@@ -629,7 +643,9 @@ internal sealed partial class InternalDynamoDbClient
                         string? refusal = null;
                         if (select.Index is not null)
                         {
-                            refusal = BatchKeyEqualityMessage;
+                            refusal = table.FindIndex(select.Index) is { KeySchema.IsMultiAttribute: true }
+                                ? MultiAttributeKeyRefusal
+                                : BatchKeyEqualityMessage;
                         }
                         else if (select.OrderBy is not null)
                         {

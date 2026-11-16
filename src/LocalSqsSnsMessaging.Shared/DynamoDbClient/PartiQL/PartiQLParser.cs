@@ -30,6 +30,13 @@ internal sealed class PartiQLSelect : PartiQLStatement
 
     public (string Attribute, bool Descending)? OrderBy { get; init; }
 
+    /// <summary>
+    /// A refusal of the statement DynamoDB makes after it has resolved the source (a function in
+    /// the select list), so a source refused outright (an index keyed on several attributes)
+    /// is refused first.
+    /// </summary>
+    public DynamoDbException? SourceRefusal { get; init; }
+
     public override bool IsRead => true;
 }
 
@@ -179,6 +186,9 @@ internal sealed class PartiQLParser
     private int _depth;
     private bool _aliased;
 
+    /// <summary>The refusal of a function in the select list, which DynamoDB makes only once it knows the source.</summary>
+    private DynamoDbException? _unsupportedProjection;
+
     private PartiQLParser(List<Token> tokens, IReadOnlyList<DynamoValue> parameters)
     {
         _tokens = tokens;
@@ -191,6 +201,21 @@ internal sealed class PartiQLParser
     private static DynamoDbException Refused(string detail) => DynamoDbErrors.Validation($"Invalid Statement: {detail}");
 
     public static PartiQLStatement Parse(string statement, List<DynamoValue>? parameters)
+    {
+        var parsed = ParseDeferringSourceChecks(statement, parameters);
+        if (parsed is PartiQLSelect { SourceRefusal: { } refusal })
+        {
+            throw refusal;
+        }
+
+        return parsed;
+    }
+
+    /// <summary>
+    /// Parses a statement, leaving a SELECT's refusals that depend on its source (see
+    /// <see cref="PartiQLSelect.SourceRefusal"/>) for the caller to make.
+    /// </summary>
+    public static PartiQLStatement ParseDeferringSourceChecks(string statement, List<DynamoValue>? parameters)
     {
         var bound = new List<DynamoValue>();
         var oversized = false;
@@ -702,7 +727,21 @@ internal sealed class PartiQLParser
             {
                 if (Peek(1) is { Kind: Kind.Open } && Peek() is { Kind: Kind.Word })
                 {
-                    throw DynamoDbErrors.Validation($"Unexpected path component at {Position()}");
+                    // A function call (COUNT(*), say): refused once the source is known.
+                    _unsupportedProjection ??= DynamoDbErrors.Validation($"Unexpected path component at {Position()}");
+                    _at += 2;
+                    for (var depth = 1; depth > 0 && !AtEnd; _at++)
+                    {
+                        depth += _tokens[_at].Kind switch { Kind.Open => 1, Kind.Close => -1, _ => 0 };
+                    }
+
+                    // Anything else after the call (an alias, a path into its result) is refused now.
+                    if (Peek()?.Kind != Kind.Comma && !PeekWord("from"))
+                    {
+                        throw _unsupportedProjection;
+                    }
+
+                    continue;
                 }
 
                 var path = Path();
@@ -778,6 +817,7 @@ internal sealed class PartiQLParser
             Where = where?.Condition,
             Equalities = where?.Equalities ?? [],
             OrderBy = orderBy,
+            SourceRefusal = _unsupportedProjection,
         };
     }
 

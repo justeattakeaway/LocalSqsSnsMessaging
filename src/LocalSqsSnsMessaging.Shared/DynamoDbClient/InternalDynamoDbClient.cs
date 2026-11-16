@@ -342,13 +342,11 @@ internal sealed partial class InternalDynamoDbClient
 
     private static List<KeySchemaElement> KeySchemaElements(DynamoKeySchema schema)
     {
-        var elements = new List<KeySchemaElement> { new() { AttributeName = schema.Partition.Name, KeyType = "HASH" } };
-        if (schema.Sort is not null)
-        {
-            elements.Add(new KeySchemaElement { AttributeName = schema.Sort.Name, KeyType = "RANGE" });
-        }
-
-        return elements;
+        return
+        [
+            .. schema.Hash.Select(a => new KeySchemaElement { AttributeName = a.Name, KeyType = "HASH" }),
+            .. schema.Range.Select(a => new KeySchemaElement { AttributeName = a.Name, KeyType = "RANGE" }),
+        ];
     }
 
     private static Model.Projection ProjectionModel(DynamoProjection projection) => new()

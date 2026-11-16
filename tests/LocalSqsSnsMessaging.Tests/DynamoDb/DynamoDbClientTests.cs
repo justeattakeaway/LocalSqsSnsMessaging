@@ -322,4 +322,77 @@ public sealed class DynamoDbClientTests
         settled.GlobalSecondaryIndexes.Single().IndexStatus.ShouldBe(IndexStatus.ACTIVE);
         await client.UpdateTableAsync(AddIndex("by-b"));
     }
+
+    [Test]
+    public async Task MultiAttributeIndexKey_QueriesInSchemaOrderAndPagesByEveryKeyAttribute()
+    {
+        var bus = new InMemoryAwsBus();
+        var client = bus.CreateDynamoDbClient();
+        await client.CreateTableAsync(new CreateTableRequest
+        {
+            TableName = "events",
+            KeySchema = [new KeySchemaElement("pk", KeyType.HASH)],
+            AttributeDefinitions =
+            [
+                new AttributeDefinition("pk", ScalarAttributeType.S),
+                new AttributeDefinition("tenant", ScalarAttributeType.S),
+                new AttributeDefinition("region", ScalarAttributeType.S),
+                new AttributeDefinition("day", ScalarAttributeType.N),
+                new AttributeDefinition("seq", ScalarAttributeType.N),
+            ],
+            BillingMode = BillingMode.PAY_PER_REQUEST,
+            GlobalSecondaryIndexes =
+            [
+                new GlobalSecondaryIndex
+                {
+                    IndexName = "by-tenant-region",
+                    KeySchema =
+                    [
+                        new KeySchemaElement("tenant", KeyType.HASH),
+                        new KeySchemaElement("region", KeyType.HASH),
+                        new KeySchemaElement("day", KeyType.RANGE),
+                        new KeySchemaElement("seq", KeyType.RANGE),
+                    ],
+                    Projection = new Projection { ProjectionType = ProjectionType.KEYS_ONLY },
+                },
+            ],
+        });
+        foreach (var (pk, region, day, seq) in new[] { ("a", "eu", "2", "1"), ("b", "eu", "1", "10"), ("c", "eu", "1", "9"), ("d", "us", "1", "1") })
+        {
+            await client.PutItemAsync("events", new Dictionary<string, AttributeValue>
+            {
+                ["pk"] = new(pk),
+                ["tenant"] = new("acme"),
+                ["region"] = new(region),
+                ["day"] = new() { N = day },
+                ["seq"] = new() { N = seq },
+            });
+        }
+
+        var pks = new List<string>();
+        Dictionary<string, AttributeValue>? start = null;
+        do
+        {
+            var page = await client.QueryAsync(new QueryRequest
+            {
+                TableName = "events",
+                IndexName = "by-tenant-region",
+                KeyConditionExpression = "#r = :r AND tenant = :t",
+                ExpressionAttributeNames = new Dictionary<string, string> { ["#r"] = "region" },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue> { [":t"] = new("acme"), [":r"] = new("eu") },
+                Limit = 1,
+                ExclusiveStartKey = start,
+            });
+            pks.AddRange(page.Items.Select(i => i["pk"].S));
+            start = page.LastEvaluatedKey;
+            if (start is { Count: > 0 })
+            {
+                start.Keys.Order(StringComparer.Ordinal).ShouldBe(["day", "pk", "region", "seq", "tenant"]);
+            }
+        }
+        while (start is { Count: > 0 });
+
+        // Ordered by day, then numerically by seq.
+        pks.ShouldBe(["c", "b", "a"]);
+    }
 }

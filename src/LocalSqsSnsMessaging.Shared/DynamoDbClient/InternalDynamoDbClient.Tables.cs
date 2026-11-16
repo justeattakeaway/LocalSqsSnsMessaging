@@ -142,7 +142,7 @@ internal sealed partial class InternalDynamoDbClient
                     throw DynamoDbErrors.InvalidParameter($"Duplicate index name: {indexName}");
                 }
 
-                var indexKey = ParseKeySchema(global.KeySchema ?? [], definitions, indexName);
+                var indexKey = ParseKeySchema(global.KeySchema ?? [], definitions, indexName, global: true);
                 CheckThroughput(global.ProvisionedThroughput, onDemand, indexName);
                 used.UnionWith(indexKey.Attributes.Select(a => a.Name));
                 table.GlobalIndexes.Add(new DynamoIndex
@@ -240,7 +240,11 @@ internal sealed partial class InternalDynamoDbClient
         _ => throw DynamoDbErrors.ValidationClause(AwsValidation.Clause(type, "attributeDefinitions.member.attributeType", "Member must satisfy enum value set: [B, N, S]")),
     };
 
-    /// <summary>A key schema: a HASH key first, then at most a RANGE key, each with a defined type.</summary>
+    /// <summary>
+    /// A key schema: a HASH key first, then at most a RANGE key, each with a defined type. A
+    /// global index's may have up to four of each (a multi-attribute key), every HASH before
+    /// every RANGE.
+    /// </summary>
     /// <param name="elements">The key schema as the request states it.</param>
     /// <param name="definitions">The attribute definitions its keys resolve against.</param>
     /// <param name="indexName">The index the schema keys; null for the table's own key.</param>
@@ -249,9 +253,10 @@ internal sealed partial class InternalDynamoDbClient
     /// with no definition, when every definition is used, gets DynamoDB's fixed sentence instead
     /// of the two lists.
     /// </param>
-    private static DynamoKeySchema ParseKeySchema(List<KeySchemaElement> elements, List<DynamoKeyAttribute> definitions, string? indexName, HashSet<string>? keyAttributes = null)
+    /// <param name="global">Whether the schema keys a global secondary index.</param>
+    private static DynamoKeySchema ParseKeySchema(List<KeySchemaElement> elements, List<DynamoKeyAttribute> definitions, string? indexName, HashSet<string>? keyAttributes = null, bool global = false)
     {
-        if (elements.Count == 0 || elements.Count > 2)
+        if (elements.Count == 0 || (elements.Count > 2 && !global))
         {
             throw DynamoDbErrors.ValidationClause(AwsValidation.Clause(JavaRendering.List(elements, e => e.ToString()), indexName is null ? "keySchema" : "globalSecondaryIndexes.member.keySchema", elements.Count == 0 ? "Member must have length greater than or equal to 1" : "Member must have length less than or equal to 2"));
         }
@@ -261,7 +266,23 @@ internal sealed partial class InternalDynamoDbClient
             throw DynamoDbErrors.Validation("Invalid KeySchema: The first KeySchemaElement is not a HASH key type");
         }
 
-        if (elements.Count == 2 && elements[1].KeyType != "RANGE")
+        if (global)
+        {
+            var firstRange = elements.FindIndex(e => e.KeyType == "RANGE");
+            if (firstRange >= 0 && elements.Skip(firstRange).Any(e => e.KeyType == "HASH"))
+            {
+                throw DynamoDbErrors.InvalidParameter("All HASH key attributes must precede RANGE key attributes in the KeySchema");
+            }
+
+            foreach (var role in (string[])["HASH", "RANGE"])
+            {
+                if (elements.Count(e => e.KeyType == role) > MaxKeyAttributesPerRole)
+                {
+                    throw DynamoDbErrors.InvalidParameter($"The KeySchema exceeds the maximum allowed number of {role} key attributes");
+                }
+            }
+        }
+        else if (elements.Count == 2 && elements[1].KeyType != "RANGE")
         {
             throw DynamoDbErrors.Validation("Invalid KeySchema: The second KeySchemaElement is not a RANGE key type");
         }
@@ -279,7 +300,7 @@ internal sealed partial class InternalDynamoDbClient
 
         // A repeated key attribute leaves an element without a definition of its own, unless the
         // request declared as many definitions as the table key has elements.
-        if (elements.Count == 2 && string.Equals(elements[0].AttributeName, elements[1].AttributeName, StringComparison.Ordinal))
+        if (elements.Select(e => e.AttributeName).Distinct(StringComparer.Ordinal).Count() < elements.Count)
         {
             throw DynamoDbErrors.Validation(indexName is null && definitions.Count >= elements.Count
                 ? "Both the Hash Key and the Range Key element in the KeySchema have the same name"
@@ -289,8 +310,13 @@ internal sealed partial class InternalDynamoDbClient
         DynamoKeyAttribute Attribute(KeySchemaElement element) =>
             definitions.First(d => string.Equals(d.Name, element.AttributeName, StringComparison.Ordinal));
 
-        return new DynamoKeySchema(Attribute(elements[0]), elements.Count == 2 ? Attribute(elements[1]) : null);
+        return new DynamoKeySchema(
+            elements.Where(e => e.KeyType == "HASH").Select(Attribute).ToList(),
+            elements.Where(e => e.KeyType != "HASH").Select(Attribute).ToList());
     }
+
+    /// <summary>The most attributes a global index's key may have in one role (HASH or RANGE).</summary>
+    private const int MaxKeyAttributesPerRole = 4;
 
     private const string KeyWithoutDefinition = "Invalid KeySchema: Some index key attribute have no definition";
 
@@ -801,7 +827,7 @@ internal sealed partial class InternalDynamoDbClient
                 }
             }
 
-            var keySchema = ParseKeySchema(create.KeySchema ?? [], known, indexName);
+            var keySchema = ParseKeySchema(create.KeySchema ?? [], known, indexName, global: true);
             CheckThroughput(create.ProvisionedThroughput, billingMode == "PAY_PER_REQUEST", indexName);
             var index = new DynamoIndex
             {

@@ -17,20 +17,26 @@ internal sealed record KeyComparison(string Attribute, KeyOperator Operator, str
 
 /// <summary>
 /// A Query's key condition, resolved against the key schema it queries: one partition value, and
-/// at most one condition on the sort key.
+/// at most one condition on the sort key. For a schema with several RANGE attributes, the sort
+/// condition is equality on a prefix of them, then at most one comparison on the next.
 /// </summary>
 internal sealed class KeyCondition
 {
     private const string Member = "KeyConditionExpression";
 
-    private KeyCondition(DynamoValue partition, KeyComparison? sort)
+    private readonly IReadOnlyList<DynamoValue>? _rangePrefix;
+
+    private KeyCondition(DynamoValue partition, KeyComparison? sort, IReadOnlyList<DynamoValue>? rangePrefix)
     {
         Partition = partition;
         Sort = sort;
+        _rangePrefix = rangePrefix;
     }
 
+    /// <summary>The partition value: the HASH attribute's, or (for several) the list of theirs in schema order.</summary>
     public DynamoValue Partition { get; }
 
+    /// <summary>The comparison on the sort key; for several RANGE attributes, on the one after the equality prefix.</summary>
     public KeyComparison? Sort { get; }
 
     public const string Required = "Either the KeyConditions or KeyConditionExpression parameter must be specified in the request.";
@@ -38,26 +44,41 @@ internal sealed class KeyCondition
     /// <summary>Whether a sort key value satisfies the sort condition (or there is none).</summary>
     public bool MatchesSort(DynamoValue? actual)
     {
-        if (Sort is null)
+        if (_rangePrefix is null)
         {
-            return true;
+            return Sort is null || (actual is not null && Satisfies(Sort, actual));
         }
 
+        // Several RANGE attributes: the sort value is the list of their values in schema order.
         if (actual is null)
         {
-            return false;
+            return _rangePrefix.Count == 0 && Sort is null;
         }
 
-        var first = Sort.Operands[0];
+        var values = actual.L;
+        for (var i = 0; i < _rangePrefix.Count; i++)
+        {
+            if (DynamoKeyOrder.Compare(values[i], _rangePrefix[i]) != 0)
+            {
+                return false;
+            }
+        }
+
+        return Sort is null || Satisfies(Sort, values[_rangePrefix.Count]);
+    }
+
+    private static bool Satisfies(KeyComparison comparison, DynamoValue actual)
+    {
+        var first = comparison.Operands[0];
         var order = DynamoKeyOrder.Compare(actual, first);
-        return Sort.Operator switch
+        return comparison.Operator switch
         {
             KeyOperator.Equal => order == 0,
             KeyOperator.Less => order < 0,
             KeyOperator.LessOrEqual => order <= 0,
             KeyOperator.Greater => order > 0,
             KeyOperator.GreaterOrEqual => order >= 0,
-            KeyOperator.Between => order >= 0 && DynamoKeyOrder.Compare(actual, Sort.Operands[1]) <= 0,
+            KeyOperator.Between => order >= 0 && DynamoKeyOrder.Compare(actual, comparison.Operands[1]) <= 0,
             _ => ConditionValues.BeginsWith(actual, first),
         };
     }
@@ -111,31 +132,32 @@ internal sealed class KeyCondition
     }
 
     /// <summary>
-    /// Resolves the comparisons against <paramref name="schema"/>: the partition key compared for
-    /// equality, and the sort key at most once.
+    /// Resolves the comparisons against <paramref name="schema"/>: every partition attribute
+    /// compared for equality, and each sort attribute at most once (with several, an equality
+    /// on every one before the last one compared).
     /// </summary>
     public static KeyCondition Resolve(List<KeyComparison> comparisons, DynamoKeySchema schema, Func<string, DynamoType?> declaredType)
     {
-        var keyCount = schema.Sort is null ? 1 : 2;
+        var keyCount = schema.Hash.Count + schema.Range.Count;
         if (comparisons.Count > keyCount)
         {
             throw DynamoDbErrors.Validation($"The number of query conditions ({comparisons.Count.ToString(CultureInfo.InvariantCulture)}) exceeds the number of key attributes defined in the schema ({keyCount.ToString(CultureInfo.InvariantCulture)})");
         }
 
-        DynamoValue? partition = null;
-        KeyComparison? sort = null;
+        var hashes = new DynamoValue?[schema.Hash.Count];
+        var ranges = new KeyComparison?[schema.Range.Count];
         var nonKey = false;
         foreach (var comparison in comparisons)
         {
-            var isPartition = string.Equals(comparison.Attribute, schema.Partition.Name, StringComparison.Ordinal);
-            var isSort = schema.Sort is not null && string.Equals(comparison.Attribute, schema.Sort.Name, StringComparison.Ordinal);
-            if (!isPartition && !isSort)
+            var atHash = IndexOf(schema.Hash, comparison.Attribute);
+            var atRange = IndexOf(schema.Range, comparison.Attribute);
+            if (atHash < 0 && atRange < 0)
             {
                 nonKey = true;
                 continue;
             }
 
-            var keyType = isPartition ? schema.Partition.Type : schema.Sort!.Type;
+            var keyType = atHash >= 0 ? schema.Hash[atHash].Type : schema.Range[atRange].Type;
             foreach (var operand in comparison.Operands)
             {
                 if (operand.Type != keyType)
@@ -149,31 +171,66 @@ internal sealed class KeyCondition
                 }
             }
 
-            if (isPartition)
+            if (atHash >= 0)
             {
                 if (comparison.Operator != KeyOperator.Equal)
                 {
                     throw DynamoDbErrors.Validation("Query key condition not supported");
                 }
 
-                partition = DynamoValueRules.Canonicalize(comparison.Operands[0], enveloped: false);
+                hashes[atHash] = DynamoValueRules.Canonicalize(comparison.Operands[0], enveloped: false);
             }
             else
             {
-                sort = comparison with { Operands = comparison.Operands.Select(o => DynamoValueRules.Canonicalize(o, enveloped: false)).ToList() };
+                ranges[atRange] = comparison with { Operands = comparison.Operands.Select(o => DynamoValueRules.Canonicalize(o, enveloped: false)).ToList() };
             }
         }
 
-        if (nonKey || partition is null)
+        var unconstrainedHash = schema.Hash.Where((_, i) => hashes[i] is null).Select(a => a.Name).ToList();
+        if (nonKey || unconstrainedHash.Count == schema.Hash.Count)
         {
-            var missed = partition is null ? schema.Partition.Name : schema.Sort?.Name;
+            var missed = unconstrainedHash.FirstOrDefault() ?? schema.Range.Where((_, i) => ranges[i] is null).Select(a => a.Name).FirstOrDefault();
             throw missed is null
                 ? DynamoDbErrors.Validation("Query key condition not supported")
                 : DynamoDbErrors.Validation($"Query condition missed key schema element: {missed}");
         }
 
+        if (unconstrainedHash.Count > 0)
+        {
+            throw DynamoDbErrors.Validation($"HASH key attributes {string.Join(", ", unconstrainedHash)} must have equality conditions specified in the query");
+        }
+
         _ = declaredType;
-        return new KeyCondition(partition, sort);
+        var partition = schema.Hash.Count == 1 ? hashes[0]! : DynamoValue.FromList(hashes.Select(h => h!).ToList());
+        if (schema.Range.Count <= 1)
+        {
+            return new KeyCondition(partition, ranges.FirstOrDefault(), rangePrefix: null);
+        }
+
+        // Several RANGE attributes: every one before the last one compared needs an equality.
+        var last = Array.FindLastIndex(ranges, r => r is not null);
+        var unequal = schema.Range.Take(Math.Max(last, 0)).Where((_, i) => ranges[i]?.Operator != KeyOperator.Equal).Select(a => a.Name).ToList();
+        if (unequal.Count > 0)
+        {
+            throw DynamoDbErrors.Validation($"RANGE key attributes {string.Join(", ", unequal)} must have equality conditions specified in the query because a condition is present on key attribute {schema.Range[last].Name}");
+        }
+
+        return last < 0
+            ? new KeyCondition(partition, null, [])
+            : new KeyCondition(partition, ranges[last], ranges.Take(last).Select(r => r!.Operands[0]).ToList());
+    }
+
+    private static int IndexOf(IReadOnlyList<DynamoKeyAttribute> attributes, string name)
+    {
+        for (var i = 0; i < attributes.Count; i++)
+        {
+            if (string.Equals(attributes[i].Name, name, StringComparison.Ordinal))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private sealed class Parser

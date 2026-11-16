@@ -21,7 +21,6 @@ public sealed class GsiMultiAttributeHashKeyQueryWithoutEveryAttributeRejected
     /// CreateTable with five HASH attributes raises ValidationException and creates nothing.
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbMultiAttributeKeys, "a GSI keyed on several HASH attributes is refused with the KeySchema length validation, not the maximum-HASH-attributes message")]
     [DisplayName("dynamodb.gsi-multi-attribute-hash-key-query-without-every-attribute-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)
