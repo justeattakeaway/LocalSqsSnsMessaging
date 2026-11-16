@@ -256,6 +256,32 @@ public sealed class DynamoDbClientTests
     }
 
     [Test]
+    public async Task TransitionDelay_KeepsATableUpdatingWhileItSwitchesToOnDemand()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var bus = new InMemoryAwsBus { TimeProvider = time, DynamoDbTransitionDelay = TimeSpan.FromSeconds(5) };
+        var client = await CreateTableAsync(bus);
+        time.Advance(TimeSpan.FromSeconds(5));
+        await client.UpdateTableAsync(new UpdateTableRequest
+        {
+            TableName = "orders",
+            BillingMode = BillingMode.PROVISIONED,
+            ProvisionedThroughput = new ProvisionedThroughput(3, 3),
+        });
+        time.Advance(TimeSpan.FromSeconds(5));
+
+        var updated = await client.UpdateTableAsync(new UpdateTableRequest { TableName = "orders", BillingMode = BillingMode.PAY_PER_REQUEST });
+
+        updated.TableDescription.TableStatus.ShouldBe(TableStatus.UPDATING);
+        var refused = await Should.ThrowAsync<ResourceInUseException>(() => client.DeleteTableAsync("orders"));
+        refused.Message.ShouldBe("Attempt to change a resource which is still in use: Table is being updated: orders");
+
+        time.Advance(TimeSpan.FromSeconds(5));
+
+        (await client.DescribeTableAsync("orders")).Table.TableStatus.ShouldBe(TableStatus.ACTIVE);
+    }
+
+    [Test]
     public async Task TransitionDelay_BuildsAnIndexUpdateTableAddsOneAtATime()
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));

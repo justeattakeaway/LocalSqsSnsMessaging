@@ -650,7 +650,9 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation("At least one of ProvisionedThroughput, BillingMode, UpdateStreamEnabled, GlobalSecondaryIndexUpdates or SSESpecification or ReplicaUpdates is required");
             }
 
-            // Every check has passed: make the changes.
+            // Every check has passed: make the changes. A change of capacity (throughput or
+            // billing mode) takes a while to apply, the table UPDATING meanwhile.
+            var capacityChanges = throughputChange is not null || billingMode != table.BillingMode;
             if (request.BillingMode is not null)
             {
                 if (billingMode != table.BillingMode)
@@ -670,8 +672,7 @@ internal sealed partial class InternalDynamoDbClient
                 table.BillingModeStated = true;
             }
 
-            // A change of capacity takes a while to apply, the table UPDATING meanwhile.
-            if (TransitionsTakeTime && (throughputChange is not null || (request.BillingMode is not null && billingMode != table.BillingMode)))
+            if (TransitionsTakeTime && capacityChanges)
             {
                 table.StartThroughputChange(TransitionEnd);
             }
