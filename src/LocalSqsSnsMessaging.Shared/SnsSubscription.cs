@@ -60,8 +60,8 @@ internal sealed class SnsSubscription
     public string? ReplayStatus { get; set; }
 
     /// <summary>
-    /// True until an HTTP/S endpoint confirms the subscription via <c>ConfirmSubscription</c> (or by
-    /// visiting the <c>SubscribeURL</c>). Pending subscriptions don't take part in fan-out, so a
+    /// True until an HTTP/S or email endpoint confirms the subscription via <c>ConfirmSubscription</c>
+    /// (or, for HTTP/S, by visiting the <c>SubscribeURL</c>). Pending subscriptions don't take part in fan-out, so a
     /// caller can't point the bus at an arbitrary URL and have it start posting there. Cleared only by
     /// <see cref="SnsTopicResource.Confirm"/>.
     /// </summary>

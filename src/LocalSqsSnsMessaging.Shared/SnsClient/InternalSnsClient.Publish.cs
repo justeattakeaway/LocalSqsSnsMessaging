@@ -13,6 +13,7 @@ internal sealed partial class InternalSnsClient
 
         var targetArn = SnsPublishValidation.ResolveTarget(request);
         var topic = GetTopicByArn(targetArn, string.IsNullOrEmpty(request.TopicArn) ? "TargetArn" : "TopicArn");
+        Authorize(topic, SnsActionName.Publish);
 
         SnsPublishValidation.ValidateMessage(topic, request.Message, request.Subject, request.MessageStructure,
             request.MessageAttributes, request.MessageGroupId, request.MessageDeduplicationId);
@@ -35,6 +36,8 @@ internal sealed partial class InternalSnsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var topic = GetTopicByArn(request.TopicArn);
+        // IAM has no PublishBatch action: a batch needs sns:Publish.
+        Authorize(topic, SnsActionName.Publish);
 
         // Every entry is checked before any is published: one invalid entry fails the whole request.
         var entries = request.PublishBatchRequestEntries;

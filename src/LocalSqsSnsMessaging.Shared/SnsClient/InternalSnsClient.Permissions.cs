@@ -23,6 +23,7 @@ internal sealed partial class InternalSnsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var topic = GetTopicByArn(request.TopicArn);
+        Authorize(topic, SnsActionName.AddPermission);
         ValidatePermission(request);
 
         lock (topic.SubscriptionGate)
@@ -83,6 +84,7 @@ internal sealed partial class InternalSnsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var topic = GetTopicByArn(request.TopicArn);
+        Authorize(topic, SnsActionName.RemovePermission);
 
         lock (topic.SubscriptionGate)
         {

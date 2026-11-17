@@ -16,28 +16,33 @@ internal static class SnsPagination
     /// The page of <paramref name="keys"/> that <paramref name="nextToken"/> asks for, and the token
     /// for the page after it. A token SNS didn't issue is refused with <c>InvalidParameter</c>.
     /// </summary>
-    public static (List<string> Items, string? NextToken) Page(IEnumerable<string> keys, string? nextToken)
+    /// <param name="keys">Every key there is to list.</param>
+    /// <param name="nextToken">The caller's <c>NextToken</c>, if any.</param>
+    /// <param name="pageSize">The most keys a page holds.</param>
+    /// <param name="invalidTokenMessage">The refusal for a token SNS didn't issue; operations word it differently.</param>
+    public static (List<string> Items, string? NextToken) Page(IEnumerable<string> keys, string? nextToken,
+        int pageSize = PageSize, string invalidTokenMessage = "Invalid parameter: NextToken")
     {
-        var after = string.IsNullOrEmpty(nextToken) ? null : DecodeToken(nextToken!);
+        var after = string.IsNullOrEmpty(nextToken) ? null : DecodeToken(nextToken!, invalidTokenMessage);
         var ordered = keys
             .Where(k => after is null || string.CompareOrdinal(k, after) > 0)
             .Order(StringComparer.Ordinal)
-            .Take(PageSize + 1)
+            .Take(pageSize + 1)
             .ToList();
 
-        if (ordered.Count <= PageSize)
+        if (ordered.Count <= pageSize)
         {
             return (ordered, null);
         }
 
-        ordered.RemoveAt(PageSize);
+        ordered.RemoveAt(pageSize);
         return (ordered, EncodeToken(ordered[^1]));
     }
 
     private static string EncodeToken(string lastKey) =>
         Convert.ToBase64String(Encoding.UTF8.GetBytes(TokenPrefix + lastKey));
 
-    private static string DecodeToken(string token)
+    private static string DecodeToken(string token, string invalidTokenMessage)
     {
         try
         {
@@ -51,6 +56,6 @@ internal static class SnsPagination
         {
         }
 
-        throw new InternalInvalidParameterException("Invalid parameter: NextToken");
+        throw new InternalInvalidParameterException(invalidTokenMessage);
     }
 }

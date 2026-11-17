@@ -34,17 +34,16 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | [`events__iam__sqs__stepfunctions`](#behavioralevents__iam__sqs__stepfunctions) | 3 | 0 | 0 | 3 | 0 |
 | [`events__iam__sts`](#behavioralevents__iam__sts) | 1 | 0 | 0 | 1 | 0 |
 | [`events__sqs`](#behavioralevents__sqs) | 54 | 52 | 1 | 2 | 0 |
-| [`sns`](#behavioralsns) | 245 | 171 | 0 | 74 | 0 |
-| [`sns__sqs`](#behavioralsns__sqs) | 12 | 11 | 0 | 1 | 0 |
+| [`sns`](#behavioralsns) | 245 | 207 | 1 | 38 | 0 |
+| [`sns__sqs`](#behavioralsns__sqs) | 12 | 12 | 0 | 0 | 0 |
 | [`sqs`](#behavioralsqs) | 306 | 271 | 3 | 35 | 0 |
-| **Total** | **1765** | **1492** | **19** | **273** | **0** |
+| **Total** | **1765** | **1529** | **20** | **236** | **0** |
 
 ### Not ported, by reason
 
 | Reason | Checks |
 |---|---:|
 | EventBridge v2 | 40 |
-| Other protocols: SMS, mobile push (platform applications and endpoints) and email | 30 |
 | CloudFormation stacks | 29 |
 | API destinations and connections | 22 |
 | KMS keys | 19 |
@@ -55,7 +54,6 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | Partner event sources | 12 |
 | IAM role and identity-policy enforcement | 8 |
 | Kinesis streaming destinations | 8 |
-| An email subscription, used to hold a subscription in `PendingConfirmation` | 7 |
 | IAM roles and role assumption | 7 |
 | Application Auto Scaling | 6 |
 | CloudWatch Logs delivery-status logging (IAM, Logs) | 4 |
@@ -77,9 +75,9 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `DynamoDbThroughput` | 4 |
 | `EventBridgeUngrantedTargets` | 4 |
 | `EmulatorBudget` | 3 |
+| `Other` | 2 |
 | `Validation` | 2 |
 | `DynamoDbDetail` | 1 |
-| `Other` | 1 |
 
 ## behavioral/dynamodb
 
@@ -1349,7 +1347,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.add-permission-nonexistent-topic-fails` | `4df2823` | ported | `Sns/AddPermissionNonexistentTopicFails.cs` |
 | `sns.authenticate-on-unsubscribe-refuses-the-anonymous-unsubscribe-url` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
 | `sns.authorization-error-explicit-deny-returns-correct-code` | `4df2823` | not ported | IAM roles and role assumption |
-| `sns.check-phone-number-opted-out-invalid-fails` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.check-phone-number-opted-out-invalid-fails` | `4df2823` | ported | `Sns/CheckPhoneNumberOptedOutInvalidFails.cs` |
 | `sns.clearing-a-filter-policy-with-an-empty-value-restores-unfiltered-delivery` | `4df2823` | ported | `Sns/ClearingAFilterPolicyWithAnEmptyValueRestoresUnfilteredDelivery.cs` |
 | `sns.concurrent-add-permission-distinct-labels-all-retained` | `4df2823` | ported | `Sns/ConcurrentAddPermissionDistinctLabelsAllRetained.cs` |
 | `sns.concurrent-create-topic-same-name-converges` | `4df2823` | ported | `Sns/ConcurrentCreateTopicSameNameConverges.cs` |
@@ -1357,18 +1355,18 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.confirm-subscription-token-confirms-only-its-own-subscription-whatever-the-topic-arn` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
 | `sns.confirm-subscription-token-is-reusable-until-unsubscribe-then-not-found` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
 | `sns.confirmed-sqs-subscription-attributes-and-listing-agree-field-for-field` | `4df2823` | ported | `Sns/ConfirmedSqsSubscriptionAttributesAndListingAgreeFieldForField.cs` |
-| `sns.create-platform-application-unknown-platform-fails` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.create-platform-endpoint-nonexistent-app-fails` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.create-sms-sandbox-invalid-number-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.create-sms-sandbox-unsupported-country-code-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.create-platform-application-unknown-platform-fails` | `4df2823` | ported | `Sns/CreatePlatformApplicationUnknownPlatformFails.cs` |
+| `sns.create-platform-endpoint-nonexistent-app-fails` | `4df2823` | ported | `Sns/CreatePlatformEndpointNonexistentAppFails.cs` |
+| `sns.create-sms-sandbox-invalid-number-rejected` | `4df2823` | ported | `Sns/CreateSmsSandboxInvalidNumberRejected.cs` |
+| `sns.create-sms-sandbox-unsupported-country-code-rejected` | `4df2823` | ported | `Sns/CreateSmsSandboxUnsupportedCountryCodeRejected.cs` |
 | `sns.create-topic-idempotent-and-conflict` | `4df2823` | ported | `Sns/CreateTopicIdempotentAndConflict.cs` |
 | `sns.create-topic-invalid-attribute-creates-nothing` | `4df2823` | ported | `Sns/CreateTopicInvalidAttributeCreatesNothing.cs` |
 | `sns.create-topic-with-different-tags-rejected` | `4df2823` | ported | `Sns/CreateTopicWithDifferentTagsRejected.cs` |
 | `sns.cross-region-lambda-subscription-invokes-the-function-in-its-own-region` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
 | `sns.cross-region-sqs-subscription-delivers-with-the-topic-region-envelope` | `4df2823` | ported | `Sns/CrossRegionSqsSubscriptionDeliversWithTheTopicRegionEnvelope.cs` |
 | `sns.custom-attribute-type-labels-and-string-array-survive-both-delivery-modes` | `4df2823` | ported | `Sns/CustomAttributeTypeLabelsAndStringArraySurviveBothDeliveryModes.cs` |
-| `sns.delete-endpoint-nonexistent-idempotent` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.delete-platform-application-nonexistent-idempotent` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.delete-endpoint-nonexistent-idempotent` | `4df2823` | ported | `Sns/DeleteEndpointNonexistentIdempotent.cs` |
+| `sns.delete-platform-application-nonexistent-idempotent` | `4df2823` | ported | `Sns/DeletePlatformApplicationNonexistentIdempotent.cs` |
 | `sns.delete-topic-cascades-subscriptions` | `4df2823` | ported | `Sns/DeleteTopicCascadesSubscriptions.cs` |
 | `sns.delete-topic-then-recreate-starts-fresh` | `4df2823` | ported | `Sns/DeleteTopicThenRecreateStartsFresh.cs` |
 | `sns.deleted-endpoint-queue-dead-letters-each-subscription-in-its-own-format` | `4df2823` | ported | `Sns/DeletedEndpointQueueDeadLettersEachSubscriptionInItsOwnFormat.cs` |
@@ -1382,7 +1380,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.deploy-cfn-topic-publish-subscribe-flow` | `4df2823` | not ported | CloudFormation stacks |
 | `sns.display-name-over-100-characters-rejected` | `4df2823` | ported | `Sns/DisplayNameOver100CharactersRejected.cs` |
 | `sns.e2e-topic-fanout-filter-teardown-flow` | `4df2823` | ported | `Sns/E2eTopicFanoutFilterTeardownFlow.cs` |
-| `sns.email-subscription-confirmation-state-attributes` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.email-subscription-confirmation-state-attributes` | `4df2823` | ported | `Sns/EmailSubscriptionConfirmationStateAttributes.cs` |
 | `sns.empty-vs-absent-message-attribute-rejected` | `4df2823` | ported | `Sns/EmptyVsAbsentMessageAttributeRejected.cs` |
 | `sns.encrypted-topic-whose-key-policy-withholds-usage-refuses-publish` | `4df2823` | not ported | KMS keys |
 | `sns.feedback-role-without-logs-permission-still-delivers-and-writes-no-log-record` | `4df2823` | not ported | CloudWatch Logs delivery-status logging (IAM, Logs) |
@@ -1405,7 +1403,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.fifo-topic-name-suffix-required` | `4df2823` | ported | `Sns/FifoTopicNameSuffixRequired.cs` |
 | `sns.fifo-topic-ordering-delivery` | `4df2823` | ported | `Sns/FifoTopicOrderingDelivery.cs` |
 | `sns.fifo-topic-preserves-publish-order-and-deduplicates-by-id` | `4df2823` | ported | `Sns/FifoTopicPreservesPublishOrderAndDeduplicatesById.cs` |
-| `sns.fifo-topic-rejects-email-protocol` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.fifo-topic-rejects-email-protocol` | `4df2823` | ported | `Sns/FifoTopicRejectsEmailProtocol.cs` |
 | `sns.filter-policy-cidr-matches-ip-address-attributes` | `4df2823` | ported | `Sns/FilterPolicyCidrMatchesIpAddressAttributes.cs` |
 | `sns.filter-policy-exists-false-and-anything-but-decide-delivery` | `4df2823` | ported | `Sns/FilterPolicyExistsFalseAndAnythingButDecideDelivery.cs` |
 | `sns.filter-policy-message-body-scope-cidr-and-or-conjunction-decide-delivery` | `4df2823` | ported | `Sns/FilterPolicyMessageBodyScopeCidrAndOrConjunctionDecideDelivery.cs` |
@@ -1429,8 +1427,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.firehose-subscribe-without-a-subscription-role-rejected` | `4df2823` | not ported | Firehose subscriptions (Firehose, S3, IAM) |
 | `sns.firehose-subscription-role-without-put-record-dead-letters-until-granted` | `4df2823` | not ported | Firehose subscriptions (Firehose, S3, IAM) |
 | `sns.firehose-subscription-writes-each-notification-envelope-into-the-stream-bucket` | `4df2823` | not ported | Firehose subscriptions (Firehose, S3, IAM) |
-| `sns.get-endpoint-attributes-not-found` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.get-sms-attributes-unknown-name-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.get-endpoint-attributes-not-found` | `4df2823` | ported | `Sns/GetEndpointAttributesNotFound.cs` |
+| `sns.get-sms-attributes-unknown-name-rejected` | `4df2823` | ported | `Sns/GetSmsAttributesUnknownNameRejected.cs` |
 | `sns.get-topic-attributes-malformed-arn-rejected` | `4df2823` | ported | `Sns/GetTopicAttributesMalformedArnRejected.cs` |
 | `sns.https-endpoint-failing-with-500-is-retried-then-dead-lettered` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
 | `sns.https-raw-message-delivery-posts-the-bare-body-with-the-rawdelivery-header` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
@@ -1440,9 +1438,9 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.lambda-function-error-is-retried-by-lambda-and-never-dead-lettered-by-sns` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
 | `sns.lambda-subscription-invocation-carries-the-sns-records-envelope` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
 | `sns.lambda-subscription-the-function-refuses-to-sns-dead-letters-into-the-subscription-dlq` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
-| `sns.list-endpoints-by-nonexistent-application-fails` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.list-platform-applications-invalid-next-token-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.list-sms-sandbox-phone-numbers-max-results-over-limit-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.list-endpoints-by-nonexistent-application-fails` | `4df2823` | ported | `Sns/ListEndpointsByNonexistentApplicationFails.cs` |
+| `sns.list-platform-applications-invalid-next-token-rejected` | `4df2823` | ported | `Sns/ListPlatformApplicationsInvalidNextTokenRejected.cs` |
+| `sns.list-sms-sandbox-phone-numbers-max-results-over-limit-rejected` | `4df2823` | ported | `Sns/ListSmsSandboxPhoneNumbersMaxResultsOverLimitRejected.cs` |
 | `sns.list-subscriptions-by-topic-pagination-exactness` | `4df2823` | ported | `Sns/ListSubscriptionsByTopicPaginationExactness.cs` |
 | `sns.list-subscriptions-by-topic-reflects-state` | `4df2823` | ported | `Sns/ListSubscriptionsByTopicReflectsState.cs` |
 | `sns.list-subscriptions-pages-every-subscription-exactly-once` | `4df2823` | ported | `Sns/ListSubscriptionsPagesEverySubscriptionExactlyOnce.cs` |
@@ -1462,13 +1460,13 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.op-set-subscription-attributes-filter-policy-roundtrip` | `4df2823` | ported | `Sns/OpSetSubscriptionAttributesFilterPolicyRoundtrip.cs` |
 | `sns.op-set-subscription-attributes-invalid-name-rejected` | `4df2823` | ported | `Sns/OpSetSubscriptionAttributesInvalidNameRejected.cs` |
 | `sns.op-topic-attribute-defaults-and-effective-delivery-policy` | `4df2823` | ported | `Sns/OpTopicAttributeDefaultsAndEffectiveDeliveryPolicy.cs` |
-| `sns.opt-in-phone-number-invalid-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.opt-in-phone-number-invalid-rejected` | `4df2823` | ported | `Sns/OptInPhoneNumberInvalidRejected.cs` |
 | `sns.overlapping-filters-fan-one-message-to-every-matching-queue-and-the-deleted-topic-refuses-publish-and-listing` | `4df2823` | ported | `Sns/OverlappingFiltersFanOneMessageToEveryMatchingQueueAndTheDeletedTopicRefusesPublishAndListing.cs` |
-| `sns.pending-subscription-arn-placeholder-not-resolvable` | `4df2823` | not ported | An email subscription, used to hold a subscription in `PendingConfirmation` |
-| `sns.phone-number-opt-out-state` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.platform-application-bogus-credential-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.platform-application-custom-attribute-round-trip` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.platform-application-not-found` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.pending-subscription-arn-placeholder-not-resolvable` | `4df2823` | ported | `Sns/PendingSubscriptionArnPlaceholderNotResolvable.cs` |
+| `sns.phone-number-opt-out-state` | `4df2823` | ported | `Sns/PhoneNumberOptOutState.cs` |
+| `sns.platform-application-bogus-credential-rejected` | `4df2823` | known gap: Other | `Sns/PlatformApplicationBogusCredentialRejected.cs` |
+| `sns.platform-application-custom-attribute-round-trip` | `4df2823` | ported | `Sns/PlatformApplicationCustomAttributeRoundTrip.cs` |
+| `sns.platform-application-not-found` | `4df2823` | ported | `Sns/PlatformApplicationNotFound.cs` |
 | `sns.publish-batch-aggregate-size-at-the-exact-262144-byte-boundary` | `4df2823` | ported | `Sns/PublishBatchAggregateSizeAtTheExact262144ByteBoundary.cs` |
 | `sns.publish-batch-content-based-dedup-collapses-duplicate-bodies-in-one-call` | `4df2823` | ported | `Sns/PublishBatchContentBasedDedupCollapsesDuplicateBodiesInOneCall.cs` |
 | `sns.publish-batch-duplicate-ids-rejected` | `4df2823` | ported | `Sns/PublishBatchDuplicateIdsRejected.cs` |
@@ -1513,10 +1511,10 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.replay-policy-on-a-topic-without-an-archive-policy-rejected` | `4df2823` | ported | `Sns/ReplayPolicyOnATopicWithoutAnArchivePolicyRejected.cs` |
 | `sns.resubscribe-after-unsubscribe-mints-a-new-arn` | `4df2823` | ported | `Sns/ResubscribeAfterUnsubscribeMintsANewArn.cs` |
 | `sns.same-topic-name-in-two-regions-is-two-independent-topics` | `4df2823` | ported | `Sns/SameTopicNameInTwoRegionsIsTwoIndependentTopics.cs` |
-| `sns.set-endpoint-attributes-not-found` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.set-platform-application-attributes-unknown-key-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.set-sms-attributes-invalid-name-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.set-sms-attributes-invalid-sms-type-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.set-endpoint-attributes-not-found` | `4df2823` | ported | `Sns/SetEndpointAttributesNotFound.cs` |
+| `sns.set-platform-application-attributes-unknown-key-rejected` | `4df2823` | ported | `Sns/SetPlatformApplicationAttributesUnknownKeyRejected.cs` |
+| `sns.set-sms-attributes-invalid-name-rejected` | `4df2823` | ported | `Sns/SetSmsAttributesInvalidNameRejected.cs` |
+| `sns.set-sms-attributes-invalid-sms-type-rejected` | `4df2823` | ported | `Sns/SetSmsAttributesInvalidSmsTypeRejected.cs` |
 | `sns.set-subscription-attributes-nonexistent-fails` | `4df2823` | ported | `Sns/SetSubscriptionAttributesNonexistentFails.cs` |
 | `sns.set-topic-attribute-invalid-policy-rejected` | `4df2823` | ported | `Sns/SetTopicAttributeInvalidPolicyRejected.cs` |
 | `sns.set-topic-attributes-cross-account-feedback-role-rejected` | `4df2823` | not ported | IAM roles and role assumption |
@@ -1525,10 +1523,10 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.set-topic-attributes-malformed-feedback-role-arn-rejected` | `4df2823` | not ported | IAM roles and role assumption |
 | `sns.set-topic-attributes-unknown-name-fails` | `4df2823` | ported | `Sns/SetTopicAttributesUnknownNameFails.cs` |
 | `sns.signature-version-two-switches-the-delivered-digest-to-sha256` | `4df2823` | ported | `Sns/SignatureVersionTwoSwitchesTheDeliveredDigestToSha256.cs` |
-| `sns.sms-account-state-reads` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.sms-attributes-custom-value-round-trip` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.sms-attributes-filter-exactness-and-clear-via-empty` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
-| `sns.sms-sandbox-delete-unknown-number` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.sms-account-state-reads` | `4df2823` | ported | `Sns/SmsAccountStateReads.cs` |
+| `sns.sms-attributes-custom-value-round-trip` | `4df2823` | ported | `Sns/SmsAttributesCustomValueRoundTrip.cs` |
+| `sns.sms-attributes-filter-exactness-and-clear-via-empty` | `4df2823` | ported | `Sns/SmsAttributesFilterExactnessAndClearViaEmpty.cs` |
+| `sns.sms-sandbox-delete-unknown-number` | `4df2823` | ported | `Sns/SmsSandboxDeleteUnknownNumber.cs` |
 | `sns.sqs-failure-feedback-role-logs-the-denied-delivery-while-the-message-never-reaches-the-queue` | `4df2823` | not ported | CloudWatch Logs delivery-status logging (IAM, Logs) |
 | `sns.sqs-subscription-delivers-the-published-message-unconditionally` | `4df2823` | ported | `Sns/SqsSubscriptionDeliversThePublishedMessageUnconditionally.cs` |
 | `sns.sqs-success-feedback-role-writes-the-delivery-record-to-cloudwatch-logs` | `4df2823` | not ported | CloudWatch Logs delivery-status logging (IAM, Logs) |
@@ -1537,14 +1535,14 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.string-array-message-attribute-matches-a-member-and-binary-is-ignored` | `4df2823` | ported | `Sns/StringArrayMessageAttributeMatchesAMemberAndBinaryIsIgnored.cs` |
 | `sns.subject-over-100-characters-rejected-and-the-limit-counts-characters` | `4df2823` | ported | `Sns/SubjectOver100CharactersRejectedAndTheLimitCountsCharacters.cs` |
 | `sns.subject-with-a-line-break-or-control-character-rejected` | `4df2823` | ported | `Sns/SubjectWithALineBreakOrControlCharacterRejected.cs` |
-| `sns.subscribe-email-pending-confirmation` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.subscribe-email-pending-confirmation` | `4df2823` | ported | `Sns/SubscribeEmailPendingConfirmation.cs` |
 | `sns.subscribe-fifo-queue-to-standard-topic-rejected` | `4df2823` | ported | `Sns/SubscribeFifoQueueToStandardTopicRejected.cs` |
 | `sns.subscribe-invalid-endpoint-rejected` | `4df2823` | ported | `Sns/SubscribeInvalidEndpointRejected.cs` |
 | `sns.subscribe-invalid-filter-policy-fails` | `4df2823` | ported | `Sns/SubscribeInvalidFilterPolicyFails.cs` |
 | `sns.subscribe-raw-message-delivery-end-to-end` | `4df2823` | ported | `Sns/SubscribeRawMessageDeliveryEndToEnd.cs` |
 | `sns.subscribe-same-endpoint-is-idempotent` | `4df2823` | ported | `Sns/SubscribeSameEndpointIsIdempotent.cs` |
 | `sns.subscribe-sqs-auto-confirms` | `4df2823` | ported | `Sns/SubscribeSqsAutoConfirms.cs` |
-| `sns.subscribe-to-nonexistent-topic-fails` | `4df2823` | not ported | An email subscription, used to hold a subscription in `PendingConfirmation` |
+| `sns.subscribe-to-nonexistent-topic-fails` | `4df2823` | ported | `Sns/SubscribeToNonexistentTopicFails.cs` |
 | `sns.subscribe-unknown-protocol-rejected` | `4df2823` | ported | `Sns/SubscribeUnknownProtocolRejected.cs` |
 | `sns.subscribe-with-an-unknown-attribute-rejected-and-creates-nothing` | `4df2823` | ported | `Sns/SubscribeWithAnUnknownAttributeRejectedAndCreatesNothing.cs` |
 | `sns.subscription-created-with-attributes-roundtrip` | `4df2823` | ported | `Sns/SubscriptionCreatedWithAttributesRoundtrip.cs` |
@@ -1561,32 +1559,32 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.tag-resource-nonexistent-topic-fails` | `4df2823` | ported | `Sns/TagResourceNonexistentTopicFails.cs` |
 | `sns.tag-resource-reserved-aws-prefix-rejected` | `4df2823` | ported | `Sns/TagResourceReservedAwsPrefixRejected.cs` |
 | `sns.topic-arn-of-another-region-rejected-by-a-regional-endpoint` | `4df2823` | ported | `Sns/TopicArnOfAnotherRegionRejectedByARegionalEndpoint.cs` |
-| `sns.topic-attributes-subscription-counters-track-state` | `4df2823` | not ported | An email subscription, used to hold a subscription in `PendingConfirmation` |
+| `sns.topic-attributes-subscription-counters-track-state` | `4df2823` | ported | `Sns/TopicAttributesSubscriptionCountersTrackState.cs` |
 | `sns.topic-create-idempotent-by-name` | `4df2823` | ported | `Sns/TopicCreateIdempotentByName.cs` |
 | `sns.topic-delete-lifecycle-and-idempotent-delete` | `4df2823` | ported | `Sns/TopicDeleteLifecycleAndIdempotentDelete.cs` |
 | `sns.topic-delivery-policy-computes-effective-policy` | `4df2823` | ported | `Sns/TopicDeliveryPolicyComputesEffectivePolicy.cs` |
 | `sns.topic-feedback-role-arn-and-sample-rate-round-trip` | `4df2823` | not ported | IAM roles and role assumption |
 | `sns.topic-feedback-sample-rate-out-of-range-rejected` | `4df2823` | ported | `Sns/TopicFeedbackSampleRateOutOfRangeRejected.cs` |
-| `sns.topic-maximum-message-size-above-256kib-requires-eligible-subscriptions` | `4df2823` | not ported | An email subscription, used to hold a subscription in `PendingConfirmation` |
+| `sns.topic-maximum-message-size-above-256kib-requires-eligible-subscriptions` | `4df2823` | ported | `Sns/TopicMaximumMessageSizeAbove256kibRequiresEligibleSubscriptions.cs` |
 | `sns.topic-maximum-message-size-round-trip-and-bounds-rejected` | `4df2823` | ported | `Sns/TopicMaximumMessageSizeRoundTripAndBoundsRejected.cs` |
 | `sns.topic-mutable-attributes-round-trip-and-clear` | `4df2823` | ported | `Sns/TopicMutableAttributesRoundTripAndClear.cs` |
 | `sns.topic-name-ending-in-fifo-without-the-fifo-topic-attribute-rejected` | `4df2823` | ported | `Sns/TopicNameEndingInFifoWithoutTheFifoTopicAttributeRejected.cs` |
 | `sns.topic-policy-add-remove-permission` | `4df2823` | ported | `Sns/TopicPolicyAddRemovePermission.cs` |
 | `sns.topic-policy-endpoint-condition-limits-which-queue-a-role-may-subscribe` | `4df2823` | not ported | IAM roles and role assumption |
 | `sns.topic-policy-principal-arn-pattern-admits-only-matching-roles` | `4df2823` | not ported | IAM roles and role assumption |
-| `sns.topic-policy-protocol-condition-blocks-a-real-signed-subscribe` | `4df2823` | not ported | An email subscription, used to hold a subscription in `PendingConfirmation` |
+| `sns.topic-policy-protocol-condition-blocks-a-real-signed-subscribe` | `4df2823` | ported | `Sns/TopicPolicyProtocolConditionBlocksARealSignedSubscribe.cs` |
 | `sns.topic-policy-round-trips-and-deleted-topic-set-attributes-not-found` | `4df2823` | ported | `Sns/TopicPolicyRoundTripsAndDeletedTopicSetAttributesNotFound.cs` |
 | `sns.topic-policy-subscribe-only-grant-refuses-the-roles-publish` | `4df2823` | not ported | IAM roles and role assumption |
 | `sns.topic-set-attribute-immutable-rejected` | `4df2823` | ported | `Sns/TopicSetAttributeImmutableRejected.cs` |
-| `sns.topic-subscription-counters-converge-after-concurrent-subscribes-and-unsubscribes` | `4df2823` | not ported | An email subscription, used to hold a subscription in `PendingConfirmation` |
+| `sns.topic-subscription-counters-converge-after-concurrent-subscribes-and-unsubscribes` | `4df2823` | ported | `Sns/TopicSubscriptionCountersConvergeAfterConcurrentSubscribesAndUnsubscribes.cs` |
 | `sns.topic-tags-at-create-overwrite-and-untag-absent-key` | `4df2823` | ported | `Sns/TopicTagsAtCreateOverwriteAndUntagAbsentKey.cs` |
 | `sns.unsubscribe-malformed-arn-fails` | `4df2823` | ported | `Sns/UnsubscribeMalformedArnFails.cs` |
 | `sns.unsubscribe-nonexistent-is-idempotent` | `4df2823` | ported | `Sns/UnsubscribeNonexistentIsIdempotent.cs` |
-| `sns.unsubscribe-pending-subscription-rejected` | `4df2823` | not ported | An email subscription, used to hold a subscription in `PendingConfirmation` |
+| `sns.unsubscribe-pending-subscription-rejected` | `4df2823` | ported | `Sns/UnsubscribePendingSubscriptionRejected.cs` |
 | `sns.unsubscribe-removes-subscription` | `4df2823` | ported | `Sns/UnsubscribeRemovesSubscription.cs` |
 | `sns.unsubscribe-stops-delivery` | `4df2823` | ported | `Sns/UnsubscribeStopsDelivery.cs` |
 | `sns.unsubscribe-stops-delivery-and-attribute-lookup-is-rejected` | `4df2823` | ported | `Sns/UnsubscribeStopsDeliveryAndAttributeLookupIsRejected.cs` |
-| `sns.verify-sms-sandbox-wrong-otp-rejected` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns.verify-sms-sandbox-wrong-otp-rejected` | `4df2823` | ported | `Sns/VerifySmsSandboxWrongOtpRejected.cs` |
 
 ## behavioral/sns__sqs
 
@@ -1595,7 +1593,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns__sqs.a-message-filtered-out-at-publish-time-is-never-redelivered-when-the-policy-is-relaxed` | `4df2823` | ported | `SnsSqs/AMessageFilteredOutAtPublishTimeIsNeverRedeliveredWhenThePolicyIsRelaxed.cs` |
 | `sns__sqs.fifo-topic-subscription-filter-policy-withholds-non-matching-messages` | `4df2823` | ported | `SnsSqs/FifoTopicSubscriptionFilterPolicyWithholdsNonMatchingMessages.cs` |
 | `sns__sqs.message-attribute-name-outside-the-allowed-charset-rejected` | `4df2823` | ported | `SnsSqs/MessageAttributeNameOutsideTheAllowedCharsetRejected.cs` |
-| `sns__sqs.platform-application-event-endpoint-created-notifies-configured-topic` | `4df2823` | not ported | Other protocols: SMS, mobile push (platform applications and endpoints) and email |
+| `sns__sqs.platform-application-event-endpoint-created-notifies-configured-topic` | `4df2823` | ported | `SnsSqs/PlatformApplicationEventEndpointCreatedNotifiesConfiguredTopic.cs` |
 | `sns__sqs.queue-maximum-message-size-does-not-bound-sns-delivery` | `4df2823` | ported | `SnsSqs/QueueMaximumMessageSizeDoesNotBoundSnsDelivery.cs` |
 | `sns__sqs.sns-filter-policy-message-body-scope-suppresses-non-matching` | `4df2823` | ported | `SnsSqs/SnsFilterPolicyMessageBodyScopeSuppressesNonMatching.cs` |
 | `sns__sqs.sns-filter-policy-scope-is-orthogonal-and-message-body-matches-nested-keys` | `4df2823` | ported | `SnsSqs/SnsFilterPolicyScopeIsOrthogonalAndMessageBodyMatchesNestedKeys.cs` |

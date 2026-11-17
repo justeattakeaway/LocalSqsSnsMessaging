@@ -134,12 +134,15 @@ The two hosts are adapters: each reads the body, decides which service and opera
 
 ### SNS Requests
 
-`InternalSnsClient` is split into partial files under `SnsClient/` (topics, subscriptions, publish, permissions and tags, unsupported operations). Requests are answered as SNS does:
+`InternalSnsClient` is split into partial files under `SnsClient/` (topics, subscriptions, publish, permissions and tags, authorization, mobile push, SMS, unsupported operations). Requests are answered as SNS does:
 - ARNs are checked by `SnsArn` before any lookup (malformed: `InvalidParameter`); a missing topic is `NotFound` "Topic does not exist", a missing subscription "Subscription does not exist"
 - A subscription ARN is its topic ARN plus a uuid. Subscribe needs the topic, but not the SQS queue, to exist; subscribing the same endpoint again returns the existing subscription
 - Subscription changes go through the topic: `Subscribe`, `Confirm`, `UpdateSubscription` (SetSubscriptionAttributes), `Unsubscribe` and `Delete` (DeleteTopic). The topic keeps its own set (found by protocol and endpoint), writes the region's `Subscriptions` index (subscription ARN to subscription, for ARN lookups and ListSubscriptions) under its gate, and enforces the `MaximumMessageSize` rules that depend on its subscriptions. Nothing else writes the index
 - `SnsTopicAttributes` holds topic attribute names, defaults (default `Policy`, `EffectiveDeliveryPolicy`, ...) and validation; `SnsPublishValidation` and `SnsMessageStructure` validate Publish/PublishBatch and pick a `MessageStructure=json` branch per protocol
 - SNS is regional: a topic ARN naming another region is refused with `InvalidParameter` "Invalid parameter: TopicArn", as a regional endpoint does
+- A topic's `Policy` is enforced for callers by `InternalSnsClient.Authorize` (`.Authorization.cs`) after the topic lookup of Subscribe (with `sns:Protocol`/`sns:Endpoint`), Publish and PublishBatch (`sns:Publish`), Get/SetTopicAttributes, Add/RemovePermission and ListSubscriptionsByTopic: explicit Deny statements only, every request acting as the bus account's root user; a denial is `AuthorizationError` (HTTP 403)
+- Subscribe takes `sqs`, `http`/`https` and `email`/`email-json` (not on a FIFO topic: "Invalid protocol type"). Email subscriptions stay `PendingConfirmation` (the bus sends no email; `ConfirmSubscription` with the token still confirms one), and a pending subscription can't be unsubscribed. Other protocols are `NotSupportedException`
+- Mobile push (`.MobilePush.cs`): platform applications (`SnsPlatformApplication`, per region in `AwsRegionResources.PlatformApplications`) and their endpoints are kept and answered for, and `EventEndpointCreated`/`Deleted`/`Updated` topics are notified, but no push service is contacted: credentials and tokens are never checked, and a publish never reaches an endpoint. SMS (`.Sms.cs`, `SnsSmsAccount`): account attributes, opted-out numbers and the sandbox's numbers; no SMS is sent, so a sandbox number's one-time password is never revealed and the account stays in the sandbox with no origination numbers
 
 ### SNS Delivery
 
@@ -148,7 +151,7 @@ A topic publishes through `topic.Publish`/`PublishBatch` (also EventBridge's SNS
 - FIFO topics (`SnsFanOut.Fifo.cs`, `SnsFifoTopicState`) assign sequence numbers and deduplicate for five minutes on the bus `TimeProvider`; an `ArchivePolicy` archives messages, and a subscription's `ReplayPolicy` (`SnsReplayPolicy`) replays them. The topic replays whenever a subscription change leaves a replay `Pending` (subscribe, confirm, a new `ReplayPolicy`), joining the fan-out and replaying under the FIFO gate so no live message overtakes the replayed ones
 - SQS endpoints go through `SqsServiceDelivery` (see below) at publish time; a deleted queue, or a queue `Policy` that denies SNS (`sns.amazonaws.com`, with the topic as `aws:SourceArn`) or addresses SNS deliveries without admitting this one, is a delivery failure; a policy that says nothing about SNS admits it
 - Non-raw deliveries get the envelope `SnsEnvelope` writes, byte for byte as SNS lays it out and signed (`SnsSigningCertificate`: one self-signed key per process, served at the envelope's `SigningCertURL`; netstandard2.0 keeps `EXAMPLE` placeholders). Raw deliveries convert attributes (`SnsRawMessageAttributes`)
-- HTTP/S subscriptions start `PendingConfirmation` and are excluded from fan-out until `ConfirmSubscription` (or a GET on the `SubscribeURL`) presents the token to the topic (`topic.Confirm`)
+- HTTP/S and email subscriptions start `PendingConfirmation` and are excluded from fan-out until `ConfirmSubscription` (or, for HTTP/S, a GET on the `SubscribeURL`) presents the token to the topic (`topic.Confirm`). A confirmed email subscription is delivered nothing
 - HTTP/S endpoints are POSTed in the background by `SnsHttpDelivery` using `bus.HttpClient`, retried per `SnsDeliveryPolicy` with `TimeProvider`-driven delays
 - Failed deliveries go to the subscription's dead-letter queue when a `RedrivePolicy` is set
 
@@ -216,7 +219,7 @@ A queue's, topic's or event bus's `Policy`, or a DynamoDB table's policy, is a *
 - `Normalize` (SQS stores a bare account-id principal as its root ARN) and `AreEquivalent` (CreateQueue/CreateTopic on an existing name)
 - Evaluation: `DeniesExplicitly` and `GrantsToEveryone` for a caller, `EvaluateServiceDelivery` for a service principal (admitted / explicitly denied / not allowed). Only explicit Deny statements are enforced for callers; a statement the library cannot evaluate is skipped
 - `ResourcePolicyKind` (`Queue`, `Topic`, `EventBus`, `Table`) holds what differs: the action prefix (`sqs`, `sns`, `events`, `dynamodb`), the empty document (SNS: `2008-10-17`, `__default_policy_ID`; SQS: `<arn>/SQSDefaultPolicy`), and SQS's storage and comparison rules
-- Policies apply in `InternalSqsClient.Authorize`, `SqsServiceDelivery`, EventBridge's delivery to topics (`EventBridgeEventDelivery`), PutEvents (`AuthorizePutEvents`) and `InternalDynamoDbClient.Authorize` (see DynamoDB). `AwsAccountId.IsValid` is the one twelve-digit check
+- Policies apply in `InternalSqsClient.Authorize`, `InternalSnsClient.Authorize`, `SqsServiceDelivery`, EventBridge's delivery to topics (`EventBridgeEventDelivery`), PutEvents (`AuthorizePutEvents`) and `InternalDynamoDbClient.Authorize` (see DynamoDB). `AwsAccountId.IsValid` is the one twelve-digit check
 
 ### SQS Callers
 

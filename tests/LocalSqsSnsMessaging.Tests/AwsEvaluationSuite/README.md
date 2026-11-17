@@ -28,7 +28,8 @@ compared side by side:
   the library's strict KMS mode, `KmsKeyAliases`, so it refuses unknown KMS aliases, as AWS does.
   Regions need no setting: the library always serves each region's resources separately.
 - **Left out:** checks that also need IAM, KMS, CloudFormation, CloudWatch, Lambda or STS role
-  assumption are not ported, nor SNS checks about protocols other than SQS, nor EventBridge checks
+  assumption are not ported, nor SNS checks about Lambda, Firehose or HTTP/S endpoints built from
+  them, nor EventBridge checks
   about targets and features the library doesn't emulate (see below). A check that only reads the
   account id from `sts:GetCallerIdentity` is ported, with `ctx.Account` (and `ctx.CallerArn`, the
   account's root user) in its place.
@@ -97,14 +98,16 @@ gives each one's reason):
 The SNS ports cover SNS as a message bus for SQS: standard and FIFO topics, SQS subscriptions,
 Publish and PublishBatch, message attributes, filter policies, raw delivery, the delivered envelope
 and its signature, FIFO ordering and deduplication, subscription dead-letter queues, deliveries to
-deleted or misconfigured queues, topic and subscription attributes, tags, permissions and
-validation: 182 of the 257 checks in `behavioral/sns` and `behavioral/sns__sqs`.
+deleted or misconfigured queues, topic and subscription attributes, tags, permissions and topic
+policies, validation, email subscriptions (which stay pending confirmation), and the bookkeeping
+of mobile push (platform applications and endpoints) and SMS (attributes, opt-outs, the sandbox):
+219 of the 257 checks in `behavioral/sns` and `behavioral/sns__sqs`. One is a known gap, kept
+deliberately: platform credentials are never checked against a push service, so tests can use
+fake ones.
 
-These 75 checks are not ported, because they are about another protocol or need another service
+These 38 checks are not ported, because they need another service
 ([UPSTREAM.md](UPSTREAM.md) gives each one's reason):
 
-- **Other protocols: SMS, mobile push (platform applications and endpoints) and email** (30).
-- **An email subscription, used to hold a subscription in `PendingConfirmation`** (7).
 - **HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles** (13).
 - **Firehose subscriptions (Firehose, S3, IAM)** (4).
 - **CloudFormation stacks** (8).

@@ -27,6 +27,12 @@ internal sealed class AwsRegionResources(string region, object dynamoDbGate)
     /// </summary>
     public ConcurrentDictionary<string, SnsSubscription> Subscriptions { get; } = [];
 
+    /// <summary>The region's SNS platform applications (mobile push), keyed by ARN; each holds its endpoints.</summary>
+    public ConcurrentDictionary<string, SnsPlatformApplication> PlatformApplications { get; } = [];
+
+    /// <summary>The region's SNS SMS settings: account attributes, opted-out numbers and the SMS sandbox.</summary>
+    public SnsSmsAccount Sms { get; } = new();
+
     /// <summary>The region's EventBridge event buses (each holding its own rules and targets), keyed by name.</summary>
     public ConcurrentDictionary<string, EventBusResource> EventBuses { get; } = [];
 

@@ -282,7 +282,7 @@ internal sealed class SnsTopicResource
     {
         lock (SubscriptionGate)
         {
-            // Unconfirmed HTTP/S subscriptions count too, as on AWS.
+            // Unconfirmed HTTP/S and email subscriptions count too, as on AWS.
             if (_subscriptions.Values.FirstOrDefault(s => !s.IsSqs) is { } unsupported)
             {
                 throw new InternalInvalidParameterException(UnsupportedProtocolMessage(unsupported.Protocol));
@@ -357,7 +357,7 @@ internal sealed class SnsTopicResource
 
     /// <summary>
     /// The subscription side of the large-message constraint: a topic that accepts more than 256 KiB
-    /// can't take an HTTP/S subscription, or a subscription beyond its hundredth. Under the gate.
+    /// takes only SQS subscriptions (of the protocols this bus serves), at most a hundred. Under the gate.
     /// </summary>
     private void EnsureRoomFor(string protocol)
     {
@@ -366,7 +366,7 @@ internal sealed class SnsTopicResource
             return;
         }
 
-        if (protocol is "http" or "https")
+        if (protocol is not "sqs")
         {
             throw new InternalInvalidParameterException(UnsupportedProtocolMessage(protocol));
         }

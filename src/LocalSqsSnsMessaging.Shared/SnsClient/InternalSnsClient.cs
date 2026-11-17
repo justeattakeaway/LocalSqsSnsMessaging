@@ -168,6 +168,7 @@ internal sealed partial class InternalSnsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var topic = GetTopicByArn(request.TopicArn);
+        Authorize(topic, SnsActionName.GetTopicAttributes);
 
         Dictionary<string, string> attributes;
         lock (topic.SubscriptionGate)
@@ -215,6 +216,7 @@ internal sealed partial class InternalSnsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var topic = GetTopicByArn(request.TopicArn);
+        Authorize(topic, SnsActionName.SetTopicAttributes);
         var name = request.AttributeName;
         if (name is null || !SnsTopicAttributes.IsSettable(name, topic.IsFifo))
         {
