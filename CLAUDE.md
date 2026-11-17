@@ -161,6 +161,7 @@ A topic publishes through `topic.Publish`/`PublishBatch` (also EventBridge's SNS
 - A failed delivery (missing resource, a queue or topic `Policy` that denies `events.amazonaws.com` or admits it only for other rules, input that is not JSON) goes to the target's `DeadLetterConfig` queue with EventBridge's `ERROR_CODE`/`ERROR_MESSAGE`/`RULE_ARN`/`TARGET_ARN` attributes. A policy that says nothing about EventBridge admits it. These failures are not retried, as on AWS
 - A bus `Policy` (PutPermission/RemovePermission) is enforced for explicit Deny statements on PutEvents (see Resource Policies)
 - Archives (`ArchiveResource`) record events through a managed rule on their source bus; replays (`ReplayResource`) and rules with a `ScheduleExpression` (`ScheduledRuleJob`, `EventBridgeSchedule`) run on the bus `TimeProvider`
+- Partner event sources (`InternalEventBridgeClient.PartnerEventSources.cs`): the bus's account is never a SaaS partner, so the partner-side operations are refused for the source's namespace (`ValidationException` "Caller is not whitelisted ..."), PutPartnerEvents fails each entry, and the customer side finds no source
 - Timestamps go on the wire as epoch seconds (`Http/Serialization/AwsJsonTimestamp.cs`)
 
 ### DynamoDB

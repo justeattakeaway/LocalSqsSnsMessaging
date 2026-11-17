@@ -18,6 +18,34 @@
     ]
   },
   "operations": {
+    "ActivateEventSource": {
+      "name": "ActivateEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ActivateEventSourceRequest"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "InvalidStateException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>Activates a partner event source that has been deactivated. Once activated, your matching event bus will start receiving events from the event source.</p>"
+    },
     "CancelReplay": {
       "name": "CancelReplay",
       "http": {
@@ -117,6 +145,65 @@
       ],
       "documentation": "<p>Creates a new event bus within your account. This can be a custom event bus which you can use to receive events from your custom applications and services, or it can be a partner event bus which can be matched to a partner event source.</p>"
     },
+    "CreatePartnerEventSource": {
+      "name": "CreatePartnerEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "CreatePartnerEventSourceRequest"
+      },
+      "output": {
+        "shape": "CreatePartnerEventSourceResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceAlreadyExistsException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "LimitExceededException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>Called by an SaaS partner to create a partner event source. This operation is not used by Amazon Web Services customers.</p> <p>Each partner event source can be used by one Amazon Web Services account to create a matching partner event bus in that Amazon Web Services account. A SaaS partner must create one partner event source for each Amazon Web Services account that wants to receive those event types. </p> <p>A partner event source creates events based on resources within the SaaS partner's service or application.</p> <p>An Amazon Web Services account that creates a partner event bus that matches the partner event source can use that event bus to receive events from the partner, and then process them using Amazon Web Services Events rules and targets.</p> <p>Partner event source names follow this format:</p> <p> <code> <i>partner_name</i>/<i>event_namespace</i>/<i>event_name</i> </code> </p> <ul> <li> <p> <i>partner_name</i> is determined during partner registration, and identifies the partner to Amazon Web Services customers. </p> </li> <li> <p> <i>event_namespace</i> is determined by the partner, and is a way for the partner to categorize their events.</p> </li> <li> <p> <i>event_name</i> is determined by the partner, and should uniquely identify an event-generating resource within the partner system. </p> <p>The <i>event_name</i> must be unique across all Amazon Web Services customers. This is because the event source is a shared resource between the partner and customer accounts, and each partner event source unique in the partner account.</p> </li> </ul> <p>The combination of <i>event_namespace</i> and <i>event_name</i> should help Amazon Web Services customers decide whether to create an event bus to receive these events.</p>"
+    },
+    "DeactivateEventSource": {
+      "name": "DeactivateEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeactivateEventSourceRequest"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "InvalidStateException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>You can use this operation to temporarily stop receiving events from the specified partner event source. The matching event bus is not deleted. </p> <p>When you deactivate a partner event source, the source goes into PENDING state. If it remains in PENDING state for more than two weeks, it is deleted.</p> <p>To activate a deactivated partner event source, use <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_ActivateEventSource.html\">ActivateEventSource</a>.</p>"
+    },
     "DeleteArchive": {
       "name": "DeleteArchive",
       "http": {
@@ -160,6 +247,28 @@
         }
       ],
       "documentation": "<p>Deletes the specified custom event bus or partner event bus. All rules associated with this event bus need to be deleted. You can't delete your account's default event bus.</p>"
+    },
+    "DeletePartnerEventSource": {
+      "name": "DeletePartnerEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeletePartnerEventSourceRequest"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>This operation is used by SaaS partners to delete a partner event source. This operation is not used by Amazon Web Services customers.</p> <p>When you delete an event source, the status of the corresponding partner event bus in the Amazon Web Services customer account becomes DELETED.</p> <p/>"
     },
     "DeleteRule": {
       "name": "DeleteRule",
@@ -232,6 +341,56 @@
         }
       ],
       "documentation": "<p>Displays details about an event bus in your account. This can include the external Amazon Web Services accounts that are permitted to write events to your default event bus, and the associated policy. For custom event buses and partner event buses, it displays the name, ARN, policy, state, and creation time.</p> <p> To enable your account to receive events from other accounts on its default event bus, use <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_PutPermission.html\">PutPermission</a>.</p> <p>For more information about partner event buses, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_CreateEventBus.html\">CreateEventBus</a>.</p>"
+    },
+    "DescribeEventSource": {
+      "name": "DescribeEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DescribeEventSourceRequest"
+      },
+      "output": {
+        "shape": "DescribeEventSourceResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>This operation lists details about a partner event source that is shared with your account.</p>"
+    },
+    "DescribePartnerEventSource": {
+      "name": "DescribePartnerEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DescribePartnerEventSourceRequest"
+      },
+      "output": {
+        "shape": "DescribePartnerEventSourceResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>An SaaS partner can use this operation to list details about a partner event source that they have created. Amazon Web Services customers do not use this operation. Instead, Amazon Web Services customers can use <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_DescribeEventSource.html\">DescribeEventSource</a> to see details about a partner event source that is shared with them.</p>"
     },
     "DescribeReplay": {
       "name": "DescribeReplay",
@@ -368,6 +527,75 @@
       ],
       "documentation": "<p>Lists all the event buses in your account, including the default event bus, custom event buses, and partner event buses.</p>"
     },
+    "ListEventSources": {
+      "name": "ListEventSources",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListEventSourcesRequest"
+      },
+      "output": {
+        "shape": "ListEventSourcesResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>You can use this to see all the partner event sources that have been shared with your Amazon Web Services account. For more information about partner event sources, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_CreateEventBus.html\">CreateEventBus</a>.</p>"
+    },
+    "ListPartnerEventSourceAccounts": {
+      "name": "ListPartnerEventSourceAccounts",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListPartnerEventSourceAccountsRequest"
+      },
+      "output": {
+        "shape": "ListPartnerEventSourceAccountsResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>An SaaS partner can use this operation to display the Amazon Web Services account ID that a particular partner event source name is associated with. This operation is not used by Amazon Web Services customers.</p>"
+    },
+    "ListPartnerEventSources": {
+      "name": "ListPartnerEventSources",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListPartnerEventSourcesRequest"
+      },
+      "output": {
+        "shape": "ListPartnerEventSourcesResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>An SaaS partner can use this operation to list all the partner event source names that they have created. This operation is not used by Amazon Web Services customers.</p>"
+    },
     "ListReplays": {
       "name": "ListReplays",
       "http": {
@@ -493,6 +721,28 @@
         }
       ],
       "documentation": "<p>Sends custom events to Amazon EventBridge so that they can be matched to rules.</p> <p>You can batch multiple event entries into one request for efficiency. However, the total entry size must be less than 256KB. You can calculate the entry size before you send the events. For more information, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-putevents.html#eb-putevent-size\">Calculating PutEvents event entry size</a> in the <i> <i>Amazon EventBridge User Guide</i> </i>.</p> <p>PutEvents accepts the data in JSON format. For the JSON number (integer) data type, the constraints are: a minimum value of -9,223,372,036,854,775,808 and a maximum value of 9,223,372,036,854,775,807.</p> <note> <p>PutEvents will only process nested JSON up to 1000 levels deep.</p> </note>"
+    },
+    "PutPartnerEvents": {
+      "name": "PutPartnerEvents",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "PutPartnerEventsRequest"
+      },
+      "output": {
+        "shape": "PutPartnerEventsResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>This is used by SaaS partners to write events to a customer's partner event bus. Amazon Web Services customers do not use this operation.</p> <p>For information on calculating event batch size, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-putevent-size.html\">Calculating EventBridge PutEvents event entry size</a> in the <i>EventBridge User Guide</i>.</p>"
     },
     "PutPermission": {
       "name": "PutPermission",

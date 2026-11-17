@@ -4,6 +4,11 @@
 
 namespace LocalSqsSnsMessaging.EventBridge.Model;
 
+internal class ActivateEventSourceRequest
+{
+    public string? Name { get; set; }
+}
+
 internal class AppSyncParameters
 {
     public string? GraphQLOperation { get; set; }
@@ -110,6 +115,22 @@ internal class CreateEventBusResponse : AmazonWebServiceResponse
     public LogConfig? LogConfig { get; set; }
 }
 
+internal class CreatePartnerEventSourceRequest
+{
+    public string? Name { get; set; }
+    public string? Account { get; set; }
+}
+
+internal class CreatePartnerEventSourceResponse : AmazonWebServiceResponse
+{
+    public string? EventSourceArn { get; set; }
+}
+
+internal class DeactivateEventSourceRequest
+{
+    public string? Name { get; set; }
+}
+
 internal class DeadLetterConfig
 {
     public string? Arn { get; set; }
@@ -127,6 +148,12 @@ internal class DeleteArchiveResponse : AmazonWebServiceResponse
 internal class DeleteEventBusRequest
 {
     public string? Name { get; set; }
+}
+
+internal class DeletePartnerEventSourceRequest
+{
+    public string? Name { get; set; }
+    public string? Account { get; set; }
 }
 
 internal class DeleteRuleRequest
@@ -173,6 +200,32 @@ internal class DescribeEventBusResponse : AmazonWebServiceResponse
     public LogConfig? LogConfig { get; set; }
     public DateTime? CreationTime { get; set; }
     public DateTime? LastModifiedTime { get; set; }
+}
+
+internal class DescribeEventSourceRequest
+{
+    public string? Name { get; set; }
+}
+
+internal class DescribeEventSourceResponse : AmazonWebServiceResponse
+{
+    public string? Arn { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? ExpirationTime { get; set; }
+    public string? Name { get; set; }
+    public string? State { get; set; }
+}
+
+internal class DescribePartnerEventSourceRequest
+{
+    public string? Name { get; set; }
+}
+
+internal class DescribePartnerEventSourceResponse : AmazonWebServiceResponse
+{
+    public string? Arn { get; set; }
+    public string? Name { get; set; }
 }
 
 internal class DescribeReplayRequest
@@ -256,6 +309,16 @@ internal class EventBus
     public DateTime? LastModifiedTime { get; set; }
 }
 
+internal class EventSource
+{
+    public string? Arn { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? ExpirationTime { get; set; }
+    public string? Name { get; set; }
+    public string? State { get; set; }
+}
+
 internal class HttpParameters
 {
     public List<string>? PathParameterValues { get; set; } = [];
@@ -299,6 +362,45 @@ internal class ListEventBusesRequest
 internal class ListEventBusesResponse : AmazonWebServiceResponse
 {
     public List<EventBus>? EventBuses { get; set; } = [];
+    public string? NextToken { get; set; }
+}
+
+internal class ListEventSourcesRequest
+{
+    public string? NamePrefix { get; set; }
+    public string? NextToken { get; set; }
+    public int? Limit { get; set; }
+}
+
+internal class ListEventSourcesResponse : AmazonWebServiceResponse
+{
+    public List<EventSource>? EventSources { get; set; } = [];
+    public string? NextToken { get; set; }
+}
+
+internal class ListPartnerEventSourceAccountsRequest
+{
+    public string? EventSourceName { get; set; }
+    public string? NextToken { get; set; }
+    public int? Limit { get; set; }
+}
+
+internal class ListPartnerEventSourceAccountsResponse : AmazonWebServiceResponse
+{
+    public List<PartnerEventSourceAccount>? PartnerEventSourceAccounts { get; set; } = [];
+    public string? NextToken { get; set; }
+}
+
+internal class ListPartnerEventSourcesRequest
+{
+    public string? NamePrefix { get; set; }
+    public string? NextToken { get; set; }
+    public int? Limit { get; set; }
+}
+
+internal class ListPartnerEventSourcesResponse : AmazonWebServiceResponse
+{
+    public List<PartnerEventSource>? PartnerEventSources { get; set; } = [];
     public string? NextToken { get; set; }
 }
 
@@ -380,6 +482,20 @@ internal class NetworkConfiguration
     public AwsVpcConfiguration? AwsvpcConfiguration { get; set; }
 }
 
+internal class PartnerEventSource
+{
+    public string? Arn { get; set; }
+    public string? Name { get; set; }
+}
+
+internal class PartnerEventSourceAccount
+{
+    public string? Account { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? ExpirationTime { get; set; }
+    public string? State { get; set; }
+}
+
 internal class PlacementConstraint
 {
     public string? Type { get; set; }
@@ -416,6 +532,33 @@ internal class PutEventsResponse : AmazonWebServiceResponse
 }
 
 internal class PutEventsResultEntry
+{
+    public string? EventId { get; set; }
+    public string? ErrorCode { get; set; }
+    public string? ErrorMessage { get; set; }
+}
+
+internal class PutPartnerEventsRequest
+{
+    public List<PutPartnerEventsRequestEntry>? Entries { get; set; } = [];
+}
+
+internal class PutPartnerEventsRequestEntry
+{
+    public DateTime? Time { get; set; }
+    public string? Source { get; set; }
+    public List<string>? Resources { get; set; } = [];
+    public string? DetailType { get; set; }
+    public string? Detail { get; set; }
+}
+
+internal class PutPartnerEventsResponse : AmazonWebServiceResponse
+{
+    public int? FailedEntryCount { get; set; }
+    public List<PutPartnerEventsResultEntry>? Entries { get; set; } = [];
+}
+
+internal class PutPartnerEventsResultEntry
 {
     public string? EventId { get; set; }
     public string? ErrorCode { get; set; }
@@ -685,7 +828,13 @@ internal class UpdateEventBusResponse : AmazonWebServiceResponse
     public LogConfig? LogConfig { get; set; }
 }
 
+internal class ActivateEventSourceResponse : AmazonWebServiceResponse { }
+
+internal class DeactivateEventSourceResponse : AmazonWebServiceResponse { }
+
 internal class DeleteEventBusResponse : AmazonWebServiceResponse { }
+
+internal class DeletePartnerEventSourceResponse : AmazonWebServiceResponse { }
 
 internal class DeleteRuleResponse : AmazonWebServiceResponse { }
 

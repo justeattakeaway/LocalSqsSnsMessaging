@@ -119,9 +119,14 @@ The EventBridge ports cover EventBridge as a message router in front of SQS and 
 rules, event patterns and TestEventPattern, PutEvents and its validation and partial failures,
 targets to SQS (standard and FIFO), SNS and other event buses, Input, InputPath and
 InputTransformer, target dead-letter queues and retry policies, bus resource policies, tags,
-archives and replays, scheduled rules, listing and pagination, and error codes: 186 of the 300
-checks in `behavioral/events`, `behavioral/events__sqs`, the `events__iam__*` directories and the
-`eventbridgev2*` directories.
+archives and replays, scheduled rules, listing and pagination, partner event sources, and error
+codes: 198 of the 300 checks in `behavioral/events`, `behavioral/events__sqs`, the
+`events__iam__*` directories and the `eventbridgev2*` directories.
+
+Partner event sources are ported (12 checks): only a registered SaaS partner can create one, and
+the bus's account never is one, so every partner-side operation is refused for the source's
+namespace, as AWS refuses it, and the customer side (Activate, Deactivate, DescribeEventSource)
+never finds a source.
 
 Archives and replays are ported (31 checks): they are self-contained, need nothing outside the bus,
 and run on the bus's clock like everything else.
@@ -140,13 +145,12 @@ IAM is not emulated, and the checks that touch it were decided one by one:
   policies allow (a missing `iam:PassRole`, an identity-policy condition, a role denied by an
   explicit Deny) is not ported.
 
-These 114 checks are not ported ([UPSTREAM.md](UPSTREAM.md) gives each one's reason):
+These 102 checks are not ported ([UPSTREAM.md](UPSTREAM.md) gives each one's reason):
 
 - **EventBridge v2** (`eventbridgev2`, `eventbridgev2__iam__sqs`, `eventbridgev2__iam__sns__sqs`): a newer, separate API with buses addressed by ARN, subscribers, event sources, JSONata transformers and `PutRawEvents`, not the `events` API this library emulates (40).
 - **IAM role and identity-policy enforcement**: each assumes an IAM role (`sts:AssumeRole`) and grades what that role's policies allow (8).
 - **API destinations and connections** (HTTP targets, some behind Lambda function URLs) (22).
 - **Global endpoints** (Route 53 health checks, failover and replication) (12).
-- **Partner event sources** (SaaS partner accounts) (12).
 - **Lambda targets** (4).
 - **Step Functions targets** (4).
 - **Kinesis targets** (1).

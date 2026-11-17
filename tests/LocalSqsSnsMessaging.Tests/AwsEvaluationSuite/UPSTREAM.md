@@ -28,7 +28,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | [`eventbridgev2`](#behavioraleventbridgev2) | 17 | 0 | 0 | 17 | 0 |
 | [`eventbridgev2__iam__sns__sqs`](#behavioraleventbridgev2__iam__sns__sqs) | 2 | 0 | 0 | 2 | 0 |
 | [`eventbridgev2__iam__sqs`](#behavioraleventbridgev2__iam__sqs) | 21 | 0 | 0 | 21 | 0 |
-| [`events`](#behavioralevents) | 200 | 134 | 4 | 66 | 0 |
+| [`events`](#behavioralevents) | 200 | 146 | 4 | 54 | 0 |
 | [`events__iam__lambda__sqs`](#behavioralevents__iam__lambda__sqs) | 1 | 0 | 0 | 1 | 0 |
 | [`events__iam__sns__sqs__sts`](#behavioralevents__iam__sns__sqs__sts) | 1 | 0 | 0 | 1 | 0 |
 | [`events__iam__sqs__stepfunctions`](#behavioralevents__iam__sqs__stepfunctions) | 3 | 0 | 0 | 3 | 0 |
@@ -37,7 +37,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | [`sns`](#behavioralsns) | 245 | 171 | 0 | 74 | 0 |
 | [`sns__sqs`](#behavioralsns__sqs) | 12 | 11 | 0 | 1 | 0 |
 | [`sqs`](#behavioralsqs) | 306 | 271 | 3 | 35 | 0 |
-| **Total** | **1765** | **1492** | **19** | **273** | **0** |
+| **Total** | **1765** | **1504** | **19** | **261** | **0** |
 
 ### Not ported, by reason
 
@@ -52,7 +52,6 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | IAM roles, users and identity policies | 16 |
 | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles | 13 |
 | Global endpoints | 12 |
-| Partner event sources | 12 |
 | IAM role and identity-policy enforcement | 8 |
 | Kinesis streaming destinations | 8 |
 | An email subscription, used to hold a subscription in `PendingConfirmation` | 7 |
@@ -1052,8 +1051,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 
 | Check | Last changed | Status | Port or reason |
 |---|---|---|---|
-| `events.activate-deactivate-event-source-state-transition` | `4df2823` | not ported | Partner event sources |
-| `events.activate-event-source-nonexistent-not-found` | `4df2823` | not ported | Partner event sources |
+| `events.activate-deactivate-event-source-state-transition` | `4df2823` | ported | `Events/ActivateDeactivateEventSourceStateTransition.cs` |
+| `events.activate-event-source-nonexistent-not-found` | `4df2823` | ported | `Events/ActivateEventSourceNonexistentNotFound.cs` |
 | `events.api-destination-4xx-dead-letters-without-retry-while-5xx-is-retried-until-its-retry-attempts-are-used-up` | `4df2823` | not ported | API destinations and connections |
 | `events.api-destination-api-key-connection-adds-its-key-and-parameters-and-its-values-win-over-the-targets` | `4df2823` | not ported | API destinations and connections |
 | `events.api-destination-basic-connection-sends-the-basic-authorization-header-with-the-destinations-method-and-the-bare-envelope` | `4df2823` | not ported | API destinations and connections |
@@ -1068,7 +1067,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.cancel-replay-in-flight-reaches-cancelled-and-stays-terminal` | `4df2823` | ported | `Events/CancelReplayInFlightReachesCancelledAndStaysTerminal.cs` |
 | `events.cmk-encrypted-bus-delivers-put-events-to-sqs-target` | `4df2823` | not ported | KMS keys |
 | `events.cmk-without-events-grant-rejected-on-create-and-update` | `4df2823` | not ported | KMS keys |
-| `events.concurrent-activate-event-source-conflict-detected` | `4df2823` | not ported | Partner event sources |
+| `events.concurrent-activate-event-source-conflict-detected` | `4df2823` | ported | `Events/ConcurrentActivateEventSourceConflictDetected.cs` |
 | `events.concurrent-put-events-unique-event-ids` | `4df2823` | ported | `Events/ConcurrentPutEventsUniqueEventIds.cs` |
 | `events.concurrent-update-endpoint-conflict-detected` | `4df2823` | not ported | Global endpoints |
 | `events.concurrent-update-event-bus-conflict-detected` | `4df2823` | ported | `Events/ConcurrentUpdateEventBusConflictDetected.cs` |
@@ -1089,7 +1088,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.custom-bus-addressed-by-arn-is-the-same-bus-as-by-name` | `4df2823` | ported | `Events/CustomBusAddressedByArnIsTheSameBusAsByName.cs` |
 | `events.custom-bus-put-events-routes-each-batch-entry-by-its-detail-content` | `4df2823` | ported | `Events/CustomBusPutEventsRoutesEachBatchEntryByItsDetailContent.cs` |
 | `events.custom-bus-rule-calls-without-event-bus-name-not-found` | `4df2823` | ported | `Events/CustomBusRuleCallsWithoutEventBusNameNotFound.cs` |
-| `events.deactivate-event-source-nonexistent-not-found` | `4df2823` | not ported | Partner event sources |
+| `events.deactivate-event-source-nonexistent-not-found` | `4df2823` | ported | `Events/DeactivateEventSourceNonexistentNotFound.cs` |
 | `events.deauthorize-connection-state-transition` | `4df2823` | not ported | API destinations and connections |
 | `events.default-event-bus-listed` | `4df2823` | ported | `Events/DefaultEventBusListed.cs` |
 | `events.delete-archive-not-blocked-by-in-flight-replay-and-start-replay-on-it-refused` | `4df2823` | ported | `Events/DeleteArchiveNotBlockedByInFlightReplayAndStartReplayOnItRefused.cs` |
@@ -1102,7 +1101,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.delete-event-bus-blocked-while-an-archive-targets-it` | `4df2823` | ported | `Events/DeleteEventBusBlockedWhileAnArchiveTargetsIt.cs` |
 | `events.delete-event-bus-removes-resource` | `4df2823` | ported | `Events/DeleteEventBusRemovesResource.cs` |
 | `events.delete-nonexistent-rule-is-idempotent` | `4df2823` | ported | `Events/DeleteNonexistentRuleIsIdempotent.cs` |
-| `events.delete-partner-event-source-disabled-operation-blocked` | `4df2823` | not ported | Partner event sources |
+| `events.delete-partner-event-source-disabled-operation-blocked` | `4df2823` | ported | `Events/DeletePartnerEventSourceDisabledOperationBlocked.cs` |
 | `events.delete-rule-removes-it` | `4df2823` | ported | `Events/DeleteRuleRemovesIt.cs` |
 | `events.delete-rule-with-targets-requires-force` | `4df2823` | ported | `Events/DeleteRuleWithTargetsRequiresForce.cs` |
 | `events.delete-rule-without-event-bus-name-leaves-custom-bus-rule-in-place` | `4df2823` | ported | `Events/DeleteRuleWithoutEventBusNameLeavesCustomBusRuleInPlace.cs` |
@@ -1113,15 +1112,15 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.deploy-eventbus-rule-target-cfn-then-put-events-delivers` | `4df2823` | not ported | CloudFormation stacks |
 | `events.describe-connection-redacts-secret-auth-material` | `4df2823` | not ported | API destinations and connections |
 | `events.describe-endpoint-nonexistent-not-found` | `4df2823` | not ported | Global endpoints |
-| `events.describe-event-source-nonexistent-not-found` | `4df2823` | not ported | Partner event sources |
+| `events.describe-event-source-nonexistent-not-found` | `4df2823` | ported | `Events/DescribeEventSourceNonexistentNotFound.cs` |
 | `events.describe-nonexistent-event-bus-fails` | `4df2823` | ported | `Events/DescribeNonexistentEventBusFails.cs` |
 | `events.describe-nonexistent-rule-fails` | `4df2823` | ported | `Events/DescribeNonexistentRuleFails.cs` |
-| `events.describe-partner-event-source-nonexistent-not-found` | `4df2823` | not ported | Partner event sources |
+| `events.describe-partner-event-source-nonexistent-not-found` | `4df2823` | ported | `Events/DescribePartnerEventSourceNonexistentNotFound.cs` |
 | `events.describe-replay-nonexistent-not-found` | `4df2823` | ported | `Events/DescribeReplayNonexistentNotFound.cs` |
 | `events.disabled-bus-key-stops-delivery-dead-letters-encrypted-events-until-reenabled` | `4df2823` | not ported | KMS keys |
 | `events.disabled-rule-with-a-dead-letter-configured-target-drops-the-event-instead-of-dead-lettering-it` | `4df2823` | known gap: EventBridgeUngrantedTargets | `Events/DisabledRuleWithADeadLetterConfiguredTargetDropsTheEventInsteadOfDeadLetteringIt.cs` |
 | `events.e2e-bus-rule-archive-replay-redelivers-event` | `4df2823` | ported | `Events/E2eBusRuleArchiveReplayRedeliversEvent.cs` |
-| `events.e2e-partner-event-source-activation-to-ingestion-flow` | `4df2823` | not ported | Partner event sources |
+| `events.e2e-partner-event-source-activation-to-ingestion-flow` | `4df2823` | ported | `Events/E2EPartnerEventSourceActivationToIngestionFlow.cs` |
 | `events.enable-disable-rule-roundtrip` | `4df2823` | ported | `Events/EnableDisableRuleRoundtrip.cs` |
 | `events.enable-nonexistent-rule-fails` | `4df2823` | ported | `Events/EnableNonexistentRuleFails.cs` |
 | `events.endpoint-failover-routing-config-managed` | `4df2823` | not ported | Global endpoints |
@@ -1147,8 +1146,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.list-connections-filters-are-mutually-exclusive` | `4df2823` | not ported | API destinations and connections |
 | `events.list-event-buses-includes-default-and-custom` | `4df2823` | ported | `Events/ListEventBusesIncludesDefaultAndCustom.cs` |
 | `events.list-event-buses-paginates-with-limit-and-next-token` | `4df2823` | ported | `Events/ListEventBusesPaginatesWithLimitAndNextToken.cs` |
-| `events.list-partner-event-source-accounts-unknown-source-not-found` | `4df2823` | not ported | Partner event sources |
-| `events.list-partner-event-sources-disabled-account-denied` | `4df2823` | not ported | Partner event sources |
+| `events.list-partner-event-source-accounts-unknown-source-not-found` | `4df2823` | ported | `Events/ListPartnerEventSourceAccountsUnknownSourceNotFound.cs` |
+| `events.list-partner-event-sources-disabled-account-denied` | `4df2823` | ported | `Events/ListPartnerEventSourcesDisabledAccountDenied.cs` |
 | `events.list-replays-combined-filters-rejected` | `4df2823` | ported | `Events/ListReplaysCombinedFiltersRejected.cs` |
 | `events.list-rule-names-by-target` | `4df2823` | ported | `Events/ListRuleNamesByTarget.cs` |
 | `events.list-rule-names-by-target-paginates-with-limit-and-next-token` | `4df2823` | ported | `Events/ListRuleNamesByTargetPaginatesWithLimitAndNextToken.cs` |
@@ -1158,7 +1157,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.nested-or-inside-detail-agrees-between-test-event-pattern-and-real-delivery` | `4df2823` | ported | `Events/NestedOrInsideDetailAgreesBetweenTestEventPatternAndRealDelivery.cs` |
 | `events.oauth-connection-non-https-authorization-endpoint-rejected` | `4df2823` | not ported | API destinations and connections |
 | `events.oauth-connection-with-unreachable-endpoint-deauthorizes-and-its-destination-is-inactive` | `4df2823` | not ported | API destinations and connections |
-| `events.partner-event-source-lifecycle-create-rejected-non-partner` | `4df2823` | not ported | Partner event sources |
+| `events.partner-event-source-lifecycle-create-rejected-non-partner` | `4df2823` | ported | `Events/PartnerEventSourceLifecycleCreateRejectedNonPartner.cs` |
 | `events.policy-scoped-to-one-bus-rules-denies-put-targets-on-the-same-rule-name-on-another-bus` | `4df2823` | not ported | IAM role and identity-policy enforcement |
 | `events.put-and-remove-permission-conflicting-parameters-rejected` | `4df2823` | ported | `Events/PutAndRemovePermissionConflictingParametersRejected.cs` |
 | `events.put-events-detail-json-nesting-depth-limit` | `4df2823` | ported | `Events/PutEventsDetailJsonNestingDepthLimit.cs` |
@@ -1178,7 +1177,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.put-events-unicode-detail-round-trip` | `4df2823` | ported | `Events/PutEventsUnicodeDetailRoundTrip.cs` |
 | `events.put-events-unmatched-entry-not-delivered` | `4df2823` | ported | `Events/PutEventsUnmatchedEntryNotDelivered.cs` |
 | `events.put-events-valid-returns-event-id` | `4df2823` | ported | `Events/PutEventsValidReturnsEventId.cs` |
-| `events.put-partner-events-non-partner-account-denied` | `4df2823` | not ported | Partner event sources |
+| `events.put-partner-events-non-partner-account-denied` | `4df2823` | ported | `Events/PutPartnerEventsNonPartnerAccountDenied.cs` |
 | `events.put-permission-same-statement-id-replaces-and-remove-all-clears-policy` | `4df2823` | ported | `Events/PutPermissionSameStatementIdReplacesAndRemoveAllClearsPolicy.cs` |
 | `events.put-remove-permission-roundtrip` | `4df2823` | ported | `Events/PutRemovePermissionRoundtrip.cs` |
 | `events.put-rule-default-state-enabled` | `4df2823` | ported | `Events/PutRuleDefaultStateEnabled.cs` |
