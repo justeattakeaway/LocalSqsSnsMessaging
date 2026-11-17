@@ -162,6 +162,7 @@ A topic publishes through `topic.Publish`/`PublishBatch` (also EventBridge's SNS
 - A bus `Policy` (PutPermission/RemovePermission) is enforced for explicit Deny statements on PutEvents (see Resource Policies)
 - Archives (`ArchiveResource`) record events through a managed rule on their source bus; replays (`ReplayResource`) and rules with a `ScheduleExpression` (`ScheduledRuleJob`, `EventBridgeSchedule`) run on the bus `TimeProvider`
 - Partner event sources (`InternalEventBridgeClient.PartnerEventSources.cs`): the bus's account is never a SaaS partner, so the partner-side operations are refused for the source's namespace (`ValidationException` "Caller is not whitelisted ..."), PutPartnerEvents fails each entry, and the customer side finds no source
+- Global endpoints (`EndpointResource`, `InternalEventBridgeClient.Endpoints.cs`) are kept in their home region and are `ACTIVE` at once. Route 53 is not emulated, so the health check ARN is stored but never evaluated: PutEvents with `EndpointId` (found in any region) delivers to the endpoint's bus in its home region, and with replication enabled also to its bus in the failover region, both with the home `region` and the endpoint's ARN in `resources`
 - Timestamps go on the wire as epoch seconds (`Http/Serialization/AwsJsonTimestamp.cs`)
 
 ### DynamoDB

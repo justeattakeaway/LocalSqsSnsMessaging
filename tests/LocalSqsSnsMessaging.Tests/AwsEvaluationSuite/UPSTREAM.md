@@ -28,7 +28,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | [`eventbridgev2`](#behavioraleventbridgev2) | 17 | 0 | 0 | 17 | 0 |
 | [`eventbridgev2__iam__sns__sqs`](#behavioraleventbridgev2__iam__sns__sqs) | 2 | 0 | 0 | 2 | 0 |
 | [`eventbridgev2__iam__sqs`](#behavioraleventbridgev2__iam__sqs) | 21 | 0 | 0 | 21 | 0 |
-| [`events`](#behavioralevents) | 200 | 146 | 4 | 54 | 0 |
+| [`events`](#behavioralevents) | 200 | 158 | 4 | 42 | 0 |
 | [`events__iam__lambda__sqs`](#behavioralevents__iam__lambda__sqs) | 1 | 0 | 0 | 1 | 0 |
 | [`events__iam__sns__sqs__sts`](#behavioralevents__iam__sns__sqs__sts) | 1 | 0 | 0 | 1 | 0 |
 | [`events__iam__sqs__stepfunctions`](#behavioralevents__iam__sqs__stepfunctions) | 3 | 0 | 0 | 3 | 0 |
@@ -37,7 +37,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | [`sns`](#behavioralsns) | 245 | 171 | 0 | 74 | 0 |
 | [`sns__sqs`](#behavioralsns__sqs) | 12 | 11 | 0 | 1 | 0 |
 | [`sqs`](#behavioralsqs) | 306 | 271 | 3 | 35 | 0 |
-| **Total** | **1765** | **1504** | **19** | **261** | **0** |
+| **Total** | **1765** | **1516** | **19** | **249** | **0** |
 
 ### Not ported, by reason
 
@@ -51,7 +51,6 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | S3 (exports and imports) | 18 |
 | IAM roles, users and identity policies | 16 |
 | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles | 13 |
-| Global endpoints | 12 |
 | IAM role and identity-policy enforcement | 8 |
 | Kinesis streaming destinations | 8 |
 | An email subscription, used to hold a subscription in `PendingConfirmation` | 7 |
@@ -1069,7 +1068,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.cmk-without-events-grant-rejected-on-create-and-update` | `4df2823` | not ported | KMS keys |
 | `events.concurrent-activate-event-source-conflict-detected` | `4df2823` | ported | `Events/ConcurrentActivateEventSourceConflictDetected.cs` |
 | `events.concurrent-put-events-unique-event-ids` | `4df2823` | ported | `Events/ConcurrentPutEventsUniqueEventIds.cs` |
-| `events.concurrent-update-endpoint-conflict-detected` | `4df2823` | not ported | Global endpoints |
+| `events.concurrent-update-endpoint-conflict-detected` | `4df2823` | ported | `Events/ConcurrentUpdateEndpointConflictDetected.cs` |
 | `events.concurrent-update-event-bus-conflict-detected` | `4df2823` | ported | `Events/ConcurrentUpdateEventBusConflictDetected.cs` |
 | `events.create-api-destination-accepts-non-url-endpoint` | `4df2823` | not ported | API destinations and connections |
 | `events.create-api-destination-invalid-endpoint-pattern-rejected` | `4df2823` | not ported | API destinations and connections |
@@ -1080,8 +1079,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.create-connection-missing-auth-parameters-rejected` | `4df2823` | not ported | API destinations and connections |
 | `events.create-connection-state-transition` | `4df2823` | not ported | API destinations and connections |
 | `events.create-duplicate-event-bus-fails` | `4df2823` | ported | `Events/CreateDuplicateEventBusFails.cs` |
-| `events.create-endpoint-duplicate-name-blocked` | `4df2823` | not ported | Global endpoints |
-| `events.create-endpoint-malformed-routing-config-rejected` | `4df2823` | not ported | Global endpoints |
+| `events.create-endpoint-duplicate-name-blocked` | `4df2823` | ported | `Events/CreateEndpointDuplicateNameBlocked.cs` |
+| `events.create-endpoint-malformed-routing-config-rejected` | `4df2823` | ported | `Events/CreateEndpointMalformedRoutingConfigRejected.cs` |
 | `events.create-event-bus-basic` | `4df2823` | ported | `Events/CreateEventBusBasic.cs` |
 | `events.create-event-bus-reserved-and-malformed-names-rejected` | `4df2823` | ported | `Events/CreateEventBusReservedAndMalformedNamesRejected.cs` |
 | `events.cross-region-bus-target-delivers-to-the-other-regions-rules-with-the-source-region-and-a-new-event-id` | `4df2823` | ported | `Events/CrossRegionBusTargetDeliversToTheOtherRegionsRulesWithTheSourceRegionAndANewEventId.cs` |
@@ -1096,7 +1095,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.delete-connection-eventually-not-found` | `4df2823` | not ported | API destinations and connections |
 | `events.delete-connection-in-use-by-api-destination-allowed` | `4df2823` | not ported | API destinations and connections |
 | `events.delete-default-event-bus-protected` | `4df2823` | ported | `Events/DeleteDefaultEventBusProtected.cs` |
-| `events.delete-endpoint-nonexistent-not-found` | `4df2823` | not ported | Global endpoints |
+| `events.delete-endpoint-nonexistent-not-found` | `4df2823` | ported | `Events/DeleteEndpointNonexistentNotFound.cs` |
 | `events.delete-event-bus-blocked-while-a-rule-remains-and-succeeds-once-removed` | `4df2823` | ported | `Events/DeleteEventBusBlockedWhileARuleRemainsAndSucceedsOnceRemoved.cs` |
 | `events.delete-event-bus-blocked-while-an-archive-targets-it` | `4df2823` | ported | `Events/DeleteEventBusBlockedWhileAnArchiveTargetsIt.cs` |
 | `events.delete-event-bus-removes-resource` | `4df2823` | ported | `Events/DeleteEventBusRemovesResource.cs` |
@@ -1111,7 +1110,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.deploy-cfn-target-dead-letter-config-captures-undeliverable-events-until-a-stack-update-adds-the-queue-policy` | `4df2823` | not ported | CloudFormation stacks |
 | `events.deploy-eventbus-rule-target-cfn-then-put-events-delivers` | `4df2823` | not ported | CloudFormation stacks |
 | `events.describe-connection-redacts-secret-auth-material` | `4df2823` | not ported | API destinations and connections |
-| `events.describe-endpoint-nonexistent-not-found` | `4df2823` | not ported | Global endpoints |
+| `events.describe-endpoint-nonexistent-not-found` | `4df2823` | ported | `Events/DescribeEndpointNonexistentNotFound.cs` |
 | `events.describe-event-source-nonexistent-not-found` | `4df2823` | ported | `Events/DescribeEventSourceNonexistentNotFound.cs` |
 | `events.describe-nonexistent-event-bus-fails` | `4df2823` | ported | `Events/DescribeNonexistentEventBusFails.cs` |
 | `events.describe-nonexistent-rule-fails` | `4df2823` | ported | `Events/DescribeNonexistentRuleFails.cs` |
@@ -1123,9 +1122,9 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.e2e-partner-event-source-activation-to-ingestion-flow` | `4df2823` | ported | `Events/E2EPartnerEventSourceActivationToIngestionFlow.cs` |
 | `events.enable-disable-rule-roundtrip` | `4df2823` | ported | `Events/EnableDisableRuleRoundtrip.cs` |
 | `events.enable-nonexistent-rule-fails` | `4df2823` | ported | `Events/EnableNonexistentRuleFails.cs` |
-| `events.endpoint-failover-routing-config-managed` | `4df2823` | not ported | Global endpoints |
-| `events.endpoint-lifecycle-create-active-delete-404` | `4df2823` | not ported | Global endpoints |
-| `events.endpoint-routing-config-round-trip` | `4df2823` | not ported | Global endpoints |
+| `events.endpoint-failover-routing-config-managed` | `4df2823` | ported | `Events/EndpointFailoverRoutingConfigManaged.cs` |
+| `events.endpoint-lifecycle-create-active-delete-404` | `4df2823` | ported | `Events/EndpointLifecycleCreateActiveDelete404.cs` |
+| `events.endpoint-routing-config-round-trip` | `4df2823` | ported | `Events/EndpointRoutingConfigRoundTrip.cs` |
 | `events.event-bus-dead-letter-config-rejects-non-sqs-arns-and-keeps-prior-config` | `4df2823` | ported | `Events/EventBusDeadLetterConfigRejectsNonSqsArnsAndKeepsPriorConfig.cs` |
 | `events.event-bus-tag-limit-counts-tags-already-on-the-bus-and-overwrites-do-not-count` | `4df2823` | ported | `Events/EventBusTagLimitCountsTagsAlreadyOnTheBusAndOverwritesDoNotCount.cs` |
 | `events.event-pattern-over-2048-characters-rejected-counting-whitespace-and-the-rule-keeps-its-pattern` | `4df2823` | ported | `Events/EventPatternOver2048CharactersRejectedCountingWhitespaceAndTheRuleKeepsItsPattern.cs` |
@@ -1162,8 +1161,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.put-and-remove-permission-conflicting-parameters-rejected` | `4df2823` | ported | `Events/PutAndRemovePermissionConflictingParametersRejected.cs` |
 | `events.put-events-detail-json-nesting-depth-limit` | `4df2823` | ported | `Events/PutEventsDetailJsonNestingDepthLimit.cs` |
 | `events.put-events-detail-that-is-json-but-not-an-object-rejected` | `4df2823` | ported | `Events/PutEventsDetailThatIsJsonButNotAnObjectRejected.cs` |
-| `events.put-events-endpoint-id-delivers-to-primary-and-replicates-to-secondary` | `4df2823` | not ported | Global endpoints |
-| `events.put-events-endpoint-id-with-unrelated-event-bus-name-rejected` | `4df2823` | not ported | Global endpoints |
+| `events.put-events-endpoint-id-delivers-to-primary-and-replicates-to-secondary` | `4df2823` | ported | `Events/PutEventsEndpointIdDeliversToPrimaryAndReplicatesToSecondary.cs` |
+| `events.put-events-endpoint-id-with-unrelated-event-bus-name-rejected` | `4df2823` | ported | `Events/PutEventsEndpointIdWithUnrelatedEventBusNameRejected.cs` |
 | `events.put-events-malformed-detail-entry-fails` | `4df2823` | ported | `Events/PutEventsMalformedDetailEntryFails.cs` |
 | `events.put-events-missing-source-entry-fails` | `4df2823` | ported | `Events/PutEventsMissingSourceEntryFails.cs` |
 | `events.put-events-nonexistent-bus-silently-dropped` | `4df2823` | ported | `Events/PutEventsNonexistentBusSilentlyDropped.cs` |
@@ -1247,8 +1246,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.update-archive-event-pattern-governs-what-is-archived-afterwards` | `4df2823` | ported | `Events/UpdateArchiveEventPatternGovernsWhatIsArchivedAfterwards.cs` |
 | `events.update-archive-pattern-is-mirrored-into-its-managed-rule-and-delete-removes-it` | `4df2823` | ported | `Events/UpdateArchivePatternIsMirroredIntoItsManagedRuleAndDeleteRemovesIt.cs` |
 | `events.update-connection-authorization-type` | `4df2823` | not ported | API destinations and connections |
-| `events.update-endpoint-changes-routing-config` | `4df2823` | not ported | Global endpoints |
-| `events.update-endpoint-nonexistent-not-found` | `4df2823` | not ported | Global endpoints |
+| `events.update-endpoint-changes-routing-config` | `4df2823` | ported | `Events/UpdateEndpointChangesRoutingConfig.cs` |
+| `events.update-endpoint-nonexistent-not-found` | `4df2823` | ported | `Events/UpdateEndpointNonexistentNotFound.cs` |
 | `events.update-event-bus-partial-update-agrees-across-every-read-surface` | `4df2823` | ported | `Events/UpdateEventBusPartialUpdateAgreesAcrossEveryReadSurface.cs` |
 | `events.update-event-bus-policy-enforced-on-put-events` | `4df2823` | ported | `Events/UpdateEventBusPolicyEnforcedOnPutEvents.cs` |
 

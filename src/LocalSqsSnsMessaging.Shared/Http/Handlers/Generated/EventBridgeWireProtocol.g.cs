@@ -44,6 +44,13 @@ internal static partial class EventBridgeWireProtocol
                 EventBridgeJsonSerializers.SerializeCreateArchiveResponse(response, output);
                 return true;
             }
+            case "CreateEndpoint":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeCreateEndpointRequest(body);
+                var response = await client.CreateEndpointAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeCreateEndpointResponse(response, output);
+                return true;
+            }
             case "CreateEventBus":
             {
                 var request = EventBridgeJsonSerializers.DeserializeCreateEventBusRequest(body);
@@ -72,6 +79,13 @@ internal static partial class EventBridgeWireProtocol
                 EventBridgeJsonSerializers.SerializeDeleteArchiveResponse(response, output);
                 return true;
             }
+            case "DeleteEndpoint":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDeleteEndpointRequest(body);
+                var response = await client.DeleteEndpointAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDeleteEndpointResponse(response, output);
+                return true;
+            }
             case "DeleteEventBus":
             {
                 var request = EventBridgeJsonSerializers.DeserializeDeleteEventBusRequest(body);
@@ -98,6 +112,13 @@ internal static partial class EventBridgeWireProtocol
                 var request = EventBridgeJsonSerializers.DeserializeDescribeArchiveRequest(body);
                 var response = await client.DescribeArchiveAsync(request, cancellationToken).ConfigureAwait(false);
                 EventBridgeJsonSerializers.SerializeDescribeArchiveResponse(response, output);
+                return true;
+            }
+            case "DescribeEndpoint":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDescribeEndpointRequest(body);
+                var response = await client.DescribeEndpointAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDescribeEndpointResponse(response, output);
                 return true;
             }
             case "DescribeEventBus":
@@ -154,6 +175,13 @@ internal static partial class EventBridgeWireProtocol
                 var request = EventBridgeJsonSerializers.DeserializeListArchivesRequest(body);
                 var response = await client.ListArchivesAsync(request, cancellationToken).ConfigureAwait(false);
                 EventBridgeJsonSerializers.SerializeListArchivesResponse(response, output);
+                return true;
+            }
+            case "ListEndpoints":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeListEndpointsRequest(body);
+                var response = await client.ListEndpointsAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeListEndpointsResponse(response, output);
                 return true;
             }
             case "ListEventBuses":
@@ -301,6 +329,13 @@ internal static partial class EventBridgeWireProtocol
                 var request = EventBridgeJsonSerializers.DeserializeUpdateArchiveRequest(body);
                 var response = await client.UpdateArchiveAsync(request, cancellationToken).ConfigureAwait(false);
                 EventBridgeJsonSerializers.SerializeUpdateArchiveResponse(response, output);
+                return true;
+            }
+            case "UpdateEndpoint":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeUpdateEndpointRequest(body);
+                var response = await client.UpdateEndpointAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeUpdateEndpointResponse(response, output);
                 return true;
             }
             case "UpdateEventBus":

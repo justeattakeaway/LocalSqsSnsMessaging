@@ -133,7 +133,7 @@ internal sealed partial class InternalEventBridgeClient
     {
         if (value is null)
         {
-            violations.Add($"Value null at '{member}' failed to satisfy constraint: Member must not be null");
+            violations.Add(NullViolation(member));
             return;
         }
 

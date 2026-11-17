@@ -95,6 +95,27 @@ internal class CreateArchiveResponse : AmazonWebServiceResponse
     public DateTime? CreationTime { get; set; }
 }
 
+internal class CreateEndpointRequest
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public RoutingConfig? RoutingConfig { get; set; }
+    public ReplicationConfig? ReplicationConfig { get; set; }
+    public List<EndpointEventBus>? EventBuses { get; set; } = [];
+    public string? RoleArn { get; set; }
+}
+
+internal class CreateEndpointResponse : AmazonWebServiceResponse
+{
+    public string? Name { get; set; }
+    public string? Arn { get; set; }
+    public RoutingConfig? RoutingConfig { get; set; }
+    public ReplicationConfig? ReplicationConfig { get; set; }
+    public List<EndpointEventBus>? EventBuses { get; set; } = [];
+    public string? RoleArn { get; set; }
+    public string? State { get; set; }
+}
+
 internal class CreateEventBusRequest
 {
     public string? Name { get; set; }
@@ -145,6 +166,15 @@ internal class DeleteArchiveResponse : AmazonWebServiceResponse
 {
 }
 
+internal class DeleteEndpointRequest
+{
+    public string? Name { get; set; }
+}
+
+internal class DeleteEndpointResponse : AmazonWebServiceResponse
+{
+}
+
 internal class DeleteEventBusRequest
 {
     public string? Name { get; set; }
@@ -182,6 +212,29 @@ internal class DescribeArchiveResponse : AmazonWebServiceResponse
     public long? SizeBytes { get; set; }
     public long? EventCount { get; set; }
     public DateTime? CreationTime { get; set; }
+}
+
+internal class DescribeEndpointRequest
+{
+    public string? Name { get; set; }
+    public string? HomeRegion { get; set; }
+}
+
+internal class DescribeEndpointResponse : AmazonWebServiceResponse
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public string? Arn { get; set; }
+    public RoutingConfig? RoutingConfig { get; set; }
+    public ReplicationConfig? ReplicationConfig { get; set; }
+    public List<EndpointEventBus>? EventBuses { get; set; } = [];
+    public string? RoleArn { get; set; }
+    public string? EndpointId { get; set; }
+    public string? EndpointUrl { get; set; }
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
 }
 
 internal class DescribeEventBusRequest
@@ -299,6 +352,28 @@ internal class EnableRuleRequest
     public string? EventBusName { get; set; }
 }
 
+internal class Endpoint
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public string? Arn { get; set; }
+    public RoutingConfig? RoutingConfig { get; set; }
+    public ReplicationConfig? ReplicationConfig { get; set; }
+    public List<EndpointEventBus>? EventBuses { get; set; } = [];
+    public string? RoleArn { get; set; }
+    public string? EndpointId { get; set; }
+    public string? EndpointUrl { get; set; }
+    public string? State { get; set; }
+    public string? StateReason { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
+}
+
+internal class EndpointEventBus
+{
+    public string? EventBusArn { get; set; }
+}
+
 internal class EventBus
 {
     public string? Name { get; set; }
@@ -317,6 +392,12 @@ internal class EventSource
     public DateTime? ExpirationTime { get; set; }
     public string? Name { get; set; }
     public string? State { get; set; }
+}
+
+internal class FailoverConfig
+{
+    public Primary? Primary { get; set; }
+    public Secondary? Secondary { get; set; }
 }
 
 internal class HttpParameters
@@ -349,6 +430,20 @@ internal class ListArchivesRequest
 internal class ListArchivesResponse : AmazonWebServiceResponse
 {
     public List<Archive>? Archives { get; set; } = [];
+    public string? NextToken { get; set; }
+}
+
+internal class ListEndpointsRequest
+{
+    public string? NamePrefix { get; set; }
+    public string? HomeRegion { get; set; }
+    public string? NextToken { get; set; }
+    public int? MaxResults { get; set; }
+}
+
+internal class ListEndpointsResponse : AmazonWebServiceResponse
+{
+    public List<Endpoint>? Endpoints { get; set; } = [];
     public string? NextToken { get; set; }
 }
 
@@ -506,6 +601,11 @@ internal class PlacementStrategy
 {
     public string? Type { get; set; }
     public string? Field { get; set; }
+}
+
+internal class Primary
+{
+    public string? HealthCheck { get; set; }
 }
 
 internal class PutEventsRequest
@@ -670,10 +770,20 @@ internal class ReplayDestination
     public List<string>? FilterArns { get; set; } = [];
 }
 
+internal class ReplicationConfig
+{
+    public string? State { get; set; }
+}
+
 internal class RetryPolicy
 {
     public int? MaximumRetryAttempts { get; set; }
     public int? MaximumEventAgeInSeconds { get; set; }
+}
+
+internal class RoutingConfig
+{
+    public FailoverConfig? FailoverConfig { get; set; }
 }
 
 internal class Rule
@@ -709,6 +819,11 @@ internal class SageMakerPipelineParameter
 internal class SageMakerPipelineParameters
 {
     public List<SageMakerPipelineParameter>? PipelineParameterList { get; set; } = [];
+}
+
+internal class Secondary
+{
+    public string? Route { get; set; }
 }
 
 internal class SqsParameters
@@ -807,6 +922,29 @@ internal class UpdateArchiveResponse : AmazonWebServiceResponse
     public string? State { get; set; }
     public string? StateReason { get; set; }
     public DateTime? CreationTime { get; set; }
+}
+
+internal class UpdateEndpointRequest
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public RoutingConfig? RoutingConfig { get; set; }
+    public ReplicationConfig? ReplicationConfig { get; set; }
+    public List<EndpointEventBus>? EventBuses { get; set; } = [];
+    public string? RoleArn { get; set; }
+}
+
+internal class UpdateEndpointResponse : AmazonWebServiceResponse
+{
+    public string? Name { get; set; }
+    public string? Arn { get; set; }
+    public RoutingConfig? RoutingConfig { get; set; }
+    public ReplicationConfig? ReplicationConfig { get; set; }
+    public List<EndpointEventBus>? EventBuses { get; set; } = [];
+    public string? RoleArn { get; set; }
+    public string? EndpointId { get; set; }
+    public string? EndpointUrl { get; set; }
+    public string? State { get; set; }
 }
 
 internal class UpdateEventBusRequest

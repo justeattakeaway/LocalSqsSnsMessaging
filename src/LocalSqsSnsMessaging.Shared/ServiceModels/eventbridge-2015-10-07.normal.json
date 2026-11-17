@@ -108,6 +108,31 @@
       ],
       "documentation": "<p>Creates an archive of events with the specified settings. When you create an archive, incoming events might not immediately start being sent to the archive. Allow a short period of time for changes to take effect. If you do not specify a pattern to filter events sent to the archive, all events are sent to the archive except replayed events. Replayed events are not sent to an archive.</p> <important> <p>If you have specified that EventBridge use a customer managed key for encrypting the source event bus, we strongly recommend you also specify a customer managed key for any archives for the event bus as well. </p> <p>For more information, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/encryption-archives.html\">Encrypting archives</a> in the <i>Amazon EventBridge User Guide</i>.</p> </important>"
     },
+    "CreateEndpoint": {
+      "name": "CreateEndpoint",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "CreateEndpointRequest"
+      },
+      "output": {
+        "shape": "CreateEndpointResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceAlreadyExistsException"
+        },
+        {
+          "shape": "LimitExceededException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Creates a global endpoint. Global endpoints improve your application's availability by making it regional-fault tolerant. To do this, you define a primary and secondary Region with event buses in each Region. You also create a Amazon Route\u00a053 health check that will tell EventBridge to route events to the secondary Region when an \"unhealthy\" state is encountered and events will be routed back to the primary Region when the health check reports a \"healthy\" state.</p>"
+    },
     "CreateEventBus": {
       "name": "CreateEventBus",
       "http": {
@@ -229,6 +254,31 @@
       ],
       "documentation": "<p>Deletes the specified archive.</p>"
     },
+    "DeleteEndpoint": {
+      "name": "DeleteEndpoint",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeleteEndpointRequest"
+      },
+      "output": {
+        "shape": "DeleteEndpointResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Delete an existing global endpoint. For more information about global endpoints, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-global-endpoints.html\">Making applications Regional-fault tolerant with global endpoints and event replication</a> in the <i> <i>Amazon EventBridge User Guide</i> </i>.</p>"
+    },
     "DeleteEventBus": {
       "name": "DeleteEventBus",
       "http": {
@@ -319,6 +369,28 @@
         }
       ],
       "documentation": "<p>Retrieves details about an archive.</p>"
+    },
+    "DescribeEndpoint": {
+      "name": "DescribeEndpoint",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DescribeEndpointRequest"
+      },
+      "output": {
+        "shape": "DescribeEndpointResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Get the information about an existing global endpoint. For more information about global endpoints, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-global-endpoints.html\">Making applications Regional-fault tolerant with global endpoints and event replication</a> in the <i> <i>Amazon EventBridge User Guide</i> </i>.</p>"
     },
     "DescribeEventBus": {
       "name": "DescribeEventBus",
@@ -507,6 +579,25 @@
         }
       ],
       "documentation": "<p>Lists your archives. You can either list all the archives or you can provide a prefix to match to the archive names. Filter parameters are exclusive.</p>"
+    },
+    "ListEndpoints": {
+      "name": "ListEndpoints",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListEndpointsRequest"
+      },
+      "output": {
+        "shape": "ListEndpointsResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>List the global endpoints associated with this account. For more information about global endpoints, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-global-endpoints.html\">Making applications Regional-fault tolerant with global endpoints and event replication</a> in the <i> <i>Amazon EventBridge User Guide</i> </i>.</p>"
     },
     "ListEventBuses": {
       "name": "ListEventBuses",
@@ -1029,6 +1120,31 @@
         }
       ],
       "documentation": "<p>Updates the specified archive.</p>"
+    },
+    "UpdateEndpoint": {
+      "name": "UpdateEndpoint",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "UpdateEndpointRequest"
+      },
+      "output": {
+        "shape": "UpdateEndpointResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Update an existing endpoint. For more information about global endpoints, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-global-endpoints.html\">Making applications Regional-fault tolerant with global endpoints and event replication</a> in the <i> <i>Amazon EventBridge User Guide</i> </i>.</p>"
     },
     "UpdateEventBus": {
       "name": "UpdateEventBus",

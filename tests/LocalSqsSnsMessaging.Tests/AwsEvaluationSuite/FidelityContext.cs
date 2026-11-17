@@ -314,6 +314,13 @@ public sealed class FidelityContext : IAsyncDisposable
     public string RoleArn(string roleName) => $"arn:aws:iam::{Account}:role/{roleName}";
 
     /// <summary>
+    /// A Route 53 health check ARN for a check that creates a health check only to put its ARN on a
+    /// global endpoint's routing config. The bus models no Route 53: it accepts any well-formed health
+    /// check ARN and never evaluates it, so the endpoint is always healthy.
+    /// </summary>
+    public static string HealthCheckArn() => $"arn:aws:route53:::healthcheck/{Guid.NewGuid()}";
+
+    /// <summary>
     /// <c>ctx.client("sts").get_caller_identity()["Arn"]</c>: the bus models no IAM users, so every
     /// signed caller is the account's root user (as the Python run's STS shim answers).
     /// </summary>
