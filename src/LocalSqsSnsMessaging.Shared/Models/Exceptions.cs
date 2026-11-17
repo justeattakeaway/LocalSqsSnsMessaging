@@ -134,6 +134,11 @@ internal class InternalLimitExceededException : AwsServiceException
     {
         ErrorCode = "LimitExceededException";
     }
+
+    public InternalLimitExceededException(string message) : base(message)
+    {
+        ErrorCode = "LimitExceededException";
+    }
 }
 
 // Alias for SNS InternalBatchRequestTooLongException - same class works for both SQS and SNS

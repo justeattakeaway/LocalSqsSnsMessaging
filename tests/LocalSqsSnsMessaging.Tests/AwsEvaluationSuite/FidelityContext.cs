@@ -115,6 +115,9 @@ public sealed class FidelityContext : IAsyncDisposable
             // go with it. AWS takes seconds to minutes; the checks' waiters poll every second or two.
             DynamoDbTransitionDelay = TimeSpan.FromSeconds(2),
         };
+        // The HTTP endpoints the bus calls (API destinations, OAuth token requests) are the check's
+        // own stand-ins (HttpEndpoints); nothing reaches the network.
+        Bus.HttpClient = new HttpClient(HttpEndpoints, disposeHandler: false);
         _handler = new RequestLatencyHandler(this, AwsServiceType.Sqs);
         _snsHandler = new RequestLatencyHandler(this, AwsServiceType.Sns);
         _eventsHandler = new RequestLatencyHandler(this, AwsServiceType.EventBridge);
@@ -137,6 +140,9 @@ public sealed class FidelityContext : IAsyncDisposable
     public FakeTimeProvider Time { get; }
 
     public InMemoryAwsBus Bus { get; }
+
+    /// <summary>The HTTP endpoints the bus can reach (see <see cref="FidelityHttpEndpoints"/>).</summary>
+    public FidelityHttpEndpoints HttpEndpoints { get; } = new();
 
     /// <summary><c>ctx.region</c>.</summary>
     public string Region => Bus.CurrentRegion;
@@ -312,6 +318,13 @@ public sealed class FidelityContext : IAsyncDisposable
     /// bus models no IAM: it accepts any well-formed role ARN and never assumes it.
     /// </summary>
     public string RoleArn(string roleName) => $"arn:aws:iam::{Account}:role/{roleName}";
+
+    /// <summary>
+    /// A Route 53 health check ARN for a check that creates a health check only to put its ARN on a
+    /// global endpoint's routing config. The bus models no Route 53: it accepts any well-formed health
+    /// check ARN and never evaluates it, so the endpoint is always healthy.
+    /// </summary>
+    public static string HealthCheckArn() => $"arn:aws:route53:::healthcheck/{Guid.NewGuid()}";
 
     /// <summary>
     /// <c>ctx.client("sts").get_caller_identity()["Arn"]</c>: the bus models no IAM users, so every
@@ -584,6 +597,9 @@ public sealed class FidelityContext : IAsyncDisposable
         {
             client.Dispose();
         }
+
+        Bus.HttpClient.Dispose();
+        HttpEndpoints.Dispose();
 
         await _stopPump.CancelAsync();
         await _pump;

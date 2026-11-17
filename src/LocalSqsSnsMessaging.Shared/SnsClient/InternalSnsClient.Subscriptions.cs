@@ -12,7 +12,10 @@ internal sealed partial class InternalSnsClient
     /// <summary>SNS answers every request for a subscription that doesn't exist with this message.</summary>
     internal const string SubscriptionDoesNotExist = "Subscription does not exist";
 
-    /// <summary>The protocols SNS knows. This bus delivers to <c>sqs</c>, <c>http</c> and <c>https</c>.</summary>
+    /// <summary>
+    /// The protocols SNS knows. This bus delivers to <c>sqs</c>, <c>http</c> and <c>https</c>, and
+    /// takes <c>email</c> and <c>email-json</c> subscriptions, which stay pending confirmation.
+    /// </summary>
     private static readonly string[] KnownProtocols = ["http", "https", "email", "email-json", "sms", "sqs", "application", "lambda", "firehose"];
 
     /// <summary>The subscription attributes a caller can set, at <c>Subscribe</c> or afterwards.</summary>
@@ -34,6 +37,11 @@ internal sealed partial class InternalSnsClient
 
         var topic = GetTopicByArn(request.TopicArn);
         var protocol = NormalizeProtocol(request.Protocol);
+        Authorize(topic, SnsActionName.Subscribe, new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["sns:Protocol"] = protocol,
+            ["sns:Endpoint"] = request.Endpoint,
+        });
         switch (protocol)
         {
             case "sqs":
@@ -61,6 +69,21 @@ internal sealed partial class InternalSnsClient
 
                 break;
 
+            case "email":
+            case "email-json":
+                // SNS takes no email subscription on a FIFO topic.
+                if (topic.IsFifo)
+                {
+                    throw new InternalInvalidParameterException($"Invalid parameter: Invalid protocol type: {protocol}");
+                }
+
+                if (!IsEmailAddress(request.Endpoint))
+                {
+                    throw new InternalInvalidParameterException("Invalid parameter: Email address");
+                }
+
+                break;
+
             default:
                 if (!KnownProtocols.Contains(protocol, StringComparer.Ordinal))
                 {
@@ -68,7 +91,7 @@ internal sealed partial class InternalSnsClient
                         $"Invalid parameter: Amazon SNS does not support this protocol string: {request.Protocol}");
                 }
 
-                throw new NotSupportedException("Only the sqs, http and https protocols are supported.");
+                throw new NotSupportedException("Only the sqs, http, https, email and email-json protocols are supported.");
         }
 
         var requested = request.Attributes ?? [];
@@ -88,8 +111,10 @@ internal sealed partial class InternalSnsClient
             Protocol = protocol,
             Raw = false,
             FilterPolicy = string.Empty,
-            // HTTP/S endpoints have to confirm before they receive anything, as on AWS.
-            PendingConfirmation = protocol is "http" or "https"
+            // HTTP/S and email endpoints have to confirm before they receive anything, as on AWS.
+            // The bus sends no email, so an email subscription stays pending until ConfirmSubscription
+            // presents its token.
+            PendingConfirmation = protocol is "http" or "https" or "email" or "email-json"
         };
 
         // Apply the scope before the policy so a nested (body-scoped) policy validates correctly.
@@ -134,9 +159,16 @@ internal sealed partial class InternalSnsClient
 
         SnsArn.Parse(request.SubscriptionArn, "SubscriptionArn");
 
-        // Unsubscribing a subscription that doesn't exist succeeds, as on AWS.
+        // Unsubscribing a subscription that doesn't exist succeeds, as on AWS. One still pending
+        // confirmation can't be unsubscribed (DeleteTopic removes it).
         if (_resources.Subscriptions.TryGetValue(request.SubscriptionArn, out var subscription))
         {
+            if (subscription.PendingConfirmation)
+            {
+                throw new InternalInvalidParameterException(
+                    "Invalid parameter: SubscriptionArn Reason: Cannot unsubscribe a subscription that is pending confirmation");
+            }
+
             subscription.Topic.Unsubscribe(subscription);
         }
 
@@ -238,6 +270,7 @@ internal sealed partial class InternalSnsClient
         ArgumentNullException.ThrowIfNull(request);
 
         var topic = GetTopicByArn(request.TopicArn);
+        Authorize(topic, SnsActionName.ListSubscriptionsByTopic);
         var (items, nextToken) = ListSubscriptionPage(
             topic.Subscriptions,
             request.NextToken);
@@ -286,6 +319,14 @@ internal sealed partial class InternalSnsClient
             TopicArn = s.TopicArn,
         }).ToList();
         return (items, token);
+    }
+
+    /// <summary>Whether <paramref name="endpoint"/> looks like an email address: one <c>@</c> with something either side.</summary>
+    private static bool IsEmailAddress(string? endpoint)
+    {
+        var at = endpoint?.IndexOf('@', StringComparison.Ordinal) ?? -1;
+        return at > 0 && at < endpoint!.Length - 1 && endpoint.IndexOf('@', at + 1) < 0
+               && !endpoint.Any(char.IsWhiteSpace);
     }
 
     /// <summary>The subscription <paramref name="subscriptionArn"/> names, or SNS's <c>NotFound</c>.</summary>

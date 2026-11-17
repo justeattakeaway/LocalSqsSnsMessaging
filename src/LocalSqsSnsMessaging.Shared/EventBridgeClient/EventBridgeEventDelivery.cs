@@ -29,11 +29,15 @@ namespace LocalSqsSnsMessaging;
 /// still receives it, although AWS would refuse a queue that grants EventBridge nothing.
 /// </para>
 /// <para>
+/// API destinations are called over HTTP in the background, retried and rate limited
+/// (<c>EventBridgeEventDelivery.ApiDestinations.cs</c>).
+/// </para>
+/// <para>
 /// Targets of other services (Lambda, Kinesis, ...), and event buses in another region or account,
 /// have no in-memory backend and are skipped.
 /// </para>
 /// </remarks>
-internal static class EventBridgeEventDelivery
+internal static partial class EventBridgeEventDelivery
 {
     /// <summary>
     /// Routes an event put on <paramref name="eventBus"/> through its rules and delivers it to the
@@ -100,7 +104,12 @@ internal static class EventBridgeEventDelivery
     /// <summary>Why EventBridge could not deliver to a target, as it records it on the dead letter.</summary>
     /// <param name="ErrorCode">The <c>ERROR_CODE</c> attribute, e.g. <c>NO_RESOURCE</c>.</param>
     /// <param name="ErrorMessage">The <c>ERROR_MESSAGE</c> attribute: the target service's error, as its SDK words it.</param>
-    private sealed record DeliveryFailure(string ErrorCode, string ErrorMessage);
+    /// <param name="ExhaustedRetryCondition">
+    /// For a failure retried until its retry policy ran out, the <c>EXHAUSTED_RETRY_CONDITION</c>
+    /// attribute (<c>MaximumRetryAttempts</c> or <c>MaximumEventAgeInSeconds</c>).
+    /// </param>
+    /// <param name="RetryAttempts">For a retried failure, the <c>RETRY_ATTEMPTS</c> attribute: how many retries were made.</param>
+    private sealed record DeliveryFailure(string ErrorCode, string ErrorMessage, string? ExhaustedRetryCondition = null, int? RetryAttempts = null);
 
     private static void DeliverToTarget(Delivery delivery, InMemoryAwsBus bus)
     {
@@ -130,6 +139,21 @@ internal static class EventBridgeEventDelivery
                 if (failure is not null)
                 {
                     DeadLetter(delivery, payload.Body, failure, bus);
+                }
+
+                break;
+            }
+
+            case "events" when arn.Resource.StartsWith("api-destination/", StringComparison.Ordinal):
+            {
+                var payload = EventBridgeTargetInput.Render(delivery.Target, delivery.Rule, delivery.Event);
+                if (payload.IsValidJson)
+                {
+                    InvokeApiDestination(delivery, arn, payload.Body, bus);
+                }
+                else
+                {
+                    DeadLetter(delivery, payload.Body, InvalidJson, bus);
                 }
 
                 break;
@@ -267,16 +291,24 @@ internal static class EventBridgeEventDelivery
             return;
         }
 
-        SqsServiceDelivery.Deliver(bus, QueueDelivery(delivery, deadLetterArn, body) with
+        var attributes = new Dictionary<string, SqsMessageAttributeValue>(StringComparer.Ordinal)
         {
-            MessageAttributes = new Dictionary<string, SqsMessageAttributeValue>(StringComparer.Ordinal)
-            {
-                ["ERROR_CODE"] = StringAttribute(failure.ErrorCode),
-                ["ERROR_MESSAGE"] = StringAttribute(failure.ErrorMessage),
-                ["RULE_ARN"] = StringAttribute(delivery.Rule.Arn),
-                ["TARGET_ARN"] = StringAttribute(delivery.Target.Arn ?? string.Empty),
-            },
-        });
+            ["ERROR_CODE"] = StringAttribute(failure.ErrorCode),
+            ["ERROR_MESSAGE"] = StringAttribute(failure.ErrorMessage),
+            ["RULE_ARN"] = StringAttribute(delivery.Rule.Arn),
+            ["TARGET_ARN"] = StringAttribute(delivery.Target.Arn ?? string.Empty),
+        };
+        if (failure.ExhaustedRetryCondition is { } condition)
+        {
+            attributes["EXHAUSTED_RETRY_CONDITION"] = StringAttribute(condition);
+        }
+
+        if (failure.RetryAttempts is { } retries)
+        {
+            attributes["RETRY_ATTEMPTS"] = StringAttribute(retries.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        SqsServiceDelivery.Deliver(bus, QueueDelivery(delivery, deadLetterArn, body) with { MessageAttributes = attributes });
     }
 
     /// <summary>A target service's error as the AWS SDK for Java words it, which is how EventBridge records it.</summary>

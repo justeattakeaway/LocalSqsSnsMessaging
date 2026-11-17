@@ -18,6 +18,34 @@
     ]
   },
   "operations": {
+    "ActivateEventSource": {
+      "name": "ActivateEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ActivateEventSourceRequest"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "InvalidStateException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>Activates a partner event source that has been deactivated. Once activated, your matching event bus will start receiving events from the event source.</p>"
+    },
     "CancelReplay": {
       "name": "CancelReplay",
       "http": {
@@ -45,6 +73,34 @@
         }
       ],
       "documentation": "<p>Cancels the specified replay.</p>"
+    },
+    "CreateApiDestination": {
+      "name": "CreateApiDestination",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "CreateApiDestinationRequest"
+      },
+      "output": {
+        "shape": "CreateApiDestinationResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceAlreadyExistsException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "LimitExceededException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Creates an API destination, which is an HTTP invocation endpoint configured as a target for events.</p> <p>API destinations do not support private destinations, such as interface VPC endpoints.</p> <p>For more information, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-api-destinations.html\">API destinations</a> in the <i>EventBridge User Guide</i>.</p>"
     },
     "CreateArchive": {
       "name": "CreateArchive",
@@ -79,6 +135,65 @@
         }
       ],
       "documentation": "<p>Creates an archive of events with the specified settings. When you create an archive, incoming events might not immediately start being sent to the archive. Allow a short period of time for changes to take effect. If you do not specify a pattern to filter events sent to the archive, all events are sent to the archive except replayed events. Replayed events are not sent to an archive.</p> <important> <p>If you have specified that EventBridge use a customer managed key for encrypting the source event bus, we strongly recommend you also specify a customer managed key for any archives for the event bus as well. </p> <p>For more information, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/encryption-archives.html\">Encrypting archives</a> in the <i>Amazon EventBridge User Guide</i>.</p> </important>"
+    },
+    "CreateConnection": {
+      "name": "CreateConnection",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "CreateConnectionRequest"
+      },
+      "output": {
+        "shape": "CreateConnectionResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceAlreadyExistsException"
+        },
+        {
+          "shape": "LimitExceededException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "AccessDeniedException"
+        },
+        {
+          "shape": "ThrottlingException"
+        }
+      ],
+      "documentation": "<p>Creates a connection. A connection defines the authorization type and credentials to use for authorization with an API destination HTTP endpoint.</p> <p>For more information, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-target-connection.html\">Connections for endpoint targets</a> in the <i>Amazon EventBridge User Guide</i>.</p>"
+    },
+    "CreateEndpoint": {
+      "name": "CreateEndpoint",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "CreateEndpointRequest"
+      },
+      "output": {
+        "shape": "CreateEndpointResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceAlreadyExistsException"
+        },
+        {
+          "shape": "LimitExceededException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Creates a global endpoint. Global endpoints improve your application's availability by making it regional-fault tolerant. To do this, you define a primary and secondary Region with event buses in each Region. You also create a Amazon Route\u00a053 health check that will tell EventBridge to route events to the secondary Region when an \"unhealthy\" state is encountered and events will be routed back to the primary Region when the health check reports a \"healthy\" state.</p>"
     },
     "CreateEventBus": {
       "name": "CreateEventBus",
@@ -117,6 +232,115 @@
       ],
       "documentation": "<p>Creates a new event bus within your account. This can be a custom event bus which you can use to receive events from your custom applications and services, or it can be a partner event bus which can be matched to a partner event source.</p>"
     },
+    "CreatePartnerEventSource": {
+      "name": "CreatePartnerEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "CreatePartnerEventSourceRequest"
+      },
+      "output": {
+        "shape": "CreatePartnerEventSourceResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceAlreadyExistsException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "LimitExceededException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>Called by an SaaS partner to create a partner event source. This operation is not used by Amazon Web Services customers.</p> <p>Each partner event source can be used by one Amazon Web Services account to create a matching partner event bus in that Amazon Web Services account. A SaaS partner must create one partner event source for each Amazon Web Services account that wants to receive those event types. </p> <p>A partner event source creates events based on resources within the SaaS partner's service or application.</p> <p>An Amazon Web Services account that creates a partner event bus that matches the partner event source can use that event bus to receive events from the partner, and then process them using Amazon Web Services Events rules and targets.</p> <p>Partner event source names follow this format:</p> <p> <code> <i>partner_name</i>/<i>event_namespace</i>/<i>event_name</i> </code> </p> <ul> <li> <p> <i>partner_name</i> is determined during partner registration, and identifies the partner to Amazon Web Services customers. </p> </li> <li> <p> <i>event_namespace</i> is determined by the partner, and is a way for the partner to categorize their events.</p> </li> <li> <p> <i>event_name</i> is determined by the partner, and should uniquely identify an event-generating resource within the partner system. </p> <p>The <i>event_name</i> must be unique across all Amazon Web Services customers. This is because the event source is a shared resource between the partner and customer accounts, and each partner event source unique in the partner account.</p> </li> </ul> <p>The combination of <i>event_namespace</i> and <i>event_name</i> should help Amazon Web Services customers decide whether to create an event bus to receive these events.</p>"
+    },
+    "DeactivateEventSource": {
+      "name": "DeactivateEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeactivateEventSourceRequest"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "InvalidStateException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>You can use this operation to temporarily stop receiving events from the specified partner event source. The matching event bus is not deleted. </p> <p>When you deactivate a partner event source, the source goes into PENDING state. If it remains in PENDING state for more than two weeks, it is deleted.</p> <p>To activate a deactivated partner event source, use <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_ActivateEventSource.html\">ActivateEventSource</a>.</p>"
+    },
+    "DeauthorizeConnection": {
+      "name": "DeauthorizeConnection",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeauthorizeConnectionRequest"
+      },
+      "output": {
+        "shape": "DeauthorizeConnectionResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Removes all authorization parameters from the connection. This lets you remove the secret from the connection so you can reuse it without having to create a new connection.</p>"
+    },
+    "DeleteApiDestination": {
+      "name": "DeleteApiDestination",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeleteApiDestinationRequest"
+      },
+      "output": {
+        "shape": "DeleteApiDestinationResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Deletes the specified API destination.</p>"
+    },
     "DeleteArchive": {
       "name": "DeleteArchive",
       "http": {
@@ -142,6 +366,56 @@
       ],
       "documentation": "<p>Deletes the specified archive.</p>"
     },
+    "DeleteConnection": {
+      "name": "DeleteConnection",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeleteConnectionRequest"
+      },
+      "output": {
+        "shape": "DeleteConnectionResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Deletes a connection.</p>"
+    },
+    "DeleteEndpoint": {
+      "name": "DeleteEndpoint",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeleteEndpointRequest"
+      },
+      "output": {
+        "shape": "DeleteEndpointResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Delete an existing global endpoint. For more information about global endpoints, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-global-endpoints.html\">Making applications Regional-fault tolerant with global endpoints and event replication</a> in the <i> <i>Amazon EventBridge User Guide</i> </i>.</p>"
+    },
     "DeleteEventBus": {
       "name": "DeleteEventBus",
       "http": {
@@ -160,6 +434,28 @@
         }
       ],
       "documentation": "<p>Deletes the specified custom event bus or partner event bus. All rules associated with this event bus need to be deleted. You can't delete your account's default event bus.</p>"
+    },
+    "DeletePartnerEventSource": {
+      "name": "DeletePartnerEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeletePartnerEventSourceRequest"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>This operation is used by SaaS partners to delete a partner event source. This operation is not used by Amazon Web Services customers.</p> <p>When you delete an event source, the status of the corresponding partner event bus in the Amazon Web Services customer account becomes DELETED.</p> <p/>"
     },
     "DeleteRule": {
       "name": "DeleteRule",
@@ -186,6 +482,28 @@
       ],
       "documentation": "<p>Deletes the specified rule.</p> <p>Before you can delete the rule, you must remove all targets, using <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_RemoveTargets.html\">RemoveTargets</a>.</p> <p>When you delete a rule, incoming events might continue to match to the deleted rule. Allow a short period of time for changes to take effect.</p> <p>If you call delete rule multiple times for the same rule, all calls will succeed. When you call delete rule for a non-existent custom eventbus, <code>ResourceNotFoundException</code> is returned.</p> <p>Managed rules are rules created and managed by another Amazon Web Services service on your behalf. These rules are created by those other Amazon Web Services services to support functionality in those services. You can delete these rules using the <code>Force</code> option, but you should do so only if you are sure the other service is not still using that rule.</p>"
     },
+    "DescribeApiDestination": {
+      "name": "DescribeApiDestination",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DescribeApiDestinationRequest"
+      },
+      "output": {
+        "shape": "DescribeApiDestinationResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Retrieves details about an API destination.</p>"
+    },
     "DescribeArchive": {
       "name": "DescribeArchive",
       "http": {
@@ -211,6 +529,50 @@
       ],
       "documentation": "<p>Retrieves details about an archive.</p>"
     },
+    "DescribeConnection": {
+      "name": "DescribeConnection",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DescribeConnectionRequest"
+      },
+      "output": {
+        "shape": "DescribeConnectionResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Retrieves details about a connection.</p>"
+    },
+    "DescribeEndpoint": {
+      "name": "DescribeEndpoint",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DescribeEndpointRequest"
+      },
+      "output": {
+        "shape": "DescribeEndpointResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Get the information about an existing global endpoint. For more information about global endpoints, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-global-endpoints.html\">Making applications Regional-fault tolerant with global endpoints and event replication</a> in the <i> <i>Amazon EventBridge User Guide</i> </i>.</p>"
+    },
     "DescribeEventBus": {
       "name": "DescribeEventBus",
       "http": {
@@ -232,6 +594,56 @@
         }
       ],
       "documentation": "<p>Displays details about an event bus in your account. This can include the external Amazon Web Services accounts that are permitted to write events to your default event bus, and the associated policy. For custom event buses and partner event buses, it displays the name, ARN, policy, state, and creation time.</p> <p> To enable your account to receive events from other accounts on its default event bus, use <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_PutPermission.html\">PutPermission</a>.</p> <p>For more information about partner event buses, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_CreateEventBus.html\">CreateEventBus</a>.</p>"
+    },
+    "DescribeEventSource": {
+      "name": "DescribeEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DescribeEventSourceRequest"
+      },
+      "output": {
+        "shape": "DescribeEventSourceResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>This operation lists details about a partner event source that is shared with your account.</p>"
+    },
+    "DescribePartnerEventSource": {
+      "name": "DescribePartnerEventSource",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DescribePartnerEventSourceRequest"
+      },
+      "output": {
+        "shape": "DescribePartnerEventSourceResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>An SaaS partner can use this operation to list details about a partner event source that they have created. Amazon Web Services customers do not use this operation. Instead, Amazon Web Services customers can use <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_DescribeEventSource.html\">DescribeEventSource</a> to see details about a partner event source that is shared with them.</p>"
     },
     "DescribeReplay": {
       "name": "DescribeReplay",
@@ -327,6 +739,25 @@
       ],
       "documentation": "<p>Enables the specified rule. If the rule does not exist, the operation fails.</p> <p>When you enable a rule, incoming events might not immediately start matching to a newly enabled rule. Allow a short period of time for changes to take effect.</p>"
     },
+    "ListApiDestinations": {
+      "name": "ListApiDestinations",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListApiDestinationsRequest"
+      },
+      "output": {
+        "shape": "ListApiDestinationsResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Retrieves a list of API destination in the account in the current Region.</p>"
+    },
     "ListArchives": {
       "name": "ListArchives",
       "http": {
@@ -349,6 +780,44 @@
       ],
       "documentation": "<p>Lists your archives. You can either list all the archives or you can provide a prefix to match to the archive names. Filter parameters are exclusive.</p>"
     },
+    "ListConnections": {
+      "name": "ListConnections",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListConnectionsRequest"
+      },
+      "output": {
+        "shape": "ListConnectionsResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Retrieves a list of connections from the account.</p>"
+    },
+    "ListEndpoints": {
+      "name": "ListEndpoints",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListEndpointsRequest"
+      },
+      "output": {
+        "shape": "ListEndpointsResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>List the global endpoints associated with this account. For more information about global endpoints, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-global-endpoints.html\">Making applications Regional-fault tolerant with global endpoints and event replication</a> in the <i> <i>Amazon EventBridge User Guide</i> </i>.</p>"
+    },
     "ListEventBuses": {
       "name": "ListEventBuses",
       "http": {
@@ -367,6 +836,75 @@
         }
       ],
       "documentation": "<p>Lists all the event buses in your account, including the default event bus, custom event buses, and partner event buses.</p>"
+    },
+    "ListEventSources": {
+      "name": "ListEventSources",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListEventSourcesRequest"
+      },
+      "output": {
+        "shape": "ListEventSourcesResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>You can use this to see all the partner event sources that have been shared with your Amazon Web Services account. For more information about partner event sources, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_CreateEventBus.html\">CreateEventBus</a>.</p>"
+    },
+    "ListPartnerEventSourceAccounts": {
+      "name": "ListPartnerEventSourceAccounts",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListPartnerEventSourceAccountsRequest"
+      },
+      "output": {
+        "shape": "ListPartnerEventSourceAccountsResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>An SaaS partner can use this operation to display the Amazon Web Services account ID that a particular partner event source name is associated with. This operation is not used by Amazon Web Services customers.</p>"
+    },
+    "ListPartnerEventSources": {
+      "name": "ListPartnerEventSources",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListPartnerEventSourcesRequest"
+      },
+      "output": {
+        "shape": "ListPartnerEventSourcesResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>An SaaS partner can use this operation to list all the partner event source names that they have created. This operation is not used by Amazon Web Services customers.</p>"
     },
     "ListReplays": {
       "name": "ListReplays",
@@ -493,6 +1031,28 @@
         }
       ],
       "documentation": "<p>Sends custom events to Amazon EventBridge so that they can be matched to rules.</p> <p>You can batch multiple event entries into one request for efficiency. However, the total entry size must be less than 256KB. You can calculate the entry size before you send the events. For more information, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-putevents.html#eb-putevent-size\">Calculating PutEvents event entry size</a> in the <i> <i>Amazon EventBridge User Guide</i> </i>.</p> <p>PutEvents accepts the data in JSON format. For the JSON number (integer) data type, the constraints are: a minimum value of -9,223,372,036,854,775,808 and a maximum value of 9,223,372,036,854,775,807.</p> <note> <p>PutEvents will only process nested JSON up to 1000 levels deep.</p> </note>"
+    },
+    "PutPartnerEvents": {
+      "name": "PutPartnerEvents",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "PutPartnerEventsRequest"
+      },
+      "output": {
+        "shape": "PutPartnerEventsResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "OperationDisabledException"
+        }
+      ],
+      "documentation": "<p>This is used by SaaS partners to write events to a customer's partner event bus. Amazon Web Services customers do not use this operation.</p> <p>For information on calculating event batch size, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-putevent-size.html\">Calculating EventBridge PutEvents event entry size</a> in the <i>EventBridge User Guide</i>.</p>"
     },
     "PutPermission": {
       "name": "PutPermission",
@@ -749,6 +1309,34 @@
       ],
       "documentation": "<p>Removes one or more tags from the specified EventBridge resource. In Amazon EventBridge, rules and event buses can be tagged.</p>"
     },
+    "UpdateApiDestination": {
+      "name": "UpdateApiDestination",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "UpdateApiDestinationRequest"
+      },
+      "output": {
+        "shape": "UpdateApiDestinationResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "LimitExceededException"
+        }
+      ],
+      "documentation": "<p>Updates an API destination.</p>"
+    },
     "UpdateArchive": {
       "name": "UpdateArchive",
       "http": {
@@ -779,6 +1367,65 @@
         }
       ],
       "documentation": "<p>Updates the specified archive.</p>"
+    },
+    "UpdateConnection": {
+      "name": "UpdateConnection",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "UpdateConnectionRequest"
+      },
+      "output": {
+        "shape": "UpdateConnectionResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "LimitExceededException"
+        },
+        {
+          "shape": "AccessDeniedException"
+        },
+        {
+          "shape": "ThrottlingException"
+        }
+      ],
+      "documentation": "<p>Updates settings for a connection.</p>"
+    },
+    "UpdateEndpoint": {
+      "name": "UpdateEndpoint",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "UpdateEndpointRequest"
+      },
+      "output": {
+        "shape": "UpdateEndpointResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Update an existing endpoint. For more information about global endpoints, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-global-endpoints.html\">Making applications Regional-fault tolerant with global endpoints and event replication</a> in the <i> <i>Amazon EventBridge User Guide</i> </i>.</p>"
     },
     "UpdateEventBus": {
       "name": "UpdateEventBus",

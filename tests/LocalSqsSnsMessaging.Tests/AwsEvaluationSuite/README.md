@@ -28,7 +28,8 @@ compared side by side:
   the library's strict KMS mode, `KmsKeyAliases`, so it refuses unknown KMS aliases, as AWS does.
   Regions need no setting: the library always serves each region's resources separately.
 - **Left out:** checks that also need IAM, KMS, CloudFormation, CloudWatch, Lambda or STS role
-  assumption are not ported, nor SNS checks about protocols other than SQS, nor EventBridge checks
+  assumption are not ported, nor SNS checks about Lambda, Firehose or HTTP/S endpoints built from
+  them, nor EventBridge checks
   about targets and features the library doesn't emulate (see below). A check that only reads the
   account id from `sts:GetCallerIdentity` is ported, with `ctx.Account` (and `ctx.CallerArn`, the
   account's root user) in its place.
@@ -97,14 +98,16 @@ gives each one's reason):
 The SNS ports cover SNS as a message bus for SQS: standard and FIFO topics, SQS subscriptions,
 Publish and PublishBatch, message attributes, filter policies, raw delivery, the delivered envelope
 and its signature, FIFO ordering and deduplication, subscription dead-letter queues, deliveries to
-deleted or misconfigured queues, topic and subscription attributes, tags, permissions and
-validation: 182 of the 257 checks in `behavioral/sns` and `behavioral/sns__sqs`.
+deleted or misconfigured queues, topic and subscription attributes, tags, permissions and topic
+policies, validation, email subscriptions (which stay pending confirmation), and the bookkeeping
+of mobile push (platform applications and endpoints) and SMS (attributes, opt-outs, the sandbox):
+219 of the 257 checks in `behavioral/sns` and `behavioral/sns__sqs`. One is a known gap, kept
+deliberately: platform credentials are never checked against a push service, so tests can use
+fake ones.
 
-These 75 checks are not ported, because they are about another protocol or need another service
+These 38 checks are not ported, because they need another service
 ([UPSTREAM.md](UPSTREAM.md) gives each one's reason):
 
-- **Other protocols: SMS, mobile push (platform applications and endpoints) and email** (30).
-- **An email subscription, used to hold a subscription in `PendingConfirmation`** (7).
 - **HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles** (13).
 - **Firehose subscriptions (Firehose, S3, IAM)** (4).
 - **CloudFormation stacks** (8).
@@ -119,9 +122,29 @@ The EventBridge ports cover EventBridge as a message router in front of SQS and 
 rules, event patterns and TestEventPattern, PutEvents and its validation and partial failures,
 targets to SQS (standard and FIFO), SNS and other event buses, Input, InputPath and
 InputTransformer, target dead-letter queues and retry policies, bus resource policies, tags,
-archives and replays, scheduled rules, listing and pagination, and error codes: 186 of the 300
-checks in `behavioral/events`, `behavioral/events__sqs`, the `events__iam__*` directories and the
-`eventbridgev2*` directories.
+archives and replays, scheduled rules, listing and pagination, partner event sources, global
+endpoints, connections and API destinations, and error codes: 232 of the 300 checks in `behavioral/events`, `behavioral/events__sqs`, the
+`events__iam__*` directories and the `eventbridgev2*` directories.
+
+Partner event sources are ported (12 checks): only a registered SaaS partner can create one, and
+the bus's account never is one, so every partner-side operation is refused for the source's
+namespace, as AWS refuses it, and the customer side (Activate, Deactivate, DescribeEventSource)
+never finds a source.
+
+Global endpoints are ported (12 checks): their lifecycle, and PutEvents with `EndpointId`
+delivering to the primary bus and, with replication enabled, to the secondary. Route 53 and
+CloudWatch are not emulated, and these checks use them only as setup: they create a Route 53
+health check (one backs it with a CloudWatch alarm it leaves at OK) only to put its ARN on the
+endpoint. The ports use `FidelityContext.HealthCheckArn()`, a well-formed health check ARN the bus
+stores and echoes but never evaluates, so an endpoint is always healthy and never fails over.
+
+Connections and API destinations are ported (22 checks): connection authorization (API key, basic
+and OAuth client credentials, whose token request goes to the endpoint), redaction, and delivery to
+HTTP endpoints with retries, dead letters and rate limits on the bus's clock. The Python checks call
+an HTTP endpoint they build as a Lambda function URL (Lambda, IAM), whose function records each
+request it admits in an SQS capture queue. The ports serve the same handler (`CaptureFunction`) through
+`FidelityHttpEndpoints`, which is the bus's `HttpClient` in every check and reaches nothing else: a
+`.invalid` host does not resolve, and a documentation address such as `192.0.2.1` never answers.
 
 Archives and replays are ported (31 checks): they are self-contained, need nothing outside the bus,
 and run on the bus's clock like everything else.
@@ -140,13 +163,10 @@ IAM is not emulated, and the checks that touch it were decided one by one:
   policies allow (a missing `iam:PassRole`, an identity-policy condition, a role denied by an
   explicit Deny) is not ported.
 
-These 114 checks are not ported ([UPSTREAM.md](UPSTREAM.md) gives each one's reason):
+These 68 checks are not ported ([UPSTREAM.md](UPSTREAM.md) gives each one's reason):
 
 - **EventBridge v2** (`eventbridgev2`, `eventbridgev2__iam__sqs`, `eventbridgev2__iam__sns__sqs`): a newer, separate API with buses addressed by ARN, subscribers, event sources, JSONata transformers and `PutRawEvents`, not the `events` API this library emulates (40).
 - **IAM role and identity-policy enforcement**: each assumes an IAM role (`sts:AssumeRole`) and grades what that role's policies allow (8).
-- **API destinations and connections** (HTTP targets, some behind Lambda function URLs) (22).
-- **Global endpoints** (Route 53 health checks, failover and replication) (12).
-- **Partner event sources** (SaaS partner accounts) (12).
 - **Lambda targets** (4).
 - **Step Functions targets** (4).
 - **Kinesis targets** (1).

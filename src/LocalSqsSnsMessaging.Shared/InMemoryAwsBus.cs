@@ -154,7 +154,8 @@ public sealed class InMemoryAwsBus
 
     /// <summary>
     /// Gets or sets the <see cref="System.Net.Http.HttpClient"/> used to deliver SNS notifications to
-    /// <c>http</c>/<c>https</c> subscription endpoints. Defaults to a shared client that reaches the
+    /// <c>http</c>/<c>https</c> subscription endpoints, to call EventBridge API destinations and to
+    /// request an EventBridge OAuth connection's token. Defaults to a shared client that reaches the
     /// network; tests can substitute one wrapping a fake <see cref="HttpMessageHandler"/> or an
     /// ASP.NET Core test server.
     /// </summary>

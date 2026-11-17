@@ -27,6 +27,12 @@ internal sealed class AwsRegionResources(string region, object dynamoDbGate)
     /// </summary>
     public ConcurrentDictionary<string, SnsSubscription> Subscriptions { get; } = [];
 
+    /// <summary>The region's SNS platform applications (mobile push), keyed by ARN; each holds its endpoints.</summary>
+    public ConcurrentDictionary<string, SnsPlatformApplication> PlatformApplications { get; } = [];
+
+    /// <summary>The region's SNS SMS settings: account attributes, opted-out numbers and the SMS sandbox.</summary>
+    public SnsSmsAccount Sms { get; } = new();
+
     /// <summary>The region's EventBridge event buses (each holding its own rules and targets), keyed by name.</summary>
     public ConcurrentDictionary<string, EventBusResource> EventBuses { get; } = [];
 
@@ -35,6 +41,15 @@ internal sealed class AwsRegionResources(string region, object dynamoDbGate)
 
     /// <summary>The region's EventBridge replays (EventBridge keeps finished replays too), keyed by replay name.</summary>
     public ConcurrentDictionary<string, ReplayResource> EventBridgeReplays { get; } = [];
+
+    /// <summary>The EventBridge global endpoints whose home region this is, keyed by endpoint name.</summary>
+    public ConcurrentDictionary<string, EndpointResource> EventBridgeEndpoints { get; } = [];
+
+    /// <summary>The region's EventBridge connections, keyed by connection name.</summary>
+    public ConcurrentDictionary<string, ConnectionResource> EventBridgeConnections { get; } = [];
+
+    /// <summary>The region's EventBridge API destinations, keyed by name.</summary>
+    public ConcurrentDictionary<string, ApiDestinationResource> EventBridgeApiDestinations { get; } = [];
 
     /// <summary>The region's DynamoDB tables, streams and backups, behind the bus's DynamoDB lock.</summary>
     public DynamoDb.DynamoDbStore DynamoDb { get; } = new(region, dynamoDbGate);
