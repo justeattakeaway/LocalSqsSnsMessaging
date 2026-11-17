@@ -122,10 +122,11 @@ internal static class EventBridgeTargetValidation
         }
     }
 
-    /// <summary>Whether a target ARN needs a <c>RoleArn</c>: a role-requiring service, an event bus, or Systems Manager automation.</summary>
+    /// <summary>Whether a target ARN needs a <c>RoleArn</c>: a role-requiring service, an event bus, an API destination, or Systems Manager automation.</summary>
     private static bool RequiresRoleArn(string service, string resource) =>
         RoleRequiringServices.Contains(service)
-        || (service == "events" && resource.StartsWith("event-bus/", StringComparison.Ordinal))
+        || (service == "events" && (resource.StartsWith("event-bus/", StringComparison.Ordinal)
+                                    || resource.StartsWith("api-destination/", StringComparison.Ordinal)))
         || (service == "ssm" && (resource.StartsWith("document/", StringComparison.Ordinal)
                                  || resource.StartsWith("automation-definition/", StringComparison.Ordinal)));
 

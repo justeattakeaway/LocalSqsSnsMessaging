@@ -23,11 +23,25 @@ internal static partial class EventBridgeWireProtocol
     {
         switch (operation)
         {
+            case "ActivateEventSource":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeActivateEventSourceRequest(body);
+                var response = await client.ActivateEventSourceAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeActivateEventSourceResponse(response, output);
+                return true;
+            }
             case "CancelReplay":
             {
                 var request = EventBridgeJsonSerializers.DeserializeCancelReplayRequest(body);
                 var response = await client.CancelReplayAsync(request, cancellationToken).ConfigureAwait(false);
                 EventBridgeJsonSerializers.SerializeCancelReplayResponse(response, output);
+                return true;
+            }
+            case "CreateApiDestination":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeCreateApiDestinationRequest(body);
+                var response = await client.CreateApiDestinationAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeCreateApiDestinationResponse(response, output);
                 return true;
             }
             case "CreateArchive":
@@ -37,11 +51,53 @@ internal static partial class EventBridgeWireProtocol
                 EventBridgeJsonSerializers.SerializeCreateArchiveResponse(response, output);
                 return true;
             }
+            case "CreateConnection":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeCreateConnectionRequest(body);
+                var response = await client.CreateConnectionAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeCreateConnectionResponse(response, output);
+                return true;
+            }
+            case "CreateEndpoint":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeCreateEndpointRequest(body);
+                var response = await client.CreateEndpointAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeCreateEndpointResponse(response, output);
+                return true;
+            }
             case "CreateEventBus":
             {
                 var request = EventBridgeJsonSerializers.DeserializeCreateEventBusRequest(body);
                 var response = await client.CreateEventBusAsync(request, cancellationToken).ConfigureAwait(false);
                 EventBridgeJsonSerializers.SerializeCreateEventBusResponse(response, output);
+                return true;
+            }
+            case "CreatePartnerEventSource":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeCreatePartnerEventSourceRequest(body);
+                var response = await client.CreatePartnerEventSourceAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeCreatePartnerEventSourceResponse(response, output);
+                return true;
+            }
+            case "DeactivateEventSource":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDeactivateEventSourceRequest(body);
+                var response = await client.DeactivateEventSourceAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDeactivateEventSourceResponse(response, output);
+                return true;
+            }
+            case "DeauthorizeConnection":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDeauthorizeConnectionRequest(body);
+                var response = await client.DeauthorizeConnectionAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDeauthorizeConnectionResponse(response, output);
+                return true;
+            }
+            case "DeleteApiDestination":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDeleteApiDestinationRequest(body);
+                var response = await client.DeleteApiDestinationAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDeleteApiDestinationResponse(response, output);
                 return true;
             }
             case "DeleteArchive":
@@ -51,11 +107,32 @@ internal static partial class EventBridgeWireProtocol
                 EventBridgeJsonSerializers.SerializeDeleteArchiveResponse(response, output);
                 return true;
             }
+            case "DeleteConnection":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDeleteConnectionRequest(body);
+                var response = await client.DeleteConnectionAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDeleteConnectionResponse(response, output);
+                return true;
+            }
+            case "DeleteEndpoint":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDeleteEndpointRequest(body);
+                var response = await client.DeleteEndpointAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDeleteEndpointResponse(response, output);
+                return true;
+            }
             case "DeleteEventBus":
             {
                 var request = EventBridgeJsonSerializers.DeserializeDeleteEventBusRequest(body);
                 var response = await client.DeleteEventBusAsync(request, cancellationToken).ConfigureAwait(false);
                 EventBridgeJsonSerializers.SerializeDeleteEventBusResponse(response, output);
+                return true;
+            }
+            case "DeletePartnerEventSource":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDeletePartnerEventSourceRequest(body);
+                var response = await client.DeletePartnerEventSourceAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDeletePartnerEventSourceResponse(response, output);
                 return true;
             }
             case "DeleteRule":
@@ -65,6 +142,13 @@ internal static partial class EventBridgeWireProtocol
                 EventBridgeJsonSerializers.SerializeDeleteRuleResponse(response, output);
                 return true;
             }
+            case "DescribeApiDestination":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDescribeApiDestinationRequest(body);
+                var response = await client.DescribeApiDestinationAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDescribeApiDestinationResponse(response, output);
+                return true;
+            }
             case "DescribeArchive":
             {
                 var request = EventBridgeJsonSerializers.DeserializeDescribeArchiveRequest(body);
@@ -72,11 +156,39 @@ internal static partial class EventBridgeWireProtocol
                 EventBridgeJsonSerializers.SerializeDescribeArchiveResponse(response, output);
                 return true;
             }
+            case "DescribeConnection":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDescribeConnectionRequest(body);
+                var response = await client.DescribeConnectionAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDescribeConnectionResponse(response, output);
+                return true;
+            }
+            case "DescribeEndpoint":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDescribeEndpointRequest(body);
+                var response = await client.DescribeEndpointAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDescribeEndpointResponse(response, output);
+                return true;
+            }
             case "DescribeEventBus":
             {
                 var request = EventBridgeJsonSerializers.DeserializeDescribeEventBusRequest(body);
                 var response = await client.DescribeEventBusAsync(request, cancellationToken).ConfigureAwait(false);
                 EventBridgeJsonSerializers.SerializeDescribeEventBusResponse(response, output);
+                return true;
+            }
+            case "DescribeEventSource":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDescribeEventSourceRequest(body);
+                var response = await client.DescribeEventSourceAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDescribeEventSourceResponse(response, output);
+                return true;
+            }
+            case "DescribePartnerEventSource":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeDescribePartnerEventSourceRequest(body);
+                var response = await client.DescribePartnerEventSourceAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeDescribePartnerEventSourceResponse(response, output);
                 return true;
             }
             case "DescribeReplay":
@@ -107,6 +219,13 @@ internal static partial class EventBridgeWireProtocol
                 EventBridgeJsonSerializers.SerializeEnableRuleResponse(response, output);
                 return true;
             }
+            case "ListApiDestinations":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeListApiDestinationsRequest(body);
+                var response = await client.ListApiDestinationsAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeListApiDestinationsResponse(response, output);
+                return true;
+            }
             case "ListArchives":
             {
                 var request = EventBridgeJsonSerializers.DeserializeListArchivesRequest(body);
@@ -114,11 +233,46 @@ internal static partial class EventBridgeWireProtocol
                 EventBridgeJsonSerializers.SerializeListArchivesResponse(response, output);
                 return true;
             }
+            case "ListConnections":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeListConnectionsRequest(body);
+                var response = await client.ListConnectionsAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeListConnectionsResponse(response, output);
+                return true;
+            }
+            case "ListEndpoints":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeListEndpointsRequest(body);
+                var response = await client.ListEndpointsAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeListEndpointsResponse(response, output);
+                return true;
+            }
             case "ListEventBuses":
             {
                 var request = EventBridgeJsonSerializers.DeserializeListEventBusesRequest(body);
                 var response = await client.ListEventBusesAsync(request, cancellationToken).ConfigureAwait(false);
                 EventBridgeJsonSerializers.SerializeListEventBusesResponse(response, output);
+                return true;
+            }
+            case "ListEventSources":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeListEventSourcesRequest(body);
+                var response = await client.ListEventSourcesAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeListEventSourcesResponse(response, output);
+                return true;
+            }
+            case "ListPartnerEventSourceAccounts":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeListPartnerEventSourceAccountsRequest(body);
+                var response = await client.ListPartnerEventSourceAccountsAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeListPartnerEventSourceAccountsResponse(response, output);
+                return true;
+            }
+            case "ListPartnerEventSources":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeListPartnerEventSourcesRequest(body);
+                var response = await client.ListPartnerEventSourcesAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeListPartnerEventSourcesResponse(response, output);
                 return true;
             }
             case "ListReplays":
@@ -161,6 +315,13 @@ internal static partial class EventBridgeWireProtocol
                 var request = EventBridgeJsonSerializers.DeserializePutEventsRequest(body);
                 var response = await client.PutEventsAsync(request, cancellationToken).ConfigureAwait(false);
                 EventBridgeJsonSerializers.SerializePutEventsResponse(response, output);
+                return true;
+            }
+            case "PutPartnerEvents":
+            {
+                var request = EventBridgeJsonSerializers.DeserializePutPartnerEventsRequest(body);
+                var response = await client.PutPartnerEventsAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializePutPartnerEventsResponse(response, output);
                 return true;
             }
             case "PutPermission":
@@ -226,11 +387,32 @@ internal static partial class EventBridgeWireProtocol
                 EventBridgeJsonSerializers.SerializeUntagResourceResponse(response, output);
                 return true;
             }
+            case "UpdateApiDestination":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeUpdateApiDestinationRequest(body);
+                var response = await client.UpdateApiDestinationAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeUpdateApiDestinationResponse(response, output);
+                return true;
+            }
             case "UpdateArchive":
             {
                 var request = EventBridgeJsonSerializers.DeserializeUpdateArchiveRequest(body);
                 var response = await client.UpdateArchiveAsync(request, cancellationToken).ConfigureAwait(false);
                 EventBridgeJsonSerializers.SerializeUpdateArchiveResponse(response, output);
+                return true;
+            }
+            case "UpdateConnection":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeUpdateConnectionRequest(body);
+                var response = await client.UpdateConnectionAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeUpdateConnectionResponse(response, output);
+                return true;
+            }
+            case "UpdateEndpoint":
+            {
+                var request = EventBridgeJsonSerializers.DeserializeUpdateEndpointRequest(body);
+                var response = await client.UpdateEndpointAsync(request, cancellationToken).ConfigureAwait(false);
+                EventBridgeJsonSerializers.SerializeUpdateEndpointResponse(response, output);
                 return true;
             }
             case "UpdateEventBus":

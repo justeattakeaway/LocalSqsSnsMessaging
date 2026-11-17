@@ -22,6 +22,10 @@ internal sealed partial class InternalEventBridgeClient
 
         var entries = request.Entries ?? [];
         EventBridgePutEventsValidation.ValidateRequest(entries);
+        if (!string.IsNullOrEmpty(request.EndpointId))
+        {
+            return Task.FromResult(PutEventsThroughEndpoint(request.EndpointId!, entries));
+        }
 
         var results = new List<PutEventsResultEntry>(entries.Count);
         var failed = 0;
