@@ -66,6 +66,11 @@ jobs:
       shell: pwsh
       run: ./build.ps1
 
+    - name: Check the evaluation suite snapshot
+      if: runner.os == 'linux'
+      shell: pwsh
+      run: dotnet run --project tools/SyncEvaluationSuite --configuration Release -- --check
+
     - name: Run Verification Tests
       if: runner.os == 'linux'
       shell: pwsh

@@ -1,20 +1,21 @@
 # AWS emulator evaluation suite (SQS, SNS, EventBridge and DynamoDB)
 
 These are C# ports of the SQS, SNS, EventBridge and DynamoDB checks in AWS's
-[emulator evaluation suite](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1),
-pinned at commit `4df2823`. Each upstream `check_<name>.py` was verified against real AWS. Each one
+[emulator evaluation suite](https://github.com/aws/aws-emulator-evaluation-suite), pinned at the
+commit recorded in [UPSTREAM.md](UPSTREAM.md), which lists every upstream check in the tracked
+directories and what became of it here (see [Keeping up with upstream](#keeping-up-with-upstream)). Each upstream `check_<name>.py` was verified against real AWS. Each one
 becomes one test file here, with the same steps, waits and assertion messages, so the two can be
 compared side by side:
 
 | Upstream | Here | Display name |
 |---|---|---|
-| [`behavioral/sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/sqs) | `Sqs/<Name>.cs` | `sqs.<id>` |
-| [`behavioral/sns/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/sns) | `Sns/<Name>.cs` | `sns.<id>` |
-| [`behavioral/sns__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/sns__sqs) | `SnsSqs/<Name>.cs` | `sns__sqs.<id>` |
-| [`behavioral/events/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/events) | `Events/<Name>.cs` | `events.<id>` |
-| [`behavioral/events__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/events__sqs) | `EventsSqs/<Name>.cs` | `events__sqs.<id>` |
-| [`behavioral/dynamodb/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/dynamodb) | `DynamoDb/<Name>.cs` | `dynamodb.<id>` |
-| [`behavioral/dynamodbstreams/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1/behavioral/dynamodbstreams) | `DynamoDbStreams/<Name>.cs` | `dynamodbstreams.<id>` |
+| [`behavioral/sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/sqs) | `Sqs/<Name>.cs` | `sqs.<id>` |
+| [`behavioral/sns/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/sns) | `Sns/<Name>.cs` | `sns.<id>` |
+| [`behavioral/sns__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/sns__sqs) | `SnsSqs/<Name>.cs` | `sns__sqs.<id>` |
+| [`behavioral/events/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/events) | `Events/<Name>.cs` | `events.<id>` |
+| [`behavioral/events__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/events__sqs) | `EventsSqs/<Name>.cs` | `events__sqs.<id>` |
+| [`behavioral/dynamodb/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/dynamodb) | `DynamoDb/<Name>.cs` | `dynamodb.<id>` |
+| [`behavioral/dynamodbstreams/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/dynamodbstreams) | `DynamoDbStreams/<Name>.cs` | `dynamodbstreams.<id>` |
 
 - **Same verdicts:** each test gets the same verdict the Python check got when it was run with boto3
   against `LocalSqsSnsMessaging.Server`.
@@ -32,6 +33,65 @@ compared side by side:
   account id from `sts:GetCallerIdentity` is ported, with `ctx.Account` (and `ctx.CallerArn`, the
   account's root user) in its place.
 
+## Keeping up with upstream
+
+[UPSTREAM.md](UPSTREAM.md) is a snapshot of every check in the tracked upstream directories at a
+pinned upstream commit: the last commit to change each check, and whether it is ported (and where),
+a known gap, or not ported (and why). `tools/SyncEvaluationSuite` writes it from upstream and the
+ports; only the reasons are written by hand.
+
+Each port records the upstream commit it was translated at, in its header:
+
+```csharp
+// Translated from behavioral/sqs/check_<name>.py
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+```
+
+A port is current while upstream's file at the pinned commit is the same as at that commit, and
+**stale** once upstream changes it.
+
+```bash
+# Is there drift upstream? (writes nothing; exits 1 if there is)
+dotnet run --project tools/SyncEvaluationSuite -- --ref main --check
+
+# Move the pin to upstream main: rewrites UPSTREAM.md and writes the work list
+dotnet run --project tools/SyncEvaluationSuite -- --ref main
+
+# Refresh UPSTREAM.md after changing ports or reasons (the pin stays)
+dotnet run --project tools/SyncEvaluationSuite
+```
+
+The tool keeps a blob-less clone of upstream in `artifacts/evaluation-suite/upstream.git`, and
+writes the work list to `artifacts/evaluation-suite/drift.md`: each new, stale, changed or removed
+check, with the upstream diff, a local copy of its source and a suggested file for its port. To
+update the suite, move the pin, then work through the list:
+
+- **new:** port it (the header names the pinned commit), or write a reason into its row.
+- **stale:** apply the diff to the port, and set the commit in its header to the pin.
+- **review:** a check that isn't ported changed upstream. Check that its reason still holds, then
+  set its status back to `not ported`.
+- **removed upstream:** delete the port, or move it when the list says a new check is its rename.
+- **new upstream directories:** add a `## behavioral/<directory>` heading to UPSTREAM.md to track
+  one.
+
+Run the new and changed tests, mark the ones that don't pass with `KnownFidelityGap`, run the tool
+again until it reports nothing to do, and update the counts in this README and in `CLAUDE.md` from
+UPSTREAM.md's summary. The build runs the tool with `--check`, so UPSTREAM.md always matches the
+ports, and a weekly workflow (`evaluation-suite-drift`) runs `--ref main --check` to report drift.
+
+## SQS scope
+
+The SQS ports cover SQS without the services around it: 271 of the 306 checks in `behavioral/sqs`.
+These 35 checks are not ported, because they need another service ([UPSTREAM.md](UPSTREAM.md)
+gives each one's reason):
+
+- **IAM roles, users and identity policies** (16): a check that assumes a role or creates a user,
+  and grades what that identity's policies, or a queue policy naming it, allow.
+- **CloudFormation stacks** (10).
+- **KMS keys** (7): customer-managed keys for SSE-KMS.
+- **CloudWatch alarms** (1).
+- **Lambda functions, with IAM roles** (1).
+
 ## SNS scope
 
 The SNS ports cover SNS as a message bus for SQS: standard and FIFO topics, SQS subscriptions,
@@ -40,16 +100,17 @@ and its signature, FIFO ordering and deduplication, subscription dead-letter que
 deleted or misconfigured queues, topic and subscription attributes, tags, permissions and
 validation: 182 of the 257 checks in `behavioral/sns` and `behavioral/sns__sqs`.
 
-These 75 checks are not ported, because they are about another protocol or need another service:
+These 75 checks are not ported, because they are about another protocol or need another service
+([UPSTREAM.md](UPSTREAM.md) gives each one's reason):
 
-- **Other protocols: SMS, mobile push (platform applications and endpoints) and email** (30): `sns.check-phone-number-opted-out-invalid-fails`, `sns.create-platform-application-unknown-platform-fails`, `sns.create-platform-endpoint-nonexistent-app-fails`, `sns.create-sms-sandbox-invalid-number-rejected`, `sns.create-sms-sandbox-unsupported-country-code-rejected`, `sns.delete-endpoint-nonexistent-idempotent`, `sns.delete-platform-application-nonexistent-idempotent`, `sns.email-subscription-confirmation-state-attributes`, `sns.fifo-topic-rejects-email-protocol`, `sns.get-endpoint-attributes-not-found`, `sns.get-sms-attributes-unknown-name-rejected`, `sns.list-endpoints-by-nonexistent-application-fails`, `sns.list-platform-applications-invalid-next-token-rejected`, `sns.list-sms-sandbox-phone-numbers-max-results-over-limit-rejected`, `sns.opt-in-phone-number-invalid-rejected`, `sns.phone-number-opt-out-state`, `sns.platform-application-bogus-credential-rejected`, `sns.platform-application-custom-attribute-round-trip`, `sns.platform-application-not-found`, `sns.set-endpoint-attributes-not-found`, `sns.set-platform-application-attributes-unknown-key-rejected`, `sns.set-sms-attributes-invalid-name-rejected`, `sns.set-sms-attributes-invalid-sms-type-rejected`, `sns.sms-account-state-reads`, `sns.sms-attributes-custom-value-round-trip`, `sns.sms-attributes-filter-exactness-and-clear-via-empty`, `sns.sms-sandbox-delete-unknown-number`, `sns.subscribe-email-pending-confirmation`, `sns.verify-sms-sandbox-wrong-otp-rejected`, `sns__sqs.platform-application-event-endpoint-created-notifies-configured-topic`.
-- **An email subscription, used to hold a subscription in `PendingConfirmation`** (7): `sns.pending-subscription-arn-placeholder-not-resolvable`, `sns.subscribe-to-nonexistent-topic-fails`, `sns.topic-attributes-subscription-counters-track-state`, `sns.topic-maximum-message-size-above-256kib-requires-eligible-subscriptions`, `sns.topic-policy-protocol-condition-blocks-a-real-signed-subscribe`, `sns.topic-subscription-counters-converge-after-concurrent-subscribes-and-unsubscribes`, `sns.unsubscribe-pending-subscription-rejected`.
-- **HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles** (13): `sns.authenticate-on-unsubscribe-refuses-the-anonymous-unsubscribe-url`, `sns.confirm-subscription-token-confirms-only-its-own-subscription-whatever-the-topic-arn`, `sns.confirm-subscription-token-is-reusable-until-unsubscribe-then-not-found`, `sns.cross-region-lambda-subscription-invokes-the-function-in-its-own-region`, `sns.https-endpoint-failing-with-500-is-retried-then-dead-lettered`, `sns.https-raw-message-delivery-posts-the-bare-body-with-the-rawdelivery-header`, `sns.https-subscription-receives-nothing-until-confirmed-then-gets-the-notification`, `sns.https-subscription-with-a-zero-retry-delivery-policy-attempts-a-failing-notification-exactly-once`, `sns.lambda-feedback-roles-log-the-invocation-delivery-record-and-the-uninvokable-function-failure`, `sns.lambda-function-error-is-retried-by-lambda-and-never-dead-lettered-by-sns`, `sns.lambda-subscription-invocation-carries-the-sns-records-envelope`, `sns.lambda-subscription-the-function-refuses-to-sns-dead-letters-into-the-subscription-dlq`, `sns.raw-message-delivery-drops-message-attributes-for-an-https-subscriber-but-keeps-them-for-sqs`.
-- **Firehose subscriptions (Firehose, S3, IAM)** (4): `sns.firehose-raw-subscription-writes-the-bare-message-bodies`, `sns.firehose-subscribe-without-a-subscription-role-rejected`, `sns.firehose-subscription-role-without-put-record-dead-letters-until-granted`, `sns.firehose-subscription-writes-each-notification-envelope-into-the-stream-bucket`.
-- **CloudFormation stacks** (8): `sns.deploy-cfn-fifo-topic-delivers-in-order-and-deduplicates-by-content`, `sns.deploy-cfn-kms-encrypted-topic-and-queue-deliver-plaintext`, `sns.deploy-cfn-removing-a-topic-inline-policy-restores-the-default-policy`, `sns.deploy-cfn-stack-update-changes-a-filter-policy-in-place`, `sns.deploy-cfn-subscription-filter-policy-behaves`, `sns.deploy-cfn-subscription-redrive-policy-dead-letters-an-undeliverable-message`, `sns.deploy-cfn-topic-policy-authorizes-only-the-named-role-and-follows-updates`, `sns.deploy-cfn-topic-publish-subscribe-flow`.
-- **CloudWatch Logs delivery-status logging (IAM, Logs)** (4): `sns.feedback-role-without-logs-permission-still-delivers-and-writes-no-log-record`, `sns.sqs-failure-feedback-role-logs-the-denied-delivery-while-the-message-never-reaches-the-queue`, `sns.sqs-success-feedback-role-writes-the-delivery-record-to-cloudwatch-logs`, `sns.success-feedback-sample-rate-zero-writes-no-log-while-full-rate-logs-every-delivery`.
-- **KMS keys** (2): `sns.encrypted-topic-whose-key-policy-withholds-usage-refuses-publish`, `sns.publish-to-topic-whose-key-is-pending-deletion-fails-kms-invalid-state`.
-- **IAM roles and role assumption** (7): `sns.authorization-error-explicit-deny-returns-correct-code`, `sns.set-topic-attributes-cross-account-feedback-role-rejected`, `sns.set-topic-attributes-malformed-feedback-role-arn-rejected`, `sns.topic-feedback-role-arn-and-sample-rate-round-trip`, `sns.topic-policy-endpoint-condition-limits-which-queue-a-role-may-subscribe`, `sns.topic-policy-principal-arn-pattern-admits-only-matching-roles`, `sns.topic-policy-subscribe-only-grant-refuses-the-roles-publish`.
+- **Other protocols: SMS, mobile push (platform applications and endpoints) and email** (30).
+- **An email subscription, used to hold a subscription in `PendingConfirmation`** (7).
+- **HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles** (13).
+- **Firehose subscriptions (Firehose, S3, IAM)** (4).
+- **CloudFormation stacks** (8).
+- **CloudWatch Logs delivery-status logging (IAM, Logs)** (4).
+- **KMS keys** (2).
+- **IAM roles and role assumption** (7).
 
 
 ## EventBridge scope
@@ -58,7 +119,7 @@ The EventBridge ports cover EventBridge as a message router in front of SQS and 
 rules, event patterns and TestEventPattern, PutEvents and its validation and partial failures,
 targets to SQS (standard and FIFO), SNS and other event buses, Input, InputPath and
 InputTransformer, target dead-letter queues and retry policies, bus resource policies, tags,
-archives and replays, scheduled rules, listing and pagination, and error codes: 186 of the 296
+archives and replays, scheduled rules, listing and pagination, and error codes: 186 of the 300
 checks in `behavioral/events`, `behavioral/events__sqs`, the `events__iam__*` directories and the
 `eventbridgev2*` directories.
 
@@ -79,19 +140,19 @@ IAM is not emulated, and the checks that touch it were decided one by one:
   policies allow (a missing `iam:PassRole`, an identity-policy condition, a role denied by an
   explicit Deny) is not ported.
 
-These 110 checks are not ported:
+These 114 checks are not ported ([UPSTREAM.md](UPSTREAM.md) gives each one's reason):
 
-- **EventBridge v2** (`eventbridgev2`, `eventbridgev2__iam__sqs`, `eventbridgev2__iam__sns__sqs`): a newer, separate API with buses addressed by ARN, subscribers, event sources, JSONata transformers and `PutRawEvents`, not the `events` API this library emulates (40): `eventbridgev2.create-event-bus-name-collision-different-token-rejected`, `eventbridgev2.create-event-bus-same-client-token-is-idempotent`, `eventbridgev2.create-subscriber-client-token-replay-idempotent-and-mismatch-rejected`, `eventbridgev2.delete-event-bus-blocked-by-event-source-until-revoked`, `eventbridgev2.delete-event-bus-with-subscriber-rejected-until-removed`, `eventbridgev2.event-bus-create-describe-list-delete-lifecycle`, `eventbridgev2.event-bus-tags-do-not-propagate-to-subscribers-or-event-sources`, `eventbridgev2.event-source-lifecycle-against-active-bus`, `eventbridgev2.point-in-time-starting-point-outside-allowed-range-rejected`, `eventbridgev2.put-events-partial-failure-reports-per-entry-error`, `eventbridgev2.recreated-event-bus-same-name-gets-new-identifier`, `eventbridgev2.resource-policy-conflicting-revision-rejected`, `eventbridgev2.resource-policy-put-get-list-round-trip`, `eventbridgev2.revoke-resource-marks-subscriber-terminal-and-outlives-bus-deletion`, `eventbridgev2.subscriber-name-collision-on-same-bus-rejected-but-allowed-on-another`, `eventbridgev2.subscriber-put-events-delivers-to-sqs`, `eventbridgev2.tag-resource-and-list-tags-round-trip`, `eventbridgev2__iam__sns__sqs.role-without-sns-publish-dead-letters-and-topic-receives-nothing`, `eventbridgev2__iam__sns__sqs.sns-topic-target-publishes-one-event-per-message`, `eventbridgev2__iam__sqs.dead-letter-record-names-access-denied-when-role-cannot-reach-target`, `eventbridgev2__iam__sqs.detail-pattern-matches-put-events-envelope-not-raw-payload`, `eventbridgev2__iam__sqs.event-bus-target-forwards-as-new-event-with-evaluated-metadata`, `eventbridgev2__iam__sqs.fifo-subscriber-delivers-event-group-in-publish-order`, `eventbridgev2__iam__sqs.horizon-subscriber-replays-retained-events-marked-replay`, `eventbridgev2__iam__sqs.jsonata-transformer-reads-octet-stream-data-as-base64`, `eventbridgev2__iam__sqs.jsonata-transformer-string-unquoted-and-object-serialized`, `eventbridgev2__iam__sqs.put-events-content-based-deduplication-suppresses-resend`, `eventbridgev2__iam__sqs.put-events-envelope-carries-resources-time-and-region`, `eventbridgev2__iam__sqs.put-events-explicit-deduplication-id-suppresses-repeat`, `eventbridgev2__iam__sqs.put-events-reserved-aws-source-refused-and-never-delivered`, `eventbridgev2__iam__sqs.put-raw-events-invalid-json-and-open-format-refused-per-entry`, `eventbridgev2__iam__sqs.raw-transformer-delivers-payload-as-sent-and-bytes-as-base64`, `eventbridgev2__iam__sqs.sequence-numbers-increase-with-ingestion-and-match-delivery`, `eventbridgev2__iam__sqs.sqs-message-attributes-evaluate-jsonata-and-keep-binary-literal`, `eventbridgev2__iam__sqs.subscriber-filters-combine-with-and-across-scopes`, `eventbridgev2__iam__sqs.subscriber-on-failure-configuration-writes-dead-letter-record-to-sqs`, `eventbridgev2__iam__sqs.system-metadata-content-type-filter-routes-by-content-type`, `eventbridgev2__iam__sqs.update-subscriber-replaces-filter-configuration-whole`, `eventbridgev2__iam__sqs.update-subscriber-transformer-applies-to-later-events`, `eventbridgev2__iam__sqs.with-metadata-transformer-delivers-full-event-with-string-system-metadata`.
-- **IAM role and identity-policy enforcement**: each assumes an IAM role (`sts:AssumeRole`) and grades what that role's policies allow (8): `events.bus-policy-role-statement-admits-put-events-but-account-statement-leaves-bare-role-denied`, `events.identity-explicit-deny-overrides-a-bus-policy-allow-naming-the-same-role`, `events.identity-policy-events-source-condition-denies-put-events-for-any-other-source`, `events.policy-scoped-to-one-bus-rules-denies-put-targets-on-the-same-rule-name-on-another-bus`, `events.put-targets-with-role-arn-denied-without-iam-pass-role-until-granted`, `events.resource-tag-condition-scopes-disable-rule-to-rules-carrying-the-tag`, `events__iam__sns__sqs__sts.put-targets-target-arn-condition-restricts-to-sqs`, `events__iam__sts.put-rule-source-conditions-gate-the-event-pattern`.
-- **API destinations and connections** (HTTP targets, some behind Lambda function URLs) (22): `events.api-destination-4xx-dead-letters-without-retry-while-5xx-is-retried-until-its-retry-attempts-are-used-up`, `events.api-destination-api-key-connection-adds-its-key-and-parameters-and-its-values-win-over-the-targets`, `events.api-destination-basic-connection-sends-the-basic-authorization-header-with-the-destinations-method-and-the-bare-envelope`, `events.api-destination-invocation-rate-limit-maximum-is-enforced`, `events.api-destination-lifecycle`, `events.api-destination-oauth-connection-fetches-a-client-credentials-token-and-sends-it-as-the-bearer-header`, `events.api-destination-rate-limit-defers-a-burst-it-cannot-absorb-and-still-delivers-every-event`, `events.api-destination-state-follows-connection-deauthorize-and-reauthorize`, `events.create-api-destination-accepts-non-url-endpoint`, `events.create-api-destination-invalid-endpoint-pattern-rejected`, `events.create-api-destination-requires-existing-connection`, `events.create-connection-missing-auth-parameters-rejected`, `events.create-connection-state-transition`, `events.deauthorize-connection-state-transition`, `events.delete-connection-eventually-not-found`, `events.delete-connection-in-use-by-api-destination-allowed`, `events.describe-connection-redacts-secret-auth-material`, `events.list-connections-filters-are-mutually-exclusive`, `events.oauth-connection-non-https-authorization-endpoint-rejected`, `events.oauth-connection-with-unreachable-endpoint-deauthorizes-and-its-destination-is-inactive`, `events.update-connection-authorization-type`, `events__sqs.api-destination-timeout-retries-are-bounded-by-maximum-retry-attempts`.
-- **Global endpoints** (Route 53 health checks, failover and replication) (12): `events.concurrent-update-endpoint-conflict-detected`, `events.create-endpoint-duplicate-name-blocked`, `events.create-endpoint-malformed-routing-config-rejected`, `events.delete-endpoint-nonexistent-not-found`, `events.describe-endpoint-nonexistent-not-found`, `events.endpoint-failover-routing-config-managed`, `events.endpoint-lifecycle-create-active-delete-404`, `events.endpoint-routing-config-round-trip`, `events.put-events-endpoint-id-delivers-to-primary-and-replicates-to-secondary`, `events.put-events-endpoint-id-with-unrelated-event-bus-name-rejected`, `events.update-endpoint-changes-routing-config`, `events.update-endpoint-nonexistent-not-found`.
-- **Partner event sources** (SaaS partner accounts) (12): `events.activate-deactivate-event-source-state-transition`, `events.activate-event-source-nonexistent-not-found`, `events.concurrent-activate-event-source-conflict-detected`, `events.deactivate-event-source-nonexistent-not-found`, `events.delete-partner-event-source-disabled-operation-blocked`, `events.describe-event-source-nonexistent-not-found`, `events.describe-partner-event-source-nonexistent-not-found`, `events.e2e-partner-event-source-activation-to-ingestion-flow`, `events.list-partner-event-source-accounts-unknown-source-not-found`, `events.list-partner-event-sources-disabled-account-denied`, `events.partner-event-source-lifecycle-create-rejected-non-partner`, `events.put-partner-events-non-partner-account-denied`.
-- **Lambda targets** (3): `events.lambda-target-function-error-is-retried-by-lambda-and-never-dead-lettered-by-the-rule`, `events.lambda-target-is-invoked-asynchronously-and-its-on-success-destination-records-the-envelope`, `events__sqs.throttled-lambda-target-is-one-successful-attempt-with-no-retry-and-no-dlq`.
-- **Step Functions targets** (1): `events.express-and-standard-state-machine-targets-start-with-the-envelope-as-input-named-after-the-event-id`.
-- **Kinesis targets** (1): `events.kinesis-partition-key-path-renders-numbers-and-objects-as-json-and-an-absent-field-as-empty-object`.
-- **CloudWatch Logs targets** (1): `events.log-group-target-dead-letters-events-timed-too-old-or-too-far-ahead-while-a-current-event-is-written`.
-- **KMS keys** (customer-managed keys on buses, queues and topics) (5): `events.cmk-encrypted-bus-delivers-put-events-to-sqs-target`, `events.cmk-without-events-grant-rejected-on-create-and-update`, `events.disabled-bus-key-stops-delivery-dead-letters-encrypted-events-until-reenabled`, `events.sns-target-on-a-kms-encrypted-topic-dead-letters-as-no-permissions-until-the-key-policy-grants-events`, `events.sqs-target-encrypted-with-a-key-events-cannot-use-dead-letters-until-the-key-policy-grants-it`.
-- **CloudFormation stacks** (5): `events.deploy-cfn-bus-target-with-a-stack-created-execution-role-forwards-events-to-the-destination-bus`, `events.deploy-cfn-event-bus-policy-admits-the-named-role-and-a-stack-update-removing-it-denies-again`, `events.deploy-cfn-schedule-rule-fires-into-its-target-and-a-stack-update-disabling-it-stops-firing`, `events.deploy-cfn-target-dead-letter-config-captures-undeliverable-events-until-a-stack-update-adds-the-queue-policy`, `events.deploy-eventbus-rule-target-cfn-then-put-events-delivers`.
+- **EventBridge v2** (`eventbridgev2`, `eventbridgev2__iam__sqs`, `eventbridgev2__iam__sns__sqs`): a newer, separate API with buses addressed by ARN, subscribers, event sources, JSONata transformers and `PutRawEvents`, not the `events` API this library emulates (40).
+- **IAM role and identity-policy enforcement**: each assumes an IAM role (`sts:AssumeRole`) and grades what that role's policies allow (8).
+- **API destinations and connections** (HTTP targets, some behind Lambda function URLs) (22).
+- **Global endpoints** (Route 53 health checks, failover and replication) (12).
+- **Partner event sources** (SaaS partner accounts) (12).
+- **Lambda targets** (4).
+- **Step Functions targets** (4).
+- **Kinesis targets** (1).
+- **CloudWatch Logs targets** (1).
+- **KMS keys** (customer-managed keys on buses, queues and topics) (5).
+- **CloudFormation stacks** (5).
 
 Five EventBridge ports stay known gaps:
 
@@ -145,13 +206,13 @@ The .NET SDK differs from boto3 in a few places the ports work around:
 The 10 checks that call STS only for the account id are ported with `ctx.Account`. These 49 checks
 are not ported, because they need another service:
 
-- **S3 (exports and imports)** (18): `dynamodb.describe-import-not-found-rejected`, `dynamodb.export-client-token-conflict`, `dynamodb.export-conflict-duplicate-rejected`, `dynamodb.export-invalid-export-time-rejected`, `dynamodb.export-invalid-time`, `dynamodb.export-lifecycle`, `dynamodb.export-table-lifecycle-to-completed`, `dynamodb.export-to-point-in-time-invalid-time-rejected`, `dynamodb.import-not-found`, `dynamodb.import-table-conflict-rejected`, `dynamodb.import-table-describe-list-workflow`, `dynamodb.import-table-lifecycle`, `dynamodb.import-table-lifecycle-to-completed`, `dynamodb.import-table-malformed-item-reports-exact-failure`, `dynamodb.import-target-in-use`, `dynamodb.list-exports-pagination-consistent-order`, `dynamodb.list-imports-pagination-consistent-order`, `dynamodb.point-in-time-export-restore-workflow`.
-- **Kinesis streaming destinations** (8): `dynamodb.disable-kinesis-never-enabled`, `dynamodb.disable-kinesis-streaming-destination-not-enabled-rejected`, `dynamodb.disable-kinesis-streaming-destination-omits-configuration`, `dynamodb.enable-kinesis-invalid-arn`, `dynamodb.enable-kinesis-streaming-destination-already-active-rejected`, `dynamodb.kinesis-streaming-destination-enable-disable-lifecycle`, `dynamodb.kinesis-streaming-destination-lifecycle`, `dynamodb.kinesis-streaming-lifecycle`.
-- **CloudFormation stacks** (6): `dynamodb.deploy-cfn-gsi-queryable-after-deploy`, `dynamodb.deploy-cfn-stream-arn-captures-writes`, `dynamodb.deploy-cfn-table-duplicate-name-create-rejected`, `dynamodb.deploy-cfn-table-put-get-roundtrip`, `dynamodb.deploy-cfn-ttl-attribute-expires-item`, `dynamodb.deploy-dynamodb-1-cfn-global-table-bidirectional-then-replica-removal-rejected`.
-- **Application Auto Scaling** (6): `dynamodb.concurrent-table-replica-auto-scaling-race-no-corruption`, `dynamodb.global-table-settings-describe-update`, `dynamodb.global-table-settings-describe-update-roundtrip`, `dynamodb.replica-auto-scaling-describe-update`, `dynamodb.replica-autoscaling-policy-applied`, `dynamodb.table-replica-auto-scaling-update-reflected`.
-- **KMS keys** (5): `dynamodb.create-table-sse-enabled-without-kms-key-uses-aws-managed-key`, `dynamodb.restore-table-from-backup-sse-override-uses-customer-key`, `dynamodb.sse-with-a-kms-alias-reports-the-resolved-key-arn`, `dynamodb.update-table-sse-nonexistent-cmk-rejected`, `dynamodb.update-table-sse-switches-owned-managed-customer-key`.
-- **IAM roles, role assumption and Lambda** (4): `dynamodb.awsjson-epoch-timestamp-survives-two-deserializers`, `dynamodb.awsjson-error-code-carrier-is-body-only-rejected`, `dynamodb.e2e-resource-policy-grant-revoke-access-flow`, `dynamodb.resource-policy-explicit-deny-blocks-access-rejected`.
-- **CloudWatch metrics** (2): `dynamodb.conditional-check-failed-requests-metric-counts-only-the-failures`, `dynamodb.provisioned-write-throttle-reason-and-metric-agreement-rejected`.
+- **S3 (exports and imports)** (18).
+- **Kinesis streaming destinations** (8).
+- **CloudFormation stacks** (6).
+- **Application Auto Scaling** (6).
+- **KMS keys** (5).
+- **IAM roles, role assumption and Lambda** (4).
+- **CloudWatch metrics** (2).
 
 The 11 known gaps, by root cause:
 
