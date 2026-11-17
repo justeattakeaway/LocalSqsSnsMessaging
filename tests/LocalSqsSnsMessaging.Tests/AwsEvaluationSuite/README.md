@@ -120,7 +120,7 @@ rules, event patterns and TestEventPattern, PutEvents and its validation and par
 targets to SQS (standard and FIFO), SNS and other event buses, Input, InputPath and
 InputTransformer, target dead-letter queues and retry policies, bus resource policies, tags,
 archives and replays, scheduled rules, listing and pagination, partner event sources, global
-endpoints, and error codes: 210 of the 300 checks in `behavioral/events`, `behavioral/events__sqs`, the
+endpoints, connections and API destinations, and error codes: 232 of the 300 checks in `behavioral/events`, `behavioral/events__sqs`, the
 `events__iam__*` directories and the `eventbridgev2*` directories.
 
 Partner event sources are ported (12 checks): only a registered SaaS partner can create one, and
@@ -134,6 +134,14 @@ CloudWatch are not emulated, and these checks use them only as setup: they creat
 health check (one backs it with a CloudWatch alarm it leaves at OK) only to put its ARN on the
 endpoint. The ports use `FidelityContext.HealthCheckArn()`, a well-formed health check ARN the bus
 stores and echoes but never evaluates, so an endpoint is always healthy and never fails over.
+
+Connections and API destinations are ported (22 checks): connection authorization (API key, basic
+and OAuth client credentials, whose token request goes to the endpoint), redaction, and delivery to
+HTTP endpoints with retries, dead letters and rate limits on the bus's clock. The Python checks call
+an HTTP endpoint they build as a Lambda function URL (Lambda, IAM), whose function records each
+request it admits in an SQS capture queue. The ports serve the same handler (`CaptureFunction`) through
+`FidelityHttpEndpoints`, which is the bus's `HttpClient` in every check and reaches nothing else: a
+`.invalid` host does not resolve, and a documentation address such as `192.0.2.1` never answers.
 
 Archives and replays are ported (31 checks): they are self-contained, need nothing outside the bus,
 and run on the bus's clock like everything else.
@@ -152,11 +160,10 @@ IAM is not emulated, and the checks that touch it were decided one by one:
   policies allow (a missing `iam:PassRole`, an identity-policy condition, a role denied by an
   explicit Deny) is not ported.
 
-These 90 checks are not ported ([UPSTREAM.md](UPSTREAM.md) gives each one's reason):
+These 68 checks are not ported ([UPSTREAM.md](UPSTREAM.md) gives each one's reason):
 
 - **EventBridge v2** (`eventbridgev2`, `eventbridgev2__iam__sqs`, `eventbridgev2__iam__sns__sqs`): a newer, separate API with buses addressed by ARN, subscribers, event sources, JSONata transformers and `PutRawEvents`, not the `events` API this library emulates (40).
 - **IAM role and identity-policy enforcement**: each assumes an IAM role (`sts:AssumeRole`) and grades what that role's policies allow (8).
-- **API destinations and connections** (HTTP targets, some behind Lambda function URLs) (22).
 - **Lambda targets** (4).
 - **Step Functions targets** (4).
 - **Kinesis targets** (1).

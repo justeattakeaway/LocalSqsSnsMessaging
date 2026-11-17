@@ -74,6 +74,34 @@
       ],
       "documentation": "<p>Cancels the specified replay.</p>"
     },
+    "CreateApiDestination": {
+      "name": "CreateApiDestination",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "CreateApiDestinationRequest"
+      },
+      "output": {
+        "shape": "CreateApiDestinationResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceAlreadyExistsException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "LimitExceededException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Creates an API destination, which is an HTTP invocation endpoint configured as a target for events.</p> <p>API destinations do not support private destinations, such as interface VPC endpoints.</p> <p>For more information, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-api-destinations.html\">API destinations</a> in the <i>EventBridge User Guide</i>.</p>"
+    },
     "CreateArchive": {
       "name": "CreateArchive",
       "http": {
@@ -107,6 +135,40 @@
         }
       ],
       "documentation": "<p>Creates an archive of events with the specified settings. When you create an archive, incoming events might not immediately start being sent to the archive. Allow a short period of time for changes to take effect. If you do not specify a pattern to filter events sent to the archive, all events are sent to the archive except replayed events. Replayed events are not sent to an archive.</p> <important> <p>If you have specified that EventBridge use a customer managed key for encrypting the source event bus, we strongly recommend you also specify a customer managed key for any archives for the event bus as well. </p> <p>For more information, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/encryption-archives.html\">Encrypting archives</a> in the <i>Amazon EventBridge User Guide</i>.</p> </important>"
+    },
+    "CreateConnection": {
+      "name": "CreateConnection",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "CreateConnectionRequest"
+      },
+      "output": {
+        "shape": "CreateConnectionResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceAlreadyExistsException"
+        },
+        {
+          "shape": "LimitExceededException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "AccessDeniedException"
+        },
+        {
+          "shape": "ThrottlingException"
+        }
+      ],
+      "documentation": "<p>Creates a connection. A connection defines the authorization type and credentials to use for authorization with an API destination HTTP endpoint.</p> <p>For more information, see <a href=\"https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-target-connection.html\">Connections for endpoint targets</a> in the <i>Amazon EventBridge User Guide</i>.</p>"
     },
     "CreateEndpoint": {
       "name": "CreateEndpoint",
@@ -229,6 +291,56 @@
       ],
       "documentation": "<p>You can use this operation to temporarily stop receiving events from the specified partner event source. The matching event bus is not deleted. </p> <p>When you deactivate a partner event source, the source goes into PENDING state. If it remains in PENDING state for more than two weeks, it is deleted.</p> <p>To activate a deactivated partner event source, use <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_ActivateEventSource.html\">ActivateEventSource</a>.</p>"
     },
+    "DeauthorizeConnection": {
+      "name": "DeauthorizeConnection",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeauthorizeConnectionRequest"
+      },
+      "output": {
+        "shape": "DeauthorizeConnectionResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Removes all authorization parameters from the connection. This lets you remove the secret from the connection so you can reuse it without having to create a new connection.</p>"
+    },
+    "DeleteApiDestination": {
+      "name": "DeleteApiDestination",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeleteApiDestinationRequest"
+      },
+      "output": {
+        "shape": "DeleteApiDestinationResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Deletes the specified API destination.</p>"
+    },
     "DeleteArchive": {
       "name": "DeleteArchive",
       "http": {
@@ -253,6 +365,31 @@
         }
       ],
       "documentation": "<p>Deletes the specified archive.</p>"
+    },
+    "DeleteConnection": {
+      "name": "DeleteConnection",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DeleteConnectionRequest"
+      },
+      "output": {
+        "shape": "DeleteConnectionResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Deletes a connection.</p>"
     },
     "DeleteEndpoint": {
       "name": "DeleteEndpoint",
@@ -345,6 +482,28 @@
       ],
       "documentation": "<p>Deletes the specified rule.</p> <p>Before you can delete the rule, you must remove all targets, using <a href=\"https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_RemoveTargets.html\">RemoveTargets</a>.</p> <p>When you delete a rule, incoming events might continue to match to the deleted rule. Allow a short period of time for changes to take effect.</p> <p>If you call delete rule multiple times for the same rule, all calls will succeed. When you call delete rule for a non-existent custom eventbus, <code>ResourceNotFoundException</code> is returned.</p> <p>Managed rules are rules created and managed by another Amazon Web Services service on your behalf. These rules are created by those other Amazon Web Services services to support functionality in those services. You can delete these rules using the <code>Force</code> option, but you should do so only if you are sure the other service is not still using that rule.</p>"
     },
+    "DescribeApiDestination": {
+      "name": "DescribeApiDestination",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DescribeApiDestinationRequest"
+      },
+      "output": {
+        "shape": "DescribeApiDestinationResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Retrieves details about an API destination.</p>"
+    },
     "DescribeArchive": {
       "name": "DescribeArchive",
       "http": {
@@ -369,6 +528,28 @@
         }
       ],
       "documentation": "<p>Retrieves details about an archive.</p>"
+    },
+    "DescribeConnection": {
+      "name": "DescribeConnection",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "DescribeConnectionRequest"
+      },
+      "output": {
+        "shape": "DescribeConnectionResponse"
+      },
+      "errors": [
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Retrieves details about a connection.</p>"
     },
     "DescribeEndpoint": {
       "name": "DescribeEndpoint",
@@ -558,6 +739,25 @@
       ],
       "documentation": "<p>Enables the specified rule. If the rule does not exist, the operation fails.</p> <p>When you enable a rule, incoming events might not immediately start matching to a newly enabled rule. Allow a short period of time for changes to take effect.</p>"
     },
+    "ListApiDestinations": {
+      "name": "ListApiDestinations",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListApiDestinationsRequest"
+      },
+      "output": {
+        "shape": "ListApiDestinationsResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Retrieves a list of API destination in the account in the current Region.</p>"
+    },
     "ListArchives": {
       "name": "ListArchives",
       "http": {
@@ -579,6 +779,25 @@
         }
       ],
       "documentation": "<p>Lists your archives. You can either list all the archives or you can provide a prefix to match to the archive names. Filter parameters are exclusive.</p>"
+    },
+    "ListConnections": {
+      "name": "ListConnections",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "ListConnectionsRequest"
+      },
+      "output": {
+        "shape": "ListConnectionsResponse"
+      },
+      "errors": [
+        {
+          "shape": "InternalException"
+        }
+      ],
+      "documentation": "<p>Retrieves a list of connections from the account.</p>"
     },
     "ListEndpoints": {
       "name": "ListEndpoints",
@@ -1090,6 +1309,34 @@
       ],
       "documentation": "<p>Removes one or more tags from the specified EventBridge resource. In Amazon EventBridge, rules and event buses can be tagged.</p>"
     },
+    "UpdateApiDestination": {
+      "name": "UpdateApiDestination",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "UpdateApiDestinationRequest"
+      },
+      "output": {
+        "shape": "UpdateApiDestinationResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "LimitExceededException"
+        }
+      ],
+      "documentation": "<p>Updates an API destination.</p>"
+    },
     "UpdateArchive": {
       "name": "UpdateArchive",
       "http": {
@@ -1120,6 +1367,40 @@
         }
       ],
       "documentation": "<p>Updates the specified archive.</p>"
+    },
+    "UpdateConnection": {
+      "name": "UpdateConnection",
+      "http": {
+        "method": "POST",
+        "requestUri": "/"
+      },
+      "input": {
+        "shape": "UpdateConnectionRequest"
+      },
+      "output": {
+        "shape": "UpdateConnectionResponse"
+      },
+      "errors": [
+        {
+          "shape": "ConcurrentModificationException"
+        },
+        {
+          "shape": "ResourceNotFoundException"
+        },
+        {
+          "shape": "InternalException"
+        },
+        {
+          "shape": "LimitExceededException"
+        },
+        {
+          "shape": "AccessDeniedException"
+        },
+        {
+          "shape": "ThrottlingException"
+        }
+      ],
+      "documentation": "<p>Updates settings for a connection.</p>"
     },
     "UpdateEndpoint": {
       "name": "UpdateEndpoint",

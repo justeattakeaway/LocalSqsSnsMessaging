@@ -39,6 +39,12 @@ internal sealed class AwsRegionResources(string region, object dynamoDbGate)
     /// <summary>The EventBridge global endpoints whose home region this is, keyed by endpoint name.</summary>
     public ConcurrentDictionary<string, EndpointResource> EventBridgeEndpoints { get; } = [];
 
+    /// <summary>The region's EventBridge connections, keyed by connection name.</summary>
+    public ConcurrentDictionary<string, ConnectionResource> EventBridgeConnections { get; } = [];
+
+    /// <summary>The region's EventBridge API destinations, keyed by name.</summary>
+    public ConcurrentDictionary<string, ApiDestinationResource> EventBridgeApiDestinations { get; } = [];
+
     /// <summary>The region's DynamoDB tables, streams and backups, behind the bus's DynamoDB lock.</summary>
     public DynamoDb.DynamoDbStore DynamoDb { get; } = new(region, dynamoDbGate);
 }

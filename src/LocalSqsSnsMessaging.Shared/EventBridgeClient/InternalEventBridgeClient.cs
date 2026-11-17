@@ -8,7 +8,8 @@ namespace LocalSqsSnsMessaging;
 /// </summary>
 /// <remarks>
 /// Split into partial files by area: event buses, rules, targets, events (PutEvents and
-/// TestEventPattern), tags, permissions, archives and replays, and partner event sources. This file holds the shared
+/// TestEventPattern), tags, permissions, archives and replays, partner event sources, global
+/// endpoints, and connections and API destinations. This file holds the shared
 /// lookups and ARN helpers.
 /// </remarks>
 internal sealed partial class InternalEventBridgeClient

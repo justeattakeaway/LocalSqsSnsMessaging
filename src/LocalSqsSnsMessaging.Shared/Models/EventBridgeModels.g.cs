@@ -9,6 +9,19 @@ internal class ActivateEventSourceRequest
     public string? Name { get; set; }
 }
 
+internal class ApiDestination
+{
+    public string? ApiDestinationArn { get; set; }
+    public string? Name { get; set; }
+    public string? ApiDestinationState { get; set; }
+    public string? ConnectionArn { get; set; }
+    public string? InvocationEndpoint { get; set; }
+    public string? HttpMethod { get; set; }
+    public int? InvocationRateLimitPerSecond { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
+}
+
 internal class AppSyncParameters
 {
     public string? GraphQLOperation { get; set; }
@@ -77,6 +90,106 @@ internal class Condition
     public string? Value { get; set; }
 }
 
+internal class Connection
+{
+    public string? ConnectionArn { get; set; }
+    public string? Name { get; set; }
+    public string? ConnectionState { get; set; }
+    public string? StateReason { get; set; }
+    public string? AuthorizationType { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
+    public DateTime? LastAuthorizedTime { get; set; }
+}
+
+internal class ConnectionApiKeyAuthResponseParameters
+{
+    public string? ApiKeyName { get; set; }
+}
+
+internal class ConnectionAuthResponseParameters
+{
+    public ConnectionBasicAuthResponseParameters? BasicAuthParameters { get; set; }
+    public ConnectionOAuthResponseParameters? OAuthParameters { get; set; }
+    public ConnectionApiKeyAuthResponseParameters? ApiKeyAuthParameters { get; set; }
+    public ConnectionHttpParameters? InvocationHttpParameters { get; set; }
+    public DescribeConnectionConnectivityParameters? ConnectivityParameters { get; set; }
+}
+
+internal class ConnectionBasicAuthResponseParameters
+{
+    public string? Username { get; set; }
+}
+
+internal class ConnectionBodyParameter
+{
+    public string? Key { get; set; }
+    public string? Value { get; set; }
+    public bool? IsValueSecret { get; set; }
+}
+
+internal class ConnectionHeaderParameter
+{
+    public string? Key { get; set; }
+    public string? Value { get; set; }
+    public bool? IsValueSecret { get; set; }
+}
+
+internal class ConnectionHttpParameters
+{
+    public List<ConnectionHeaderParameter>? HeaderParameters { get; set; } = [];
+    public List<ConnectionQueryStringParameter>? QueryStringParameters { get; set; } = [];
+    public List<ConnectionBodyParameter>? BodyParameters { get; set; } = [];
+}
+
+internal class ConnectionOAuthClientResponseParameters
+{
+    public string? ClientID { get; set; }
+}
+
+internal class ConnectionOAuthResponseParameters
+{
+    public ConnectionOAuthClientResponseParameters? ClientParameters { get; set; }
+    public string? AuthorizationEndpoint { get; set; }
+    public string? HttpMethod { get; set; }
+    public ConnectionHttpParameters? OAuthHttpParameters { get; set; }
+}
+
+internal class ConnectionQueryStringParameter
+{
+    public string? Key { get; set; }
+    public string? Value { get; set; }
+    public bool? IsValueSecret { get; set; }
+}
+
+internal class ConnectivityResourceConfigurationArn
+{
+    public string? ResourceConfigurationArn { get; set; }
+}
+
+internal class ConnectivityResourceParameters
+{
+    public ConnectivityResourceConfigurationArn? ResourceParameters { get; set; }
+}
+
+internal class CreateApiDestinationRequest
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public string? ConnectionArn { get; set; }
+    public string? InvocationEndpoint { get; set; }
+    public string? HttpMethod { get; set; }
+    public int? InvocationRateLimitPerSecond { get; set; }
+}
+
+internal class CreateApiDestinationResponse : AmazonWebServiceResponse
+{
+    public string? ApiDestinationArn { get; set; }
+    public string? ApiDestinationState { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
+}
+
 internal class CreateArchiveRequest
 {
     public string? ArchiveName { get; set; }
@@ -93,6 +206,59 @@ internal class CreateArchiveResponse : AmazonWebServiceResponse
     public string? State { get; set; }
     public string? StateReason { get; set; }
     public DateTime? CreationTime { get; set; }
+}
+
+internal class CreateConnectionApiKeyAuthRequestParameters
+{
+    public string? ApiKeyName { get; set; }
+    public string? ApiKeyValue { get; set; }
+}
+
+internal class CreateConnectionAuthRequestParameters
+{
+    public CreateConnectionBasicAuthRequestParameters? BasicAuthParameters { get; set; }
+    public CreateConnectionOAuthRequestParameters? OAuthParameters { get; set; }
+    public CreateConnectionApiKeyAuthRequestParameters? ApiKeyAuthParameters { get; set; }
+    public ConnectionHttpParameters? InvocationHttpParameters { get; set; }
+    public ConnectivityResourceParameters? ConnectivityParameters { get; set; }
+}
+
+internal class CreateConnectionBasicAuthRequestParameters
+{
+    public string? Username { get; set; }
+    public string? Password { get; set; }
+}
+
+internal class CreateConnectionOAuthClientRequestParameters
+{
+    public string? ClientID { get; set; }
+    public string? ClientSecret { get; set; }
+}
+
+internal class CreateConnectionOAuthRequestParameters
+{
+    public CreateConnectionOAuthClientRequestParameters? ClientParameters { get; set; }
+    public string? AuthorizationEndpoint { get; set; }
+    public string? HttpMethod { get; set; }
+    public ConnectionHttpParameters? OAuthHttpParameters { get; set; }
+}
+
+internal class CreateConnectionRequest
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public string? AuthorizationType { get; set; }
+    public CreateConnectionAuthRequestParameters? AuthParameters { get; set; }
+    public ConnectivityResourceParameters? InvocationConnectivityParameters { get; set; }
+    public string? KmsKeyIdentifier { get; set; }
+}
+
+internal class CreateConnectionResponse : AmazonWebServiceResponse
+{
+    public string? ConnectionArn { get; set; }
+    public string? ConnectionState { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
 }
 
 internal class CreateEndpointRequest
@@ -157,6 +323,29 @@ internal class DeadLetterConfig
     public string? Arn { get; set; }
 }
 
+internal class DeauthorizeConnectionRequest
+{
+    public string? Name { get; set; }
+}
+
+internal class DeauthorizeConnectionResponse : AmazonWebServiceResponse
+{
+    public string? ConnectionArn { get; set; }
+    public string? ConnectionState { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
+    public DateTime? LastAuthorizedTime { get; set; }
+}
+
+internal class DeleteApiDestinationRequest
+{
+    public string? Name { get; set; }
+}
+
+internal class DeleteApiDestinationResponse : AmazonWebServiceResponse
+{
+}
+
 internal class DeleteArchiveRequest
 {
     public string? ArchiveName { get; set; }
@@ -164,6 +353,20 @@ internal class DeleteArchiveRequest
 
 internal class DeleteArchiveResponse : AmazonWebServiceResponse
 {
+}
+
+internal class DeleteConnectionRequest
+{
+    public string? Name { get; set; }
+}
+
+internal class DeleteConnectionResponse : AmazonWebServiceResponse
+{
+    public string? ConnectionArn { get; set; }
+    public string? ConnectionState { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
+    public DateTime? LastAuthorizedTime { get; set; }
 }
 
 internal class DeleteEndpointRequest
@@ -193,6 +396,25 @@ internal class DeleteRuleRequest
     public bool? Force { get; set; }
 }
 
+internal class DescribeApiDestinationRequest
+{
+    public string? Name { get; set; }
+}
+
+internal class DescribeApiDestinationResponse : AmazonWebServiceResponse
+{
+    public string? ApiDestinationArn { get; set; }
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public string? ApiDestinationState { get; set; }
+    public string? ConnectionArn { get; set; }
+    public string? InvocationEndpoint { get; set; }
+    public string? HttpMethod { get; set; }
+    public int? InvocationRateLimitPerSecond { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
+}
+
 internal class DescribeArchiveRequest
 {
     public string? ArchiveName { get; set; }
@@ -212,6 +434,39 @@ internal class DescribeArchiveResponse : AmazonWebServiceResponse
     public long? SizeBytes { get; set; }
     public long? EventCount { get; set; }
     public DateTime? CreationTime { get; set; }
+}
+
+internal class DescribeConnectionConnectivityParameters
+{
+    public DescribeConnectionResourceParameters? ResourceParameters { get; set; }
+}
+
+internal class DescribeConnectionRequest
+{
+    public string? Name { get; set; }
+}
+
+internal class DescribeConnectionResourceParameters
+{
+    public string? ResourceConfigurationArn { get; set; }
+    public string? ResourceAssociationArn { get; set; }
+}
+
+internal class DescribeConnectionResponse : AmazonWebServiceResponse
+{
+    public string? ConnectionArn { get; set; }
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public DescribeConnectionConnectivityParameters? InvocationConnectivityParameters { get; set; }
+    public string? ConnectionState { get; set; }
+    public string? StateReason { get; set; }
+    public string? AuthorizationType { get; set; }
+    public string? SecretArn { get; set; }
+    public string? KmsKeyIdentifier { get; set; }
+    public ConnectionAuthResponseParameters? AuthParameters { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
+    public DateTime? LastAuthorizedTime { get; set; }
 }
 
 internal class DescribeEndpointRequest
@@ -418,6 +673,20 @@ internal class KinesisParameters
     public string? PartitionKeyPath { get; set; }
 }
 
+internal class ListApiDestinationsRequest
+{
+    public string? NamePrefix { get; set; }
+    public string? ConnectionArn { get; set; }
+    public string? NextToken { get; set; }
+    public int? Limit { get; set; }
+}
+
+internal class ListApiDestinationsResponse : AmazonWebServiceResponse
+{
+    public List<ApiDestination>? ApiDestinations { get; set; } = [];
+    public string? NextToken { get; set; }
+}
+
 internal class ListArchivesRequest
 {
     public string? NamePrefix { get; set; }
@@ -430,6 +699,20 @@ internal class ListArchivesRequest
 internal class ListArchivesResponse : AmazonWebServiceResponse
 {
     public List<Archive>? Archives { get; set; } = [];
+    public string? NextToken { get; set; }
+}
+
+internal class ListConnectionsRequest
+{
+    public string? NamePrefix { get; set; }
+    public string? ConnectionState { get; set; }
+    public string? NextToken { get; set; }
+    public int? Limit { get; set; }
+}
+
+internal class ListConnectionsResponse : AmazonWebServiceResponse
+{
+    public List<Connection>? Connections { get; set; } = [];
     public string? NextToken { get; set; }
 }
 
@@ -907,6 +1190,24 @@ internal class UntagResourceResponse : AmazonWebServiceResponse
 {
 }
 
+internal class UpdateApiDestinationRequest
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public string? ConnectionArn { get; set; }
+    public string? InvocationEndpoint { get; set; }
+    public string? HttpMethod { get; set; }
+    public int? InvocationRateLimitPerSecond { get; set; }
+}
+
+internal class UpdateApiDestinationResponse : AmazonWebServiceResponse
+{
+    public string? ApiDestinationArn { get; set; }
+    public string? ApiDestinationState { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
+}
+
 internal class UpdateArchiveRequest
 {
     public string? ArchiveName { get; set; }
@@ -922,6 +1223,60 @@ internal class UpdateArchiveResponse : AmazonWebServiceResponse
     public string? State { get; set; }
     public string? StateReason { get; set; }
     public DateTime? CreationTime { get; set; }
+}
+
+internal class UpdateConnectionApiKeyAuthRequestParameters
+{
+    public string? ApiKeyName { get; set; }
+    public string? ApiKeyValue { get; set; }
+}
+
+internal class UpdateConnectionAuthRequestParameters
+{
+    public UpdateConnectionBasicAuthRequestParameters? BasicAuthParameters { get; set; }
+    public UpdateConnectionOAuthRequestParameters? OAuthParameters { get; set; }
+    public UpdateConnectionApiKeyAuthRequestParameters? ApiKeyAuthParameters { get; set; }
+    public ConnectionHttpParameters? InvocationHttpParameters { get; set; }
+    public ConnectivityResourceParameters? ConnectivityParameters { get; set; }
+}
+
+internal class UpdateConnectionBasicAuthRequestParameters
+{
+    public string? Username { get; set; }
+    public string? Password { get; set; }
+}
+
+internal class UpdateConnectionOAuthClientRequestParameters
+{
+    public string? ClientID { get; set; }
+    public string? ClientSecret { get; set; }
+}
+
+internal class UpdateConnectionOAuthRequestParameters
+{
+    public UpdateConnectionOAuthClientRequestParameters? ClientParameters { get; set; }
+    public string? AuthorizationEndpoint { get; set; }
+    public string? HttpMethod { get; set; }
+    public ConnectionHttpParameters? OAuthHttpParameters { get; set; }
+}
+
+internal class UpdateConnectionRequest
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public string? AuthorizationType { get; set; }
+    public UpdateConnectionAuthRequestParameters? AuthParameters { get; set; }
+    public ConnectivityResourceParameters? InvocationConnectivityParameters { get; set; }
+    public string? KmsKeyIdentifier { get; set; }
+}
+
+internal class UpdateConnectionResponse : AmazonWebServiceResponse
+{
+    public string? ConnectionArn { get; set; }
+    public string? ConnectionState { get; set; }
+    public DateTime? CreationTime { get; set; }
+    public DateTime? LastModifiedTime { get; set; }
+    public DateTime? LastAuthorizedTime { get; set; }
 }
 
 internal class UpdateEndpointRequest
