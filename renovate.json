@@ -30,7 +30,8 @@
       "matchPackageNames": [
         "AWSSDK.SimpleNotificationService",
         "AWSSDK.SQS",
-        "AWSSDK.EventBridge"
+        "AWSSDK.EventBridge",
+        "AWSSDK.DynamoDBv2"
       ],
       "matchFileNames": [
         "src/LocalSqsSnsMessaging.AWSSDKv3/**"
