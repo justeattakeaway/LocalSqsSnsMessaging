@@ -69,11 +69,15 @@ $dotnet = Join-Path "$env:DOTNET_INSTALL_DIR" "dotnet"
 
 function DotNetTest {
     param(
-        [string] $Project
+        [string] $Project,
+        [string] $Framework
     )
 
     $testResultsDir = Join-Path $solutionPath "test-results"
     $projectName = [System.IO.Path]::GetFileNameWithoutExtension($Project)
+    if ($Framework) {
+        $projectName = "${projectName}-${Framework}"
+    }
     $projectResultsDir = Join-Path $testResultsDir $projectName
 
     # Enable TUnit's built-in JUnit reporter for Codecov Test Analytics
@@ -90,8 +94,14 @@ function DotNetTest {
     )
 
     try {
+        $frameworkArgs = @()
+        if ($Framework) {
+            $frameworkArgs = @("--framework", $Framework)
+        }
+
         & $dotnet run --project $Project `
             --configuration "Release" `
+            @frameworkArgs `
             -- $additionalArgs
 
         if ($LASTEXITCODE -ne 0) {
@@ -113,10 +123,19 @@ function DotNetPack {
     }
 }
 
+$awsSdkV3Tests = Join-Path $solutionPath "tests" "InMemoryAws.Tests.AwsSdkV3" "InMemoryAws.Tests.AwsSdkV3.csproj"
 $testProjects = @(
-    (Join-Path $solutionPath "tests" "InMemoryAws.Tests" "InMemoryAws.Tests.csproj"),
-    (Join-Path $solutionPath "tests" "InMemoryAws.Tests.AwsSdkV3" "InMemoryAws.Tests.AwsSdkV3.csproj")
+    @{ Project = (Join-Path $solutionPath "tests" "InMemoryAws.Tests" "InMemoryAws.Tests.csproj") },
+    @{ Project = $awsSdkV3Tests; Framework = "net10.0" }
 )
+
+# .NET Framework test runs need Windows.
+if ($env:OS -eq "Windows_NT") {
+    $testProjects += @(
+        @{ Project = $awsSdkV3Tests; Framework = "net48" },
+        @{ Project = (Join-Path $solutionPath "tests" "InMemoryAws.Tests.NetFramework" "InMemoryAws.Tests.NetFramework.csproj"); Framework = "net48" }
+    )
+}
 
 $packageProjects = @(
     (Join-Path $solutionPath "src" "InMemoryAws" "InMemoryAws.csproj"),
@@ -149,7 +168,7 @@ ForEach ($project in $packageProjects) {
 
 if ($SkipTests -eq $false) {
     Write-Host "Testing $($testProjects.Count) project(s)..." -ForegroundColor Green
-    ForEach ($project in $testProjects) {
-        DotNetTest $project
+    ForEach ($test in $testProjects) {
+        DotNetTest -Project $test.Project -Framework $test.Framework
     }
 }

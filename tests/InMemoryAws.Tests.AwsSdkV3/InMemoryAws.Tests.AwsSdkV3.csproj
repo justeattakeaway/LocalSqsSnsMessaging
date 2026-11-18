@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <!-- The same InMemoryAws library against AWS SDK v3 (3.7.x), which consumers bring themselves. -->
+    <!-- The InMemoryAws library against AWS SDK v3 (3.7.x), which consumers bring themselves, on .NET and .NET Framework. -->
     <PropertyGroup>
-      <TargetFramework>net10.0</TargetFramework>
+      <TargetFrameworks>net10.0;net48</TargetFrameworks>
+      <DefineConstants>$(DefineConstants);AWS_SDK_V3</DefineConstants>
       <OutputType>Exe</OutputType>
       <ImplicitUsings>enable</ImplicitUsings>
       <Nullable>enable</Nullable>

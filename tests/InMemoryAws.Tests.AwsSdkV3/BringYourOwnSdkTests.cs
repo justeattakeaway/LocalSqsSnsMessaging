@@ -5,20 +5,31 @@ using Amazon.SimpleNotificationService.Model;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Shouldly;
+#if AWS_SDK_V3
+using StreamsModel = Amazon.DynamoDBv2.Model;
+#else
+using StreamsModel = Amazon.DynamoDBStreams.Model;
+#endif
 using Target = Amazon.EventBridge.Model.Target;
 
-namespace InMemoryAws.Tests.AwsSdkV3;
+namespace InMemoryAws.Tests.BringYourOwnSdk;
 
 /// <summary>
-/// The clients the InMemoryAws package wires up for a project on AWS SDK v3, compiled against that SDK
-/// (including the DynamoDB Streams client, which v3 keeps in AWSSDK.DynamoDBv2).
+/// The clients the InMemoryAws package's build integration adds, compiled against the AWS SDK the project
+/// brings: AWS SDK v3 on .NET and .NET Framework (InMemoryAws.Tests.AwsSdkV3), and AWS SDK v4 on .NET Framework
+/// (InMemoryAws.Tests.NetFramework). On .NET Framework they go through the SDK's request pipeline, as the SDK has
+/// no HttpClientFactory there. (AWS SDK v4 on .NET is the rest of the test suite.)
 /// </summary>
-public sealed class AwsSdkV3Tests
+public sealed class BringYourOwnSdkTests
 {
     [Test]
-    public void TheProjectIsOnAwsSdkV3()
+    public void TheProjectIsOnTheIntendedAwsSdk()
     {
+#if AWS_SDK_V3
         typeof(AmazonSQSClient).Assembly.GetName().Version!.Major.ShouldBe(3);
+#else
+        typeof(AmazonSQSClient).Assembly.GetName().Version!.Major.ShouldBe(4);
+#endif
     }
 
     [Test]
@@ -32,6 +43,30 @@ public sealed class AwsSdkV3Tests
 
         received.Messages.ShouldHaveSingleItem().Body.ShouldBe("hello");
     }
+
+    [Test]
+    public async Task AnErrorResponseBecomesTheSdksException()
+    {
+        using var sqs = new InMemoryAwsCloud().CreateSqsClient();
+
+        var error = await Should.ThrowAsync<QueueDoesNotExistException>(() => sqs.GetQueueUrlAsync("missing"));
+
+        error.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
+    }
+
+#if NETFRAMEWORK
+    [Test]
+    public void TheSynchronousApiWorks()
+    {
+        using var sqs = new InMemoryAwsCloud().CreateSqsClient();
+
+        var queueUrl = sqs.CreateQueue("orders").QueueUrl;
+        sqs.SendMessage(queueUrl, "hello");
+
+        sqs.ReceiveMessage(queueUrl).Messages.ShouldHaveSingleItem().Body.ShouldBe("hello");
+        Should.Throw<QueueDoesNotExistException>(() => sqs.GetQueueUrl("missing"));
+    }
+#endif
 
     [Test]
     public async Task SnsDeliversToASubscribedQueue()
@@ -91,18 +126,20 @@ public sealed class AwsSdkV3Tests
         (await dynamoDb.GetItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("a") })).Item["pk"].S.ShouldBe("a");
 
         var streamArn = table.TableDescription.LatestStreamArn;
-        var shard = (await streams.DescribeStreamAsync(new DescribeStreamRequest { StreamArn = streamArn })).StreamDescription.Shards.ShouldHaveSingleItem();
-        var iterator = (await streams.GetShardIteratorAsync(new GetShardIteratorRequest
+        var shard = (await streams.DescribeStreamAsync(new StreamsModel.DescribeStreamRequest { StreamArn = streamArn }))
+            .StreamDescription.Shards.ShouldHaveSingleItem();
+        var iterator = (await streams.GetShardIteratorAsync(new StreamsModel.GetShardIteratorRequest
         {
             StreamArn = streamArn,
             ShardId = shard.ShardId,
-            ShardIteratorType = ShardIteratorType.TRIM_HORIZON,
+            ShardIteratorType = "TRIM_HORIZON",
         })).ShardIterator;
-        var records = await streams.GetRecordsAsync(new GetRecordsRequest { ShardIterator = iterator });
+        var records = await streams.GetRecordsAsync(new StreamsModel.GetRecordsRequest { ShardIterator = iterator });
 
         records.Records.ShouldHaveSingleItem().Dynamodb.NewImage["pk"].S.ShouldBe("a");
     }
 
+#if !NETFRAMEWORK
     [Test]
     public async Task TheSdkHttpClientFactoryRoutesClientsConfiguredElsewhere()
     {
@@ -117,6 +154,7 @@ public sealed class AwsSdkV3Tests
         queueUrl.ShouldContain("eu-west-1");
         (await sqs.ListQueuesAsync(new ListQueuesRequest())).QueueUrls.ShouldBe([queueUrl]);
         using var usEast1 = cloud.CreateSqsClient();
-        (await usEast1.ListQueuesAsync(new ListQueuesRequest())).QueueUrls.ShouldBeEmpty();
+        ((await usEast1.ListQueuesAsync(new ListQueuesRequest())).QueueUrls ?? []).ShouldBeEmpty();
     }
+#endif
 }

@@ -64,7 +64,7 @@ dotnet add package AWSSDK.SQS
 
 | Your project references | You get, on `InMemoryAwsCloud` |
 | --- | --- |
-| `AWSSDK.Core` (any of the below) | `CreateAwsSdkHttpClientFactory()` and the `InMemoryAwsSdkHttpClientFactory` class (see [Integrating with an existing `HttpClientFactory`](#integrating-with-an-existing-httpclientfactory)) |
+| `AWSSDK.Core` (any of the below), on .NET or .NET Standard | `CreateAwsSdkHttpClientFactory()` and the `InMemoryAwsSdkHttpClientFactory` class (see [Integrating with an existing `HttpClientFactory`](#integrating-with-an-existing-httpclientfactory)) |
 | `AWSSDK.SQS` | `CreateSqsClient()` |
 | `AWSSDK.SimpleNotificationService` | `CreateSnsClient()` |
 | `AWSSDK.EventBridge` | `CreateEventBridgeClient()` |
@@ -84,7 +84,7 @@ Set `InMemoryAwsSdkSources` to `false` in a project to leave them out:
 You need this when two projects that both reference `InMemoryAws` share internals (one has `InternalsVisibleTo` the other), so the two copies of `CreateSqsClient()` don't clash: opt one of them out.
 
 > [!NOTE]
-> On .NET Framework the AWS SDK sends requests with `HttpWebRequest`, not `HttpClient`, so it can't be pointed at an in-memory handler. A .NET Framework project gets warning `INMEMAWS001` instead of the methods above; use the [standalone server](#standalone-server) there.
+> **.NET Framework** works too (tested on 4.8), with AWS SDK v3 or v4. The AWS SDK sends requests with `HttpWebRequest` there, not `HttpClient`, so it has no `HttpClientFactory`; instead each client `Create...Client()` makes has the HTTP handler in its request pipeline replaced with one that sends to the cloud. `CreateAwsSdkHttpClientFactory()`, which needs the SDK's `HttpClientFactory`, isn't available on .NET Framework.
 
 ### Without the build integration
 
