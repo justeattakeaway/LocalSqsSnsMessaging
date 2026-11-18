@@ -1,6 +1,6 @@
 using SyncEvaluationSuite;
 
-// Keeps tests/LocalSqsSnsMessaging.Tests/AwsEvaluationSuite/UPSTREAM.md in step with AWS's emulator
+// Keeps tests/InMemoryAws.Tests/AwsEvaluationSuite/UPSTREAM.md in step with AWS's emulator
 // evaluation suite and the ports. See the "Keeping up with upstream" section of that directory's README.
 try
 {
@@ -54,7 +54,7 @@ namespace SyncEvaluationSuite
 
     internal static class Sync
     {
-        private const string SuitePath = "tests/LocalSqsSnsMessaging.Tests/AwsEvaluationSuite";
+        private const string SuitePath = "tests/InMemoryAws.Tests/AwsEvaluationSuite";
 
         public static int Run(Options options)
         {
@@ -208,7 +208,7 @@ namespace SyncEvaluationSuite
         {
             for (var directory = new DirectoryInfo(Environment.CurrentDirectory); directory is not null; directory = directory.Parent)
             {
-                if (File.Exists(Path.Combine(directory.FullName, "LocalSqsSnsMessaging.slnx")))
+                if (File.Exists(Path.Combine(directory.FullName, "InMemoryAws.slnx")))
                 {
                     return directory.FullName;
                 }

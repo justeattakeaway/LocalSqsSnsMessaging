@@ -1,17 +1,25 @@
-# LocalSqsSnsMessaging
+# InMemoryAws
 
-[![NuGet](https://img.shields.io/nuget/v/LocalSqsSnsMessaging?logo=nuget&label=Latest&color=blue)](https://www.nuget.org/packages/LocalSqsSnsMessaging "Download LocalSqsSnsMessaging from NuGet")
-[![build](https://github.com/justeattakeaway/LocalSqsSnsMessaging/actions/workflows/build.yml/badge.svg?branch=main&event=push)](https://github.com/justeattakeaway/LocalSqsSnsMessaging/actions/workflows/build.yml)
+[![NuGet](https://img.shields.io/nuget/v/InMemoryAws?logo=nuget&label=Latest&color=blue)](https://www.nuget.org/packages/InMemoryAws "Download InMemoryAws from NuGet")
+[![build](https://github.com/justeattakeaway/InMemoryAws/actions/workflows/build.yml/badge.svg?branch=main&event=push)](https://github.com/justeattakeaway/InMemoryAws/actions/workflows/build.yml)
 
 ## Overview
 
 This .NET library is intended to provide a simple in-memory drop-in replacement for the AWS SDK for SQS, SNS, EventBridge and DynamoDB, primarily for testing (but can be used for local development too).
 
-It comes in three flavours that all share the same in-memory bus:
+It comes in three flavours that all share the same in-memory cloud (`InMemoryAwsCloud`):
 
-- **In-process** (`LocalSqsSnsMessaging` on NuGet) – hand the real AWS SDK clients an in-memory `HttpMessageHandler`, no network involved. This is the fastest option and the one to reach for in tests.
-- **In-process for AWS SDK v3** (`LocalSqsSnsMessaging.AWSSDKv3`) – the same library built against the `3.7.x` AWS SDK for codebases that haven't moved to v4 yet.
+- **In-process** (`InMemoryAws` on NuGet) – hand the real AWS SDK clients an in-memory `HttpMessageHandler`, no network involved. This is the fastest option and the one to reach for in tests.
+- **In-process for AWS SDK v3** (`InMemoryAws.AWSSDKv3`) – the same library built against the `3.7.x` AWS SDK for codebases that haven't moved to v4 yet.
 - **Standalone server** – a small native binary / container that speaks the AWS wire protocols over HTTP, with a dashboard, for local development or non-.NET consumers. See [Standalone server](#standalone-server).
+
+> [!NOTE]
+> **Coming from `LocalSqsSnsMessaging`?** The library was renamed `InMemoryAws` at v2.0.0, once it covered more than SQS and SNS. To move over:
+>
+> - Replace the `LocalSqsSnsMessaging` package with `InMemoryAws` (and `LocalSqsSnsMessaging.AWSSDKv3` with `InMemoryAws.AWSSDKv3`).
+> - Change `using LocalSqsSnsMessaging;` to `using InMemoryAws;` (and the same for the sub-namespaces).
+> - Rename `InMemoryAwsBus` to `InMemoryAwsCloud`. Its members are unchanged; only parameters that were named `bus` are now named `cloud`.
+> - The server's container image is now `ghcr.io/justeattakeaway/inmemory-aws`, and its release binaries are named `inmemory-aws-<rid>`.
 
 ### What's emulated
 
@@ -50,11 +58,11 @@ Creating a topic, a queue, subscribing the queue to the topic, and sending a mes
 
 ```csharp
 using Amazon.SimpleNotificationService.Model;
-using LocalSqsSnsMessaging;
+using InMemoryAws;
 
-var bus = new InMemoryAwsBus();
-using var sqs = bus.CreateSqsClient();
-using var sns = bus.CreateSnsClient();
+var aws = new InMemoryAwsCloud();
+using var sqs = aws.CreateSqsClient();
+using var sns = aws.CreateSnsClient();
 
 // Create a queue and a topic
 var queueUrl = (await sqs.CreateQueueAsync("test-queue")).QueueUrl;
@@ -83,14 +91,14 @@ Creating a queue, sending a message to the queue with a delay, advancing time, a
 
 ```csharp
 using Amazon.SQS.Model;
-using LocalSqsSnsMessaging;
+using InMemoryAws;
 using Microsoft.Extensions.Time.Testing;
 
 var timeProvider = new FakeTimeProvider(); // From `Microsoft.Extensions.TimeProvider.Testing` package
 
-var bus = new InMemoryAwsBus { TimeProvider = timeProvider};
-using var sqs = bus.CreateSqsClient();
-using var sns = bus.CreateSnsClient();
+var aws = new InMemoryAwsCloud { TimeProvider = timeProvider};
+using var sqs = aws.CreateSqsClient();
+using var sns = aws.CreateSnsClient();
 
 // Create a queue
 var queueUrl = (await sqs.CreateQueueAsync("test-queue")).QueueUrl;
@@ -119,25 +127,25 @@ All actions in this library that depend on delays or timeouts use the `TimeProvi
 
 ### Regions
 
-Queues, topics and event buses are regional, as on AWS. Each SDK request is served from the resources of the region it was signed for (or, unsigned, the region in its endpoint host, such as `sqs.eu-west-1.amazonaws.com`), and from the bus's `CurrentRegion` (default `us-east-1`) when it names none. The clients from `CreateSqsClient()`, `CreateSnsClient()` and `CreateEventBridgeClient()`, and the raw clients, use `CurrentRegion`.
+Queues, topics and event buses are regional, as on AWS. Each SDK request is served from the resources of the region it was signed for (or, unsigned, the region in its endpoint host, such as `sqs.eu-west-1.amazonaws.com`), and from the cloud's `CurrentRegion` (default `us-east-1`) when it names none. The clients from `CreateSqsClient()`, `CreateSnsClient()` and `CreateEventBridgeClient()`, and the raw clients, use `CurrentRegion`.
 
 So same-named resources in two regions are separate, ARNs and queue URLs name the region a resource was created in, and a client in one region can't see another region's resources. Deliveries that address a resource by ARN go to the region the ARN names: an SNS topic can deliver to a queue in another region, and an EventBridge rule can forward to an event bus in another region.
 
-If your application's SDK clients are configured for a region other than `us-east-1` and you wire them to the bus (for example with `CreateAwsHttpClientFactory`), set `CurrentRegion` to match, so your test's own clients see the same resources:
+If your application's SDK clients are configured for a region other than `us-east-1` and you wire them to the cloud (for example with `CreateAwsHttpClientFactory`), set `CurrentRegion` to match, so your test's own clients see the same resources:
 
 ```csharp
-var bus = new InMemoryAwsBus { CurrentRegion = "eu-west-1" };
+var aws = new InMemoryAwsCloud { CurrentRegion = "eu-west-1" };
 ```
 
-> Up to v1.0.x the bus served every request from `CurrentRegion`, whatever region its client was configured for. If your tests relied on that, set `CurrentRegion` to your application's region as above.
+> Up to v1.0.x, `InMemoryAwsBus` served every request from `CurrentRegion`, whatever region its client was configured for. If your tests relied on that, set `CurrentRegion` to your application's region as above.
 
 ### SQS callers, queue policies and SSE-KMS
 
 The library models no IAM, but SDK clients are answered according to how they sign their requests:
 
-- **`SenderId`.** A request signed with an access key is stamped with the bus's `CurrentUserId` (default `AIDAIOSFODNN7EXAMPLE`), as SQS stamps the sender's IAM user id. An access key that is a 12-digit account id signs as that account's root user, whose id is the account id. Unsigned requests, which is what `CreateSqsClient()` sends, keep the account id.
+- **`SenderId`.** A request signed with an access key is stamped with the cloud's `CurrentUserId` (default `AIDAIOSFODNN7EXAMPLE`), as SQS stamps the sender's IAM user id. An access key that is a 12-digit account id signs as that account's root user, whose id is the account id. Unsigned requests, which is what `CreateSqsClient()` sends, keep the account id.
 - **Queue policies.** Explicit `Deny` statements in a queue's `Policy` are enforced for SDK clients and refused with `AccessDenied`, as SQS does. `Allow` statements are not evaluated, so a queue with no policy, or one that only allows, behaves as before. A statement whose condition uses an operator the library does not evaluate is skipped. As on SQS, a bare account-id principal reads back as `arn:aws:iam::<account>:root`, and setting `Policy` to `""` removes it.
-- **SSE-KMS.** By default every KMS key is taken to exist. Set `KmsKeyAliases` on the bus to check aliases as SQS does: a key id, a key ARN or an AWS-managed alias (`alias/aws/sqs`) still sends normally, but any other alias must be listed, or `SendMessage` fails with `KMS.NotFoundException`. An unsigned request that the queue's policy only admits through a `"Principal": "*"` grant is anonymous, and is refused on an SSE-KMS queue.
+- **SSE-KMS.** By default every KMS key is taken to exist. Set `KmsKeyAliases` on the cloud to check aliases as SQS does: a key id, a key ARN or an AWS-managed alias (`alias/aws/sqs`) still sends normally, but any other alias must be listed, or `SendMessage` fails with `KMS.NotFoundException`. An unsigned request that the queue's policy only admits through a `"Principal": "*"` grant is anonymous, and is refused on an SSE-KMS queue.
 
 ### SNS filter policies
 
@@ -160,17 +168,17 @@ await sns.PublishAsync(topicArn, """{"order": {"status": "placed",  "total": 250
 
 ### SNS HTTP/HTTPS subscriptions
 
-Topics can fan out to `http` and `https` endpoints. The bus POSTs the same thing real SNS does: the `x-amz-sns-message-type`, `x-amz-sns-message-id`, `x-amz-sns-topic-arn` and `x-amz-sns-subscription-arn` headers, and either the JSON `Notification` envelope or, with `RawMessageDelivery`, the bare message plus an `x-amz-sns-rawdelivery: true` header.
+Topics can fan out to `http` and `https` endpoints. InMemoryAws POSTs the same thing real SNS does: the `x-amz-sns-message-type`, `x-amz-sns-message-id`, `x-amz-sns-topic-arn` and `x-amz-sns-subscription-arn` headers, and either the JSON `Notification` envelope or, with `RawMessageDelivery`, the bare message plus an `x-amz-sns-rawdelivery: true` header.
 
 The confirmation handshake works as it does on AWS. Subscribing POSTs a `SubscriptionConfirmation` message to the endpoint and the subscription stays pending (and receives nothing) until it's confirmed, either by the endpoint visiting the `SubscribeURL` in that message or by calling `ConfirmSubscription` with the `Token`. `Subscribe` returns `"pending confirmation"` instead of an ARN unless you set `ReturnSubscriptionArn`. In a test that fakes the endpoint, grab the token from the captured request and confirm it yourself; against the [standalone server](#standalone-server) the `SubscribeURL` points back at the server, so an endpoint that follows it will confirm itself.
 
-Delivery happens in the background. Endpoints that return `5xx` or `429`, or can't be reached, are retried according to the subscription's `DeliveryPolicy`, falling back to the topic's `DeliveryPolicy` attribute (in its `{"http": {"defaultHealthyRetryPolicy": ...}}` shape, with `disableSubscriptionOverrides` honoured), and finally to the AWS defaults of three retries twenty seconds apart. Any other error is a permanent failure. The delays use the bus's `TimeProvider`, so in tests you can advance a `FakeTimeProvider` instead of waiting.
+Delivery happens in the background. Endpoints that return `5xx` or `429`, or can't be reached, are retried according to the subscription's `DeliveryPolicy`, falling back to the topic's `DeliveryPolicy` attribute (in its `{"http": {"defaultHealthyRetryPolicy": ...}}` shape, with `disableSubscriptionOverrides` honoured), and finally to the AWS defaults of three retries twenty seconds apart. Any other error is a permanent failure. The delays use the cloud's `TimeProvider`, so in tests you can advance a `FakeTimeProvider` instead of waiting.
 
-Set `InMemoryAwsBus.HttpClient` to control where those requests go, for example an ASP.NET Core `TestServer` client or a fake `HttpMessageHandler`:
+Set `InMemoryAwsCloud.HttpClient` to control where those requests go, for example an ASP.NET Core `TestServer` client or a fake `HttpMessageHandler`:
 
 ```csharp
-var bus = new InMemoryAwsBus { HttpClient = webApplicationFactory.CreateClient() };
-using var sns = bus.CreateSnsClient();
+var aws = new InMemoryAwsCloud { HttpClient = webApplicationFactory.CreateClient() };
+using var sns = aws.CreateSnsClient();
 
 await sns.SubscribeAsync(new SubscribeRequest(topicArn, "https", "https://localhost/webhooks/orders")
 {
@@ -201,14 +209,14 @@ await sns.SubscribeAsync(new SubscribeRequest(topicArn, "https", "https://localh
 
 ### EventBridge
 
-The bus also emulates EventBridge, which is enough to test code built on [AWS.Messaging](https://github.com/awslabs/aws-dotnet-messaging) or anything else that publishes events and consumes them from SQS. Rules match on the full [event pattern grammar](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html); matched events are delivered to SQS queues, SNS topics and other event buses (other target types are accepted but skipped), with support for `Input`, `InputPath` and `InputTransformer`. A delivery that fails goes to the target's dead-letter queue, rules with a `ScheduleExpression` fire on the bus's `TimeProvider`, and archives record events that a replay can deliver again.
+InMemoryAws also emulates EventBridge, which is enough to test code built on [AWS.Messaging](https://github.com/awslabs/aws-dotnet-messaging) or anything else that publishes events and consumes them from SQS. Rules match on the full [event pattern grammar](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html); matched events are delivered to SQS queues, SNS topics and other event buses (other target types are accepted but skipped), with support for `Input`, `InputPath` and `InputTransformer`. A delivery that fails goes to the target's dead-letter queue, rules with a `ScheduleExpression` fire on the cloud's `TimeProvider`, and archives record events that a replay can deliver again.
 
 ```csharp
 using Amazon.EventBridge.Model;
 
-var bus = new InMemoryAwsBus();
-using var events = bus.CreateEventBridgeClient();
-using var sqs = bus.CreateSqsClient();
+var aws = new InMemoryAwsCloud();
+using var events = aws.CreateEventBridgeClient();
+using var sqs = aws.CreateSqsClient();
 
 var queueUrl = (await sqs.CreateQueueAsync("order-events")).QueueUrl;
 var queueArn = (await sqs.GetQueueAttributesAsync(queueUrl, ["QueueArn"])).Attributes["QueueArn"];
@@ -240,13 +248,13 @@ Console.WriteLine(message.Body); // the EventBridge envelope: {"version":"0","id
 
 ### DynamoDB
 
-`bus.CreateDynamoDbClient()` gives a real `AmazonDynamoDBClient`, so the SDK's higher-level APIs work on top of it too: `DynamoDBContext` (the object persistence model, including versioned saves and batch and transactional writes) and the Document Model (`Table`, `Document`).
+`aws.CreateDynamoDbClient()` gives a real `AmazonDynamoDBClient`, so the SDK's higher-level APIs work on top of it too: `DynamoDBContext` (the object persistence model, including versioned saves and batch and transactional writes) and the Document Model (`Table`, `Document`).
 
 ```csharp
 using Amazon.DynamoDBv2.DataModel;
 
-var bus = new InMemoryAwsBus();
-using var dynamoDb = bus.CreateDynamoDbClient();
+var aws = new InMemoryAwsCloud();
+using var dynamoDb = aws.CreateDynamoDbClient();
 await dynamoDb.CreateTableAsync(new CreateTableRequest
 {
     TableName = "Orders",
@@ -260,17 +268,17 @@ await context.SaveAsync(new Order { CustomerId = "c1", OrderNumber = 1 });
 var orders = await context.QueryAsync<Order>("c1").GetRemainingAsync();
 ```
 
-Requests are validated and answered as DynamoDB does, with its error codes and messages: numbers keep their 38 digits of precision, keys order by UTF-8 bytes, `Limit` applies before a filter, pages stop at 1 MB, and a failed transaction reports a `CancellationReasons` entry per item. Global tables (version 2019.11.21) are emulated across the bus's regions: UpdateTable's `ReplicaUpdates` creates or deletes a replica, a same-named table in another region, and every write reaches every replica at once. Global secondary indexes may be keyed on several attributes (up to four HASH and four RANGE attributes), queried with equality on every HASH attribute and on a prefix of the RANGE attributes. Tables are `ACTIVE` as soon as `CreateTable` returns, and every other change is done when its request returns; set `DynamoDbTransitionDelay` on the bus to have tables stay `CREATING`, `UPDATING` (a throughput change, an index build) and `DELETING`, and new or deleted global secondary indexes `CREATING` and `DELETING`, for a while on its `TimeProvider`, refusing meanwhile what DynamoDB refuses. Time to live deletes expired items on the bus's `TimeProvider` too, every `DynamoDbTimeToLiveSweepInterval` (one second by default), so a test with a `FakeTimeProvider` decides when items expire. Provisioned throughput is recorded and reported but not enforced: requests are never throttled.
+Requests are validated and answered as DynamoDB does, with its error codes and messages: numbers keep their 38 digits of precision, keys order by UTF-8 bytes, `Limit` applies before a filter, pages stop at 1 MB, and a failed transaction reports a `CancellationReasons` entry per item. Global tables (version 2019.11.21) are emulated across the cloud's regions: UpdateTable's `ReplicaUpdates` creates or deletes a replica, a same-named table in another region, and every write reaches every replica at once. Global secondary indexes may be keyed on several attributes (up to four HASH and four RANGE attributes), queried with equality on every HASH attribute and on a prefix of the RANGE attributes. Tables are `ACTIVE` as soon as `CreateTable` returns, and every other change is done when its request returns; set `DynamoDbTransitionDelay` on the cloud to have tables stay `CREATING`, `UPDATING` (a throughput change, an index build) and `DELETING`, and new or deleted global secondary indexes `CREATING` and `DELETING`, for a while on its `TimeProvider`, refusing meanwhile what DynamoDB refuses. Time to live deletes expired items on the cloud's `TimeProvider` too, every `DynamoDbTimeToLiveSweepInterval` (one second by default), so a test with a `FakeTimeProvider` decides when items expire. Provisioned throughput is recorded and reported but not enforced: requests are never throttled.
 
-Vector indexes (`VectorIndexes` on CreateTable, `VectorIndexUpdates` on UpdateTable) and `SearchVectors` are emulated, through the low-level client, `DynamoDBContext.SearchVectorsAsync` and the Document Model's `Table.SearchVectors`. Writes are checked against each index's dimensions, and a search scores every vector in the index (an exact search, where DynamoDB's is approximate) with the index's distance function in 32-bit float arithmetic, filtered by its `SearchConditionExpression` before the `TopK` are taken. A vector index added by UpdateTable is `ACTIVE` at once; set `DynamoDbVectorIndexCreationDelay` on the bus to have it stay `CREATING` (allocating, then backfilling) for a while on its `TimeProvider`, as on AWS, where it can't be searched.
+Vector indexes (`VectorIndexes` on CreateTable, `VectorIndexUpdates` on UpdateTable) and `SearchVectors` are emulated, through the low-level client, `DynamoDBContext.SearchVectorsAsync` and the Document Model's `Table.SearchVectors`. Writes are checked against each index's dimensions, and a search scores every vector in the index (an exact search, where DynamoDB's is approximate) with the index's distance function in 32-bit float arithmetic, filtered by its `SearchConditionExpression` before the `TopK` are taken. A vector index added by UpdateTable is `ACTIVE` at once; set `DynamoDbVectorIndexCreationDelay` on the cloud to have it stay `CREATING` (allocating, then backfilling) for a while on its `TimeProvider`, as on AWS, where it can't be searched.
 
-DynamoDB Streams is served too. In AWS SDK v4 its client is a separate package (`AWSSDK.DynamoDBStreams`), which this library doesn't depend on: route it to the bus with `bus.CreateAwsHttpClientFactory()`:
+DynamoDB Streams is served too. In AWS SDK v4 its client is a separate package (`AWSSDK.DynamoDBStreams`), which this library doesn't depend on: route it to the cloud with `aws.CreateAwsHttpClientFactory()`:
 
 ```csharp
 using var streams = new AmazonDynamoDBStreamsClient(new AnonymousAWSCredentials(), new AmazonDynamoDBStreamsConfig
 {
     ServiceURL = "https://streams.dynamodb.us-east-1.amazonaws.com",
-    HttpClientFactory = bus.CreateAwsHttpClientFactory(),
+    HttpClientFactory = aws.CreateAwsHttpClientFactory(),
 });
 ```
 
@@ -278,43 +286,43 @@ using var streams = new AmazonDynamoDBStreamsClient(new AnonymousAWSCredentials(
 
 When integration-testing an application that registers its own `Amazon.Runtime.HttpClientFactory`
 in DI (for example, one that delegates to `IHttpClientFactory` for all AWS SDK clients), use
-`InMemoryAwsHttpClientFactory` to intercept only the services backed by the in-memory bus and let
+`InMemoryAwsHttpClientFactory` to intercept only the services backed by the in-memory cloud and let
 the rest reach their real endpoints:
 
 ```csharp
-using LocalSqsSnsMessaging;
-using LocalSqsSnsMessaging.Http;
+using InMemoryAws;
+using InMemoryAws.Http;
 
-var bus = new InMemoryAwsBus();
+var aws = new InMemoryAwsCloud();
 
 // In your test's DI setup, replace the application's HttpClientFactory.
 // The fallback is a one-liner — adapt it to whatever pipeline the app uses.
 services.AddSingleton<Amazon.Runtime.HttpClientFactory>(sp =>
-    bus.CreateAwsHttpClientFactory(cfg =>
+    aws.CreateAwsHttpClientFactory(cfg =>
         sp.GetRequiredService<IHttpClientFactory>().CreateClient(cfg.GetType().Name)));
 ```
 
 For full control you can also construct the handler directly:
 
 ```csharp
-var handler = new InMemoryAwsHttpMessageHandler(bus, AwsServiceType.Sqs);
+var handler = new InMemoryAwsHttpMessageHandler(aws, AwsServiceType.Sqs);
 var client = new HttpClient(handler);
 ```
 
 ## Standalone server
 
-If you'd rather run something out of process, for example for a non-.NET service or to poke at queues by hand, the same bus is available as a small HTTP server that speaks the SQS, SNS, EventBridge and DynamoDB wire protocols. Point any AWS SDK at it with `ServiceURL = "http://localhost:5050"` and fake credentials.
+If you'd rather run something out of process, for example for a non-.NET service or to poke at queues by hand, the same cloud is available as a small HTTP server that speaks the SQS, SNS, EventBridge and DynamoDB wire protocols. Point any AWS SDK at it with `ServiceURL = "http://localhost:5050"` and fake credentials.
 
 Run it with Docker:
 
 ```bash
-docker run --rm -p 5050:5050 ghcr.io/justeattakeaway/local-sqs-sns
+docker run --rm -p 5050:5050 ghcr.io/justeattakeaway/inmemory-aws
 ```
 
-or grab a native binary for your platform from the [GitHub releases](https://github.com/justeattakeaway/LocalSqsSnsMessaging/releases) (`local-sqs-sns-<rid>.tar.gz` / `.zip`), or run it from source:
+or grab a native binary for your platform from the [GitHub releases](https://github.com/justeattakeaway/InMemoryAws/releases) (`inmemory-aws-<rid>.tar.gz` / `.zip`), or run it from source:
 
 ```bash
-dotnet run --project src/LocalSqsSnsMessaging.Server -- --port 5050 --region us-east-1 --account-id 000000000000
+dotnet run --project src/InMemoryAws.Server -- --port 5050 --region us-east-1 --account-id 000000000000
 ```
 
 | Option | Default | Description |
@@ -323,7 +331,7 @@ dotnet run --project src/LocalSqsSnsMessaging.Server -- --port 5050 --region us-
 | `--region` | `us-east-1` | Region for requests that don't name one. A request signed for another region is served from that region's resources. |
 | `--account-id` | `000000000000` | The default account. |
 
-The server is multi-account: if the access key ID in a request's `Authorization` header is a 12-digit number, that account gets its own isolated bus, created on first use. This mirrors the LocalStack convention and lets parallel test runs share one server without seeing each other's queues or tables.
+The server is multi-account: if the access key ID in a request's `Authorization` header is a 12-digit number, that account gets its own isolated cloud, created on first use. This mirrors the LocalStack convention and lets parallel test runs share one server without seeing each other's queues or tables.
 
 ### Dashboard
 

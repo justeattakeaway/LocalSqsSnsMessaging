@@ -1,0 +1,180 @@
+using InMemoryAws.Server;
+using InMemoryAws.Sqs.Model;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Shouldly;
+
+namespace InMemoryAws.Tests.Server;
+
+/// <summary>
+/// Covers the dashboard's read and delete of a queue's messages, waiting or in flight, which go
+/// through the queue's own <see cref="SqsQueueResource.Peek"/> and
+/// <see cref="SqsQueueResource.RemoveMessage"/>.
+/// </summary>
+public class DashboardApiTests
+{
+    private const string AccountId = "000000000000";
+
+    private static (CloudRegistry Registry, InternalSqsClient Sqs, string QueueUrl) CreateQueue(string queueName)
+    {
+        var registry = new CloudRegistry(AccountId, "us-east-1", new Uri("http://localhost:4566"));
+        var sqs = new InternalSqsClient(registry.DefaultCloud);
+        var queueUrl = sqs.CreateQueueAsync(new CreateQueueRequest { QueueName = queueName })
+            .GetAwaiter().GetResult().QueueUrl!;
+        return (registry, sqs, queueUrl);
+    }
+
+    private static async Task<string> SendAsync(InternalSqsClient sqs, string queueUrl, string body)
+    {
+        var response = await sqs.SendMessageAsync(new SendMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MessageBody = body
+        });
+        return response.MessageId!;
+    }
+
+    [Test]
+    public async Task GetQueueMessages_ReturnsWaitingMessagesWithoutConsumingThem()
+    {
+        var (registry, sqs, queueUrl) = CreateQueue("dashboard-queue");
+        await SendAsync(sqs, queueUrl, "first");
+        await SendAsync(sqs, queueUrl, "second");
+
+        var result = DashboardApi.GetQueueMessages(registry, AccountId, null, "dashboard-queue")
+            .ShouldBeOfType<JsonHttpResult<DashboardApi.QueueMessages>>();
+
+        result.Value!.PendingMessages.Select(m => m.Body).ShouldBe(["first", "second"]);
+        result.Value.InFlightMessages.ShouldBeEmpty();
+
+        // Looking must not consume: the messages are still there to be received.
+        var received = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 10
+        });
+        received.Messages!.Select(m => m.Body).ShouldBe(["first", "second"]);
+
+        // ...and once received they move from waiting to in flight.
+        var afterReceive = DashboardApi.GetQueueMessages(registry, AccountId, null, "dashboard-queue")
+            .ShouldBeOfType<JsonHttpResult<DashboardApi.QueueMessages>>();
+        afterReceive.Value!.PendingMessages.ShouldBeEmpty();
+        afterReceive.Value.InFlightMessages.Select(m => m.Body).ShouldBe(["first", "second"], ignoreOrder: true);
+    }
+
+    [Test]
+    public async Task DeleteMessage_RemovesOnlyThatMessageAndLeavesTheRestInOrder()
+    {
+        var (registry, sqs, queueUrl) = CreateQueue("dashboard-delete-queue");
+        await SendAsync(sqs, queueUrl, "first");
+        var second = await SendAsync(sqs, queueUrl, "second");
+        await SendAsync(sqs, queueUrl, "third");
+
+        DashboardApi.DeleteMessage(registry, AccountId, null, "dashboard-delete-queue", second)
+            .ShouldBeOfType<NoContent>();
+
+        var received = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 10
+        });
+        received.Messages!.Select(m => m.Body).ShouldBe(["first", "third"]);
+    }
+
+    [Test]
+    public async Task DeleteMessage_UnknownMessageId_ReturnsNotFound()
+    {
+        var (registry, sqs, queueUrl) = CreateQueue("dashboard-missing-queue");
+        await SendAsync(sqs, queueUrl, "first");
+
+        DashboardApi.DeleteMessage(registry, AccountId, null, "dashboard-missing-queue", "no-such-message-id")
+            .ShouldBeOfType<NotFound<string>>();
+
+        var received = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = queueUrl,
+            MaxNumberOfMessages = 10
+        });
+        received.Messages!.ShouldHaveSingleItem().Body.ShouldBe("first");
+    }
+
+    [Test]
+    public async Task GetState_ListsTheViewedRegionEvenWhenItIsEmpty()
+    {
+        var registry = new CloudRegistry(AccountId, "us-east-1", new Uri("http://localhost:4566"));
+        var euSqs = new InternalSqsClient(registry.DefaultCloud, "eu-west-1");
+        var queueUrl = (await euSqs.CreateQueueAsync(new CreateQueueRequest { QueueName = "dashboard-eu-queue" })).QueueUrl!;
+        await euSqs.DeleteQueueAsync(new DeleteQueueRequest { QueueUrl = queueUrl });
+
+        // eu-west-1 holds nothing now, but the dashboard is still viewing it: the region selector
+        // must keep offering it, or the viewer can no longer switch away from it.
+        var state = DashboardApi.GetState(registry, AccountId, "eu-west-1")
+            .ShouldBeOfType<JsonHttpResult<DashboardApi.CloudState>>().Value!;
+        state.CurrentRegion.ShouldBe("eu-west-1");
+        state.Regions.ShouldBe(["eu-west-1", "us-east-1"]);
+
+        var home = DashboardApi.GetState(registry, AccountId, null)
+            .ShouldBeOfType<JsonHttpResult<DashboardApi.CloudState>>().Value!;
+        home.Regions.ShouldBe(["us-east-1"]);
+    }
+
+    private static (CloudRegistry Registry, InternalSqsClient Sqs, string QueueUrl) CreateFifoQueue(string queueName)
+    {
+        var registry = new CloudRegistry(AccountId, "us-east-1", new Uri("http://localhost:4566"));
+        var sqs = new InternalSqsClient(registry.DefaultCloud);
+        var queueUrl = sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = queueName,
+            Attributes = new() { ["FifoQueue"] = "true", ["ContentBasedDeduplication"] = "true" }
+        }).GetAwaiter().GetResult().QueueUrl!;
+        return (registry, sqs, queueUrl);
+    }
+
+    [Test]
+    public async Task DeleteMessage_OfAnInFlightFifoMessage_UnlocksItsMessageGroup()
+    {
+        var (registry, sqs, queueUrl) = CreateFifoQueue("dashboard-fifo.fifo");
+        foreach (var body in new[] { "first", "second" })
+        {
+            await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = body, MessageGroupId = "g" });
+        }
+
+        var first = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = queueUrl })).Messages!.ShouldHaveSingleItem();
+        first.Body.ShouldBe("first");
+
+        DashboardApi.DeleteMessage(registry, AccountId, null, "dashboard-fifo.fifo", first.MessageId!)
+            .ShouldBeOfType<NoContent>();
+
+        // The group's in-flight message is gone, so the group delivers its next one.
+        var next = await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = queueUrl });
+        next.Messages!.ShouldHaveSingleItem().Body.ShouldBe("second");
+    }
+
+    [Test]
+    public async Task DeleteMessage_OfAnInFlightMessage_RetiresItsReceiptHandle()
+    {
+        var (registry, sqs, queueUrl) = CreateQueue("dashboard-handle-queue");
+        await SendAsync(sqs, queueUrl, "first");
+        var received = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = queueUrl })).Messages!.ShouldHaveSingleItem();
+
+        DashboardApi.DeleteMessage(registry, AccountId, null, "dashboard-handle-queue", received.MessageId!)
+            .ShouldBeOfType<NoContent>();
+
+        // As after DeleteMessage: the handle's message no longer exists, so its visibility cannot change.
+        var error = await Should.ThrowAsync<InternalInvalidParameterValueException>(() => sqs.ChangeMessageVisibilityAsync(
+            new ChangeMessageVisibilityRequest { QueueUrl = queueUrl, ReceiptHandle = received.ReceiptHandle, VisibilityTimeout = 10 }));
+        error.Message.ShouldContain("Message does not exist or is not available for visibility timeout change.");
+    }
+
+    [Test]
+    public async Task GetState_CountsTheMessagesWaitingInFifoGroups()
+    {
+        var (registry, sqs, queueUrl) = CreateFifoQueue("dashboard-count.fifo");
+        await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "a", MessageGroupId = "g1" });
+        await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = queueUrl, MessageBody = "b", MessageGroupId = "g2" });
+
+        var state = DashboardApi.GetState(registry, AccountId, null)
+            .ShouldBeOfType<JsonHttpResult<DashboardApi.CloudState>>().Value!;
+        state.Queues.ShouldHaveSingleItem().MessagesAvailable.ShouldBe(2);
+    }
+}

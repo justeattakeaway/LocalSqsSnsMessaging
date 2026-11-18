@@ -5,7 +5,7 @@
     <EnableDynamicInstrumentation>true</EnableDynamicInstrumentation>
     <ModulePaths>
       <Include>
-        <ModulePath>.*LocalSqsSnsMessaging.*\.dll$</ModulePath>
+        <ModulePath>.*InMemoryAws.*\.dll$</ModulePath>
       </Include>
       <Exclude>
         <ModulePath>.*Tests\.dll$</ModulePath>

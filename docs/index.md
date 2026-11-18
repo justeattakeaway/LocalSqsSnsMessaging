@@ -1,3 +1,3 @@
-# LocalSqsSnsMessaging
+# InMemoryAws
 
-API documentation for the current version of LocalSqsSnsMessaging can be found [here](api/index.md).
+API documentation for the current version of InMemoryAws can be found [here](api/index.md).

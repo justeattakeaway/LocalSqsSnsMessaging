@@ -22,39 +22,39 @@ Console.WriteLine("Generating operation handlers from AWS service models...");
 GenerateInternalTypes(
     Path.Combine(serviceModelsDir, "sqs-2012-11-05.normal.json"),
     "Sqs",
-    "LocalSqsSnsMessaging.Sqs.Model",
+    "InMemoryAws.Sqs.Model",
     modelsDir);
 
 GenerateInternalTypes(
     Path.Combine(serviceModelsDir, "sns-2010-03-31.normal.json"),
     "Sns",
-    "LocalSqsSnsMessaging.Sns.Model",
+    "InMemoryAws.Sns.Model",
     modelsDir);
 
 GenerateInternalTypes(
     Path.Combine(serviceModelsDir, "eventbridge-2015-10-07.normal.json"),
     "EventBridge",
-    "LocalSqsSnsMessaging.EventBridge.Model",
+    "InMemoryAws.EventBridge.Model",
     modelsDir);
 
 // Generate SQS handler (JSON protocol)
 GenerateJsonProtocolHandler(
     Path.Combine(serviceModelsDir, "sqs-2012-11-05.normal.json"),
     "Sqs",
-    "LocalSqsSnsMessaging.Sqs.Model",
+    "InMemoryAws.Sqs.Model",
     outputDir);
 
 // Generate SQS's second wire protocol: SQS is awsQueryCompatible and still serves AWS Query
 GenerateSqsQueryProtocol(
     Path.Combine(serviceModelsDir, "sqs-2012-11-05.normal.json"),
-    "LocalSqsSnsMessaging.Sqs.Model",
+    "InMemoryAws.Sqs.Model",
     outputDir);
 
 // Generate SNS handler (Query protocol)
 GenerateQueryProtocolHandler(
     Path.Combine(serviceModelsDir, "sns-2010-03-31.normal.json"),
     "Sns",
-    "LocalSqsSnsMessaging.Sns.Model",
+    "InMemoryAws.Sns.Model",
     outputDir);
 
 // Generate EventBridge handler (JSON protocol, json 1.1). EventBridge answers an empty list as
@@ -62,7 +62,7 @@ GenerateQueryProtocolHandler(
 GenerateJsonProtocolHandler(
     Path.Combine(serviceModelsDir, "eventbridge-2015-10-07.normal.json"),
     "EventBridge",
-    "LocalSqsSnsMessaging.EventBridge.Model",
+    "InMemoryAws.EventBridge.Model",
     outputDir,
     writeEmptyResponseLists: true);
 
@@ -72,21 +72,21 @@ GenerateJsonProtocolHandler(
 var attributeValue = new Dictionary<string, ShapeJsonCodeGenerator.CustomShape>(StringComparer.Ordinal)
 {
     ["AttributeValue"] = new(
-        "LocalSqsSnsMessaging.DynamoDb.DynamoValue",
-        "LocalSqsSnsMessaging.DynamoDb.DynamoValueJson.Read",
-        "LocalSqsSnsMessaging.DynamoDb.DynamoValueJson.Write",
-        "LocalSqsSnsMessaging.DynamoDb.DynamoValueJson.Render"),
+        "InMemoryAws.DynamoDb.DynamoValue",
+        "InMemoryAws.DynamoDb.DynamoValueJson.Read",
+        "InMemoryAws.DynamoDb.DynamoValueJson.Write",
+        "InMemoryAws.DynamoDb.DynamoValueJson.Render"),
 };
 
 GenerateShapeJsonService(
     Path.Combine(serviceModelsDir, "dynamodb-2012-08-10.normal.json"),
     "DynamoDb",
-    "LocalSqsSnsMessaging.DynamoDb.Model",
-    "LocalSqsSnsMessaging.DynamoDb.InternalDynamoDbClient",
+    "InMemoryAws.DynamoDb.Model",
+    "InMemoryAws.DynamoDb.InternalDynamoDbClient",
     modelsDir,
     outputDir,
     attributeValue,
-    "LocalSqsSnsMessaging.DynamoDb.DynamoDbRequestChecks",
+    "InMemoryAws.DynamoDb.DynamoDbRequestChecks",
     // DynamoDB's own write requests carry a workload profile the model does not declare.
     new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -97,8 +97,8 @@ GenerateShapeJsonService(
 GenerateShapeJsonService(
     Path.Combine(serviceModelsDir, "streams.dynamodb-2012-08-10.normal.json"),
     "DynamoDbStreams",
-    "LocalSqsSnsMessaging.DynamoDbStreams.Model",
-    "LocalSqsSnsMessaging.DynamoDb.InternalDynamoDbStreamsClient",
+    "InMemoryAws.DynamoDbStreams.Model",
+    "InMemoryAws.DynamoDb.InternalDynamoDbStreamsClient",
     modelsDir,
     outputDir,
     attributeValue);
@@ -171,10 +171,10 @@ static void GenerateJsonDispatcher(string serviceName, string modelNamespace, Js
     code.AppendLine("#nullable enable");
     code.AppendLine();
     code.AppendLine("using System.Buffers;");
-    code.AppendLine("using LocalSqsSnsMessaging.Http.Handlers;");
+    code.AppendLine("using InMemoryAws.Http.Handlers;");
     code.AppendLine($"using {modelNamespace};");
     code.AppendLine();
-    code.AppendLine("namespace LocalSqsSnsMessaging.Http;");
+    code.AppendLine("namespace InMemoryAws.Http;");
     code.AppendLine();
     code.AppendLine($"internal static partial class {serviceName}WireProtocol");
     code.AppendLine("{");
@@ -269,10 +269,10 @@ static void GenerateQueryDispatcher(string serviceName, string modelNamespace, J
     code.AppendLine("#nullable enable");
     code.AppendLine();
     code.AppendLine("using System.Buffers;");
-    code.AppendLine("using LocalSqsSnsMessaging.Http.Handlers;");
+    code.AppendLine("using InMemoryAws.Http.Handlers;");
     code.AppendLine($"using {modelNamespace};");
     code.AppendLine();
-    code.AppendLine("namespace LocalSqsSnsMessaging.Http;");
+    code.AppendLine("namespace InMemoryAws.Http;");
     code.AppendLine();
     code.AppendLine($"internal static partial class {serviceName}WireProtocol");
     code.AppendLine("{");

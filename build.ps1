@@ -114,18 +114,18 @@ function DotNetPack {
 }
 
 $testProjects = @(
-    (Join-Path $solutionPath "tests" "LocalSqsSnsMessaging.Tests" "LocalSqsSnsMessaging.Tests.csproj")
+    (Join-Path $solutionPath "tests" "InMemoryAws.Tests" "InMemoryAws.Tests.csproj")
 )
 
 $packageProjects = @(
-    (Join-Path $solutionPath "src" "LocalSqsSnsMessaging" "LocalSqsSnsMessaging.csproj"),
-    (Join-Path $solutionPath "src" "LocalSqsSnsMessaging.AWSSDKv3" "LocalSqsSnsMessaging.AWSSDKv3.csproj"),
-    (Join-Path $solutionPath "src" "LocalSqsSnsMessaging.Server" "LocalSqsSnsMessaging.Server.csproj")
+    (Join-Path $solutionPath "src" "InMemoryAws" "InMemoryAws.csproj"),
+    (Join-Path $solutionPath "src" "InMemoryAws.AWSSDKv3" "InMemoryAws.AWSSDKv3.csproj"),
+    (Join-Path $solutionPath "src" "InMemoryAws.Server" "InMemoryAws.Server.csproj")
 )
 
 # Build dashboard
 Write-Host "Building dashboard..." -ForegroundColor Green
-$dashboardDir = Join-Path $solutionPath "src" "LocalSqsSnsMessaging.Server" "dashboard"
+$dashboardDir = Join-Path $solutionPath "src" "InMemoryAws.Server" "dashboard"
 
 if ($null -eq (Get-Command "bun" -ErrorAction SilentlyContinue)) {
     throw "Bun is required to build the dashboard. Install from https://bun.sh"

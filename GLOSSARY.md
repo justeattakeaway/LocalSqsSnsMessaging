@@ -1,6 +1,12 @@
-# LocalSqsSnsMessaging
+# InMemoryAws
 
 An in-memory emulator of AWS SQS, SNS, EventBridge and DynamoDB, answering requests and delivering messages as those services do.
+
+## The emulator
+
+**Cloud**:
+One simulated AWS account across every region (`InMemoryAwsCloud`): all of its resources (queues, topics, event buses, tables) and the settings they run on (the clock, the account and current region, the `HttpClient` that outbound calls use). Each SDK client a test creates talks to one cloud; the server keeps one per account.
+_Avoid_: bus (an EventBridge event bus is a resource inside a cloud), store, context
 
 ## Requests
 

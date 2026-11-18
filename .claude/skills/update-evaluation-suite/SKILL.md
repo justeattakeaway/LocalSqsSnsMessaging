@@ -5,7 +5,7 @@ description: Brings the C# ports of AWS's emulator evaluation suite up to date w
 
 # Update the evaluation suite
 
-The ports live in `tests/LocalSqsSnsMessaging.Tests/AwsEvaluationSuite/`. Its `README.md` is the reference: the translation conventions (top), virtual time, known gaps, and "Keeping up with upstream" (how `UPSTREAM.md` and the tool work). Read those sections before porting anything.
+The ports live in `tests/InMemoryAws.Tests/AwsEvaluationSuite/`. Its `README.md` is the reference: the translation conventions (top), virtual time, known gaps, and "Keeping up with upstream" (how `UPSTREAM.md` and the tool work). Read those sections before porting anything.
 
 ## 1. Move the pin
 
@@ -30,12 +30,12 @@ Done when `dotnet run --project tools/SyncEvaluationSuite` reports no to-do rows
 Build, then run each new and changed port, gaps included:
 
 ```bash
-dotnet build tests/LocalSqsSnsMessaging.Tests -c Release
-LOCALSQSSNS_RUN_KNOWN_GAPS=1 dotnet run --project tests/LocalSqsSnsMessaging.Tests -c Release --no-build -- \
+dotnet build tests/InMemoryAws.Tests -c Release
+INMEMORYAWS_RUN_KNOWN_GAPS=1 dotnet run --project tests/InMemoryAws.Tests -c Release --no-build -- \
   --treenode-filter "/*/*/<ClassName>/*" --timeout 2m
 ```
 
-A failure is a library bug to fix, or a known gap: `[KnownFidelityGap(FidelityGap.X, "why")]` with the closest root cause (add a `FidelityGap` value and its README entry only for a new root cause). A previously skipped test that now passes loses its attribute. Done when the whole `AwsEvaluationSuite` filter passes without `LOCALSQSSNS_RUN_KNOWN_GAPS`.
+A failure is a library bug to fix, or a known gap: `[KnownFidelityGap(FidelityGap.X, "why")]` with the closest root cause (add a `FidelityGap` value and its README entry only for a new root cause). A previously skipped test that now passes loses its attribute. Done when the whole `AwsEvaluationSuite` filter passes without `INMEMORYAWS_RUN_KNOWN_GAPS`.
 
 ## 4. Record it
 

@@ -2,7 +2,7 @@ export default {
   iconLinks: [
     {
       icon: 'github',
-      href: 'https://github.com/justeattakeaway/LocalSqsSnsMessaging',
+      href: 'https://github.com/justeattakeaway/InMemoryAws',
       title: 'GitHub'
     }
   ]

@@ -40,9 +40,9 @@ internal sealed class QueryCodeGenerator
         code.AppendLine($"using {_modelNamespace};");
         // Disambiguate types that conflict with ASP.NET Core (e.g., Endpoint vs Microsoft.AspNetCore.Http.Endpoint)
         code.AppendLine($"using Endpoint = {_modelNamespace}.Endpoint;");
-        code.AppendLine("using LocalSqsSnsMessaging.Http;");
+        code.AppendLine("using InMemoryAws.Http;");
         code.AppendLine();
-        code.AppendLine("namespace LocalSqsSnsMessaging.Http.Handlers;");
+        code.AppendLine("namespace InMemoryAws.Http.Handlers;");
         code.AppendLine();
         code.AppendLine("/// <summary>");
         code.AppendLine($"/// Generated Query protocol serializers for {_serviceName} operations.");

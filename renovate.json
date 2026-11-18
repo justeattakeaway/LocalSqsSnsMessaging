@@ -18,7 +18,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^tests/LocalSqsSnsMessaging\\.Tests\\.Verification/FlociAspireExtensions\\.cs$/"
+        "/^tests/InMemoryAws\\.Tests\\.Verification/FlociAspireExtensions\\.cs$/"
       ],
       "matchStrings": [
         "//\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\r?\\n\\s*private const string FlociImageTag = \"(?<currentValue>[^\"]+)\";"
@@ -34,7 +34,7 @@
         "AWSSDK.DynamoDBv2"
       ],
       "matchFileNames": [
-        "src/LocalSqsSnsMessaging.AWSSDKv3/**"
+        "src/InMemoryAws.AWSSDKv3/**"
       ],
       "enabled": false
     },
