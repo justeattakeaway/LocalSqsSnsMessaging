@@ -12,10 +12,11 @@ namespace InMemoryAws.Http;
 /// HTTP message handler that intercepts AWS SDK HTTP requests and routes them to in-memory implementations.
 /// </summary>
 /// <remarks>
-/// Use this handler when you need to plug the in-memory cloud into an existing HTTP pipeline
-/// (for example, a custom <see cref="Amazon.Runtime.HttpClientFactory"/>). For most testing
-/// scenarios, prefer the <c>CreateSqsClient</c>/<c>CreateSnsClient</c> extensions on
-/// <see cref="InMemoryAwsCloud"/>, or use <see cref="InMemoryAwsHttpClientFactory"/>.
+/// One handler speaks one service's protocol. Projects that reference the AWS SDK get
+/// <c>CreateSqsClient()</c> and the other <c>Create...Client()</c> methods, and
+/// <c>InMemoryAwsSdkHttpClientFactory</c>, which use these handlers; to wire a client by hand, return an
+/// <see cref="HttpClient"/> over this handler from an AWS SDK <c>Amazon.Runtime.HttpClientFactory</c>
+/// (see <see cref="AwsServiceEndpoints"/>).
 /// </remarks>
 public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
 {

@@ -51,7 +51,7 @@ public sealed class DynamoDbRegressionTests
             ServiceURL = $"https://streams.dynamodb.{cloud.CurrentRegion}.amazonaws.com",
             AuthenticationRegion = cloud.CurrentRegion,
             MaxErrorRetry = 0,
-            HttpClientFactory = cloud.CreateAwsHttpClientFactory(),
+            HttpClientFactory = cloud.CreateAwsSdkHttpClientFactory(),
         });
 
     private static async Task<List<Streams.Record>> ReadAllAsync(AmazonDynamoDBStreamsClient streams, string streamArn)

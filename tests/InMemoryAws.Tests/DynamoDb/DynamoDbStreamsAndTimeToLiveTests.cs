@@ -11,7 +11,7 @@ namespace InMemoryAws.Tests.DynamoDb;
 
 /// <summary>
 /// DynamoDB Streams and time to live. In AWS SDK v4 the Streams client is its own package, which
-/// the library doesn't reference: it reaches the cloud through <c>CreateAwsHttpClientFactory()</c>.
+/// the library doesn't reference: it reaches the cloud through <c>CreateAwsSdkHttpClientFactory()</c>.
 /// Time to live runs on the cloud's <see cref="TimeProvider"/>.
 /// </summary>
 public sealed class DynamoDbStreamsAndTimeToLiveTests
@@ -38,7 +38,7 @@ public sealed class DynamoDbStreamsAndTimeToLiveTests
             ServiceURL = $"https://streams.dynamodb.{cloud.CurrentRegion}.amazonaws.com",
             AuthenticationRegion = cloud.CurrentRegion,
             MaxErrorRetry = 0,
-            HttpClientFactory = cloud.CreateAwsHttpClientFactory(),
+            HttpClientFactory = cloud.CreateAwsSdkHttpClientFactory(),
         });
 
     private static async Task<List<Streams.Record>> ReadAllAsync(AmazonDynamoDBStreamsClient streams, string streamArn)
@@ -113,7 +113,7 @@ public sealed class DynamoDbStreamsAndTimeToLiveTests
             ServiceURL = "https://dynamodb.us-east-1.amazonaws.com",
             AuthenticationRegion = "us-east-1",
             MaxErrorRetry = 0,
-            HttpClientFactory = cloud.CreateAwsHttpClientFactory(),
+            HttpClientFactory = cloud.CreateAwsSdkHttpClientFactory(),
         });
 
         (await client.ListTablesAsync(new ListTablesRequest())).TableNames.ShouldBe(["events"]);

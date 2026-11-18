@@ -25,7 +25,7 @@ public sealed class DynamoDbClientTests
     public async Task ListTables_ReturnsCreatedTables()
     {
         var cloud = new InMemoryAwsCloud();
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
 
         var tables = await client.ListTablesAsync(new ListTablesRequest());
 
@@ -36,7 +36,7 @@ public sealed class DynamoDbClientTests
     public async Task PutThenGet_RoundTripsEveryAttributeType()
     {
         var cloud = new InMemoryAwsCloud();
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
         var item = new Dictionary<string, AttributeValue>
         {
             ["pk"] = new("a"),
@@ -69,7 +69,7 @@ public sealed class DynamoDbClientTests
     public async Task DeeplyNestedValue_RoundTrips()
     {
         var cloud = new InMemoryAwsCloud();
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
         var value = new AttributeValue("leaf");
         for (var i = 0; i < 30; i++)
         {
@@ -90,7 +90,7 @@ public sealed class DynamoDbClientTests
     public async Task UpdateItem_AppliesExpressions()
     {
         var cloud = new InMemoryAwsCloud();
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
         var key = new Dictionary<string, AttributeValue> { ["pk"] = new("a"), ["sk"] = new() { N = "1" } };
 
         var response = await client.UpdateItemAsync(new UpdateItemRequest
@@ -119,7 +119,7 @@ public sealed class DynamoDbClientTests
     public async Task ConditionalPut_FailsWithConditionalCheckFailed()
     {
         var cloud = new InMemoryAwsCloud();
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
         var item = new Dictionary<string, AttributeValue> { ["pk"] = new("a"), ["sk"] = new() { N = "1" } };
         await client.PutItemAsync("orders", item);
 
@@ -137,7 +137,7 @@ public sealed class DynamoDbClientTests
     public async Task Query_PagesWithLimitAndRespectsSortOrder()
     {
         var cloud = new InMemoryAwsCloud();
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
         for (var i = 1; i <= 5; i++)
         {
             await client.PutItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("a"), ["sk"] = new() { N = i.ToString(CultureInfo.InvariantCulture) } });
@@ -160,7 +160,7 @@ public sealed class DynamoDbClientTests
     public async Task UnknownTable_IsResourceNotFound()
     {
         var cloud = new InMemoryAwsCloud();
-        var client = cloud.CreateDynamoDbClient();
+        using var client = cloud.CreateDynamoDbClient();
 
         await Should.ThrowAsync<ResourceNotFoundException>(() => client.DescribeTableAsync("missing"));
     }
@@ -169,7 +169,7 @@ public sealed class DynamoDbClientTests
     public async Task ValidationError_UsesTheEnvelope()
     {
         var cloud = new InMemoryAwsCloud();
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
 
         var error = await Should.ThrowAsync<AmazonDynamoDBException>(() => client.PutItemAsync(new PutItemRequest
         {
@@ -187,7 +187,7 @@ public sealed class DynamoDbClientTests
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var cloud = new InMemoryAwsCloud { TimeProvider = time, DynamoDbTransitionDelay = TimeSpan.FromSeconds(5) };
-        var client = cloud.CreateDynamoDbClient();
+        using var client = cloud.CreateDynamoDbClient();
 
         var created = await client.CreateTableAsync(new CreateTableRequest
         {
@@ -212,7 +212,7 @@ public sealed class DynamoDbClientTests
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var cloud = new InMemoryAwsCloud { TimeProvider = time, DynamoDbTransitionDelay = TimeSpan.FromSeconds(5) };
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
         time.Advance(TimeSpan.FromSeconds(5));
 
         (await client.DeleteTableAsync("orders")).TableDescription.TableStatus.ShouldBe(TableStatus.DELETING);
@@ -231,7 +231,7 @@ public sealed class DynamoDbClientTests
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var cloud = new InMemoryAwsCloud { TimeProvider = time, DynamoDbTransitionDelay = TimeSpan.FromSeconds(5) };
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
         time.Advance(TimeSpan.FromSeconds(5));
 
         var updated = await client.UpdateTableAsync(new UpdateTableRequest
@@ -260,7 +260,7 @@ public sealed class DynamoDbClientTests
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var cloud = new InMemoryAwsCloud { TimeProvider = time, DynamoDbTransitionDelay = TimeSpan.FromSeconds(5) };
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
         time.Advance(TimeSpan.FromSeconds(5));
         await client.UpdateTableAsync(new UpdateTableRequest
         {
@@ -286,7 +286,7 @@ public sealed class DynamoDbClientTests
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var cloud = new InMemoryAwsCloud { TimeProvider = time, DynamoDbTransitionDelay = TimeSpan.FromSeconds(5) };
-        var client = await CreateTableAsync(cloud);
+        using var client = await CreateTableAsync(cloud);
         time.Advance(TimeSpan.FromSeconds(5));
 
         UpdateTableRequest AddIndex(string name) => new()
@@ -327,7 +327,7 @@ public sealed class DynamoDbClientTests
     public async Task MultiAttributeIndexKey_QueriesInSchemaOrderAndPagesByEveryKeyAttribute()
     {
         var cloud = new InMemoryAwsCloud();
-        var client = cloud.CreateDynamoDbClient();
+        using var client = cloud.CreateDynamoDbClient();
         await client.CreateTableAsync(new CreateTableRequest
         {
             TableName = "events",
@@ -400,13 +400,13 @@ public sealed class DynamoDbClientTests
     public async Task ReplicaUpdates_MakeAGlobalTableWhoseWritesReachEveryRegion()
     {
         var cloud = new InMemoryAwsCloud { CurrentRegion = "us-east-1" };
-        var east = await CreateTableAsync(cloud);
+        using var east = await CreateTableAsync(cloud);
         using var west = new AmazonDynamoDBClient(
             new Amazon.Runtime.BasicAWSCredentials("test", "test"),
             new AmazonDynamoDBConfig
             {
                 RegionEndpoint = Amazon.RegionEndpoint.USWest2,
-                HttpClientFactory = new InMemoryAws.Http.InMemoryAwsHttpClientFactory(cloud),
+                HttpClientFactory = new InMemoryAwsSdkHttpClientFactory(cloud),
             });
         await east.PutItemAsync("orders", new Dictionary<string, AttributeValue> { ["pk"] = new("before"), ["sk"] = new() { N = "1" } });
 
@@ -447,7 +447,7 @@ public sealed class DynamoDbClientTests
         new AmazonDynamoDBConfig
         {
             RegionEndpoint = Amazon.RegionEndpoint.USWest2,
-            HttpClientFactory = new InMemoryAws.Http.InMemoryAwsHttpClientFactory(cloud),
+            HttpClientFactory = new InMemoryAwsSdkHttpClientFactory(cloud),
         });
 
     private static Task<UpdateTableResponse> AddWestReplicaAsync(AmazonDynamoDBClient client) => client.UpdateTableAsync(new UpdateTableRequest
@@ -460,7 +460,7 @@ public sealed class DynamoDbClientTests
     public async Task ReplicaUpdates_KeepIndexesCapacityStreamAndTimeToLiveTheSameInEveryRegion()
     {
         var cloud = new InMemoryAwsCloud { CurrentRegion = "us-east-1" };
-        var east = await CreateTableAsync(cloud);
+        using var east = await CreateTableAsync(cloud);
         using var west = CreateWestClient(cloud);
         await AddWestReplicaAsync(east);
 
@@ -537,7 +537,7 @@ public sealed class DynamoDbClientTests
         var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var time = new FakeTimeProvider(start);
         var cloud = new InMemoryAwsCloud { CurrentRegion = "us-east-1", TimeProvider = time };
-        var east = await CreateTableAsync(cloud);
+        using var east = await CreateTableAsync(cloud);
         using var west = CreateWestClient(cloud);
         await east.UpdateTimeToLiveAsync(new UpdateTimeToLiveRequest
         {

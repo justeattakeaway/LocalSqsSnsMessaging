@@ -17,9 +17,9 @@
     <File Path="LICENSE" />
   </Folder>
   <Project Path="benchmarks/InMemoryAws.Benchmarks/InMemoryAws.Benchmarks.csproj" />
-  <Project Path="src/InMemoryAws.AWSSDKv3/InMemoryAws.AWSSDKv3.csproj" />
   <Project Path="src/InMemoryAws.Server/InMemoryAws.Server.csproj" />
   <Project Path="src/InMemoryAws/InMemoryAws.csproj" />
+  <Project Path="tests/InMemoryAws.Tests.AwsSdkV3/InMemoryAws.Tests.AwsSdkV3.csproj" />
   <Project Path="tests/InMemoryAws.Tests.Verification/InMemoryAws.Tests.Verification.csproj" />
   <Project Path="tests/InMemoryAws.Tests.Server/InMemoryAws.Tests.Server.csproj" />
   <Project Path="tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj" />

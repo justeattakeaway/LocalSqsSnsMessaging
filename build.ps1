@@ -114,12 +114,12 @@ function DotNetPack {
 }
 
 $testProjects = @(
-    (Join-Path $solutionPath "tests" "InMemoryAws.Tests" "InMemoryAws.Tests.csproj")
+    (Join-Path $solutionPath "tests" "InMemoryAws.Tests" "InMemoryAws.Tests.csproj"),
+    (Join-Path $solutionPath "tests" "InMemoryAws.Tests.AwsSdkV3" "InMemoryAws.Tests.AwsSdkV3.csproj")
 )
 
 $packageProjects = @(
     (Join-Path $solutionPath "src" "InMemoryAws" "InMemoryAws.csproj"),
-    (Join-Path $solutionPath "src" "InMemoryAws.AWSSDKv3" "InMemoryAws.AWSSDKv3.csproj"),
     (Join-Path $solutionPath "src" "InMemoryAws.Server" "InMemoryAws.Server.csproj")
 )
 
