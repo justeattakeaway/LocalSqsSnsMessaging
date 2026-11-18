@@ -1,0 +1,26 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="build.ps1" />
+    <File Path="Directory.Packages.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="Directory.Build.props" />
+    <File Path="NuGet.config" />
+    <File Path="global.json" />
+    <File Path="BannedSymbols.txt" />
+    <File Path="InMemoryAws.ruleset" />
+    <File Path="exclusion.dic" />
+    <File Path="package-icon.png" />
+    <File Path="justeat-oss.snk" />
+    <File Path="test-run-example.png" />
+    <File Path="README.md" />
+    <File Path="CODE_OF_CONDUCT.md" />
+    <File Path="LICENSE" />
+  </Folder>
+  <Project Path="benchmarks/InMemoryAws.Benchmarks/InMemoryAws.Benchmarks.csproj" />
+  <Project Path="src/InMemoryAws.AWSSDKv3/InMemoryAws.AWSSDKv3.csproj" />
+  <Project Path="src/InMemoryAws.Server/InMemoryAws.Server.csproj" />
+  <Project Path="src/InMemoryAws/InMemoryAws.csproj" />
+  <Project Path="tests/InMemoryAws.Tests.Verification/InMemoryAws.Tests.Verification.csproj" />
+  <Project Path="tests/InMemoryAws.Tests.Server/InMemoryAws.Tests.Server.csproj" />
+  <Project Path="tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj" />
+</Solution>

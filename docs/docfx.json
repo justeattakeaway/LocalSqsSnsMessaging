@@ -28,8 +28,8 @@
   ],
   "build": {
     "globalMetadata": {
-      "_appName": "LocalSqsSnsMessaging",
-      "_appTitle": "LocalSqsSnsMessaging",
+      "_appName": "InMemoryAws",
+      "_appTitle": "InMemoryAws",
       "_appLogoPath": "icon.png",
       "_appFaviconPath": "icon.png",
       "_enableSearch": true,

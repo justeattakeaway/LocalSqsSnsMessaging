@@ -34,7 +34,7 @@ jobs:
         {
           echo "The evaluation suite has drifted from UPSTREAM.md. To catch up, run"
           echo '`dotnet run --project tools/SyncEvaluationSuite -- --ref main` and work through the list'
-          echo "(see tests/LocalSqsSnsMessaging.Tests/AwsEvaluationSuite/README.md#keeping-up-with-upstream)."
+          echo "(see tests/InMemoryAws.Tests/AwsEvaluationSuite/README.md#keeping-up-with-upstream)."
           echo
           head -c 900000 artifacts/evaluation-suite/drift.md
         } >> "$GITHUB_STEP_SUMMARY"

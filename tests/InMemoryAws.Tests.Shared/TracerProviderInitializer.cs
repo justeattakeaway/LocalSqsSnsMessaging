@@ -1,0 +1,24 @@
+#pragma warning disable CA2255
+using System.Runtime.CompilerServices;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
+
+namespace InMemoryAws.Tests;
+
+internal static class TracerProviderInitializer
+{
+    // Stored to prevent garbage collection; disposed on process exit.
+    internal static TracerProvider? TracerProvider;
+
+    [ModuleInitializer]
+    public static void Initialize()
+    {
+        AwsSdkTracing.Install();
+
+        TracerProvider = Sdk.CreateTracerProviderBuilder()
+            .AddSource("InMemoryAws")
+            .AddSource(AwsSdkTracing.SourceNamePattern)
+            .AddSource(WaitingTestBase.ActivitySourceName)
+            .Build();
+    }
+}

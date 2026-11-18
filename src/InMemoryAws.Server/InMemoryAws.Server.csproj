@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>inmemory-aws</ToolCommandName>
+        <RootNamespace>InMemoryAws</RootNamespace>
+        <DefineConstants>$(DefineConstants);ASPNETCORE</DefineConstants>
+    </PropertyGroup>
+
+    <!-- Suppress trim/AOT warnings from shared library code (AWS SDK interop, generated handlers) -->
+    <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+        <NoWarn>$(NoWarn);IL2026;IL3050</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(PublishContainer)' == 'true'">
+        <ContainerFamily>noble-chiseled</ContainerFamily>
+        <ContainerRepository>justeattakeaway/inmemory-aws</ContainerRepository>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(PublishContainer)' == 'true'">
+        <ContainerLabel Include="org.opencontainers.image.source" Value="https://github.com/justeattakeaway/InMemoryAws" />
+        <ContainerLabel Include="org.opencontainers.image.description" Value="In-memory drop-in replacement for AWS SQS, SNS, EventBridge and DynamoDB" />
+        <ContainerLabel Include="org.opencontainers.image.licenses" Value="Apache-2.0" />
+        <ContainerPort Include="5050" Type="tcp" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="InMemoryAws.Tests.Server, PublicKey=00240000048000009400000006020000002400005253413100040000010001009D30C64BC42BA5037AEC3CF60334DF3A4C140FFC1DAB19FDD31C9765E4E29AFA441396FF9437A764B618C6473A3B350C56D706A0FBE83915F1F250EE23EB548B30306187AC685F65CAA48303DC86F08C1C24D99DC84966273C207EAA8570B440004C7F49CEF4EC77BC69118610AE2B53DB7D8ABEB465CBCD4BD190FEAF517AAD" />
+        <InternalsVisibleTo Include="InMemoryAws.Benchmarks, PublicKey=00240000048000009400000006020000002400005253413100040000010001009D30C64BC42BA5037AEC3CF60334DF3A4C140FFC1DAB19FDD31C9765E4E29AFA441396FF9437A764B618C6473A3B350C56D706A0FBE83915F1F250EE23EB548B30306187AC685F65CAA48303DC86F08C1C24D99DC84966273C207EAA8570B440004C7F49CEF4EC77BC69118610AE2B53DB7D8ABEB465CBCD4BD190FEAF517AAD" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="..\InMemoryAws.Shared\**\*.cs" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="wwwroot\dashboard.html" LogicalName="dashboard.html" />
+        <EmbeddedResource Include="wwwroot\dashboard.css" LogicalName="dashboard.css" />
+        <EmbeddedResource Include="wwwroot\dashboard.js" LogicalName="dashboard.js" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Meziantou.Polyfill" PrivateAssets="all" />
+    </ItemGroup>
+
+    <Target Name="BuildDashboard" BeforeTargets="BeforeBuild"
+            Condition="!Exists('wwwroot/dashboard.js') OR '$(BuildDashboard)' == 'true'">
+        <Exec Command="bun install &amp;&amp; bun run build"
+              WorkingDirectory="$(MSBuildProjectDirectory)/dashboard" />
+    </Target>
+
+</Project>

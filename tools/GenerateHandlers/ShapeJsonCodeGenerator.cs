@@ -311,10 +311,10 @@ internal sealed class ShapeJsonCodeGenerator
         code.AppendLine("#pragma warning disable CS0618 // Type or member is obsolete");
         code.AppendLine();
         code.AppendLine("using System.Text.Json;");
-        code.AppendLine("using LocalSqsSnsMessaging.Http.Serialization;");
+        code.AppendLine("using InMemoryAws.Http.Serialization;");
         code.AppendLine($"using {_modelNamespace};");
         code.AppendLine();
-        code.AppendLine("namespace LocalSqsSnsMessaging.Http.Handlers;");
+        code.AppendLine("namespace InMemoryAws.Http.Handlers;");
         code.AppendLine();
         code.AppendLine($"internal static partial class {_serviceName}JsonSerializers");
         code.AppendLine("{");
@@ -871,7 +871,7 @@ internal sealed class ShapeJsonCodeGenerator
         code.AppendLine("using System.Text.Json;");
         code.AppendLine($"using {_modelNamespace};");
         code.AppendLine();
-        code.AppendLine("namespace LocalSqsSnsMessaging.Http.Handlers;");
+        code.AppendLine("namespace InMemoryAws.Http.Handlers;");
         code.AppendLine();
         code.AppendLine($"internal static partial class {_serviceName}OperationDispatcher");
         code.AppendLine("{");

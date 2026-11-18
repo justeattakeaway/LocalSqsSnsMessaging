@@ -40,7 +40,7 @@ internal sealed class JsonCodeGenerator
         code.AppendLine("using System.Text.Json;");
         code.AppendLine($"using {_modelNamespace};");
         code.AppendLine();
-        code.AppendLine("namespace LocalSqsSnsMessaging.Http.Handlers;");
+        code.AppendLine("namespace InMemoryAws.Http.Handlers;");
         code.AppendLine();
         code.AppendLine("/// <summary>");
         code.AppendLine($"/// Generated JSON protocol serializers for {_serviceName} operations.");

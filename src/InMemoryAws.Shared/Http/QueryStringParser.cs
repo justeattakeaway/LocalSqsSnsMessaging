@@ -1,0 +1,208 @@
+// UTF-8 optimized query string parser for AWS Query protocol
+// Avoids string materialization required by HttpUtility.ParseQueryString
+
+using System.Buffers;
+using System.Text;
+
+namespace InMemoryAws.Http;
+
+/// <summary>
+/// Optimized query string parser that works directly with UTF-8 bytes.
+/// This avoids the string materialization required by HttpUtility.ParseQueryString.
+///
+/// Suitable for AWS Query protocol which has:
+/// - Simple key=value pairs
+/// - &amp; separator
+/// - URL encoding for special characters
+/// </summary>
+internal static class QueryStringParser
+{
+    /// <summary>Values up to this size are decoded on the stack; anything larger is pooled.</summary>
+    private const int MaxStackallocBytes = 256;
+
+    /// <summary>
+    /// Parse a query string from UTF-8 bytes into a dictionary of key-value pairs.
+    /// </summary>
+    /// <param name="utf8Bytes">The UTF-8 encoded query string bytes.</param>
+    /// <returns>Dictionary of decoded key-value pairs.</returns>
+    public static Dictionary<string, string> Parse(ReadOnlySpan<byte> utf8Bytes)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        // Split on '&' character
+        var remaining = utf8Bytes;
+        while (remaining.Length > 0)
+        {
+            var ampersandIndex = remaining.IndexOf((byte)'&');
+            var pair = ampersandIndex >= 0
+                ? remaining.Slice(0, ampersandIndex)
+                : remaining;
+
+            // Find the '=' separator
+            var equalsIndex = pair.IndexOf((byte)'=');
+            if (equalsIndex >= 0)
+            {
+                var keyBytes = pair.Slice(0, equalsIndex);
+                var valueBytes = pair.Slice(equalsIndex + 1);
+
+                // Decode key and value
+                var key = UrlDecode(keyBytes);
+                var value = UrlDecode(valueBytes);
+
+                result[key] = value;
+            }
+
+            // Move to next pair
+            if (ampersandIndex >= 0)
+                remaining = remaining.Slice(ampersandIndex + 1);
+            else
+                break;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// The decoded value of the parameter named <paramref name="key"/> (its last, as <see cref="Parse"/>
+    /// keeps), or null if there is none; decodes no other parameter.
+    /// </summary>
+    public static string? GetValue(ReadOnlySpan<byte> utf8Bytes, string key)
+    {
+        string? value = null;
+        var remaining = utf8Bytes;
+        while (remaining.Length > 0)
+        {
+            var ampersandIndex = remaining.IndexOf((byte)'&');
+            var pair = ampersandIndex >= 0 ? remaining.Slice(0, ampersandIndex) : remaining;
+            var equalsIndex = pair.IndexOf((byte)'=');
+            if (equalsIndex >= 0 && IsKey(pair.Slice(0, equalsIndex), key))
+            {
+                value = UrlDecode(pair.Slice(equalsIndex + 1));
+            }
+
+            if (ampersandIndex < 0)
+            {
+                break;
+            }
+
+            remaining = remaining.Slice(ampersandIndex + 1);
+        }
+
+        return value;
+    }
+
+    /// <summary>True if the encoded <paramref name="keyBytes"/> decode to <paramref name="key"/>.</summary>
+    private static bool IsKey(ReadOnlySpan<byte> keyBytes, string key)
+    {
+        if (keyBytes.IndexOf((byte)'%') >= 0 || keyBytes.IndexOf((byte)'+') >= 0)
+        {
+            return string.Equals(UrlDecode(keyBytes), key, StringComparison.Ordinal);
+        }
+
+        if (keyBytes.Length != key.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < keyBytes.Length; i++)
+        {
+            if (keyBytes[i] != key[i])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// URL decode from UTF-8 bytes to string.
+    /// Handles:
+    /// - %XX hex encoding
+    /// - + as space
+    /// </summary>
+    private static string UrlDecode(ReadOnlySpan<byte> encoded)
+    {
+        // Fast path: no encoding needed
+        if (encoded.IndexOf((byte)'%') < 0 && encoded.IndexOf((byte)'+') < 0)
+        {
+            return Encoding.UTF8.GetString(encoded);
+        }
+
+        // Slow path: decode. Decoding never grows a value, so the encoded length is a safe upper
+        // bound, but it can be as large as a 1 MiB SNS message - far too much to stackalloc.
+        var rented = encoded.Length > MaxStackallocBytes ? ArrayPool<byte>.Shared.Rent(encoded.Length) : null;
+        Span<byte> decoded = rented ?? stackalloc byte[MaxStackallocBytes];
+
+        try
+        {
+            int writePos = 0;
+
+            for (int i = 0; i < encoded.Length; i++)
+            {
+                if (encoded[i] == (byte)'%' && i + 2 < encoded.Length)
+                {
+                    // Decode %XX
+                    var hex = encoded.Slice(i + 1, 2);
+                    if (TryParseHexByte(hex, out byte decodedByte))
+                    {
+                        decoded[writePos++] = decodedByte;
+                        i += 2;
+                        continue;
+                    }
+                }
+                else if (encoded[i] == (byte)'+')
+                {
+                    decoded[writePos++] = (byte)' ';
+                    continue;
+                }
+
+                decoded[writePos++] = encoded[i];
+            }
+
+            return Encoding.UTF8.GetString(decoded.Slice(0, writePos));
+        }
+        finally
+        {
+            if (rented is not null)
+            {
+                ArrayPool<byte>.Shared.Return(rented);
+            }
+        }
+    }
+
+    private static bool TryParseHexByte(ReadOnlySpan<byte> hex, out byte result)
+    {
+        result = 0;
+        if (hex.Length != 2)
+            return false;
+
+        if (!TryParseHexChar(hex[0], out byte high) ||
+            !TryParseHexChar(hex[1], out byte low))
+            return false;
+
+        result = (byte)((high << 4) | low);
+        return true;
+    }
+
+    private static bool TryParseHexChar(byte c, out byte value)
+    {
+        if (c >= '0' && c <= '9')
+        {
+            value = (byte)(c - '0');
+            return true;
+        }
+        if (c >= 'A' && c <= 'F')
+        {
+            value = (byte)(c - 'A' + 10);
+            return true;
+        }
+        if (c >= 'a' && c <= 'f')
+        {
+            value = (byte)(c - 'a' + 10);
+            return true;
+        }
+        value = 0;
+        return false;
+    }
+}

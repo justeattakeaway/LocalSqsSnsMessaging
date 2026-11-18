@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LocalSqsSnsMessaging is an in-memory emulator of AWS SQS, SNS, EventBridge and DynamoDB (with DynamoDB Streams), for fast tests and local development without LocalStack or other external services. Real AWS SDK clients talk to it through an in-memory `HttpMessageHandler`, so it answers on the wire as AWS does.
+InMemoryAws is an in-memory emulator of AWS SQS, SNS, EventBridge and DynamoDB (with DynamoDB Streams), for fast tests and local development without LocalStack or other external services. Real AWS SDK clients talk to it through an in-memory `HttpMessageHandler`, so it answers on the wire as AWS does.
 
-It ships three ways, all compiled from the same source in `src/LocalSqsSnsMessaging.Shared/` (each project globs it in):
-- `src/LocalSqsSnsMessaging`: the NuGet library, against the v4 AWS SDK (net8.0 and netstandard2.0). Its only dependencies are AWS SDK packages (plus netstandard2.0 polyfills); keep it that way
-- `src/LocalSqsSnsMessaging.AWSSDKv3`: the same library against the 3.7.x AWS SDK (`AWS_SDK_V3` defined)
-- `src/LocalSqsSnsMessaging.Server`: a standalone ASP.NET Core server with a dashboard (`ASPNETCORE` defined), serving the AWS wire protocols over real HTTP
+It ships three ways, all compiled from the same source in `src/InMemoryAws.Shared/` (each project globs it in):
+- `src/InMemoryAws`: the NuGet library, against the v4 AWS SDK (net8.0 and netstandard2.0). Its only dependencies are AWS SDK packages (plus netstandard2.0 polyfills); keep it that way
+- `src/InMemoryAws.AWSSDKv3`: the same library against the 3.7.x AWS SDK (`AWS_SDK_V3` defined)
+- `src/InMemoryAws.Server`: a standalone ASP.NET Core server with a dashboard (`ASPNETCORE` defined), serving the AWS wire protocols over real HTTP
 
-Build the whole solution (`LocalSqsSnsMessaging.slnx`) after changing shared code: netstandard2.0 has weaker nullable annotations (e.g. `string.IsNullOrEmpty` does not prove non-null), so a change that builds for the test project can still fail there.
+Build the whole solution (`InMemoryAws.slnx`) after changing shared code: netstandard2.0 has weaker nullable annotations (e.g. `string.IsNullOrEmpty` does not prove non-null), so a change that builds for the test project can still fail there.
 
 Domain terms (send, service delivery, redrive, dead-letter queue, ARN resolution, resource policy) are defined in `GLOSSARY.md`.
 
@@ -25,7 +25,7 @@ Domain terms (send, service delivery, redrive, dead-letter queue, ARN resolution
 This PowerShell script:
 - Installs the correct .NET SDK version (from global.json) if needed
 - Builds and packs the library, the AWS SDK v3 library and the server
-- Runs tests with coverage (tests/LocalSqsSnsMessaging.Tests)
+- Runs tests with coverage (tests/InMemoryAws.Tests)
 
 ### Skip Tests
 ```bash
@@ -34,7 +34,7 @@ This PowerShell script:
 
 ### Run Tests Only
 ```bash
-dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --coverage --coverage-output-format xml --timeout 2m
+dotnet run --project tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj --configuration Release -- --coverage --coverage-output-format xml --timeout 2m
 ```
 
 ### Run Specific Tests
@@ -43,35 +43,35 @@ dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests
 
 ```bash
 # List all tests (helpful for finding exact test names)
-dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --list-tests
+dotnet run --project tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj --configuration Release -- --list-tests
 
 # Run all tests (usually fastest and most reliable)
-dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --timeout 30s
+dotnet run --project tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj --configuration Release -- --timeout 30s
 
 # Filter tests by pattern (use with caution - may not match anything if pattern is wrong)
-dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --treenode-filter "*/PartOfTestName*" --timeout 2m
+dotnet run --project tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj --configuration Release -- --treenode-filter "*/PartOfTestName*" --timeout 2m
 
 # Grep for specific test results after running all tests
-dotnet run --project tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release -- --timeout 30s 2>&1 | grep "TestName"
+dotnet run --project tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj --configuration Release -- --timeout 30s 2>&1 | grep "TestName"
 ```
 
 **Common pitfalls:**
 - Using `--filter` instead of `--treenode-filter` (wrong parameter name)
 - Tree node filters often don't match - when in doubt, run all tests with `grep`
 - Use absolute paths if running from different directories
-- Always rebuild after code changes: `dotnet build tests/LocalSqsSnsMessaging.Tests/LocalSqsSnsMessaging.Tests.csproj --configuration Release`
+- Always rebuild after code changes: `dotnet build tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj --configuration Release`
 
 ### Verification Tests (Floci)
-`tests/LocalSqsSnsMessaging.Tests.Verification` runs the shared test classes against a [Floci](https://github.com/floci/floci) container started through Aspire (needs Docker):
+`tests/InMemoryAws.Tests.Verification` runs the shared test classes against a [Floci](https://github.com/floci/floci) container started through Aspire (needs Docker):
 ```bash
-cd tests/LocalSqsSnsMessaging.Tests.Verification
+cd tests/InMemoryAws.Tests.Verification
 dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning
 ```
 
 ### Benchmarks
-`benchmarks/LocalSqsSnsMessaging.Benchmarks` sends one SDK request per wire protocol through the library and through the server's middleware (on an in-memory `TestServer`), measuring allocations; `VectorBenchmarks` measures what a DynamoDB vector index adds to a write, and a search. CI never runs it. Run it on the commit before and after a change to a wire protocol or a host:
+`benchmarks/InMemoryAws.Benchmarks` sends one SDK request per wire protocol through the library and through the server's middleware (on an in-memory `TestServer`), measuring allocations; `VectorBenchmarks` measures what a DynamoDB vector index adds to a write, and a search. CI never runs it. Run it on the commit before and after a change to a wire protocol or a host:
 ```bash
-dotnet run -c Release --project benchmarks/LocalSqsSnsMessaging.Benchmarks -- --filter '*'
+dotnet run -c Release --project benchmarks/InMemoryAws.Benchmarks -- --filter '*'
 ```
 Allocated bytes are exact and comparable between runs; times are noisy on a shared machine, so run the two commits back to back.
 
@@ -79,10 +79,10 @@ Allocated bytes are exact and comparable between runs; times are noisy on a shar
 
 ### Core Components
 
-**InMemoryAwsBus** (`InMemoryAwsBus.cs`)
-- Central message bus managing all queues, topics, subscriptions, event buses and move tasks
+**InMemoryAwsCloud** (`InMemoryAwsCloud.cs`)
+- The root object, the **cloud**: one simulated AWS account across every region, holding all queues, topics, subscriptions, event buses, DynamoDB tables and move tasks, and the settings they run on. Code calls it `cloud` (`_cloud` as a field); it was `InMemoryAwsBus` up to v1
 - Configurable with `TimeProvider`, `CurrentAccountId`, and `CurrentRegion`
-- Resources are regional: `AwsRegionResources` holds one region's queues, topics, subscriptions, event buses, archives and replays, and `bus.Region(name)` gets (or creates) it. `bus.Queues` is `CurrentRegion`'s queues (other services go through `bus.Region(...)`). Each internal client (`InternalSqsClient`, `InternalSnsClient`, `InternalEventBridgeClient`) is constructed with the request's region and sees only that region. ARN-addressed deliveries (SNS to SQS, EventBridge targets, dead-letter queues, move tasks) resolve the ARN when they deliver, through `TryGetQueueByArn`/`TryGetTopicByArn`/`TryGetEventBusByArn`: the whole ARN (region, account, name) must match, the lookup is in the region the ARN names (so deliveries can cross regions), and it never creates a region (`TryGetRegion`). `Arn` splits an ARN; service-specific ARN validation stays with each service. Redrive keeps the dead-letter queue's ARN (`SqsQueueResource.DeadLetterTargetArn`), not the queue, so a recreated dead-letter queue receives again. The library HTTP handler and the server both read the region from the SigV4 credential scope, else an AWS endpoint host (`Http/AwsRequestRegion.cs`), else `CurrentRegion`. Move tasks stay bus-wide, keyed by handle
+- Resources are regional: `AwsRegionResources` holds one region's queues, topics, subscriptions, event buses, archives and replays, and `cloud.Region(name)` gets (or creates) it. `cloud.Queues` is `CurrentRegion`'s queues (other services go through `cloud.Region(...)`). Each internal client (`InternalSqsClient`, `InternalSnsClient`, `InternalEventBridgeClient`) is constructed with the request's region and sees only that region. ARN-addressed deliveries (SNS to SQS, EventBridge targets, dead-letter queues, move tasks) resolve the ARN when they deliver, through `TryGetQueueByArn`/`TryGetTopicByArn`/`TryGetEventBusByArn`: the whole ARN (region, account, name) must match, the lookup is in the region the ARN names (so deliveries can cross regions), and it never creates a region (`TryGetRegion`). `Arn` splits an ARN; service-specific ARN validation stays with each service. Redrive keeps the dead-letter queue's ARN (`SqsQueueResource.DeadLetterTargetArn`), not the queue, so a recreated dead-letter queue receives again. The library HTTP handler and the server both read the region from the SigV4 credential scope, else an AWS endpoint host (`Http/AwsRequestRegion.cs`), else `CurrentRegion`. Move tasks stay cloud-wide, keyed by handle
 - Thread-safe using `ConcurrentDictionary` for all resource collections
 
 **Internal clients** (`SqsClient/InternalSqsClient*.cs`, `SnsClient/InternalSnsClient*.cs`, `EventBridgeClient/InternalEventBridgeClient*.cs`)
@@ -99,7 +99,7 @@ Each service has one **wire protocol** module (see GLOSSARY.md) in `Http/`, whic
 
 The two hosts are adapters: each reads the body, decides which service and operation a request is for, builds the client, and copies the `WireResponse` onto its own response type.
 - `InMemoryAwsHttpMessageHandler` (`Http/`): the library's `DelegatingHandler`, one per service (`AwsServiceType`), reading the body once into a pooled `PooledRequestBody`
-- `AwsBridgeMiddleware` (`src/LocalSqsSnsMessaging.Server`): the server, which tells services apart by target prefix, Query `Version` or SigV4 scope; `BusRegistry` gives each account (from the SigV4 access key) its own bus
+- `AwsBridgeMiddleware` (`src/InMemoryAws.Server`): the server, which tells services apart by target prefix, Query `Version` or SigV4 scope; `CloudRegistry` gives each account (from the SigV4 access key) its own cloud
 
 **AWS Protocol Support:**
 
@@ -122,9 +122,9 @@ The two hosts are adapters: each reads the body, decides which service and opera
 4. **DynamoDB and DynamoDB Streams - JSON Protocol:** `application/x-amz-json-1.0`, targets `DynamoDB_20120810.<Operation>` and `DynamoDBStreams_20120810.<Operation>`. `Http/DynamoDbWireProtocol.cs` serves both, building the client the target names: it parses the body, runs the generated dispatcher, writes errors (`__type` in `com.amazon.coral.validate` for `ValidationException`, `com.amazon.coral.service` for protocol errors, `com.amazonaws.dynamodb.v20120810` otherwise, plus modelled members such as `CancellationReasons`) and the `x-amz-crc32` header SDKs check
 
 **Public entry points**
-- `InMemoryAwsBusHttpExtensions.cs`: `CreateSqsClient()`, `CreateSnsClient()`, `CreateEventBridgeClient()`, `CreateDynamoDbClient()` return real `AmazonSQSClient` / `AmazonSimpleNotificationServiceClient` / `AmazonEventBridgeClient` / `AmazonDynamoDBClient` instances wired to the bus
+- `InMemoryAwsCloudHttpExtensions.cs`: `CreateSqsClient()`, `CreateSnsClient()`, `CreateEventBridgeClient()`, `CreateDynamoDbClient()` return real `AmazonSQSClient` / `AmazonSimpleNotificationServiceClient` / `AmazonEventBridgeClient` / `AmazonDynamoDBClient` instances wired to the cloud
 - `InMemoryAwsHttpClientFactory`: an AWS SDK `HttpClientFactory` for clients configured elsewhere (e.g. dependency injection)
-- Tests may construct an internal client directly (`new InternalEventBridgeClient(bus)`); the server's dashboard does too. Such a client bypasses the HTTP layer and has no `Caller`, so queue policies never apply to it
+- Tests may construct an internal client directly (`new InternalEventBridgeClient(cloud)`); the server's dashboard does too. Such a client bypasses the HTTP layer and has no `Caller`, so queue policies never apply to it
 
 **Resource Models**
 - `SqsQueueResource`: Queue state including messages, in-flight messages, message groups for FIFO
@@ -140,19 +140,19 @@ The two hosts are adapters: each reads the body, decides which service and opera
 - Subscription changes go through the topic: `Subscribe`, `Confirm`, `UpdateSubscription` (SetSubscriptionAttributes), `Unsubscribe` and `Delete` (DeleteTopic). The topic keeps its own set (found by protocol and endpoint), writes the region's `Subscriptions` index (subscription ARN to subscription, for ARN lookups and ListSubscriptions) under its gate, and enforces the `MaximumMessageSize` rules that depend on its subscriptions. Nothing else writes the index
 - `SnsTopicAttributes` holds topic attribute names, defaults (default `Policy`, `EffectiveDeliveryPolicy`, ...) and validation; `SnsPublishValidation` and `SnsMessageStructure` validate Publish/PublishBatch and pick a `MessageStructure=json` branch per protocol
 - SNS is regional: a topic ARN naming another region is refused with `InvalidParameter` "Invalid parameter: TopicArn", as a regional endpoint does
-- A topic's `Policy` is enforced for callers by `InternalSnsClient.Authorize` (`.Authorization.cs`) after the topic lookup of Subscribe (with `sns:Protocol`/`sns:Endpoint`), Publish and PublishBatch (`sns:Publish`), Get/SetTopicAttributes, Add/RemovePermission and ListSubscriptionsByTopic: explicit Deny statements only, every request acting as the bus account's root user; a denial is `AuthorizationError` (HTTP 403)
-- Subscribe takes `sqs`, `http`/`https` and `email`/`email-json` (not on a FIFO topic: "Invalid protocol type"). Email subscriptions stay `PendingConfirmation` (the bus sends no email; `ConfirmSubscription` with the token still confirms one), and a pending subscription can't be unsubscribed. Other protocols are `NotSupportedException`
+- A topic's `Policy` is enforced for callers by `InternalSnsClient.Authorize` (`.Authorization.cs`) after the topic lookup of Subscribe (with `sns:Protocol`/`sns:Endpoint`), Publish and PublishBatch (`sns:Publish`), Get/SetTopicAttributes, Add/RemovePermission and ListSubscriptionsByTopic: explicit Deny statements only, every request acting as the cloud account's root user; a denial is `AuthorizationError` (HTTP 403)
+- Subscribe takes `sqs`, `http`/`https` and `email`/`email-json` (not on a FIFO topic: "Invalid protocol type"). Email subscriptions stay `PendingConfirmation` (the cloud sends no email; `ConfirmSubscription` with the token still confirms one), and a pending subscription can't be unsubscribed. Other protocols are `NotSupportedException`
 - Mobile push (`.MobilePush.cs`): platform applications (`SnsPlatformApplication`, per region in `AwsRegionResources.PlatformApplications`) and their endpoints are kept and answered for, and `EventEndpointCreated`/`Deleted`/`Updated` topics are notified, but no push service is contacted: credentials and tokens are never checked, and a publish never reaches an endpoint. SMS (`.Sms.cs`, `SnsSmsAccount`): account attributes, opted-out numbers and the sandbox's numbers; no SMS is sent, so a sandbox number's one-time password is never revealed and the account stays in the sandbox with no origination numbers
 
 ### SNS Delivery
 
 A topic publishes through `topic.Publish`/`PublishBatch` (also EventBridge's SNS targets). Its fan-out, `SnsFanOut` (split into `SnsFanOut*.cs`), is built once per topic and delivers to the topic's current `FanOutSubscriptions`, a snapshot of its confirmed subscriptions the topic replaces as a whole on every change, so a publish sees a subscription whole or not at all. Lock order lives in `SnsTopicResource`: its `SubscriptionGate` (subscriptions, attributes, tags), then a FIFO topic's `SnsFifoTopicState.Gate`; only the topic and its fan-out take the FIFO gate. Per subscription the fan-out:
 - `SnsFilterPolicy` validates filter policies with AWS's messages (`.Syntax.cs` for SNS's JSON errors, the shared `EventRulerJsonReader`/`EventRulerGrammar` for Event Ruler's operator rules) and evaluates them (attribute or body scope) on top of `JsonPatternMatcher`, the same matcher EventBridge uses for event patterns
-- FIFO topics (`SnsFanOut.Fifo.cs`, `SnsFifoTopicState`) assign sequence numbers and deduplicate for five minutes on the bus `TimeProvider`; an `ArchivePolicy` archives messages, and a subscription's `ReplayPolicy` (`SnsReplayPolicy`) replays them. The topic replays whenever a subscription change leaves a replay `Pending` (subscribe, confirm, a new `ReplayPolicy`), joining the fan-out and replaying under the FIFO gate so no live message overtakes the replayed ones
+- FIFO topics (`SnsFanOut.Fifo.cs`, `SnsFifoTopicState`) assign sequence numbers and deduplicate for five minutes on the cloud `TimeProvider`; an `ArchivePolicy` archives messages, and a subscription's `ReplayPolicy` (`SnsReplayPolicy`) replays them. The topic replays whenever a subscription change leaves a replay `Pending` (subscribe, confirm, a new `ReplayPolicy`), joining the fan-out and replaying under the FIFO gate so no live message overtakes the replayed ones
 - SQS endpoints go through `SqsServiceDelivery` (see below) at publish time; a deleted queue, or a queue `Policy` that denies SNS (`sns.amazonaws.com`, with the topic as `aws:SourceArn`) or addresses SNS deliveries without admitting this one, is a delivery failure; a policy that says nothing about SNS admits it
 - Non-raw deliveries get the envelope `SnsEnvelope` writes, byte for byte as SNS lays it out and signed (`SnsSigningCertificate`: one self-signed key per process, served at the envelope's `SigningCertURL`; netstandard2.0 keeps `EXAMPLE` placeholders). Raw deliveries convert attributes (`SnsRawMessageAttributes`)
 - HTTP/S and email subscriptions start `PendingConfirmation` and are excluded from fan-out until `ConfirmSubscription` (or, for HTTP/S, a GET on the `SubscribeURL`) presents the token to the topic (`topic.Confirm`). A confirmed email subscription is delivered nothing
-- HTTP/S endpoints are POSTed in the background by `SnsHttpDelivery` using `bus.HttpClient`, retried per `SnsDeliveryPolicy` with `TimeProvider`-driven delays
+- HTTP/S endpoints are POSTed in the background by `SnsHttpDelivery` using `cloud.HttpClient`, retried per `SnsDeliveryPolicy` with `TimeProvider`-driven delays
 - Failed deliveries go to the subscription's dead-letter queue when a `RedrivePolicy` is set
 
 ### EventBridge
@@ -162,31 +162,31 @@ A topic publishes through `topic.Publish`/`PublishBatch` (also EventBridge's SNS
 - Event patterns are validated and matched as Event Ruler does (`EventBridgeEventPattern`): `EventRulerJsonReader` and `EventRulerGrammar` (shared with SNS filter policies) give Jackson-style refusals, and `JsonPatternMatcher` matches on the event's flattened values
 - `EventBridgeEnvelope` builds each event's envelope; `EventBridgeEventDelivery` routes it through a bus's enabled rules and delivers it, during PutEvents, to each matching rule's targets: SQS queues (FIFO through the FIFO send path, deduplicated by event id), SNS topics (through the topic's publish action) and event buses in the same region and account (forwarded once); API destinations are called in the background (see below). `EventBridgeTargetInput` renders what each target receives
 - A failed delivery (missing resource, a queue or topic `Policy` that denies `events.amazonaws.com` or admits it only for other rules, input that is not JSON) goes to the target's `DeadLetterConfig` queue with EventBridge's `ERROR_CODE`/`ERROR_MESSAGE`/`RULE_ARN`/`TARGET_ARN` attributes. A policy that says nothing about EventBridge admits it. These failures are not retried, as on AWS
-- Connections and API destinations (`ConnectionResource`, `ApiDestinationResource`, `InternalEventBridgeClient.Connections.cs`): `API_KEY` and `BASIC` connections are `AUTHORIZED` at once; an OAuth connection is `AUTHORIZING` until its client-credentials token request (`EventBridgeHttp.AuthorizeAsync`) answers, then `AUTHORIZED` or `DEAUTHORIZED`. Describe never answers a secret. A destination is `ACTIVE` unless its connection exists and is not `AUTHORIZED`. Delivery (`EventBridgeEventDelivery.ApiDestinations.cs`) calls `bus.HttpClient` in the background, with the connection's auth header and merged HTTP parameters, waits for a slot under the destination's rate limit, gives a call up after 5 s on the bus `TimeProvider`, retries 401/407/409/429/5xx, timeouts and connection failures with backoff per the target's `RetryPolicy`, and dead-letters the rest (`EXHAUSTED_RETRY_CONDITION`, `RETRY_ATTEMPTS` once retries ran out)
+- Connections and API destinations (`ConnectionResource`, `ApiDestinationResource`, `InternalEventBridgeClient.Connections.cs`): `API_KEY` and `BASIC` connections are `AUTHORIZED` at once; an OAuth connection is `AUTHORIZING` until its client-credentials token request (`EventBridgeHttp.AuthorizeAsync`) answers, then `AUTHORIZED` or `DEAUTHORIZED`. Describe never answers a secret. A destination is `ACTIVE` unless its connection exists and is not `AUTHORIZED`. Delivery (`EventBridgeEventDelivery.ApiDestinations.cs`) calls `cloud.HttpClient` in the background, with the connection's auth header and merged HTTP parameters, waits for a slot under the destination's rate limit, gives a call up after 5 s on the cloud `TimeProvider`, retries 401/407/409/429/5xx, timeouts and connection failures with backoff per the target's `RetryPolicy`, and dead-letters the rest (`EXHAUSTED_RETRY_CONDITION`, `RETRY_ATTEMPTS` once retries ran out)
 - A bus `Policy` (PutPermission/RemovePermission) is enforced for explicit Deny statements on PutEvents (see Resource Policies)
-- Archives (`ArchiveResource`) record events through a managed rule on their source bus; replays (`ReplayResource`) and rules with a `ScheduleExpression` (`ScheduledRuleJob`, `EventBridgeSchedule`) run on the bus `TimeProvider`
-- Partner event sources (`InternalEventBridgeClient.PartnerEventSources.cs`): the bus's account is never a SaaS partner, so the partner-side operations are refused for the source's namespace (`ValidationException` "Caller is not whitelisted ..."), PutPartnerEvents fails each entry, and the customer side finds no source
+- Archives (`ArchiveResource`) record events through a managed rule on their source bus; replays (`ReplayResource`) and rules with a `ScheduleExpression` (`ScheduledRuleJob`, `EventBridgeSchedule`) run on the cloud `TimeProvider`
+- Partner event sources (`InternalEventBridgeClient.PartnerEventSources.cs`): the cloud's account is never a SaaS partner, so the partner-side operations are refused for the source's namespace (`ValidationException` "Caller is not whitelisted ..."), PutPartnerEvents fails each entry, and the customer side finds no source
 - Global endpoints (`EndpointResource`, `InternalEventBridgeClient.Endpoints.cs`) are kept in their home region and are `ACTIVE` at once. Route 53 is not emulated, so the health check ARN is stored but never evaluated: PutEvents with `EndpointId` (found in any region) delivers to the endpoint's bus in its home region, and with replication enabled also to its bus in the failover region, both with the home `region` and the endpoint's ARN in `resources`
 - Timestamps go on the wire as epoch seconds (`Http/Serialization/AwsJsonTimestamp.cs`)
 
 ### DynamoDB
 
-`DynamoDbClient/` holds DynamoDB, in namespace `LocalSqsSnsMessaging.DynamoDb` (models in `.DynamoDb.Model`). Each region's tables, streams, backups and transaction tokens are in one `DynamoDbStore` (`AwsRegionResources.DynamoDb`) behind a lock (`Gate`) every region of the bus shares, because a transaction spans tables and a global table's write spans regions; every operation holds it.
+`DynamoDbClient/` holds DynamoDB, in namespace `InMemoryAws.DynamoDb` (models in `.DynamoDb.Model`). Each region's tables, streams, backups and transaction tokens are in one `DynamoDbStore` (`AwsRegionResources.DynamoDb`) behind a lock (`Gate`) every region of the cloud shares, because a transaction spans tables and a global table's write spans regions; every operation holds it.
 - **Values:** `DynamoValue` is an immutable attribute value; requests are read straight into it (`DynamoValueJson`; an `AttributeValue` with no type, or two, is refused there). A value is kept as sent until `DynamoValueRules` canonicalizes it where DynamoDB checks it: `DynamoNumber` (BigInteger mantissa and point, 38 digits, exponents -130 to 125, one canonical text per number), set rules, the 32-level and 400 KB item limits. Refusals are *enveloped* (`1 validation error detected: ...`) or bare depending on where the value came from, as DynamoDB words them
 - **Storage:** `DynamoTable` keeps items in a dictionary plus a `SortedSet<DynamoKey>` (`DynamoKeyOrder`: strings by UTF-8 bytes, binaries unsigned, numbers numerically); each `DynamoIndex` is a sorted set of `DynamoIndexEntry` updated on every write, so sparse indexes need no extra code. A global index may be keyed on up to four HASH and four RANGE attributes (`DynamoKeySchema.Hash`/`Range`); a role with several is held as one composite list value, which `DynamoKeyOrder` compares element by element, so `DynamoKey`, the sorted sets and paging work unchanged (`ToAttributes` spreads it back out). `KeyCondition.Resolve` wants equality on every HASH attribute and on each RANGE attribute before the last one compared; PartiQL refuses such indexes outright Every write returns a `DynamoItemChange`, which feeds streams (`DynamoStream`), `ReturnValues` and the point-in-time log
 - **Expressions** (`Expressions/`): one tokenizer and recursive-descent parser for condition, filter, projection and update expressions (`ExpressionParser`, AST in `Conditions.cs` and `Updates.cs`); key conditions have their own grammar (`KeyCondition`). `ExpressionAttributes.CheckAllReferenced` checks undefined and unused `#names`/`:values` before any expression is parsed. Legacy parameters (`Expected`, `KeyConditions`, `QueryFilter`, `ScanFilter`, `AttributeUpdates`, `AttributesToGet`) translate into the same AST (`LegacyConditions`, `UpdateProgram.FromAttributeUpdates`)
 - **PartiQL** (`PartiQL/PartiQLParser.cs`): SELECT/INSERT/UPDATE/DELETE, lowered to the same conditions and `UpdateProgram`, so a WHERE clause evaluates as a `ConditionExpression` would
 - **Vector search:** `DynamoVectorIndex` (beside `DynamoIndex` on `DynamoTable`, maintained by the same `Put`/`Remove`) keeps each item's vector by table key, read as 32-bit floats on the first search (a write only checks its numbers fit, so an unsearched index costs writes little); `InternalDynamoDbClient.VectorSearch.cs` defines indexes (CreateTable, UpdateTable), checks every write's vector attribute against the index's dimensions (`CheckIndexKeyTypes`), meters `VectorWriteRequestBytes` per index whose entry changed, and serves `SearchVectors`: an exact scan of the index, scored in float32, `SearchConditionExpression` (equality on `SearchSchema` attributes, joined by AND) applied before `TopK`. Capacity bills a vector at its name plus 4 bytes a dimension (`DynamoTable.BilledSize`), not its digits; the 400 KB limit still counts the stored text, and a vector's numbers are kept as written. An index UpdateTable adds stays `CREATING` (allocating, then backfilling) for `DynamoDbVectorIndexCreationDelay` (zero by default); only an `ACTIVE` index can be searched. A deleted index is removed at once, and UpdateTable's answer describes it `DELETING`
 - **`InternalDynamoDbClient`** is split by area: tables, items, reads (Query/Scan: `Limit` before the filter, 1 MB pages, parallel scan segments), batches and transactions, PartiQL, time to live, backups, vector search, global tables (version 2019.11.21 through UpdateTable's `ReplicaUpdates`, `GlobalTableWitnessUpdates` and `MultiRegionConsistency`; the withdrawn 2017.11.29 operations answer as AWS now answers them, and don't see 2019.11.21 tables), and `Unsupported` (features of other services: answered as `UnknownOperationException` by the wire protocol). `DynamoDbRequestChecks` holds the request-shape refusals DynamoDB words differently from its model's constraints; the generated dispatcher calls it. `InternalDynamoDbStreamsClient` serves DynamoDB Streams over the same store
-- **Global tables:** a replica is a same-named table in another region of the bus. `DynamoReplicationGroup` (`DynamoTable.Replication`, shared by every member) holds the regional tables and any witness regions. `Changed` (and time to live) hands each write to `Replicate`, which applies it to every other replica and its stream at once, so replication has no lag and multi-Region strong consistency holds trivially. A replica's status is its regional table's, so it is `CREATING`/`DELETING` for `DynamoDbTransitionDelay`, and the other members are `UPDATING` meanwhile. `FindTable` settles the whole group, removing gone replicas from their regions and dissolving a group left with one table. DescribeTable lists the other regions as `Replicas`. The settings DynamoDB keeps the same in every region reach every replica: a new replica copies the table's, and UpdateTable's index, capacity and stream changes, and UpdateTimeToLive, apply to all of them (each replica runs its own time to live sweep). The region a replica was added from can't delete its table for 24 hours
-- **Resource policies:** a table and its stream each keep a policy (`DynamoResourcePolicy`: text and revision, set by Put/DeleteResourcePolicy or CreateTable). `InternalDynamoDbClient.Authorize` (`.Authorization.cs`) enforces a table policy's explicit Deny statements through `ResourcePolicy` (`ResourcePolicyKind.Table`), right after the table lookup, so a missing table is still `ResourceNotFoundException`. A denial is `AccessDeniedException` (HTTP 400). Every request acts as the bus account's root user (as EventBridge's PutEvents does) and passes no `dynamodb:` condition keys, so statements conditioned on them are skipped. It covers the item operations, Query, Scan and SearchVectors (against `{table}/index/{name}` when `IndexName` is given), and the table-level operations (DescribeTable, UpdateTable, DeleteTable, the time to live, tag, continuous backup, contributor insights operations, CreateBackup, DescribeKinesisStreamingDestination, DescribeTableReplicaAutoScaling). Not yet: batches, transactions, PartiQL, the resource-policy operations themselves, and stream policies
-- **Time:** time to live sweeps run on the bus `TimeProvider` (`DynamoTimeToLiveJob`, every `DynamoDbTimeToLiveSweepInterval`). Asynchronous changes take `DynamoDbTransitionDelay` (zero by default: done when the request returns): a table is `CREATING` (CreateTable, restores), `UPDATING` (a throughput or billing-mode change, or while a global or vector index is built or deleted) and `DELETING` (it serves reads and writes until it is gone), a global index UpdateTable adds or deletes `CREATING`/`DELETING`, contributor insights `ENABLING`/`DISABLING`. Each change stores when it is done, and `DynamoTable.Settle` moves the table on lazily whenever a request finds it (`FindTable`, `AllTables`), removing a deleted table or index once gone; nothing runs on a timer. The refusals that go with each status (`ResourceInUseException` while creating, deleting or changing throughput, one index build at a time, `BackupInUseException` while a restore from the backup is `CREATING`) are in the operations. A stream of a `CREATING` table is `ENABLING` with no shards. Vector indexes UpdateTable adds stay `CREATING` for `DynamoDbVectorIndexCreationDelay` instead. Provisioned throughput is reported, never enforced
+- **Global tables:** a replica is a same-named table in another region of the cloud. `DynamoReplicationGroup` (`DynamoTable.Replication`, shared by every member) holds the regional tables and any witness regions. `Changed` (and time to live) hands each write to `Replicate`, which applies it to every other replica and its stream at once, so replication has no lag and multi-Region strong consistency holds trivially. A replica's status is its regional table's, so it is `CREATING`/`DELETING` for `DynamoDbTransitionDelay`, and the other members are `UPDATING` meanwhile. `FindTable` settles the whole group, removing gone replicas from their regions and dissolving a group left with one table. DescribeTable lists the other regions as `Replicas`. The settings DynamoDB keeps the same in every region reach every replica: a new replica copies the table's, and UpdateTable's index, capacity and stream changes, and UpdateTimeToLive, apply to all of them (each replica runs its own time to live sweep). The region a replica was added from can't delete its table for 24 hours
+- **Resource policies:** a table and its stream each keep a policy (`DynamoResourcePolicy`: text and revision, set by Put/DeleteResourcePolicy or CreateTable). `InternalDynamoDbClient.Authorize` (`.Authorization.cs`) enforces a table policy's explicit Deny statements through `ResourcePolicy` (`ResourcePolicyKind.Table`), right after the table lookup, so a missing table is still `ResourceNotFoundException`. A denial is `AccessDeniedException` (HTTP 400). Every request acts as the cloud account's root user (as EventBridge's PutEvents does) and passes no `dynamodb:` condition keys, so statements conditioned on them are skipped. It covers the item operations, Query, Scan and SearchVectors (against `{table}/index/{name}` when `IndexName` is given), and the table-level operations (DescribeTable, UpdateTable, DeleteTable, the time to live, tag, continuous backup, contributor insights operations, CreateBackup, DescribeKinesisStreamingDestination, DescribeTableReplicaAutoScaling). Not yet: batches, transactions, PartiQL, the resource-policy operations themselves, and stream policies
+- **Time:** time to live sweeps run on the cloud `TimeProvider` (`DynamoTimeToLiveJob`, every `DynamoDbTimeToLiveSweepInterval`). Asynchronous changes take `DynamoDbTransitionDelay` (zero by default: done when the request returns): a table is `CREATING` (CreateTable, restores), `UPDATING` (a throughput or billing-mode change, or while a global or vector index is built or deleted) and `DELETING` (it serves reads and writes until it is gone), a global index UpdateTable adds or deletes `CREATING`/`DELETING`, contributor insights `ENABLING`/`DISABLING`. Each change stores when it is done, and `DynamoTable.Settle` moves the table on lazily whenever a request finds it (`FindTable`, `AllTables`), removing a deleted table or index once gone; nothing runs on a timer. The refusals that go with each status (`ResourceInUseException` while creating, deleting or changing throughput, one index build at a time, `BackupInUseException` while a restore from the backup is `CREATING`) are in the operations. A stream of a `CREATING` table is `ENABLING` with no shards. Vector indexes UpdateTable adds stay `CREATING` for `DynamoDbVectorIndexCreationDelay` instead. Provisioned throughput is reported, never enforced
 - **SDK v4 packages:** DynamoDB Streams is a separate package in v4 (`AWSSDK.DynamoDBStreams`) that the library doesn't reference; `InMemoryAwsHttpClientFactory` recognises its config by type name
 - **Fidelity:** the measure is AWS's emulator evaluation suite (`behavioral/dynamodb`, `behavioral/dynamodbstreams`, 902 checks). 853 are ported to C# in `AwsEvaluationSuite/DynamoDb*` and run in memory with the other tests; to run the originals with boto3 against the server, clone [aws-emulator-evaluation-suite](https://github.com/aws/aws-emulator-evaluation-suite), `uv sync --locked --extra checks`, start the server, then `uv run fidelity-tests-runner run behavioral/dynamodb/check_<name>.py --endpoint http://127.0.0.1:5050 --auth off`. The CC0 Rust emulator in [aws-emulator](https://github.com/aws/aws-emulator/tree/main/services/service-com-amazonaws-dynamodb-dynamodb-20120810) is a reference for exact messages
 
 ### Time Control
 
-All time-dependent operations use `TimeProvider` from the bus:
+All time-dependent operations use `TimeProvider` from the cloud:
 - Message delays (`SendMessageRequest.DelaySeconds`)
 - Visibility timeouts (`ReceiveMessageRequest.VisibilityTimeout`)
 - In-flight message expiration
@@ -205,7 +205,7 @@ This allows tests to use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvi
 
 Inside, a standard queue's visible messages sit in `SqsMessageStore`, which hands each new message to one parked receive; a FIFO queue keeps one `FifoGroup` per message group, guarded by locking the group. Every way out of flight goes through `LeaveFlight` (timer stopped, FIFO group slot released under the group's lock), and every way out of the queue through `Forget` (receipt handle retired). Keep any new exit on those two paths; `SqsQueueLifecycleTests` checks each exit at the queue's interface. A receive starts its messages' visibility timers only as it returns, and nothing reads the clock while holding a group lock: a `FakeTimeProvider` with `AutoAdvanceAmount` runs due timers from inside `GetUtcNow`.
 
-`SqsMoveTask` runs a move task on a bus `TimeProvider` timer, once a second: it resolves its source and destination ARNs on each tick (a destination gone at a tick fails it), and a tick and `TryCancel` take the task's lock, so it settles on exactly one of COMPLETED, FAILED or CANCELLED.
+`SqsMoveTask` runs a move task on a cloud `TimeProvider` timer, once a second: it resolves its source and destination ARNs on each tick (a destination gone at a tick fails it), and a tick and `TryCancel` take the task's lock, so it settles on exactly one of COMPLETED, FAILED or CANCELLED.
 
 ### FIFO Queue Handling
 
@@ -227,8 +227,8 @@ A queue's, topic's or event bus's `Policy`, or a DynamoDB table's policy, is a *
 ### SQS Callers
 
 The generated SQS handlers build `InternalSqsClient` with a `Caller` (`SqsCaller`: the SigV4 access key, source IP, TLS). A client built without one (tests, the dashboard) is never subject to queue policies.
-- `SenderId` comes from `SqsCaller.SenderId` (signed: `bus.CurrentUserId`, or the account id for an account-id access key; unsigned: the account id)
-- `InternalSqsClient.Authorization.cs`: `Authorize(queue, action)` runs after each queue lookup and enforces explicit Deny statements only (`ResourcePolicy`); `EnsureKmsKeyExists` refuses sends to a queue whose KMS alias is not in `bus.KmsKeyAliases` (only when that is set; by default every key exists)
+- `SenderId` comes from `SqsCaller.SenderId` (signed: `cloud.CurrentUserId`, or the account id for an account-id access key; unsigned: the account id)
+- `InternalSqsClient.Authorization.cs`: `Authorize(queue, action)` runs after each queue lookup and enforces explicit Deny statements only (`ResourcePolicy`); `EnsureKmsKeyExists` refuses sends to a queue whose KMS alias is not in `cloud.KmsKeyAliases` (only when that is set; by default every key exists)
 - Receipt handles carry the queue's `Incarnation`, so a handle from a deleted queue is refused by a same-name successor
 - A **service delivery** (SNS subscription, EventBridge target, and both services' dead-letter queues) goes through `SqsServiceDelivery.Deliver`: it resolves the queue by ARN, evaluates the queue policy for the service principal (`ResourcePolicy.EvaluateServiceDelivery`, a verdict of admitted / explicitly denied / not allowed), and returns an `Outcome`. It sets no `SenderId` (AWS documents none) and skips `SendMessage`'s KMS and size checks
 - Only the queue enqueues: `SqsQueueResource.AcceptSent` (sends and service deliveries: stamps `SentTimestamp`, applies delay, FIFO group and deduplication scope) and `AcceptRedriven` (into a dead-letter queue or back by a move task: no deduplication claim, no delay, FIFO retention restarts)
@@ -260,7 +260,7 @@ An exception that is not an `AwsServiceException` is answered as an internal fai
 
 ## Code Generation
 
-`tools/GenerateHandlers` reads the AWS service models in `src/LocalSqsSnsMessaging.Shared/ServiceModels/*.normal.json` and writes:
+`tools/GenerateHandlers` reads the AWS service models in `src/InMemoryAws.Shared/ServiceModels/*.normal.json` and writes:
 - `Models/{Sqs,Sns,EventBridge}Models.g.cs`: the request/response models (`InternalTypeGenerator.cs`)
 - `Http/Handlers/Generated/{Sns,EventBridge}WireProtocol.g.cs`, `SqsWireProtocol.Json.g.cs` and `SqsWireProtocol.Query.g.cs`: each wire protocol's operation switch (`TryDispatch*Async`: deserialize, call the internal client, serialize), behind its hand-written `Handle*Async` (`Program.cs`; SQS Query's from `SqsQueryCodeGenerator.cs`)
 - `SqsJsonSerializers.g.cs`, `EventBridgeJsonSerializers.g.cs` (`JsonCodeGenerator.cs`; the deserializers parse the body in place and turn a body that is not JSON, or a value of the wrong type, into `SerializationException`) and `SnsQuerySerializers.g.cs` (`QueryCodeGenerator.cs`)
@@ -269,7 +269,7 @@ An exception that is not an `AwsServiceException` is answered as an internal fai
 
 **Regenerate** (the argument is the shared project directory):
 ```bash
-dotnet run --project tools/GenerateHandlers/GenerateHandlers.csproj -- src/LocalSqsSnsMessaging.Shared
+dotnet run --project tools/GenerateHandlers/GenerateHandlers.csproj -- src/InMemoryAws.Shared
 ```
 
 **Important**:
@@ -285,13 +285,13 @@ This project uses **TUnit** (not xUnit or NUnit) for testing:
 
 ### Test Organization
 
-- `tests/LocalSqsSnsMessaging.Tests.Shared/`: abstract test classes (e.g. `SqsFifoTests`), compiled into two projects:
-  - `LocalSqsSnsMessaging.Tests/LocalAwsMessaging/` subclasses run them in memory through `CreateSqsClient()` etc.
-  - `LocalSqsSnsMessaging.Tests.Verification/ExternalVerification/` subclasses run them against Floci
-- `LocalSqsSnsMessaging.Tests/AwsEvaluationSuite/`: C# ports of AWS's emulator evaluation suite (SQS, SNS, EventBridge, DynamoDB and DynamoDB Streams), checks verified against real AWS (see its `README.md`); `KnownFidelityGap` marks the ones not passed yet. Its `UPSTREAM.md` snapshots every tracked upstream check at a pinned commit (ported, known gap, or why not); `tools/SyncEvaluationSuite` rewrites it and reports drift, and the build fails when it is out of step with the ports, so regenerate it after adding, moving or deleting a port (the `update-evaluation-suite` skill walks an upstream update). DynamoDB ports share `DynamoDbFidelity.cs` (boto3-style values, Python `repr`/`==`, waiters, raw requests)
-- `LocalSqsSnsMessaging.Tests/DynamoDb/`: DynamoDB through the low-level client, `DynamoDBContext`, the Document Model and the Streams client
-- `LocalSqsSnsMessaging.Tests/` (other folders): focused regression and behaviour tests, mostly through the SDK clients; a few reach internals (`InternalsVisibleTo`)
-- `tests/LocalSqsSnsMessaging.Tests.Server/`: the server, through real SDK clients against Kestrel, and its dashboard API
+- `tests/InMemoryAws.Tests.Shared/`: abstract test classes (e.g. `SqsFifoTests`), compiled into two projects:
+  - `InMemoryAws.Tests/LocalAwsMessaging/` subclasses run them in memory through `CreateSqsClient()` etc.
+  - `InMemoryAws.Tests.Verification/ExternalVerification/` subclasses run them against Floci
+- `InMemoryAws.Tests/AwsEvaluationSuite/`: C# ports of AWS's emulator evaluation suite (SQS, SNS, EventBridge, DynamoDB and DynamoDB Streams), checks verified against real AWS (see its `README.md`); `KnownFidelityGap` marks the ones not passed yet. Its `UPSTREAM.md` snapshots every tracked upstream check at a pinned commit (ported, known gap, or why not); `tools/SyncEvaluationSuite` rewrites it and reports drift, and the build fails when it is out of step with the ports, so regenerate it after adding, moving or deleting a port (the `update-evaluation-suite` skill walks an upstream update). DynamoDB ports share `DynamoDbFidelity.cs` (boto3-style values, Python `repr`/`==`, waiters, raw requests)
+- `InMemoryAws.Tests/DynamoDb/`: DynamoDB through the low-level client, `DynamoDBContext`, the Document Model and the Streams client
+- `InMemoryAws.Tests/` (other folders): focused regression and behaviour tests, mostly through the SDK clients; a few reach internals (`InternalsVisibleTo`)
+- `tests/InMemoryAws.Tests.Server/`: the server, through real SDK clients against Kestrel, and its dashboard API
 
 ## Package Management
 

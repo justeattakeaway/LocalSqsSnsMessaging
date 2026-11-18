@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+      <TargetFramework>net10.0</TargetFramework>
+      <OutputType>Exe</OutputType>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <Nullable>enable</Nullable>
+      <IsPackable>false</IsPackable>
+      <IsTestProject>true</IsTestProject>
+      <NoWarn>$(NoWarn);CA1051;CA2007;CA1707</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="AWSSDK.DynamoDBStreams" />
+      <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+      <PackageReference Include="OpenTelemetry" />
+      <PackageReference Include="Shouldly" />
+      <PackageReference Include="TUnit.OpenTelemetry" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\InMemoryAws\InMemoryAws.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Include="..\InMemoryAws.Tests.Shared\**\*.cs" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+      <Compile Remove="Http\SnsQueryHandlerTests.cs" />
+    </ItemGroup>
+
+</Project>

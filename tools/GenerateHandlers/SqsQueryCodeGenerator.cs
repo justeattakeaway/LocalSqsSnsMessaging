@@ -99,7 +99,7 @@ internal sealed class SqsQueryCodeGenerator
         code.AppendLine("using System.Xml;");
         code.AppendLine($"using {_modelNamespace};");
         code.AppendLine();
-        code.AppendLine("namespace LocalSqsSnsMessaging.Http.Handlers;");
+        code.AppendLine("namespace InMemoryAws.Http.Handlers;");
         code.AppendLine();
         code.AppendLine("/// <summary>Reads SQS Query-protocol (form-encoded) requests and writes their XML responses.</summary>");
         code.AppendLine("internal static class SqsQuerySerializers");
@@ -176,9 +176,9 @@ internal sealed class SqsQueryCodeGenerator
         code.AppendLine("#nullable enable");
         code.AppendLine();
         code.AppendLine("using System.Buffers;");
-        code.AppendLine("using LocalSqsSnsMessaging.Http.Handlers;");
+        code.AppendLine("using InMemoryAws.Http.Handlers;");
         code.AppendLine();
-        code.AppendLine("namespace LocalSqsSnsMessaging.Http;");
+        code.AppendLine("namespace InMemoryAws.Http;");
         code.AppendLine();
         code.AppendLine("internal static partial class SqsWireProtocol");
         code.AppendLine("{");
