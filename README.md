@@ -7,18 +7,19 @@
 
 This .NET library is intended to provide a simple in-memory drop-in replacement for the AWS SDK for SQS, SNS, EventBridge and DynamoDB, primarily for testing (but can be used for local development too).
 
-It comes in three flavours that all share the same in-memory cloud (`InMemoryAwsCloud`):
+It comes in two flavours that share the same in-memory cloud (`InMemoryAwsCloud`):
 
-- **In-process** (`InMemoryAws` on NuGet) – hand the real AWS SDK clients an in-memory `HttpMessageHandler`, no network involved. This is the fastest option and the one to reach for in tests.
-- **In-process for AWS SDK v3** (`InMemoryAws.AWSSDKv3`) – the same library built against the `3.7.x` AWS SDK for codebases that haven't moved to v4 yet.
+- **In-process** (`InMemoryAws` on NuGet) – hand the real AWS SDK clients an in-memory `HttpMessageHandler`, no network involved. This is the fastest option and the one to reach for in tests. It works with AWS SDK v4 and v3 (`3.7.x`), and depends on neither: you bring the SDK packages you use (see [Getting started](#getting-started)).
 - **Standalone server** – a small native binary / container that speaks the AWS wire protocols over HTTP, with a dashboard, for local development or non-.NET consumers. See [Standalone server](#standalone-server).
 
 > [!NOTE]
 > **Coming from `LocalSqsSnsMessaging`?** The library was renamed `InMemoryAws` at v2.0.0, once it covered more than SQS and SNS. To move over:
 >
-> - Replace the `LocalSqsSnsMessaging` package with `InMemoryAws` (and `LocalSqsSnsMessaging.AWSSDKv3` with `InMemoryAws.AWSSDKv3`).
+> - Replace the `LocalSqsSnsMessaging` package with `InMemoryAws`. `LocalSqsSnsMessaging.AWSSDKv3` has no successor: `InMemoryAws` works with AWS SDK v3 and v4.
+> - `InMemoryAws` no longer brings the AWS SDK with it: reference the `AWSSDK.*` packages your tests use, if your project doesn't already (see [Getting started](#getting-started)).
 > - Change `using LocalSqsSnsMessaging;` to `using InMemoryAws;` (and the same for the sub-namespaces).
 > - Rename `InMemoryAwsBus` to `InMemoryAwsCloud`. Its members are unchanged; only parameters that were named `bus` are now named `cloud`.
+> - `InMemoryAwsHttpClientFactory` is now `InMemoryAwsSdkHttpClientFactory`, and `CreateAwsHttpClientFactory()` is `CreateAwsSdkHttpClientFactory()`, to make clear they are the AWS SDK's `Amazon.Runtime.HttpClientFactory`, not .NET's `IHttpClientFactory`. Like the `Create...Client()` methods, they are compiled into your project, so they are `internal` to it.
 > - The server's container image is now `ghcr.io/justeattakeaway/inmemory-aws`, and its release binaries are named `inmemory-aws-<rid>`.
 
 ### What's emulated
@@ -27,7 +28,7 @@ It comes in three flavours that all share the same in-memory cloud (`InMemoryAws
 | --- | --- |
 | **SQS** | Standard and FIFO queues, long polling, visibility timeouts, delays, message attributes, batch operations, redrive policies and dead-letter queues, message move tasks (redrive from a DLQ), fair queues (per-message-group deduplication), queue tags. |
 | **SNS** | Topics (standard and FIFO), `sqs` and `http`/`https` subscriptions (and `email`/`email-json`, which stay pending confirmation), raw message delivery, [filter policies](#sns-filter-policies) on message attributes or the message body, [HTTP/S delivery](#sns-httphttps-subscriptions) with the confirmation handshake, retries and delivery policies, [subscription dead-letter queues](#sns-subscription-dead-letter-queues), topic attributes, permissions (explicit denies in topic policies are enforced) and tags. Mobile push platform applications and endpoints, and SMS settings, opt-outs and the SMS sandbox, are kept and answered for, but nothing is sent to a device or phone. |
-| **EventBridge** | Event buses, rules with [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html), `PutEvents` routing to SQS (standard and FIFO), SNS and event bus targets, input transformers, target dead-letter queues, scheduled rules, archives and replays, connections and API destinations (HTTP calls through the bus's `HttpClient`, with auth, rate limits and retries), global endpoints (replication without health-check failover), tags, `TestEventPattern`. See [EventBridge](#eventbridge). |
+| **EventBridge** | Event buses, rules with [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html), `PutEvents` routing to SQS (standard and FIFO), SNS and event bus targets, input transformers, target dead-letter queues, scheduled rules, archives and replays, connections and API destinations (HTTP calls through the cloud's `HttpClient`, with auth, rate limits and retries), global endpoints (replication without health-check failover), tags, `TestEventPattern`. See [EventBridge](#eventbridge). |
 | **DynamoDB** | Tables with global and local secondary indexes, item reads and writes, condition, update, projection, filter and key-condition expressions (and the legacy `Expected`/`QueryFilter`/`AttributeUpdates` parameters), Query and Scan (paging, parallel scan), batches, transactions with idempotency tokens, PartiQL, DynamoDB Streams, time to live, on-demand backups and restores (including point in time), tags, resource policies, consumed capacity, vector indexes and `SearchVectors`. See [DynamoDB](#dynamodb). |
 
 SNS data protection policies, and subscriptions over other protocols (`sms`, `application`, `lambda`, `firehose`), throw `NotSupportedException`. DynamoDB operations for features of other services (S3 exports and imports, Kinesis destinations, auto scaling) answer `UnknownOperationException`.
@@ -49,6 +50,69 @@ Don't take our word for it, here are our tests for this project at the time of w
 > LocalStack has feature where if you pass an access key that looks like an account id, it will use this account for any resources created, this can help isolate tests from each other allowing them to run in parallel.
 
 Additionally, some tests rely on the passage of time, but now with .NET's [`TimeProvider`](https://learn.microsoft.com/dotnet/api/system.timeprovider) you can control time in your tests, and travel through time like it's 1985, Great Scott!
+
+## Getting started
+
+Add the package, and the AWS SDK packages your code uses (any version from `3.7` on):
+
+```bash
+dotnet add package InMemoryAws
+dotnet add package AWSSDK.SQS
+```
+
+`InMemoryAws` depends on no AWS SDK package. Instead, it adds a few small C# files to your project's compilation, one for each AWS SDK package the project references, so they compile against the SDK you have:
+
+| Your project references | You get, on `InMemoryAwsCloud` |
+| --- | --- |
+| `AWSSDK.Core` (any of the below) | `CreateAwsSdkHttpClientFactory()` and the `InMemoryAwsSdkHttpClientFactory` class (see [Integrating with an existing `HttpClientFactory`](#integrating-with-an-existing-httpclientfactory)) |
+| `AWSSDK.SQS` | `CreateSqsClient()` |
+| `AWSSDK.SimpleNotificationService` | `CreateSnsClient()` |
+| `AWSSDK.EventBridge` | `CreateEventBridgeClient()` |
+| `AWSSDK.DynamoDBv2` | `CreateDynamoDbClient()`, and on AWS SDK v3 `CreateDynamoDbStreamsClient()` |
+| `AWSSDK.DynamoDBStreams` (AWS SDK v4) | `CreateDynamoDbStreamsClient()` |
+
+The files are added by the package's MSBuild targets (`build/InMemoryAws.targets`), whichever way the SDK is referenced: directly, transitively, through `packages.config` or as a plain assembly reference. They need C# 7.3 or later, and are `internal` to your project. Your IDE sees them like any other file; they aren't copied into your source tree.
+
+Set `InMemoryAwsSdkSources` to `false` in a project to leave them out:
+
+```xml
+<PropertyGroup>
+  <InMemoryAwsSdkSources>false</InMemoryAwsSdkSources>
+</PropertyGroup>
+```
+
+You need this when two projects that both reference `InMemoryAws` share internals (one has `InternalsVisibleTo` the other), so the two copies of `CreateSqsClient()` don't clash: opt one of them out.
+
+> [!NOTE]
+> On .NET Framework the AWS SDK sends requests with `HttpWebRequest`, not `HttpClient`, so it can't be pointed at an in-memory handler. A .NET Framework project gets warning `INMEMAWS001` instead of the methods above; use the [standalone server](#standalone-server) there.
+
+### Without the build integration
+
+A project that opts out, or that the build integration can't serve (VB, F#), can wire a client up with the same few lines the package adds, shown here in C#. The pieces they need ship in the library itself, with no AWS SDK dependency: `InMemoryAwsHttpMessageHandler` speaks one service's protocol, and `AwsServiceEndpoints` maps between the services and the names and URLs the AWS SDK uses for them.
+
+```csharp
+using Amazon.Runtime;
+using Amazon.SQS;
+using InMemoryAws;
+using InMemoryAws.Http;
+
+var cloud = new InMemoryAwsCloud();
+using var sqs = new AmazonSQSClient(new AnonymousAWSCredentials(), new AmazonSQSConfig
+{
+    ServiceURL = AwsServiceEndpoints.GetServiceUrl(cloud, AwsServiceType.Sqs).AbsoluteUri,
+    HttpClientFactory = new InMemoryAwsHttpClientFactory(cloud),
+});
+
+sealed class InMemoryAwsHttpClientFactory(InMemoryAwsCloud cloud) : HttpClientFactory
+{
+    public override HttpClient CreateHttpClient(IClientConfig config) =>
+        AwsServiceEndpoints.TryGetServiceType(config.RegionEndpointServiceName, out var service)
+            ? new HttpClient(new InMemoryAwsHttpMessageHandler(cloud, service))
+            : throw new NotSupportedException($"InMemoryAws doesn't serve {config.RegionEndpointServiceName}.");
+}
+```
+
+The package's own versions, under `build/sources/` in the package, add a fallback for other services and reuse one handler per service.
 
 ## Examples
 
@@ -131,7 +195,7 @@ Queues, topics and event buses are regional, as on AWS. Each SDK request is serv
 
 So same-named resources in two regions are separate, ARNs and queue URLs name the region a resource was created in, and a client in one region can't see another region's resources. Deliveries that address a resource by ARN go to the region the ARN names: an SNS topic can deliver to a queue in another region, and an EventBridge rule can forward to an event bus in another region.
 
-If your application's SDK clients are configured for a region other than `us-east-1` and you wire them to the cloud (for example with `CreateAwsHttpClientFactory`), set `CurrentRegion` to match, so your test's own clients see the same resources:
+If your application's SDK clients are configured for a region other than `us-east-1` and you wire them to the cloud (for example with `CreateAwsSdkHttpClientFactory`), set `CurrentRegion` to match, so your test's own clients see the same resources:
 
 ```csharp
 var aws = new InMemoryAwsCloud { CurrentRegion = "eu-west-1" };
@@ -272,22 +336,14 @@ Requests are validated and answered as DynamoDB does, with its error codes and m
 
 Vector indexes (`VectorIndexes` on CreateTable, `VectorIndexUpdates` on UpdateTable) and `SearchVectors` are emulated, through the low-level client, `DynamoDBContext.SearchVectorsAsync` and the Document Model's `Table.SearchVectors`. Writes are checked against each index's dimensions, and a search scores every vector in the index (an exact search, where DynamoDB's is approximate) with the index's distance function in 32-bit float arithmetic, filtered by its `SearchConditionExpression` before the `TopK` are taken. A vector index added by UpdateTable is `ACTIVE` at once; set `DynamoDbVectorIndexCreationDelay` on the cloud to have it stay `CREATING` (allocating, then backfilling) for a while on its `TimeProvider`, as on AWS, where it can't be searched.
 
-DynamoDB Streams is served too. In AWS SDK v4 its client is a separate package (`AWSSDK.DynamoDBStreams`), which this library doesn't depend on: route it to the cloud with `aws.CreateAwsHttpClientFactory()`:
-
-```csharp
-using var streams = new AmazonDynamoDBStreamsClient(new AnonymousAWSCredentials(), new AmazonDynamoDBStreamsConfig
-{
-    ServiceURL = "https://streams.dynamodb.us-east-1.amazonaws.com",
-    HttpClientFactory = aws.CreateAwsHttpClientFactory(),
-});
-```
+DynamoDB Streams is served too, through `aws.CreateDynamoDbStreamsClient()`. In AWS SDK v4 its client is a separate package, `AWSSDK.DynamoDBStreams`, which your project needs to reference for the method to appear.
 
 ### Integrating with an existing `HttpClientFactory`
 
 When integration-testing an application that registers its own `Amazon.Runtime.HttpClientFactory`
 in DI (for example, one that delegates to `IHttpClientFactory` for all AWS SDK clients), use
-`InMemoryAwsHttpClientFactory` to intercept only the services backed by the in-memory cloud and let
-the rest reach their real endpoints:
+`InMemoryAwsSdkHttpClientFactory` (an `Amazon.Runtime.HttpClientFactory`, not .NET's `IHttpClientFactory`)
+to intercept only the services backed by the in-memory cloud and let the rest reach their real endpoints:
 
 ```csharp
 using InMemoryAws;
@@ -298,7 +354,7 @@ var aws = new InMemoryAwsCloud();
 // In your test's DI setup, replace the application's HttpClientFactory.
 // The fallback is a one-liner — adapt it to whatever pipeline the app uses.
 services.AddSingleton<Amazon.Runtime.HttpClientFactory>(sp =>
-    aws.CreateAwsHttpClientFactory(cfg =>
+    aws.CreateAwsSdkHttpClientFactory(cfg =>
         sp.GetRequiredService<IHttpClientFactory>().CreateClient(cfg.GetType().Name)));
 ```
 

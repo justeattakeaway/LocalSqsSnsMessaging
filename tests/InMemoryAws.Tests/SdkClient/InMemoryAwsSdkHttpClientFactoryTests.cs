@@ -9,16 +9,16 @@ using Shouldly;
 namespace InMemoryAws.Tests.SdkClient;
 
 /// <summary>
-/// Tests for <see cref="InMemoryAwsHttpClientFactory"/>, the public hook for routing SQS/SNS
+/// Tests for <see cref="InMemoryAwsSdkHttpClientFactory"/>, the public hook for routing SQS/SNS
 /// traffic to the in-memory cloud while delegating other AWS services to a fallback.
 /// </summary>
-public sealed class InMemoryAwsHttpClientFactoryTests
+public sealed class InMemoryAwsSdkHttpClientFactoryTests
 {
     [Test]
-    public async Task RoutesSqsTrafficToBus()
+    public async Task RoutesSqsTrafficToCloud()
     {
         var cloud = new InMemoryAwsCloud();
-        using var factory = new InMemoryAwsHttpClientFactory(cloud);
+        using var factory = new InMemoryAwsSdkHttpClientFactory(cloud);
 
         using var sqs = new AmazonSQSClient(
             new AnonymousAWSCredentials(),
@@ -50,10 +50,10 @@ public sealed class InMemoryAwsHttpClientFactoryTests
     }
 
     [Test]
-    public async Task RoutesSnsTrafficToBus()
+    public async Task RoutesSnsTrafficToCloud()
     {
         var cloud = new InMemoryAwsCloud();
-        using var factory = new InMemoryAwsHttpClientFactory(cloud);
+        using var factory = new InMemoryAwsSdkHttpClientFactory(cloud);
 
         using var sns = new AmazonSimpleNotificationServiceClient(
             new AnonymousAWSCredentials(),
@@ -73,17 +73,17 @@ public sealed class InMemoryAwsHttpClientFactoryTests
     public void ReportsInMemoryConfigUniqueStringForHandledServices()
     {
         var cloud = new InMemoryAwsCloud();
-        using var factory = new InMemoryAwsHttpClientFactory(cloud);
+        using var factory = new InMemoryAwsSdkHttpClientFactory(cloud);
 
-        factory.GetConfigUniqueString(new AmazonSQSConfig()).ShouldBe("InMemory");
-        factory.GetConfigUniqueString(new AmazonSimpleNotificationServiceConfig()).ShouldBe("InMemory");
+        factory.GetConfigUniqueString(new AmazonSQSConfig()).ShouldBe("InMemoryAws");
+        factory.GetConfigUniqueString(new AmazonSimpleNotificationServiceConfig()).ShouldBe("InMemoryAws");
     }
 
     [Test]
     public void DoesNotCacheOrDisposeInMemoryClients()
     {
         var cloud = new InMemoryAwsCloud();
-        using var factory = new InMemoryAwsHttpClientFactory(cloud);
+        using var factory = new InMemoryAwsSdkHttpClientFactory(cloud);
 
         factory.UseSDKHttpClientCaching(new AmazonSQSConfig()).ShouldBeFalse();
         factory.DisposeHttpClientsAfterUse(new AmazonSQSConfig()).ShouldBeFalse();
@@ -96,7 +96,7 @@ public sealed class InMemoryAwsHttpClientFactoryTests
     {
         var cloud = new InMemoryAwsCloud();
         using var fallbackClient = new HttpClient();
-        using var factoryWithFallback = new InMemoryAwsHttpClientFactory(cloud, _ => fallbackClient);
+        using var factoryWithFallback = new InMemoryAwsSdkHttpClientFactory(cloud, _ => fallbackClient);
         var baseline = new BaselineFactory();
 
         var unknownConfig = DispatchProxy.Create<IClientConfig, ClientConfigProxy>();
@@ -118,7 +118,7 @@ public sealed class InMemoryAwsHttpClientFactoryTests
     public void ThrowsAfterDispose()
     {
         var cloud = new InMemoryAwsCloud();
-        var factory = new InMemoryAwsHttpClientFactory(cloud);
+        var factory = new InMemoryAwsSdkHttpClientFactory(cloud);
         factory.Dispose();
 
         Should.Throw<ObjectDisposedException>(() => factory.CreateHttpClient(new AmazonSQSConfig()));
@@ -133,7 +133,7 @@ public sealed class InMemoryAwsHttpClientFactoryTests
         var cloud = new InMemoryAwsCloud();
         using var fallbackClient = new HttpClient();
         IClientConfig? capturedConfig = null;
-        using var factory = new InMemoryAwsHttpClientFactory(cloud, cfg =>
+        using var factory = new InMemoryAwsSdkHttpClientFactory(cloud, cfg =>
         {
             capturedConfig = cfg;
             return fallbackClient;
@@ -151,7 +151,7 @@ public sealed class InMemoryAwsHttpClientFactoryTests
     public void ThrowsForUnhandledServicesWhenNoFallback()
     {
         var cloud = new InMemoryAwsCloud();
-        using var factory = new InMemoryAwsHttpClientFactory(cloud);
+        using var factory = new InMemoryAwsSdkHttpClientFactory(cloud);
 
         var unknownConfig = DispatchProxy.Create<IClientConfig, ClientConfigProxy>();
 
@@ -159,10 +159,10 @@ public sealed class InMemoryAwsHttpClientFactoryTests
     }
 
     [Test]
-    public async Task CreateAwsHttpClientFactoryExtension_Works()
+    public async Task CreateAwsSdkHttpClientFactoryExtension_Works()
     {
         var cloud = new InMemoryAwsCloud();
-        using var factory = cloud.CreateAwsHttpClientFactory();
+        using var factory = cloud.CreateAwsSdkHttpClientFactory();
 
         using var sqs = new AmazonSQSClient(
             new AnonymousAWSCredentials(),

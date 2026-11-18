@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- The same InMemoryAws library against AWS SDK v3 (3.7.x), which consumers bring themselves. -->
+    <PropertyGroup>
+      <TargetFramework>net10.0</TargetFramework>
+      <OutputType>Exe</OutputType>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <Nullable>enable</Nullable>
+      <IsPackable>false</IsPackable>
+      <IsTestProject>true</IsTestProject>
+      <NoWarn>$(NoWarn);CA1051;CA2007;CA1707</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="AWSSDK.DynamoDBv2" VersionOverride="3.7.513.4" />
+      <PackageReference Include="AWSSDK.EventBridge" VersionOverride="3.7.502" />
+      <PackageReference Include="AWSSDK.SQS" VersionOverride="3.7.502" />
+      <PackageReference Include="AWSSDK.SimpleNotificationService" VersionOverride="3.7.502" />
+      <PackageReference Include="Shouldly" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\InMemoryAws\InMemoryAws.csproj" />
+    </ItemGroup>
+
+    <!-- Adds the AWS SDK glue (CreateSqsClient() and the rest) as a package consumer gets it. -->
+    <Import Project="..\..\src\InMemoryAws\build\InMemoryAws.targets" />
+
+</Project>

@@ -10,13 +10,13 @@
 
     <ItemGroup>
         <Compile Include="..\InMemoryAws.Shared\**\*.cs" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+        <!-- The AWS SDK glue compiles in the consumer's project, against its AWS SDK (see build/InMemoryAws.targets). -->
+        <Compile Remove="build\**" />
+        <None Include="build\InMemoryAws.targets" Pack="true" PackagePath="build\" />
+        <None Include="build\sources\*.cs" Pack="true" PackagePath="build\sources\" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.DynamoDBv2" />
-        <PackageReference Include="AWSSDK.EventBridge" />
-        <PackageReference Include="AWSSDK.SQS" />
-        <PackageReference Include="AWSSDK.SimpleNotificationService" />
         <PackageReference Include="Meziantou.Polyfill" PrivateAssets="all" />
     </ItemGroup>
 

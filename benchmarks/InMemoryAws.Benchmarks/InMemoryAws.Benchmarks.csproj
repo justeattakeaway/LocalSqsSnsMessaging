@@ -28,4 +28,7 @@
       <ProjectReference Include="..\..\src\InMemoryAws.Server\InMemoryAws.Server.csproj" Aliases="server" />
     </ItemGroup>
 
+    <!-- Adds the AWS SDK glue (CreateSqsClient() and the rest) as a package consumer gets it. -->
+    <Import Project="..\..\src\InMemoryAws\build\InMemoryAws.targets" />
+
 </Project>

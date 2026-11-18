@@ -34,7 +34,7 @@
         "AWSSDK.DynamoDBv2"
       ],
       "matchFileNames": [
-        "src/InMemoryAws.AWSSDKv3/**"
+        "tests/InMemoryAws.Tests.AwsSdkV3/**"
       ],
       "enabled": false
     },

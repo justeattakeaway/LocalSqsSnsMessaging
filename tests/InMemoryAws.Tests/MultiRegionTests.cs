@@ -29,7 +29,7 @@ public sealed class MultiRegionTests
             AuthenticationRegion = region,
             MaxErrorRetry = 0,
 #pragma warning disable CA2000 // The SDK client owns the HttpClient factory and its handler.
-            HttpClientFactory = new InMemoryHttpClientFactory(new InMemoryAwsHttpMessageHandler(cloud, AwsServiceType.Sqs)),
+            HttpClientFactory = new InMemoryAwsSdkHttpClientFactory(cloud),
 #pragma warning restore CA2000
         });
 
@@ -40,7 +40,7 @@ public sealed class MultiRegionTests
             AuthenticationRegion = region,
             MaxErrorRetry = 0,
 #pragma warning disable CA2000 // The SDK client owns the HttpClient factory and its handler.
-            HttpClientFactory = new InMemoryHttpClientFactory(new InMemoryAwsHttpMessageHandler(cloud, AwsServiceType.Sns)),
+            HttpClientFactory = new InMemoryAwsSdkHttpClientFactory(cloud),
 #pragma warning restore CA2000
         });
 
@@ -51,7 +51,7 @@ public sealed class MultiRegionTests
             AuthenticationRegion = region,
             MaxErrorRetry = 0,
 #pragma warning disable CA2000 // The SDK client owns the HttpClient factory and its handler.
-            HttpClientFactory = new InMemoryHttpClientFactory(new InMemoryAwsHttpMessageHandler(cloud, AwsServiceType.EventBridge)),
+            HttpClientFactory = new InMemoryAwsSdkHttpClientFactory(cloud),
 #pragma warning restore CA2000
         });
 

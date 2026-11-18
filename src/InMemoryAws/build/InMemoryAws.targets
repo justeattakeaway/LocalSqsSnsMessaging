@@ -1,0 +1,51 @@
+<Project>
+  <!--
+    InMemoryAws has no AWS SDK dependency. It ships the code that wires AWS SDK clients to an
+    InMemoryAwsCloud as plain C# files in build/sources/, and this target adds a file to the
+    compilation for each AWS SDK assembly the project references, however the reference arrived
+    (PackageReference, transitively, packages.config or a plain assembly reference), so the code
+    compiles against whichever AWS SDK version (3.7 or 4) the project uses.
+
+    Set InMemoryAwsSdkSources to false to add none of them, for example when two projects that both
+    reference InMemoryAws see each other's internals (InternalsVisibleTo), or to wire clients by hand.
+  -->
+  <PropertyGroup>
+    <InMemoryAwsSdkSources Condition=" '$(InMemoryAwsSdkSources)' == '' ">true</InMemoryAwsSdkSources>
+    <_InMemoryAwsSourcesDirectory>$(MSBuildThisFileDirectory)sources/</_InMemoryAwsSourcesDirectory>
+  </PropertyGroup>
+
+  <Target Name="InMemoryAwsAddSdkSources"
+          AfterTargets="ResolveAssemblyReferences"
+          Condition=" '$(InMemoryAwsSdkSources)' == 'true' AND '$(Language)' == 'C#' ">
+    <PropertyGroup>
+      <_InMemoryAwsSdkReferences>;@(ReferencePath->'%(Filename)');</_InMemoryAwsSdkReferences>
+      <_InMemoryAwsSdkCore>$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.Core;'))</_InMemoryAwsSdkCore>
+      <!-- On .NET Framework the AWS SDK sends requests with HttpWebRequest, so it has no HttpClientFactory to plug into. -->
+      <_InMemoryAwsSdkSupported Condition=" '$(TargetFrameworkIdentifier)' != '.NETFramework' ">true</_InMemoryAwsSdkSupported>
+    </PropertyGroup>
+
+    <!-- AWS SDK v3 keeps the DynamoDB Streams client in AWSSDK.DynamoDBv2; v4 moved it to AWSSDK.DynamoDBStreams. -->
+    <ItemGroup Condition=" '$(_InMemoryAwsSdkCore)' == 'true' AND '$(_InMemoryAwsSdkSupported)' == 'true' ">
+      <_InMemoryAwsDynamoDbV3 Include="@(ReferencePath)"
+                              Condition=" '%(Filename)' == 'AWSSDK.DynamoDBv2' AND $([System.String]::Copy('%(FusionName)').Contains(', Version=3.')) " />
+
+      <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.AwsSdk.cs" />
+      <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.Sqs.cs"
+               Condition="$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.SQS;'))" />
+      <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.Sns.cs"
+               Condition="$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.SimpleNotificationService;'))" />
+      <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.EventBridge.cs"
+               Condition="$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.EventBridge;'))" />
+      <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.DynamoDb.cs"
+               Condition="$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.DynamoDBv2;'))" />
+      <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.DynamoDbStreams.cs"
+               Condition="$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.DynamoDBStreams;'))" />
+      <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.DynamoDbStreams.V3.cs"
+               Condition=" '@(_InMemoryAwsDynamoDbV3)' != '' AND !$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.DynamoDBStreams;')) " />
+    </ItemGroup>
+
+    <Warning Code="INMEMAWS001"
+             Condition=" '$(_InMemoryAwsSdkCore)' == 'true' AND '$(_InMemoryAwsSdkSupported)' != 'true' "
+             Text="InMemoryAws can't create in-process AWS SDK clients on .NET Framework, where the AWS SDK sends requests with HttpWebRequest instead of HttpClient. Run the InMemoryAws server and set the clients' ServiceURL to it instead, or set InMemoryAwsSdkSources to false to silence this warning." />
+  </Target>
+</Project>

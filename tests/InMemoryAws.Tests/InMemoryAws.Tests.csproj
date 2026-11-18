@@ -11,6 +11,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="AWSSDK.DynamoDBv2" />
+      <PackageReference Include="AWSSDK.EventBridge" />
+      <PackageReference Include="AWSSDK.SQS" />
+      <PackageReference Include="AWSSDK.SimpleNotificationService" />
       <PackageReference Include="AWSSDK.DynamoDBStreams" />
       <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
       <PackageReference Include="OpenTelemetry" />
@@ -30,5 +34,8 @@
       <Compile Include="..\InMemoryAws.Tests.Shared\**\*.cs" Link="%(RecursiveDir)%(Filename)%(Extension)" />
       <Compile Remove="Http\SnsQueryHandlerTests.cs" />
     </ItemGroup>
+
+    <!-- Adds the AWS SDK glue (CreateSqsClient() and the rest) as a package consumer gets it. -->
+    <Import Project="..\..\src\InMemoryAws\build\InMemoryAws.targets" />
 
 </Project>

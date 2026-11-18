@@ -164,7 +164,7 @@ public sealed class DynamoDbVectorSearchTests
     }
 
     [Test]
-    public async Task UpdateTable_IndexIsCreatingThenBackfillingThenActiveOnTheBusClock()
+    public async Task UpdateTable_IndexIsCreatingThenBackfillingThenActiveOnTheCloudClock()
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 3, 1, 12, 0, 0, TimeSpan.Zero));
         var cloud = new InMemoryAwsCloud { TimeProvider = time, DynamoDbVectorIndexCreationDelay = TimeSpan.FromMinutes(10) };

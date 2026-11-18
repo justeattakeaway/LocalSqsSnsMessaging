@@ -15,9 +15,9 @@ namespace InMemoryAws.Tests.SdkClient;
 /// </summary>
 public sealed class SqsCallerPolicyAndKmsTests
 {
-    private static AmazonSQSClient SignedClient(InMemoryAwsCloud cloud, string accessKey, out InMemoryAwsHttpClientFactory factory)
+    private static AmazonSQSClient SignedClient(InMemoryAwsCloud cloud, string accessKey, out InMemoryAwsSdkHttpClientFactory factory)
     {
-        factory = new InMemoryAwsHttpClientFactory(cloud);
+        factory = new InMemoryAwsSdkHttpClientFactory(cloud);
         return new AmazonSQSClient(
             new BasicAWSCredentials(accessKey, "secret"),
             new AmazonSQSConfig
@@ -61,7 +61,7 @@ public sealed class SqsCallerPolicyAndKmsTests
     }
 
     [Test]
-    public async Task SenderId_SignedWithAnAccessKey_IsTheBusUserId()
+    public async Task SenderId_SignedWithAnAccessKey_IsTheCloudUserId()
     {
         var cloud = new InMemoryAwsCloud { CurrentUserId = "AIDATESTUSER00000001" };
         using var sqs = SignedClient(cloud, "AKIAEXAMPLEKEY", out var factory);
