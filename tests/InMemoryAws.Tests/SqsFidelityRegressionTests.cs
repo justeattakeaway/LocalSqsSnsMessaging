@@ -231,4 +231,131 @@ public sealed class SqsFidelityRegressionTests
 
         exception.ErrorCode.ShouldBe("InvalidAttributeValue");
     }
+
+    [Test]
+    public async Task FifoThroughputLimitPerMessageGroup_WithoutAScope_IsRefusedOnCreate()
+    {
+        var (_, _, sqs) = Create();
+        using var _ = sqs;
+
+        // The scope defaults to queue, a pairing SQS refuses; accepting it would leave a queue whose
+        // every later SetQueueAttributes fails the same check.
+        var exception = await Should.ThrowAsync<AmazonSQSException>(() => sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = "throughput-no-scope.fifo",
+            Attributes = new() { ["FifoQueue"] = "true", ["FifoThroughputLimit"] = "perMessageGroupId" },
+        }));
+
+        exception.ErrorCode.ShouldBe("InvalidAttributeValue");
+    }
+
+    [Test]
+    [Arguments("Policy")]
+    [Arguments("RedrivePolicy")]
+    public async Task CreateQueue_RepeatedWithAnEmptyOptionalPolicy_ReturnsTheExistingQueue(string attribute)
+    {
+        var (_, _, sqs) = Create();
+        using var _ = sqs;
+        var request = new CreateQueueRequest { QueueName = "empty-" + attribute, Attributes = new() { [attribute] = "" } };
+
+        var first = (await sqs.CreateQueueAsync(request)).QueueUrl;
+        var second = (await sqs.CreateQueueAsync(request)).QueueUrl;
+
+        second.ShouldBe(first);
+    }
+
+    [Test]
+    public async Task ChangeMessageVisibility_OnAMessageThatExpiredInFlight_IsRefused()
+    {
+        var (_, time, sqs) = Create();
+        using var _ = sqs;
+        var url = (await sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = "expired-in-flight",
+            Attributes = new() { ["MessageRetentionPeriod"] = "60", ["VisibilityTimeout"] = "120" },
+        })).QueueUrl;
+        await sqs.SendMessageAsync(url, "short-lived");
+        var handle = (await sqs.ReceiveMessageAsync(url)).Messages.ShouldHaveSingleItem().ReceiptHandle;
+
+        // The visibility timeout ends after retention has, so the message is discarded, not returned.
+        time.Advance(TimeSpan.FromSeconds(121));
+
+        var exception = await Should.ThrowAsync<AmazonSQSException>(() => sqs.ChangeMessageVisibilityAsync(url, handle, 30));
+        exception.ErrorCode.ShouldBe("InvalidParameterValue");
+    }
+
+    [Test]
+    public async Task ChangeMessageVisibility_OnAMessageThatExpiredWhileVisible_IsRefused()
+    {
+        var (_, time, sqs) = Create();
+        using var _ = sqs;
+        var url = (await sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = "expired-visible",
+            Attributes = new() { ["MessageRetentionPeriod"] = "60", ["VisibilityTimeout"] = "10" },
+        })).QueueUrl;
+        await sqs.SendMessageAsync(url, "short-lived");
+        var handle = (await sqs.ReceiveMessageAsync(url)).Messages.ShouldHaveSingleItem().ReceiptHandle;
+
+        // Visible again after 10s, then past retention at 60s.
+        time.Advance(TimeSpan.FromSeconds(61));
+
+        var exception = await Should.ThrowAsync<AmazonSQSException>(() => sqs.ChangeMessageVisibilityAsync(url, handle, 30));
+        exception.ErrorCode.ShouldBe("InvalidParameterValue");
+        (await sqs.GetQueueAttributesAsync(url, ["ApproximateNumberOfMessages", "ApproximateNumberOfMessagesNotVisible"]))
+            .Attributes.ShouldBe(new Dictionary<string, string>
+            {
+                ["ApproximateNumberOfMessages"] = "0",
+                ["ApproximateNumberOfMessagesNotVisible"] = "0",
+            });
+    }
+
+    [Test]
+    public async Task MessageMoveTask_FromAFifoDeadLetterQueue_RedrivesItsMessagesInOrder()
+    {
+        var (_, time, sqs) = Create();
+        using var _ = sqs;
+        var dlqUrl = (await sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = "redrive-dlq.fifo",
+            Attributes = new() { ["FifoQueue"] = "true" },
+        })).QueueUrl;
+        var dlqArn = (await sqs.GetQueueAttributesAsync(dlqUrl, ["QueueArn"])).QueueARN;
+        var sourceUrl = (await sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = "redrive-source.fifo",
+            Attributes = new()
+            {
+                ["FifoQueue"] = "true",
+                ["VisibilityTimeout"] = "5",
+                ["RedrivePolicy"] = $$"""{"deadLetterTargetArn":"{{dlqArn}}","maxReceiveCount":1}""",
+            },
+        })).QueueUrl;
+        foreach (var body in new[] { "a1", "a2", "b1" })
+        {
+            await sqs.SendMessageAsync(new SendMessageRequest
+            {
+                QueueUrl = sourceUrl, MessageBody = body, MessageGroupId = body[..1], MessageDeduplicationId = body,
+            });
+        }
+
+        // Receive everything once, let it lapse, and the next receive dead-letters it all.
+        (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = sourceUrl, MaxNumberOfMessages = 10 })).Messages.Count.ShouldBe(3);
+        time.Advance(TimeSpan.FromSeconds(6));
+        ((await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = sourceUrl, MaxNumberOfMessages = 10 })).Messages ?? []).ShouldBeEmpty();
+        (await sqs.GetQueueAttributesAsync(dlqUrl, ["ApproximateNumberOfMessages"])).ApproximateNumberOfMessages.ShouldBe(3);
+
+        await sqs.StartMessageMoveTaskAsync(new StartMessageMoveTaskRequest { SourceArn = dlqArn });
+        time.Advance(TimeSpan.FromSeconds(2));
+
+        var task = (await sqs.ListMessageMoveTasksAsync(new ListMessageMoveTasksRequest { SourceArn = dlqArn })).Results.ShouldHaveSingleItem();
+        task.Status.ShouldBe("COMPLETED");
+        task.ApproximateNumberOfMessagesMoved.ShouldBe(3);
+        task.ApproximateNumberOfMessagesToMove.ShouldBe(3);
+        (await sqs.GetQueueAttributesAsync(dlqUrl, ["ApproximateNumberOfMessages"])).ApproximateNumberOfMessages.ShouldBe(0);
+
+        var redriven = (await sqs.ReceiveMessageAsync(new ReceiveMessageRequest { QueueUrl = sourceUrl, MaxNumberOfMessages = 10 })).Messages;
+        redriven.Where(m => m.Body.StartsWith('a')).Select(m => m.Body).ShouldBe(["a1", "a2"]);
+        redriven.Select(m => m.Body).ShouldBe(["a1", "a2", "b1"], ignoreOrder: true);
+    }
 }

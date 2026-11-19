@@ -7,7 +7,7 @@ namespace InMemoryAws;
 
 /// <summary>
 /// Who made an SQS request, as far as the request shows it: the SigV4 access key it was signed
-/// with (none for an unsigned request), the address it came from and whether it came over TLS.
+/// with (none for an unsigned request) and the address it came from.
 /// </summary>
 /// <remarks>
 /// The library models no IAM. Every signed request acts for an account (the account root): the
@@ -18,16 +18,15 @@ namespace InMemoryAws;
 internal sealed class SqsCaller
 {
     /// <summary>A caller with no request behind it: the raw client, or code inside the library.</summary>
-    public static readonly SqsCaller Unsigned = new(accessKeyId: null, sourceIp: null, secureTransport: true);
+    public static readonly SqsCaller Unsigned = new(accessKeyId: null, sourceIp: null);
 
     /// <summary>Where a request handed straight to the in-memory handler comes from.</summary>
     private static readonly IPAddress InProcessAddress = IPAddress.Loopback;
 
-    private SqsCaller(string? accessKeyId, IPAddress? sourceIp, bool secureTransport)
+    private SqsCaller(string? accessKeyId, IPAddress? sourceIp)
     {
         AccessKeyId = accessKeyId;
         SourceIp = sourceIp;
-        SecureTransport = secureTransport;
     }
 
     /// <summary>The access key the request was signed with, or <see langword="null"/> when it was not signed.</summary>
@@ -39,8 +38,12 @@ internal sealed class SqsCaller
     /// <summary>The address the request came from (<c>aws:SourceIp</c>), when known.</summary>
     public IPAddress? SourceIp { get; }
 
-    /// <summary>Whether the request came over TLS (<c>aws:SecureTransport</c>).</summary>
-    public bool SecureTransport { get; }
+    /// <summary>
+    /// Whether the caller is known to be exactly the account's root user: it signed with an account
+    /// id for its access key. Any other caller stands in for code that runs as some user or role of
+    /// the account, which the library does not know.
+    /// </summary>
+    public bool IsKnownPrincipal => AccessKeyId is { } key && AwsAccountId.IsValid(key);
 
     /// <summary>The account the caller acts for.</summary>
     public string AccountId(InMemoryAwsCloud cloud) =>
@@ -59,7 +62,7 @@ internal sealed class SqsCaller
 
     /// <summary>A caller signed with <paramref name="accessKeyId"/>, for tests.</summary>
     internal static SqsCaller Signed(string accessKeyId, IPAddress? sourceIp = null) =>
-        new(accessKeyId, sourceIp ?? InProcessAddress, secureTransport: true);
+        new(accessKeyId, sourceIp ?? InProcessAddress);
 
 #if !ASPNETCORE
     /// <summary>The caller behind a request handed to the in-memory HTTP handler, which arrives from loopback.</summary>
@@ -71,8 +74,7 @@ internal sealed class SqsCaller
             : null;
         return new SqsCaller(
             ExtractAccessKeyId(authorization, request.RequestUri?.Query),
-            InProcessAddress,
-            !string.Equals(request.RequestUri?.Scheme, "http", StringComparison.OrdinalIgnoreCase));
+            InProcessAddress);
     }
 #else
     /// <summary>The caller behind a request the server received.</summary>
@@ -87,8 +89,7 @@ internal sealed class SqsCaller
 
         return new SqsCaller(
             ExtractAccessKeyId(context.Request.Headers.Authorization.ToString(), context.Request.QueryString.Value),
-            remote ?? InProcessAddress,
-            context.Request.IsHttps);
+            remote ?? InProcessAddress);
     }
 #endif
 

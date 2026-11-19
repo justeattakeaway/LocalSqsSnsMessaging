@@ -97,7 +97,7 @@ internal sealed partial class InternalEventBridgeClient
                 continue;
             }
 
-            var context = new ResourcePolicy.RequestContext("PutEvents", eventBus.Arn, _cloud.CurrentAccountId, callerArn, SourceIp: null, SecureTransport: true)
+            var context = new ResourcePolicy.RequestContext("PutEvents", eventBus.Arn, _cloud.CurrentAccountId, callerArn, SourceIp: null)
             {
                 ServiceKeys = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
                 {

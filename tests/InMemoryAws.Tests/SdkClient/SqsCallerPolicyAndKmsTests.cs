@@ -312,4 +312,96 @@ public sealed class SqsCallerPolicyAndKmsTests
 
         await sqs.SendMessageAsync(url, "encrypted");
     }
+
+    [Test]
+    public async Task Deny_ExceptForARole_DoesNotBlockCallersWhoseRoleIsNotKnown()
+    {
+        var cloud = new InMemoryAwsCloud();
+        using var unsigned = cloud.CreateSqsClient();
+        using var signed = SignedClient(cloud, "AKIAEXAMPLEKEY", out var factory);
+        using var _ = factory;
+        var url = (await unsigned.CreateQueueAsync("deny-except-role")).QueueUrl;
+        var arn = await QueueArn(unsigned, url);
+        var role = $"arn:aws:iam::{cloud.CurrentAccountId}:role/app";
+        // Common "only the app's role" guardrails. Neither caller presents a role, so which
+        // principal it stands for is unknown and the statements cannot be evaluated.
+        await unsigned.SetQueueAttributesAsync(url, new() { ["Policy"] = Policy(
+            new JsonObject
+            {
+                ["Effect"] = "Deny",
+                ["Principal"] = "*",
+                ["Action"] = "sqs:SendMessage",
+                ["Resource"] = arn,
+                ["Condition"] = new JsonObject { ["StringNotLike"] = new JsonObject { ["aws:PrincipalArn"] = role } },
+            },
+            new JsonObject
+            {
+                ["Effect"] = "Deny",
+                ["NotPrincipal"] = new JsonObject { ["AWS"] = role },
+                ["Action"] = "sqs:ReceiveMessage",
+                ["Resource"] = arn,
+            },
+            new JsonObject
+            {
+                ["Effect"] = "Deny",
+                ["Principal"] = "*",
+                ["Action"] = "sqs:DeleteMessage",
+                ["Resource"] = arn,
+                ["Condition"] = new JsonObject { ["StringNotEquals"] = new JsonObject { ["aws:userid"] = "AROAEXAMPLEROLEID:app" } },
+            }) });
+
+        foreach (var sqs in new[] { unsigned, signed })
+        {
+            await sqs.SendMessageAsync(url, "allowed");
+            var handle = (await sqs.ReceiveMessageAsync(url)).Messages.ShouldHaveSingleItem().ReceiptHandle;
+            await sqs.DeleteMessageAsync(url, handle);
+        }
+    }
+
+    [Test]
+    public async Task Deny_NamingAPrincipalInAnotherAccount_StillDoesNotApplyToAnUnknownRole()
+    {
+        var cloud = new InMemoryAwsCloud();
+        using var sqs = cloud.CreateSqsClient();
+        var url = (await sqs.CreateQueueAsync("deny-other-account-role")).QueueUrl;
+        var arn = await QueueArn(sqs, url);
+        await sqs.SetQueueAttributesAsync(url, new() { ["Policy"] = Policy(new JsonObject
+        {
+            ["Effect"] = "Deny",
+            ["NotPrincipal"] = new JsonObject { ["AWS"] = "arn:aws:iam::111122223333:role/app" },
+            ["Action"] = "sqs:SendMessage",
+            ["Resource"] = arn,
+        }) });
+
+        // Whatever this account's caller is, it is not a principal of account 111122223333.
+        await Should.ThrowAsync<AmazonSQSException>(() => sqs.SendMessageAsync(url, "denied"));
+    }
+
+    [Test]
+    public async Task Deny_WithoutSecureTransport_DoesNotBlockAClientOnAnHttpEndpoint()
+    {
+        var cloud = new InMemoryAwsCloud();
+        using var factory = new InMemoryAwsSdkHttpClientFactory(cloud);
+        using var sqs = new AmazonSQSClient(new AnonymousAWSCredentials(), new AmazonSQSConfig
+        {
+            ServiceURL = $"http://sqs.{cloud.CurrentRegion}.amazonaws.com",
+            AuthenticationRegion = cloud.CurrentRegion,
+            MaxErrorRetry = 0,
+            HttpClientFactory = factory,
+        });
+        var url = (await sqs.CreateQueueAsync("deny-insecure")).QueueUrl;
+        var arn = await QueueArn(sqs, url);
+        // The guardrail CDK's enforceSSL writes. The library has no TLS to require.
+        await sqs.SetQueueAttributesAsync(url, new() { ["Policy"] = Policy(new JsonObject
+        {
+            ["Effect"] = "Deny",
+            ["Principal"] = "*",
+            ["Action"] = "sqs:*",
+            ["Resource"] = arn,
+            ["Condition"] = new JsonObject { ["Bool"] = new JsonObject { ["aws:SecureTransport"] = "false" } },
+        }) });
+
+        await sqs.SendMessageAsync(url, "allowed");
+        await sqs.DeleteQueueAsync(url);
+    }
 }

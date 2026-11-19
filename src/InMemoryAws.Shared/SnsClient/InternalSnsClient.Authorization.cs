@@ -32,7 +32,7 @@ internal sealed partial class InternalSnsClient
         }
 
         var callerArn = $"arn:aws:iam::{_cloud.CurrentAccountId}:root";
-        var request = new ResourcePolicy.RequestContext(action, topic.Arn, _cloud.CurrentAccountId, callerArn, SourceIp: null, SecureTransport: true)
+        var request = new ResourcePolicy.RequestContext(action, topic.Arn, _cloud.CurrentAccountId, callerArn, SourceIp: null)
         {
             ServiceKeys = serviceKeys
         };

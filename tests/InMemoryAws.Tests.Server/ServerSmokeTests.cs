@@ -294,6 +294,22 @@ public sealed class ServerSmokeTests : IAsyncDisposable
     }
 
     [Test]
+    public async Task Sqs_DenyWithoutSecureTransport_DoesNotLockOutThePlainHttpServer()
+    {
+        var queueUrl = (await _sqsClient!.CreateQueueAsync("secure-transport-queue")).QueueUrl;
+        var queueArn = (await _sqsClient.GetQueueAttributesAsync(queueUrl, ["QueueArn"])).QueueARN;
+        // The guardrail CDK's enforceSSL writes. The server only listens on plain HTTP.
+        await _sqsClient.SetQueueAttributesAsync(queueUrl, new Dictionary<string, string>
+        {
+            ["Policy"] = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"sqs:*\"," +
+                         $"\"Resource\":\"{queueArn}\",\"Condition\":{{\"Bool\":{{\"aws:SecureTransport\":\"false\"}}}}}}]}}"
+        });
+
+        await _sqsClient.SendMessageAsync(queueUrl, "allowed");
+        await _sqsClient.DeleteQueueAsync(queueUrl);
+    }
+
+    [Test]
     public async Task Sqs_MultiAccount_ShouldIsolateQueues()
     {
         // Create a second SQS client with a different 12-digit account ID

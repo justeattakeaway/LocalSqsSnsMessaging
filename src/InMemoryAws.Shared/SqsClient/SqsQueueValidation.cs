@@ -162,9 +162,11 @@ internal static class SqsQueueValidation
         {
             var throughputLimit = attributes.GetValueOrDefault(InternalQueueAttributeName.FifoThroughputLimit)
                                   ?? current.GetValueOrDefault(InternalQueueAttributeName.FifoThroughputLimit);
+            // A queue created without a scope gets the default, queue, which this pairing does not allow.
             var deduplicationScope = attributes.GetValueOrDefault(InternalQueueAttributeName.DeduplicationScope)
-                                     ?? current.GetValueOrDefault(InternalQueueAttributeName.DeduplicationScope);
-            if (throughputLimit == "perMessageGroupId" && deduplicationScope is not (null or "messageGroup"))
+                                     ?? current.GetValueOrDefault(InternalQueueAttributeName.DeduplicationScope)
+                                     ?? "queue";
+            if (throughputLimit == "perMessageGroupId" && deduplicationScope != "messageGroup")
             {
                 throw InvalidAttributeValue(InternalQueueAttributeName.FifoThroughputLimit,
                     "To set FifoThroughputLimit to perMessageGroupId, the DeduplicationScope must be messageGroup.");
@@ -304,7 +306,8 @@ internal static class SqsQueueValidation
     {
         if (current is null)
         {
-            return false;
+            // An empty Policy or RedrivePolicy is stored as no attribute at all.
+            return requested.Length == 0;
         }
 
         if (IntegerAttributes.ContainsKey(name))
