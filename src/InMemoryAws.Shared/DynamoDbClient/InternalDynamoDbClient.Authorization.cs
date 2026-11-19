@@ -32,7 +32,7 @@ internal sealed partial class InternalDynamoDbClient
 
         var resource = resourceArn ?? table.Arn;
         var callerArn = $"arn:aws:iam::{_cloud.CurrentAccountId}:root";
-        var request = new ResourcePolicy.RequestContext(action, resource, _cloud.CurrentAccountId, callerArn, SourceIp: null, SecureTransport: true);
+        var request = new ResourcePolicy.RequestContext(action, resource, _cloud.CurrentAccountId, callerArn, SourceIp: null);
         if (policy.DeniesExplicitly(request))
         {
             throw DynamoDbErrors.AccessDenied(

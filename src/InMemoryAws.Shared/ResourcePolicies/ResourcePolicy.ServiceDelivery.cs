@@ -27,7 +27,7 @@ internal sealed partial class ResourcePolicy
     /// to perform <paramref name="action"/> on <paramref name="resource"/>.
     /// </summary>
     public static RequestContext ServiceRequest(string action, string resource, string servicePrincipal, string sourceArn) =>
-        new(action, resource, PrincipalAccount: null, PrincipalArn: null, SourceIp: null, SecureTransport: true)
+        new(action, resource, PrincipalAccount: null, PrincipalArn: null, SourceIp: null)
         {
             Service = servicePrincipal,
             SourceArn = sourceArn,

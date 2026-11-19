@@ -38,7 +38,10 @@ internal sealed partial class InternalSqsClient
         }
 
         var account = Caller.AccountId(_cloud);
-        var asAccount = new ResourcePolicy.RequestContext(action, queue.Arn, account, Caller.Arn(_cloud), Caller.SourceIp, Caller.SecureTransport);
+        var asAccount = new ResourcePolicy.RequestContext(action, queue.Arn, account, Caller.Arn(_cloud), Caller.SourceIp)
+        {
+            PrincipalKnown = Caller.IsKnownPrincipal
+        };
         var anonymous = !Caller.IsSigned
             && policy.GrantsToEveryone(asAccount with { PrincipalAccount = null, PrincipalArn = null });
         var request = anonymous ? asAccount with { PrincipalAccount = null, PrincipalArn = null } : asAccount;

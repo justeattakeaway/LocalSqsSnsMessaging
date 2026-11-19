@@ -30,15 +30,28 @@ internal sealed partial class ResourcePolicy
     /// <param name="PrincipalAccount">The caller's account, or <see langword="null"/> for an anonymous caller.</param>
     /// <param name="PrincipalArn">The caller's ARN, or <see langword="null"/> for an anonymous caller.</param>
     /// <param name="SourceIp">Where the request came from, when known.</param>
-    /// <param name="SecureTransport">Whether the request came over TLS.</param>
+    /// <remarks>
+    /// There is no transport: <c>aws:SecureTransport</c> is always <c>true</c>, because the library
+    /// stands in for the services' HTTPS endpoints even when its server listens on plain HTTP.
+    /// </remarks>
     internal sealed record RequestContext(
         string Action,
         string Resource,
         string? PrincipalAccount,
         string? PrincipalArn,
-        IPAddress? SourceIp,
-        bool SecureTransport)
+        IPAddress? SourceIp)
     {
+        /// <summary>
+        /// Whether <see cref="PrincipalArn"/> is the caller's exact identity. Usually it is not: the
+        /// library models no IAM, so a caller acts for its account's root user while the code it
+        /// stands in for runs as some user or role of that account. A statement that depends on which
+        /// user or role is calling (one naming such a principal, or conditioned on
+        /// <c>aws:PrincipalArn</c>, <c>aws:PrincipalType</c> or <c>aws:userid</c>) then cannot be
+        /// evaluated, and is skipped. True when the caller is the root user, as an SQS request signed
+        /// with an account id for its access key is.
+        /// </summary>
+        public bool PrincipalKnown { get; init; }
+
         /// <summary>
         /// The service principal making the request on a resource's behalf (e.g. <c>sns.amazonaws.com</c>
         /// delivering a topic's notification), or <see langword="null"/> when an account or an
@@ -60,6 +73,12 @@ internal sealed partial class ResourcePolicy
         public IReadOnlyDictionary<string, string?>? ServiceKeys { get; init; }
 
         public bool IsAnonymous => PrincipalAccount is null && Service is null;
+
+        /// <summary>
+        /// Whether the caller's identity is known exactly: an anonymous caller and a service principal
+        /// always are, an account's caller only when <see cref="PrincipalKnown"/>.
+        /// </summary>
+        public bool IdentityKnown => PrincipalAccount is null || PrincipalKnown;
     }
 
     /// <summary>Whether a Deny statement applies to the request.</summary>
@@ -91,12 +110,18 @@ internal sealed partial class ResourcePolicy
         var resource = statement["Resource"] is { } r
             ? MatchesAny(r, request.Resource, StringComparison.Ordinal)
             : statement["NotResource"] is not { } nr || !MatchesAny(nr, request.Resource, StringComparison.Ordinal);
-        if (!principal || !action || !resource)
+        if (principal == false || !action || !resource)
         {
             return false;
         }
 
-        return statement["Condition"] is { } condition ? EvaluateCondition(condition, request) : true;
+        var condition = statement["Condition"] is { } c ? EvaluateCondition(c, request) : true;
+        if (condition == false)
+        {
+            return false;
+        }
+
+        return principal is null || condition is null ? null : true;
     }
 
     private static bool NamesEveryone(JsonNode? principal) => principal switch
@@ -106,7 +131,11 @@ internal sealed partial class ResourcePolicy
         _ => false,
     };
 
-    private static bool MatchesPrincipal(JsonNode principal, RequestContext request)
+    /// <summary>
+    /// Whether the statement's principal names the caller; <see langword="null"/> when it names a
+    /// user or role of the caller's account and the caller's exact identity is not known.
+    /// </summary>
+    private static bool? MatchesPrincipal(JsonNode principal, RequestContext request)
     {
         if (NamesEveryone(principal))
         {
@@ -124,11 +153,31 @@ internal sealed partial class ResourcePolicy
         }
 
         // Federated and canonical-user principals never make API calls here.
-        return Values(obj["AWS"]).Any(value =>
-            AwsAccountId.IsValid(value)
-                ? string.Equals(value, request.PrincipalAccount, StringComparison.Ordinal)
-                : string.Equals(value, $"arn:aws:iam::{request.PrincipalAccount}:root", StringComparison.Ordinal)
-                  || string.Equals(value, request.PrincipalArn, StringComparison.Ordinal));
+        var unknown = false;
+        foreach (var value in Values(obj["AWS"]))
+        {
+            if (AwsAccountId.IsValid(value)
+                    ? string.Equals(value, request.PrincipalAccount, StringComparison.Ordinal)
+                    : string.Equals(value, $"arn:aws:iam::{request.PrincipalAccount}:root", StringComparison.Ordinal)
+                      || string.Equals(value, request.PrincipalArn, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            unknown |= !request.IdentityKnown && IsPrincipalOfAccount(value, request.PrincipalAccount!);
+        }
+
+        return unknown ? null : false;
+    }
+
+    /// <summary>Whether <paramref name="arn"/> is an IAM or STS principal (a user, role or session) of <paramref name="account"/>.</summary>
+    private static bool IsPrincipalOfAccount(string arn, string account)
+    {
+        var parts = arn.Split(':');
+        return parts.Length >= 6
+               && parts[0] == "arn"
+               && parts[2] is "iam" or "sts"
+               && string.Equals(parts[4], account, StringComparison.Ordinal);
     }
 
     private static bool MatchesAny(JsonNode patterns, string value, StringComparison comparison) =>
@@ -243,18 +292,20 @@ internal sealed partial class ResourcePolicy
                 value = request.SourceIp?.ToString();
                 return true;
             case "AWS:SECURETRANSPORT":
-                value = request.SecureTransport ? "true" : "false";
+                value = "true";
                 return true;
             case "AWS:PRINCIPALACCOUNT":
                 value = request.PrincipalAccount;
                 return true;
             case "AWS:PRINCIPALARN":
+                // Unknown unless the caller's identity is: the code the library stands in for runs as
+                // some user or role, not the root user the request acts as.
                 value = request.PrincipalArn;
-                return true;
+                return request.IdentityKnown;
             case "AWS:PRINCIPALTYPE":
                 // A service principal, such as SNS delivering a notification, has no principal type.
                 value = request.Service is not null ? null : request.IsAnonymous ? "Anonymous" : "Account";
-                return true;
+                return request.IdentityKnown;
             case "AWS:PRINCIPALSERVICENAME":
                 value = request.Service;
                 return true;
@@ -270,7 +321,7 @@ internal sealed partial class ResourcePolicy
                 return true;
             case "AWS:USERID":
                 value = request.IsAnonymous ? "anonymous" : request.PrincipalAccount;
-                return true;
+                return request.IdentityKnown;
             default:
                 value = null;
                 return request.ServiceKeys?.TryGetValue(key, out value) == true;

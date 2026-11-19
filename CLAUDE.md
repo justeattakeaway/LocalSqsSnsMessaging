@@ -225,7 +225,7 @@ A queue's, topic's or event bus's `Policy`, or a DynamoDB table's policy, is a *
 
 ### SQS Callers
 
-The generated SQS handlers build `InternalSqsClient` with a `Caller` (`SqsCaller`: the SigV4 access key, source IP, TLS). A client built without one (tests, the dashboard) is never subject to queue policies.
+The generated SQS handlers build `InternalSqsClient` with a `Caller` (`SqsCaller`: the SigV4 access key and source IP). A client built without one (tests, the dashboard) is never subject to queue policies.
 - `SenderId` comes from `SqsCaller.SenderId` (signed: `cloud.CurrentUserId`, or the account id for an account-id access key; unsigned: the account id)
 - `InternalSqsClient.Authorization.cs`: `Authorize(queue, action)` runs after each queue lookup and enforces explicit Deny statements only (`ResourcePolicy`); `EnsureKmsKeyExists` refuses sends to a queue whose KMS alias is not in `cloud.KmsKeyAliases` (only when that is set; by default every key exists)
 - Receipt handles carry the queue's `Incarnation`, so a handle from a deleted queue is refused by a same-name successor

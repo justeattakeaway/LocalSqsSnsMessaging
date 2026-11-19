@@ -27,7 +27,7 @@ public sealed class ResourcePolicyTests
         new() { ["Sid"] = sid, ["Effect"] = "Allow", ["Principal"] = "*", ["Action"] = action };
 
     private static ResourcePolicy.RequestContext Caller(string action, string resource = QueueArn, IPAddress? sourceIp = null) =>
-        new(action, resource, "123456789012", "arn:aws:iam::123456789012:root", sourceIp, SecureTransport: true);
+        new(action, resource, "123456789012", "arn:aws:iam::123456789012:root", sourceIp);
 
     // Reading
 

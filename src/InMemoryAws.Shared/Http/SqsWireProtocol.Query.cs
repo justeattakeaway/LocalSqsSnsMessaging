@@ -88,6 +88,52 @@ internal static partial class SqsWireProtocol
         return response;
     }
 
+    /// <summary>
+    /// <paramref name="value"/> with every character XML 1.0 cannot carry replaced by U+FFFD. JSON
+    /// requests can hold such characters (a tag value, or a refused value an error message quotes),
+    /// and the XML writer would otherwise throw rather than write the response.
+    /// </summary>
+    internal static string XmlText(string value)
+    {
+        var firstInvalid = FindInvalidXmlChar(value, 0);
+        if (firstInvalid < 0)
+        {
+            return value;
+        }
+
+        var builder = new System.Text.StringBuilder(value.Length);
+        var start = 0;
+        for (var i = firstInvalid; i >= 0; i = FindInvalidXmlChar(value, start))
+        {
+            builder.Append(value, start, i - start).Append('\uFFFD');
+            start = i + 1;
+        }
+
+        return builder.Append(value, start, value.Length - start).ToString();
+    }
+
+    /// <summary>The index of the first character from <paramref name="start"/> on that XML 1.0 cannot carry, or -1.</summary>
+    private static int FindInvalidXmlChar(string value, int start)
+    {
+        for (var i = start; i < value.Length; i++)
+        {
+            if (XmlConvert.IsXmlChar(value[i]))
+            {
+                continue;
+            }
+
+            if (i + 1 < value.Length && XmlConvert.IsXmlSurrogatePair(value[i + 1], value[i]))
+            {
+                i++;
+                continue;
+            }
+
+            return i;
+        }
+
+        return -1;
+    }
+
     /// <summary>Writes a Query <c>ErrorResponse</c> document.</summary>
     private static WireResponse WriteQueryError(IBufferWriter<byte> output, string code, string message, HttpStatusCode statusCode)
     {
@@ -99,7 +145,7 @@ internal static partial class SqsWireProtocol
             writer.WriteStartElement("Error");
             writer.WriteElementString("Type", (int)statusCode >= 500 ? "Receiver" : "Sender");
             writer.WriteElementString("Code", code);
-            writer.WriteElementString("Message", message);
+            writer.WriteElementString("Message", XmlText(message));
             writer.WriteStartElement("Detail");
             writer.WriteEndElement();
             writer.WriteEndElement();

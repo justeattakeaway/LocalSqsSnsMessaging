@@ -251,4 +251,33 @@ public sealed class SqsQueryProtocolTests : IDisposable
         response.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
         ((await _sqs.ReceiveMessageAsync(url)).Messages ?? []).ShouldBeEmpty();
     }
+
+    [Test]
+    public async Task Query_ErrorEchoingAControlCharacter_IsStillAnXmlErrorResponse()
+    {
+        var url = (await _sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = "query-control-char.fifo",
+            Attributes = new() { ["FifoQueue"] = "true", ["ContentBasedDeduplication"] = "true" },
+        })).QueueUrl;
+
+        var (status, root) = await QueryAsync(
+            ("Action", "SendMessage"), ("QueueUrl", url), ("MessageBody", "hello"), ("MessageGroupId", "a\u0001b"));
+
+        status.ShouldBe(HttpStatusCode.BadRequest);
+        root.Element(Ns + "Error")!.Element(Ns + "Code")!.Value.ShouldBe("InvalidParameterValue");
+    }
+
+    [Test]
+    public async Task Query_ResponseCarryingAControlCharacter_IsStillWritten()
+    {
+        // JSON can carry a character XML 1.0 cannot, so a tag set over JSON can hold one.
+        var url = (await _sqs.CreateQueueAsync("query-control-char-tag")).QueueUrl;
+        await _sqs.TagQueueAsync(new TagQueueRequest { QueueUrl = url, Tags = new() { ["team"] = "a\u0001b" } });
+
+        var (status, root) = await QueryAsync(("Action", "ListQueueTags"), ("QueueUrl", url));
+
+        status.ShouldBe(HttpStatusCode.OK);
+        root.Descendants(Ns + "Tag").ShouldHaveSingleItem().Element(Ns + "Key")!.Value.ShouldBe("team");
+    }
 }

@@ -216,7 +216,7 @@ internal static class SqsQuerySerializers
         using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("CreateQueueResponse", XmlNamespace);
         writer.WriteStartElement("CreateQueueResult");
-        if (response.QueueUrl != null) writer.WriteElementString("QueueUrl", response.QueueUrl);
+        if (response.QueueUrl != null) writer.WriteElementString("QueueUrl", XmlText(response.QueueUrl));
         writer.WriteEndElement();
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -356,8 +356,8 @@ internal static class SqsQuerySerializers
             foreach (var v32Entry in v32Map)
             {
                 writer.WriteStartElement("Attribute");
-                writer.WriteElementString("Name", v32Entry.Key);
-                writer.WriteElementString("Value", v32Entry.Value);
+                writer.WriteElementString("Name", XmlText(v32Entry.Key));
+                writer.WriteElementString("Value", XmlText(v32Entry.Value));
                 writer.WriteEndElement();
             }
         }
@@ -387,7 +387,7 @@ internal static class SqsQuerySerializers
         using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("GetQueueUrlResponse", XmlNamespace);
         writer.WriteStartElement("GetQueueUrlResult");
-        if (response.QueueUrl != null) writer.WriteElementString("QueueUrl", response.QueueUrl);
+        if (response.QueueUrl != null) writer.WriteElementString("QueueUrl", XmlText(response.QueueUrl));
         writer.WriteEndElement();
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -421,10 +421,10 @@ internal static class SqsQuerySerializers
         {
             foreach (var v38Item in v38List)
             {
-                writer.WriteElementString("QueueUrl", v38Item);
+                writer.WriteElementString("QueueUrl", XmlText(v38Item));
             }
         }
-        if (response.NextToken != null) writer.WriteElementString("NextToken", response.NextToken);
+        if (response.NextToken != null) writer.WriteElementString("NextToken", XmlText(response.NextToken));
         writer.WriteEndElement();
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -486,8 +486,8 @@ internal static class SqsQuerySerializers
             foreach (var v43Entry in v43Map)
             {
                 writer.WriteStartElement("Tag");
-                writer.WriteElementString("Key", v43Entry.Key);
-                writer.WriteElementString("Value", v43Entry.Value);
+                writer.WriteElementString("Key", XmlText(v43Entry.Key));
+                writer.WriteElementString("Value", XmlText(v43Entry.Value));
                 writer.WriteEndElement();
             }
         }
@@ -524,10 +524,10 @@ internal static class SqsQuerySerializers
         {
             foreach (var v47Item in v47List)
             {
-                writer.WriteElementString("QueueUrl", v47Item);
+                writer.WriteElementString("QueueUrl", XmlText(v47Item));
             }
         }
-        if (response.NextToken != null) writer.WriteElementString("NextToken", response.NextToken);
+        if (response.NextToken != null) writer.WriteElementString("NextToken", XmlText(response.NextToken));
         writer.WriteEndElement();
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -722,11 +722,11 @@ internal static class SqsQuerySerializers
         using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("SendMessageResponse", XmlNamespace);
         writer.WriteStartElement("SendMessageResult");
-        if (response.MD5OfMessageBody != null) writer.WriteElementString("MD5OfMessageBody", response.MD5OfMessageBody);
-        if (response.MD5OfMessageAttributes != null) writer.WriteElementString("MD5OfMessageAttributes", response.MD5OfMessageAttributes);
-        if (response.MD5OfMessageSystemAttributes != null) writer.WriteElementString("MD5OfMessageSystemAttributes", response.MD5OfMessageSystemAttributes);
-        if (response.MessageId != null) writer.WriteElementString("MessageId", response.MessageId);
-        if (response.SequenceNumber != null) writer.WriteElementString("SequenceNumber", response.SequenceNumber);
+        if (response.MD5OfMessageBody != null) writer.WriteElementString("MD5OfMessageBody", XmlText(response.MD5OfMessageBody));
+        if (response.MD5OfMessageAttributes != null) writer.WriteElementString("MD5OfMessageAttributes", XmlText(response.MD5OfMessageAttributes));
+        if (response.MD5OfMessageSystemAttributes != null) writer.WriteElementString("MD5OfMessageSystemAttributes", XmlText(response.MD5OfMessageSystemAttributes));
+        if (response.MessageId != null) writer.WriteElementString("MessageId", XmlText(response.MessageId));
+        if (response.SequenceNumber != null) writer.WriteElementString("SequenceNumber", XmlText(response.SequenceNumber));
         writer.WriteEndElement();
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -845,7 +845,7 @@ internal static class SqsQuerySerializers
         using var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false), CloseOutput = false, NewLineHandling = NewLineHandling.Entitize });
         writer.WriteStartElement("StartMessageMoveTaskResponse", XmlNamespace);
         writer.WriteStartElement("StartMessageMoveTaskResult");
-        if (response.TaskHandle != null) writer.WriteElementString("TaskHandle", response.TaskHandle);
+        if (response.TaskHandle != null) writer.WriteElementString("TaskHandle", XmlText(response.TaskHandle));
         writer.WriteEndElement();
         writer.WriteStartElement("ResponseMetadata");
         writer.WriteElementString("RequestId", Guid.NewGuid().ToString());
@@ -1076,38 +1076,38 @@ internal static class SqsQuerySerializers
     private static void WriteBatchResultErrorEntry(XmlWriter writer, string elementName, BatchResultErrorEntry structure)
     {
         writer.WriteStartElement(elementName);
-        if (structure.Id != null) writer.WriteElementString("Id", structure.Id);
+        if (structure.Id != null) writer.WriteElementString("Id", XmlText(structure.Id));
         if (structure.SenderFault.HasValue) writer.WriteElementString("SenderFault", structure.SenderFault.Value ? "true" : "false");
-        if (structure.Code != null) writer.WriteElementString("Code", structure.Code);
-        if (structure.Message != null) writer.WriteElementString("Message", structure.Message);
+        if (structure.Code != null) writer.WriteElementString("Code", XmlText(structure.Code));
+        if (structure.Message != null) writer.WriteElementString("Message", XmlText(structure.Message));
         writer.WriteEndElement();
     }
 
     private static void WriteChangeMessageVisibilityBatchResultEntry(XmlWriter writer, string elementName, ChangeMessageVisibilityBatchResultEntry structure)
     {
         writer.WriteStartElement(elementName);
-        if (structure.Id != null) writer.WriteElementString("Id", structure.Id);
+        if (structure.Id != null) writer.WriteElementString("Id", XmlText(structure.Id));
         writer.WriteEndElement();
     }
 
     private static void WriteDeleteMessageBatchResultEntry(XmlWriter writer, string elementName, DeleteMessageBatchResultEntry structure)
     {
         writer.WriteStartElement(elementName);
-        if (structure.Id != null) writer.WriteElementString("Id", structure.Id);
+        if (structure.Id != null) writer.WriteElementString("Id", XmlText(structure.Id));
         writer.WriteEndElement();
     }
 
     private static void WriteListMessageMoveTasksResultEntry(XmlWriter writer, string elementName, ListMessageMoveTasksResultEntry structure)
     {
         writer.WriteStartElement(elementName);
-        if (structure.TaskHandle != null) writer.WriteElementString("TaskHandle", structure.TaskHandle);
-        if (structure.Status != null) writer.WriteElementString("Status", structure.Status);
-        if (structure.SourceArn != null) writer.WriteElementString("SourceArn", structure.SourceArn);
-        if (structure.DestinationArn != null) writer.WriteElementString("DestinationArn", structure.DestinationArn);
+        if (structure.TaskHandle != null) writer.WriteElementString("TaskHandle", XmlText(structure.TaskHandle));
+        if (structure.Status != null) writer.WriteElementString("Status", XmlText(structure.Status));
+        if (structure.SourceArn != null) writer.WriteElementString("SourceArn", XmlText(structure.SourceArn));
+        if (structure.DestinationArn != null) writer.WriteElementString("DestinationArn", XmlText(structure.DestinationArn));
         if (structure.MaxNumberOfMessagesPerSecond.HasValue) writer.WriteElementString("MaxNumberOfMessagesPerSecond", structure.MaxNumberOfMessagesPerSecond.Value.ToString(CultureInfo.InvariantCulture));
         if (structure.ApproximateNumberOfMessagesMoved.HasValue) writer.WriteElementString("ApproximateNumberOfMessagesMoved", structure.ApproximateNumberOfMessagesMoved.Value.ToString(CultureInfo.InvariantCulture));
         if (structure.ApproximateNumberOfMessagesToMove.HasValue) writer.WriteElementString("ApproximateNumberOfMessagesToMove", structure.ApproximateNumberOfMessagesToMove.Value.ToString(CultureInfo.InvariantCulture));
-        if (structure.FailureReason != null) writer.WriteElementString("FailureReason", structure.FailureReason);
+        if (structure.FailureReason != null) writer.WriteElementString("FailureReason", XmlText(structure.FailureReason));
         if (structure.StartedTimestamp.HasValue) writer.WriteElementString("StartedTimestamp", structure.StartedTimestamp.Value.ToString(CultureInfo.InvariantCulture));
         writer.WriteEndElement();
     }
@@ -1115,27 +1115,27 @@ internal static class SqsQuerySerializers
     private static void WriteMessage(XmlWriter writer, string elementName, Message structure)
     {
         writer.WriteStartElement(elementName);
-        if (structure.MessageId != null) writer.WriteElementString("MessageId", structure.MessageId);
-        if (structure.ReceiptHandle != null) writer.WriteElementString("ReceiptHandle", structure.ReceiptHandle);
-        if (structure.MD5OfBody != null) writer.WriteElementString("MD5OfBody", structure.MD5OfBody);
-        if (structure.Body != null) writer.WriteElementString("Body", structure.Body);
+        if (structure.MessageId != null) writer.WriteElementString("MessageId", XmlText(structure.MessageId));
+        if (structure.ReceiptHandle != null) writer.WriteElementString("ReceiptHandle", XmlText(structure.ReceiptHandle));
+        if (structure.MD5OfBody != null) writer.WriteElementString("MD5OfBody", XmlText(structure.MD5OfBody));
+        if (structure.Body != null) writer.WriteElementString("Body", XmlText(structure.Body));
         if (structure.Attributes is { Count: > 0 } v117Map)
         {
             foreach (var v117Entry in v117Map)
             {
                 writer.WriteStartElement("Attribute");
-                writer.WriteElementString("Name", v117Entry.Key);
-                writer.WriteElementString("Value", v117Entry.Value);
+                writer.WriteElementString("Name", XmlText(v117Entry.Key));
+                writer.WriteElementString("Value", XmlText(v117Entry.Value));
                 writer.WriteEndElement();
             }
         }
-        if (structure.MD5OfMessageAttributes != null) writer.WriteElementString("MD5OfMessageAttributes", structure.MD5OfMessageAttributes);
+        if (structure.MD5OfMessageAttributes != null) writer.WriteElementString("MD5OfMessageAttributes", XmlText(structure.MD5OfMessageAttributes));
         if (structure.MessageAttributes is { Count: > 0 } v118Map)
         {
             foreach (var v118Entry in v118Map)
             {
                 writer.WriteStartElement("MessageAttribute");
-                writer.WriteElementString("Name", v118Entry.Key);
+                writer.WriteElementString("Name", XmlText(v118Entry.Key));
                 WriteMessageAttributeValue(writer, "Value", v118Entry.Value);
                 writer.WriteEndElement();
             }
@@ -1146,13 +1146,13 @@ internal static class SqsQuerySerializers
     private static void WriteMessageAttributeValue(XmlWriter writer, string elementName, MessageAttributeValue structure)
     {
         writer.WriteStartElement(elementName);
-        if (structure.StringValue != null) writer.WriteElementString("StringValue", structure.StringValue);
+        if (structure.StringValue != null) writer.WriteElementString("StringValue", XmlText(structure.StringValue));
         if (structure.BinaryValue != null) writer.WriteElementString("BinaryValue", WriteBlob(structure.BinaryValue));
         if (structure.StringListValues is { Count: > 0 } v119List)
         {
             foreach (var v119Item in v119List)
             {
-                writer.WriteElementString("StringListValue", v119Item);
+                writer.WriteElementString("StringListValue", XmlText(v119Item));
             }
         }
         if (structure.BinaryListValues is { Count: > 0 } v120List)
@@ -1162,25 +1162,27 @@ internal static class SqsQuerySerializers
                 writer.WriteElementString("BinaryListValue", WriteBlob(v120Item));
             }
         }
-        if (structure.DataType != null) writer.WriteElementString("DataType", structure.DataType);
+        if (structure.DataType != null) writer.WriteElementString("DataType", XmlText(structure.DataType));
         writer.WriteEndElement();
     }
 
     private static void WriteSendMessageBatchResultEntry(XmlWriter writer, string elementName, SendMessageBatchResultEntry structure)
     {
         writer.WriteStartElement(elementName);
-        if (structure.Id != null) writer.WriteElementString("Id", structure.Id);
-        if (structure.MessageId != null) writer.WriteElementString("MessageId", structure.MessageId);
-        if (structure.MD5OfMessageBody != null) writer.WriteElementString("MD5OfMessageBody", structure.MD5OfMessageBody);
-        if (structure.MD5OfMessageAttributes != null) writer.WriteElementString("MD5OfMessageAttributes", structure.MD5OfMessageAttributes);
-        if (structure.MD5OfMessageSystemAttributes != null) writer.WriteElementString("MD5OfMessageSystemAttributes", structure.MD5OfMessageSystemAttributes);
-        if (structure.SequenceNumber != null) writer.WriteElementString("SequenceNumber", structure.SequenceNumber);
+        if (structure.Id != null) writer.WriteElementString("Id", XmlText(structure.Id));
+        if (structure.MessageId != null) writer.WriteElementString("MessageId", XmlText(structure.MessageId));
+        if (structure.MD5OfMessageBody != null) writer.WriteElementString("MD5OfMessageBody", XmlText(structure.MD5OfMessageBody));
+        if (structure.MD5OfMessageAttributes != null) writer.WriteElementString("MD5OfMessageAttributes", XmlText(structure.MD5OfMessageAttributes));
+        if (structure.MD5OfMessageSystemAttributes != null) writer.WriteElementString("MD5OfMessageSystemAttributes", XmlText(structure.MD5OfMessageSystemAttributes));
+        if (structure.SequenceNumber != null) writer.WriteElementString("SequenceNumber", XmlText(structure.SequenceNumber));
         writer.WriteEndElement();
     }
 
     private static MemoryStream ReadBlob(string value) => new(Convert.FromBase64String(value));
 
     private static string WriteBlob(MemoryStream value) => Convert.ToBase64String(value.ToArray());
+
+    private static string XmlText(string value) => SqsWireProtocol.XmlText(value);
 
     /// <summary>True if any parameter is named <paramref name="prefix"/> or starts with <c>prefix.</c>.</summary>
     private static bool HasPrefix(Dictionary<string, string> parameters, string prefix)

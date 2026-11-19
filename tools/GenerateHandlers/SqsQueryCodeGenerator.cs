@@ -150,6 +150,8 @@ internal sealed class SqsQueryCodeGenerator
         code.AppendLine();
         code.AppendLine("    private static string WriteBlob(MemoryStream value) => Convert.ToBase64String(value.ToArray());");
         code.AppendLine();
+        code.AppendLine("    private static string XmlText(string value) => SqsWireProtocol.XmlText(value);");
+        code.AppendLine();
         code.AppendLine("    /// <summary>True if any parameter is named <paramref name=\"prefix\"/> or starts with <c>prefix.</c>.</summary>");
         code.AppendLine("    private static bool HasPrefix(Dictionary<string, string> parameters, string prefix)");
         code.AppendLine("    {");
@@ -435,7 +437,7 @@ internal sealed class SqsQueryCodeGenerator
         switch (type)
         {
             case "string":
-                code.AppendLine($"{indent}if ({valueExpr} != null) writer.WriteElementString(\"{wireName}\", {valueExpr});");
+                code.AppendLine($"{indent}if ({valueExpr} != null) writer.WriteElementString(\"{wireName}\", XmlText({valueExpr}));");
                 break;
             case "integer":
             case "long":
@@ -489,7 +491,7 @@ internal sealed class SqsQueryCodeGenerator
                 code.AppendLine($"{indent}    foreach (var {v}Entry in {v}Map)");
                 code.AppendLine($"{indent}    {{");
                 code.AppendLine($"{indent}        writer.WriteStartElement(\"{(flattened ? wireName : "entry")}\");");
-                code.AppendLine($"{indent}        writer.WriteElementString(\"{keyName}\", {v}Entry.Key);");
+                code.AppendLine($"{indent}        writer.WriteElementString(\"{keyName}\", XmlText({v}Entry.Key));");
                 AppendItemWrite(code, $"{indent}        ", valueShapeName, valueType, valueName, $"{v}Entry.Value");
                 code.AppendLine($"{indent}        writer.WriteEndElement();");
                 code.AppendLine($"{indent}    }}");
@@ -515,7 +517,7 @@ internal sealed class SqsQueryCodeGenerator
         switch (type)
         {
             case "string":
-                code.AppendLine($"{indent}writer.WriteElementString(\"{elementName}\", {valueExpr});");
+                code.AppendLine($"{indent}writer.WriteElementString(\"{elementName}\", XmlText({valueExpr}));");
                 break;
             case "blob":
                 code.AppendLine($"{indent}writer.WriteElementString(\"{elementName}\", WriteBlob({valueExpr}));");
