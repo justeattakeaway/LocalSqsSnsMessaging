@@ -28,7 +28,8 @@ internal static class EventBridgeTargetValidation
     /// Throws the error EventBridge answers for the first problem in <paramref name="targets"/>:
     /// a missing Id or Arn, or an out-of-range <c>RetryPolicy</c> (all reported together, as AWS's
     /// constraint check does); an Id given twice; a malformed Arn; a FIFO SNS topic target; a FIFO
-    /// queue as dead-letter queue; or a role-requiring target without a <c>RoleArn</c>.
+    /// queue target without a message group; a FIFO queue as dead-letter queue; or a role-requiring
+    /// target without a <c>RoleArn</c>.
     /// </summary>
     public static void Validate(IReadOnlyList<Target> targets)
     {
@@ -55,6 +56,11 @@ internal static class EventBridgeTargetValidation
             if (service == "sns" && resource.EndsWith(".fifo", StringComparison.Ordinal))
             {
                 throw new InternalValidationException("SNS FIFO is not a supported service for a target.");
+            }
+
+            if (service == "sqs" && resource.EndsWith(".fifo", StringComparison.Ordinal) && string.IsNullOrEmpty(target.SqsParameters?.MessageGroupId))
+            {
+                throw new InternalValidationException($"Parameter(s) SqsParameters must be specified for target: {target.Id}.");
             }
 
             if (target.DeadLetterConfig?.Arn is { } deadLetterArn

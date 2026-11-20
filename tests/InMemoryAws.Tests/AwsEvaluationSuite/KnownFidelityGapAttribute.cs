@@ -20,6 +20,13 @@ public enum FidelityGap
     EventBridgeUngrantedTargets,
 
     /// <summary>
+    /// <c>aws:SecureTransport</c> is always true, so a policy denying plain HTTP refuses nothing: the
+    /// library stands in for the services' HTTPS endpoints even when its server listens on plain HTTP,
+    /// and a deny-unless-TLS guardrail (CDK's <c>enforceSSL</c>) must not lock its clients out.
+    /// </summary>
+    SecureTransport,
+
+    /// <summary>
     /// The check's own waits outlast the runner's 60-second budget for an emulator, so it fails
     /// against any emulator, however fast; against AWS it runs with a longer budget.
     /// </summary>

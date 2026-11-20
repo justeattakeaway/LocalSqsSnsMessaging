@@ -26,6 +26,13 @@ internal sealed class ResourcePolicyKind
     /// </summary>
     public static readonly ResourcePolicyKind Table = new("dynamodb", "2012-10-17", static _ => null);
 
+    /// <summary>
+    /// An S3 bucket's policy (<c>PutBucketPolicy</c>), whose statements name the bucket
+    /// (<c>arn:aws:s3:::bucket</c>) and its objects (<c>arn:aws:s3:::bucket/key</c>). S3 stores the
+    /// document it is given and never edits one, so only evaluation applies to it.
+    /// </summary>
+    public static readonly ResourcePolicyKind Bucket = new("s3", "2012-10-17", static _ => null);
+
     private readonly Func<string, string?> _documentId;
 
     private ResourcePolicyKind(string actionPrefix, string version, Func<string, string?> documentId)

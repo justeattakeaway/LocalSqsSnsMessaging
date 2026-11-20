@@ -1,6 +1,7 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Amazon.EventBridge.Model;
+using Amazon.S3.Model;
 using Amazon.SimpleNotificationService.Model;
 using Amazon.SQS;
 using Amazon.SQS.Model;
@@ -105,6 +106,25 @@ public sealed class BringYourOwnSdkTests
 
         put.FailedEntryCount.ShouldBe(0);
         (await sqs.ReceiveMessageAsync(queueUrl)).Messages.ShouldHaveSingleItem().Body.ShouldContain("\"OrderPlaced\"");
+    }
+
+    [Test]
+    public async Task S3StoresAndListsObjects()
+    {
+        using var s3 = new InMemoryAwsCloud().CreateS3Client();
+        await s3.PutBucketAsync("orders");
+        await s3.PutObjectAsync(new PutObjectRequest { BucketName = "orders", Key = "2024/one.json", ContentBody = "{\"id\":1}" });
+
+        using (var response = await s3.GetObjectAsync("orders", "2024/one.json"))
+        using (var reader = new StreamReader(response.ResponseStream))
+        {
+            (await reader.ReadToEndAsync()).ShouldBe("{\"id\":1}");
+        }
+
+        var listed = await s3.ListObjectsV2Async(new ListObjectsV2Request { BucketName = "orders", Prefix = "2024/" });
+        listed.S3Objects.ShouldHaveSingleItem().Key.ShouldBe("2024/one.json");
+        var missing = await Should.ThrowAsync<Amazon.S3.AmazonS3Exception>(() => s3.GetObjectAsync("orders", "missing"));
+        missing.ErrorCode.ShouldBe("NoSuchKey");
     }
 
     [Test]

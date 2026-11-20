@@ -33,7 +33,7 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         ArgumentNullException.ThrowIfNull(cloud);
         _cloud = cloud;
         _serviceType = serviceType is AwsServiceType.Sqs or AwsServiceType.Sns or AwsServiceType.EventBridge
-            or AwsServiceType.DynamoDb or AwsServiceType.DynamoDbStreams
+            or AwsServiceType.DynamoDb or AwsServiceType.DynamoDbStreams or AwsServiceType.S3
             ? serviceType
             : throw new NotSupportedException($"Service type {serviceType} is not supported.");
     }
@@ -52,6 +52,11 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
         if (_serviceType is AwsServiceType.DynamoDb or AwsServiceType.DynamoDbStreams)
         {
             return await SendDynamoDbAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (_serviceType == AwsServiceType.S3)
+        {
+            return await SendS3Async(request, cancellationToken).ConfigureAwait(false);
         }
 
         if (_serviceType == AwsServiceType.Sns)
@@ -201,6 +206,97 @@ public sealed class InMemoryAwsHttpMessageHandler : DelegatingHandler
             ?? await DynamoDbWireProtocol.HandleAsync(
                 TargetOf(request), body.Memory, _cloud, AwsRequestRegion.FromRequest(request), output.Writer, cancellationToken).ConfigureAwait(false);
         return ToHttpResponse(wire, output.Writer);
+    }
+
+    /// <summary>
+    /// Serves an S3 request (see <see cref="S3WireProtocol"/>): the bucket and key from the host or
+    /// the path as sent (still percent-encoded), the headers of the request and its content.
+    /// </summary>
+    private async Task<HttpResponseMessage> SendS3Async(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        using var body = await PooledRequestBody.ReadAsync(request.Content, cancellationToken).ConfigureAwait(false);
+        // Multi-valued headers joined as HttpClient writes them on the wire (and as clients sign them).
+        var headers = new List<KeyValuePair<string, string>>();
+        foreach (var header in request.Headers)
+        {
+            headers.Add(new KeyValuePair<string, string>(header.Key, string.Join(", ", header.Value)));
+        }
+
+        if (request.Content is not null)
+        {
+            foreach (var header in request.Content.Headers)
+            {
+                headers.Add(new KeyValuePair<string, string>(header.Key, string.Join(", ", header.Value)));
+            }
+        }
+
+        // The Host header a client signs, which HttpClient would add on the wire.
+        if (request.Headers.Host is null && request.RequestUri is { IsAbsoluteUri: true } requestUri)
+        {
+            headers.Add(new KeyValuePair<string, string>("Host", requestUri.Authority));
+        }
+
+        var (host, path, query) = SplitUri(request.RequestUri);
+        var wireRequest = new S3WireRequest(request.Method.Method, host, path, query, headers, body.Memory)
+        {
+            Region = AwsRequestRegion.FromRequest(request),
+            SecureTransport = !string.Equals(request.RequestUri?.Scheme, "http", StringComparison.OrdinalIgnoreCase),
+        };
+        var wire = await S3WireProtocol.HandleAsync(wireRequest, _cloud, cancellationToken).ConfigureAwait(false);
+        var payload = wire.Body;
+        var content = System.Runtime.InteropServices.MemoryMarshal.TryGetArray(payload, out var segment) && segment.Array is not null
+            ? new ByteArrayContent(segment.Array, segment.Offset, segment.Count)
+            : new ByteArrayContent(payload.ToArray());
+        var response = new HttpResponseMessage((HttpStatusCode)wire.Status) { Content = content };
+        foreach (var header in wire.Headers)
+        {
+            if (string.Equals(header.Key, "Content-Length", StringComparison.OrdinalIgnoreCase))
+            {
+                content.Headers.ContentLength = long.Parse(header.Value, System.Globalization.CultureInfo.InvariantCulture);
+            }
+            else if (!response.Headers.TryAddWithoutValidation(header.Key, header.Value))
+            {
+                content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+        }
+
+        if (wire.OmitBody && wire.Header("Content-Length") is null)
+        {
+            content.Headers.ContentLength = 0;
+        }
+
+        return response;
+    }
+
+    /// <summary>
+    /// The host, the path and the query of a request URI as the client wrote them: S3 keys may hold
+    /// characters (<c>..</c>, <c>%2F</c>) that <see cref="Uri"/> would normalize.
+    /// </summary>
+    private static (string Host, string Path, string Query) SplitUri(Uri? uri)
+    {
+        if (uri is null)
+        {
+            return (string.Empty, "/", string.Empty);
+        }
+
+        var text = uri.OriginalString;
+        var scheme = text.IndexOf("://", StringComparison.Ordinal);
+        var pathStart = scheme < 0 ? 0 : text.IndexOf('/', scheme + 3);
+        if (pathStart < 0)
+        {
+            pathStart = text.Length;
+        }
+
+        var queryStart = text.IndexOf('?', pathStart);
+        var path = queryStart < 0 ? text.Substring(pathStart) : text.Substring(pathStart, queryStart - pathStart);
+        var query = queryStart < 0 ? string.Empty : text.Substring(queryStart + 1);
+        var fragment = query.IndexOf('#', StringComparison.Ordinal);
+        if (fragment >= 0)
+        {
+            query = query.Substring(0, fragment);
+        }
+
+        return (uri.IsAbsoluteUri ? uri.Host : string.Empty, path.Length == 0 ? "/" : path, query);
     }
 
     private static async Task<HttpResponseMessage> SendSqsQueryAsync(Dictionary<string, string> parameters, InternalSqsClient client, CancellationToken cancellationToken)

@@ -46,6 +46,8 @@
                Condition="$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.EventBridge;'))" />
       <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.DynamoDb.cs"
                Condition="$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.DynamoDBv2;'))" />
+      <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.S3.cs"
+               Condition="$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.S3;'))" />
       <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.DynamoDbStreams.cs"
                Condition="$(_InMemoryAwsSdkReferences.Contains(';AWSSDK.DynamoDBStreams;'))" />
       <Compile Include="$(_InMemoryAwsSourcesDirectory)InMemoryAws.DynamoDbStreams.V3.cs"

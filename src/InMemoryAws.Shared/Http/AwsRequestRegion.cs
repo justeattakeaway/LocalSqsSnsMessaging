@@ -92,6 +92,21 @@ internal static class AwsRequestRegion
             return labels[1];
         }
 
+        // S3: s3.us-west-2.amazonaws.com, bucket.s3.us-west-2.amazonaws.com, the dash-style
+        // s3-us-west-2.amazonaws.com, and S3 Express's s3express-control.us-west-2.amazonaws.com.
+        for (var i = 0; i + 2 < labels.Length; i++)
+        {
+            if (labels[i] is "s3" or "s3express-control" && IsRegionName(labels[i + 1]))
+            {
+                return labels[i + 1];
+            }
+
+            if (labels[i].StartsWith("s3-", StringComparison.Ordinal) && IsRegionName(labels[i].Substring(3)))
+            {
+                return labels[i].Substring(3);
+            }
+        }
+
         if (labels.Length >= 4 && labels[1] == "queue" && IsRegionName(labels[0]))
         {
             return labels[0];

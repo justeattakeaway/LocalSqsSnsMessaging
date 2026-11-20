@@ -72,6 +72,12 @@ internal sealed partial class ResourcePolicy
         /// </summary>
         public IReadOnlyDictionary<string, string?>? ServiceKeys { get; init; }
 
+        /// <summary>
+        /// Whether the service sets <c>aws:SourceOwner</c> (to <see cref="SourceAccount"/>), as SNS does;
+        /// S3 sets only <c>aws:SourceAccount</c>.
+        /// </summary>
+        public bool SetsSourceOwner { get; init; } = true;
+
         public bool IsAnonymous => PrincipalAccount is null && Service is null;
 
         /// <summary>
@@ -316,8 +322,10 @@ internal sealed partial class ResourcePolicy
                 value = request.SourceArn;
                 return true;
             case "AWS:SOURCEACCOUNT":
-            case "AWS:SOURCEOWNER":
                 value = request.SourceAccount;
+                return true;
+            case "AWS:SOURCEOWNER":
+                value = request.SetsSourceOwner ? request.SourceAccount : null;
                 return true;
             case "AWS:USERID":
                 value = request.IsAnonymous ? "anonymous" : request.PrincipalAccount;

@@ -1,6 +1,6 @@
-# AWS emulator evaluation suite (SQS, SNS, EventBridge and DynamoDB)
+# AWS emulator evaluation suite (SQS, SNS, EventBridge, DynamoDB and S3)
 
-These are C# ports of the SQS, SNS, EventBridge and DynamoDB checks in AWS's
+These are C# ports of the SQS, SNS, EventBridge, DynamoDB and S3 checks in AWS's
 [emulator evaluation suite](https://github.com/aws/aws-emulator-evaluation-suite), pinned at the
 commit recorded in [UPSTREAM.md](UPSTREAM.md), which lists every upstream check in the tracked
 directories and what became of it here (see [Keeping up with upstream](#keeping-up-with-upstream)). Each upstream `check_<name>.py` was verified against real AWS. Each one
@@ -16,11 +16,15 @@ compared side by side:
 | [`behavioral/events__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/events__sqs) | `EventsSqs/<Name>.cs` | `events__sqs.<id>` |
 | [`behavioral/dynamodb/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/dynamodb) | `DynamoDb/<Name>.cs` | `dynamodb.<id>` |
 | [`behavioral/dynamodbstreams/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/dynamodbstreams) | `DynamoDbStreams/<Name>.cs` | `dynamodbstreams.<id>` |
+| [`behavioral/s3/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/s3) | `S3/<Name>.cs` | `s3.<id>` |
+| [`behavioral/s3__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/s3__sqs) | `S3Sqs/<Name>.cs` | `s3__sqs.<id>` |
+| [`behavioral/s3__sns__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/s3__sns__sqs) | `S3SnsSqs/<Name>.cs` | `s3__sns__sqs.<id>` |
+| [`behavioral/events__s3__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/events__s3__sqs) | `EventsS3Sqs/<Name>.cs` | `events__s3__sqs.<id>` |
 
 - **Same verdicts:** each test gets the same verdict the Python check got when it was run with boto3
   against `InMemoryAws.Server`.
 - **Real AWS clients:** tests use real `AmazonSQSClient`s, `AmazonSimpleNotificationServiceClient`s,
-  `AmazonEventBridgeClient`s, `AmazonDynamoDBClient`s and `AmazonDynamoDBStreamsClient`s over the in-memory HTTP handler, through `FidelityContext`, the C# version of the Python `ctx`.
+  `AmazonEventBridgeClient`s, `AmazonDynamoDBClient`s, `AmazonDynamoDBStreamsClient`s and `AmazonS3Client`s over the in-memory HTTP handler, through `FidelityContext`, the C# version of the Python `ctx`.
 - **Exactly the check's requests:** the test run's SDK tracing adds trace context to every request
   (a `traceparent` message attribute on Publish, an `AWSTraceHeader` on SendMessage), which boto3
   doesn't, so `FidelityContext` turns that off for the whole check.
@@ -174,7 +178,7 @@ These 68 checks are not ported ([UPSTREAM.md](UPSTREAM.md) gives each one's reas
 - **KMS keys** (customer-managed keys on buses, queues and topics) (5).
 - **CloudFormation stacks** (5).
 
-Five EventBridge ports stay known gaps:
+Five EventBridge ports stay known gaps (and two more in `events__s3__sqs`, see [S3 scope](#s3-scope)):
 
 - **No grant for EventBridge** (4, `FidelityGap.EventBridgeUngrantedTargets`): a queue or topic
   whose policy says nothing about EventBridge still receives its deliveries, as SNS deliveries do,
@@ -253,6 +257,48 @@ account id: they errored in Python, because the server has no STS, and pass here
 `dynamodb.resource-policy-explicit-deny-on-getitem-rejected-put-still-allowed`, since a table
 policy's explicit Deny statements are enforced).
 
+## S3 scope
+
+The S3 ports cover S3 without the services around it, and its event notifications to SQS, SNS and
+EventBridge: buckets (general purpose and directory buckets, with S3 Express sessions), objects,
+ranges and conditional requests, multipart uploads, copies, renames and appends, checksums,
+versioning, listing, tagging, Object Lock, ACLs and Object Ownership, bucket policies and Block
+Public Access, presigned URLs, POST uploads and SigV4, CORS, website hosting, lifecycle,
+replication, encryption and SSE-C, storage classes and restores, S3 Metadata and object
+annotations, the stored-only bucket configurations, and notifications: 517 of the 537 checks in
+`behavioral/s3`, `behavioral/s3__sqs`, `behavioral/s3__sns__sqs` and `behavioral/events__s3__sqs`.
+513 pass and 4 are known gaps: the two in `events__s3__sqs` (EventBridge delivering to a queue with
+no policy), and the two bucket policies that deny plain HTTP, because `aws:SecureTransport` is
+always true, so a deny-unless-TLS guardrail doesn't lock out a client of the plain-HTTP server.
+
+The context gives the cloud the fidelity clients' secret (`SecretAccessKeys`: `test`/`test`), so
+every S3 port runs with SigV4 verification on, as against AWS, and the checks about signatures,
+presigned URLs and clock skew are graded. It sets `S3MetadataTableCreationDelay` to ten seconds, so
+a metadata configuration's tables are `CREATING` before they are `ACTIVE`. Each S3 client keeps its
+S3 Express session credentials on the check's virtual clock.
+
+`S3Fidelity*.cs` hold what the ports share: the checks' `_create_bucket` (a bucket in the check's
+region, emptied of every version, delete marker and upload at cleanup), and raw requests for what
+the .NET SDK doesn't surface where boto3 does: an error response's headers (`x-amz-delete-marker`,
+`Allow`) and its extra members (`ArgumentName`, `BucketName`), refusals it answers as an empty
+success (GetBucketPolicy's `NoSuchBucketPolicy`, a missing lifecycle, metrics, replication or website
+configuration), requests it reorders or won't send (CompleteMultipartUpload sorts its parts, its XML
+writer refuses some characters, it can't resolve an endpoint for some bucket names), and HEAD errors,
+which botocore reports as `("404", "Not Found")`.
+
+These 20 checks are not ported, because they need another service ([UPSTREAM.md](UPSTREAM.md)
+gives each one's reason):
+
+- **CloudFormation stacks** (9).
+- **KMS keys** (6): SSE-KMS with customer-managed keys, and UpdateObjectEncryption.
+- **IAM roles, users and identity policies, or role assumption** (4).
+- **Lambda functions, with IAM roles** (1): a notification to a Lambda function.
+
+The 2 known gaps:
+
+- **No grant for EventBridge** (2, `FidelityGap.EventBridgeUngrantedTargets`): a queue with no
+  policy still receives EventBridge's deliveries of S3 events, as for EventBridge's own checks.
+
 ## Known gaps
 
 A check we don't pass yet carries `[KnownFidelityGap(FidelityGap.X, "why")]` and is skipped, so the
@@ -263,7 +309,7 @@ suite stays green. To work on a gap, run the skipped tests too:
 INMEMORYAWS_RUN_KNOWN_GAPS=1 dotnet run --project tests/InMemoryAws.Tests -c Release -- \
   --treenode-filter "/*/InMemoryAws.Tests.AwsEvaluationSuite.*/*/*"
 
-# One service: .Sqs, .Sns, .SnsSqs, .Events, .EventsSqs, .DynamoDb or .DynamoDbStreams
+# One service: .Sqs, .Sns, .SnsSqs, .Events, .EventsSqs, .DynamoDb, .DynamoDbStreams, .S3, .S3Sqs, .S3SnsSqs or .EventsS3Sqs
 INMEMORYAWS_RUN_KNOWN_GAPS=1 dotnet run --project tests/InMemoryAws.Tests -c Release -- \
   --treenode-filter "/*/InMemoryAws.Tests.AwsEvaluationSuite.Sns/*/*"
 

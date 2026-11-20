@@ -13,6 +13,7 @@
     <ItemGroup>
       <PackageReference Include="AWSSDK.DynamoDBv2" />
       <PackageReference Include="AWSSDK.EventBridge" />
+      <PackageReference Include="AWSSDK.S3" />
       <PackageReference Include="AWSSDK.SQS" />
       <PackageReference Include="AWSSDK.SimpleNotificationService" />
       <PackageReference Include="Shouldly" />

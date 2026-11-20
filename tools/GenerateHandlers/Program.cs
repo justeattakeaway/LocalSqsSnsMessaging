@@ -103,8 +103,26 @@ GenerateShapeJsonService(
     outputDir,
     attributeValue);
 
+// S3 (REST-XML protocol): models, XML serializers, the router and dispatcher, and the client base.
+GenerateRestXmlService(Path.Combine(serviceModelsDir, "s3-2006-03-01.normal.json"), modelsDir, outputDir, Path.Combine(projectDir, "S3Client"));
+
 Console.WriteLine("Code generation completed successfully!");
 return 0;
+
+static void GenerateRestXmlService(string modelPath, string modelsDir, string outputDir, string clientDir)
+{
+    Console.WriteLine("  Processing S3 (REST-XML protocol)...");
+
+    using var doc = JsonDocument.Parse(File.ReadAllText(modelPath));
+    var generator = new RestXmlCodeGenerator(doc.RootElement);
+    Directory.CreateDirectory(clientDir);
+    File.WriteAllText(Path.Combine(modelsDir, "S3Models.g.cs"), generator.GenerateModels());
+    File.WriteAllText(Path.Combine(outputDir, "S3XmlSerializers.g.cs"), generator.GenerateSerializers());
+    File.WriteAllText(Path.Combine(outputDir, "S3WireProtocol.g.cs"), generator.GenerateWireProtocol());
+    File.WriteAllText(Path.Combine(clientDir, "S3ClientBase.g.cs"), generator.GenerateClientBase());
+
+    Console.WriteLine("    Generated models, serializers, router, dispatcher and client base for S3");
+}
 
 static void GenerateShapeJsonService(
     string modelPath,

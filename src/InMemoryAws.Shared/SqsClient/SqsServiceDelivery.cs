@@ -33,6 +33,9 @@ internal static class SqsServiceDelivery
     /// <summary>The service principal EventBridge delivers as.</summary>
     public const string EventsPrincipal = "events.amazonaws.com";
 
+    /// <summary>The service principal S3 delivers event notifications as.</summary>
+    public const string S3Principal = "s3.amazonaws.com";
+
     /// <summary>What became of a service delivery.</summary>
     internal enum Outcome
     {
@@ -73,6 +76,12 @@ internal static class SqsServiceDelivery
 
         /// <summary>The X-Ray trace header, already validated, which the queue keeps as <c>AWSTraceHeader</c>.</summary>
         public string? TraceHeader { get; init; }
+
+        /// <summary>
+        /// The account that owns the source, when its ARN names none (an S3 bucket's ARN): the
+        /// delivery's <c>aws:SourceAccount</c>. Such a service sets no <c>aws:SourceOwner</c>.
+        /// </summary>
+        public string? SourceAccount { get; init; }
     }
 
     /// <summary>Delivers <paramref name="request"/>'s message to the queue it names, if that queue admits it.</summary>
@@ -84,6 +93,11 @@ internal static class SqsServiceDelivery
         }
 
         var policyRequest = ResourcePolicy.ServiceRequest(SqsActionName.SendMessage, queue.Arn, request.ServicePrincipal, request.SourceArn);
+        if (request.SourceAccount is not null)
+        {
+            policyRequest = policyRequest with { SourceAccount = request.SourceAccount, SetsSourceOwner = false };
+        }
+
         var policy = ResourcePolicy.Parse(ResourcePolicyKind.Queue, queue.Attributes?.GetValueOrDefault(InternalQueueAttributeName.Policy));
         switch (policy?.EvaluateServiceDelivery(policyRequest) ?? ResourcePolicy.ServiceDeliveryVerdict.Admitted)
         {
