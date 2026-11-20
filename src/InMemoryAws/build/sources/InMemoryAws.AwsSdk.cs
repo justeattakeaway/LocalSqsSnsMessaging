@@ -14,7 +14,7 @@ namespace InMemoryAws
     /// <summary>
     /// An AWS SDK <see cref="global::Amazon.Runtime.HttpClientFactory"/> (not .NET's <c>IHttpClientFactory</c>)
     /// that sends the requests of the services an <see cref="InMemoryAwsCloud"/> serves (SQS, SNS, EventBridge,
-    /// DynamoDB and DynamoDB Streams) to that cloud, and every other AWS service's requests to a fallback.
+    /// DynamoDB, DynamoDB Streams and S3) to that cloud, and every other AWS service's requests to a fallback.
     /// </summary>
     /// <remarks>
     /// Assign it to a client config's <c>HttpClientFactory</c>, or register it where the application under test
@@ -27,7 +27,7 @@ namespace InMemoryAws
 
         private readonly InMemoryAwsCloud _cloud;
         private readonly Func<IClientConfig, HttpClient> _fallback;
-        private readonly InMemoryAwsHttpMessageHandler[] _handlers = new InMemoryAwsHttpMessageHandler[5];
+        private readonly InMemoryAwsHttpMessageHandler[] _handlers = new InMemoryAwsHttpMessageHandler[6];
         private bool _disposed;
 
         /// <summary>Creates a factory for <paramref name="cloud"/>, with no fallback for other services.</summary>
@@ -72,7 +72,7 @@ namespace InMemoryAws
             }
 
             throw new NotSupportedException(
-                "InMemoryAws serves SQS, SNS, EventBridge, DynamoDB and DynamoDB Streams, not '" + clientConfig.RegionEndpointServiceName +
+                "InMemoryAws serves SQS, SNS, EventBridge, DynamoDB, DynamoDB Streams and S3, not '" + clientConfig.RegionEndpointServiceName +
                 "' (" + clientConfig.GetType().Name + "). Give InMemoryAwsSdkHttpClientFactory a fallback to send other services' requests elsewhere.");
         }
 

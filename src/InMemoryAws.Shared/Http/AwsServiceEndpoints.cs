@@ -10,8 +10,8 @@ public static class AwsServiceEndpoints
 {
     /// <summary>
     /// The name AWS endpoints use for <paramref name="serviceType"/>, as an AWS SDK client config's
-    /// <c>RegionEndpointServiceName</c> reports it: <c>sqs</c>, <c>sns</c>, <c>events</c>, <c>dynamodb</c>
-    /// or <c>streams.dynamodb</c>.
+    /// <c>RegionEndpointServiceName</c> reports it: <c>sqs</c>, <c>sns</c>, <c>events</c>, <c>dynamodb</c>,
+    /// <c>streams.dynamodb</c> or <c>s3</c>.
     /// </summary>
     /// <param name="serviceType">The service.</param>
     /// <returns>The endpoint service name.</returns>
@@ -22,6 +22,7 @@ public static class AwsServiceEndpoints
         AwsServiceType.EventBridge => "events",
         AwsServiceType.DynamoDb => "dynamodb",
         AwsServiceType.DynamoDbStreams => "streams.dynamodb",
+        AwsServiceType.S3 => "s3",
         _ => throw new ArgumentOutOfRangeException(nameof(serviceType), serviceType, "Unknown AWS service type."),
     };
 
@@ -41,6 +42,7 @@ public static class AwsServiceEndpoints
             case "events": serviceType = AwsServiceType.EventBridge; return true;
             case "dynamodb": serviceType = AwsServiceType.DynamoDb; return true;
             case "streams.dynamodb": serviceType = AwsServiceType.DynamoDbStreams; return true;
+            case "s3": serviceType = AwsServiceType.S3; return true;
             default: serviceType = default; return false;
         }
     }

@@ -11,7 +11,7 @@ _Avoid_: bus (an EventBridge event bus is a resource inside a cloud), store, con
 ## Requests
 
 **Wire protocol**:
-How a service's requests and responses are written over HTTP (AWS JSON 1.0 or 1.1, or AWS Query), including how it states its errors and which headers it answers with. SQS speaks two; every other service speaks one.
+How a service's requests and responses are written over HTTP (AWS JSON 1.0 or 1.1, AWS Query, or S3's REST-XML), including how it states its errors and which headers it answers with. SQS speaks two; every other service speaks one.
 _Avoid_: transport, handler (for the concept)
 
 ## Delivery
@@ -21,7 +21,7 @@ A message a caller puts on a queue with `SendMessage` or `SendMessageBatch`, sub
 _Avoid_: enqueue (for the caller's act)
 
 **Service delivery**:
-A message an AWS service (SNS for a subscription, EventBridge for a rule's target) puts on a queue on behalf of one of its resources, admitted or refused by the queue's policy for that service and source.
+A message an AWS service (SNS for a subscription, EventBridge for a rule's target, S3 for a bucket's event notification) puts on a queue on behalf of one of its resources, admitted or refused by the queue's policy for that service and source.
 _Avoid_: publish to queue, forward
 
 **Fan-out**:
@@ -75,7 +75,7 @@ Finding the resource an ARN names, in the region and account the ARN names, at t
 _Avoid_: lookup by name
 
 **Resource policy**:
-The IAM policy document a queue, topic, event bus or DynamoDB table holds, saying which callers and services may act on it. Each service names its actions with its own prefix and writes its documents in its own way, but the document and its meaning are the same concept for all of them.
+The IAM policy document a queue, topic, event bus, DynamoDB table or S3 bucket holds, saying which callers and services may act on it. Each service names its actions with its own prefix and writes its documents in its own way, but the document and its meaning are the same concept for all of them.
 _Avoid_: queue policy, topic policy, access policy (for the concept in general); permission (for the whole document)
 
 **Statement id**:

@@ -60,6 +60,11 @@ internal sealed class AwsBridgeMiddleware
             {
                 var mediaType = MediaTypeOf(context.Request.ContentType);
                 var hasTarget = TryGetJsonTarget(context.Request, out var targetService, out var jsonOperation);
+                if (IsS3Request(context.Request, hasTarget, mediaType))
+                {
+                    await HandleS3Async(context, ms.GetBuffer().AsMemory(0, (int)ms.Length), cloud, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
 
                 // SQS, EventBridge and DynamoDB use the JSON protocol with an x-amz-target header, told apart
                 // by the target's prefix (AmazonSQS.*, AWSEvents.*, DynamoDB_20120810.*). SNS, and SQS too, speak the
@@ -195,6 +200,112 @@ internal sealed class AwsBridgeMiddleware
                 output.Writer,
                 cancellationToken).ConfigureAwait(false);
         await WriteAsync(context, wire, output.Writer, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Whether a request is for S3, which has no target header and no Action parameter: signed for
+    /// <c>s3</c> (a SigV4 scope, a presigned URL's credential, or a SigV2 <c>AWS</c> header), sent to a
+    /// host with an <c>s3</c> label, or anything unsigned that no other protocol claims.
+    /// </summary>
+    internal static bool IsS3Request(HttpRequest request, bool hasTarget, string? mediaType)
+    {
+        var authorization = request.Headers.Authorization.ToString();
+        if (authorization.StartsWith("AWS ", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (ScopeService(authorization) is { } service)
+        {
+            return service is "s3" or "s3express";
+        }
+
+        if (request.Query.TryGetValue("X-Amz-Credential", out var credential))
+        {
+            var parts = credential.ToString().Split('/');
+            return parts.Length >= 5 && parts[3] is "s3" or "s3express";
+        }
+
+        var host = request.Host.Host;
+        if (host.StartsWith("s3.", StringComparison.OrdinalIgnoreCase) || host.Contains(".s3.", StringComparison.OrdinalIgnoreCase)
+            || host.StartsWith("s3-", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return !hasTarget
+            && !SqsWireProtocol.IsForm(mediaType)
+            && !SqsWireProtocol.IsJson(mediaType)
+            && !request.Query.ContainsKey("Action");
+    }
+
+    /// <summary>The service of a SigV4 <c>Authorization</c> header's credential scope; null when it has none.</summary>
+    private static string? ScopeService(string authorization)
+    {
+        var start = authorization.IndexOf("Credential=", StringComparison.Ordinal);
+        if (start < 0)
+        {
+            return null;
+        }
+
+        var end = authorization.IndexOfAny([',', ' '], start);
+        var parts = (end < 0 ? authorization[(start + "Credential=".Length)..] : authorization[(start + "Credential=".Length)..end]).Split('/');
+        return parts.Length >= 5 ? parts[3] : null;
+    }
+
+    /// <summary>An S3 request (see <see cref="S3WireProtocol"/>), its path and query as sent.</summary>
+    private static async Task HandleS3Async(HttpContext context, ReadOnlyMemory<byte> body, InMemoryAwsCloud cloud, CancellationToken cancellationToken)
+    {
+        var request = context.Request;
+        var rawTarget = context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpRequestFeature>()?.RawTarget;
+        string path;
+        string query;
+        if (!string.IsNullOrEmpty(rawTarget) && rawTarget[0] == '/')
+        {
+            var question = rawTarget.IndexOf('?', StringComparison.Ordinal);
+            path = question < 0 ? rawTarget : rawTarget[..question];
+            query = question < 0 ? string.Empty : rawTarget[(question + 1)..];
+        }
+        else
+        {
+            path = (request.PathBase + request.Path).ToUriComponent();
+            query = request.QueryString.HasValue ? request.QueryString.Value![1..] : string.Empty;
+        }
+
+        var headers = new List<KeyValuePair<string, string>>();
+        foreach (var header in request.Headers)
+        {
+            headers.Add(new KeyValuePair<string, string>(header.Key, header.Value.ToString()));
+        }
+
+        var wireRequest = new S3WireRequest(request.Method, request.Host.Host, path, query, headers, body)
+        {
+            Region = AwsRequestRegion.FromHttpContext(context),
+            SecureTransport = request.IsHttps,
+        };
+        var wire = await S3WireProtocol.HandleAsync(wireRequest, cloud, cancellationToken).ConfigureAwait(false);
+        var response = context.Response;
+        response.StatusCode = wire.Status;
+        foreach (var header in wire.Headers)
+        {
+            if (string.Equals(header.Key, "Content-Length", StringComparison.OrdinalIgnoreCase))
+            {
+                response.ContentLength = long.Parse(header.Value, System.Globalization.CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                response.Headers[header.Key] = header.Value;
+            }
+        }
+
+        var payload = wire.Body;
+        if (wire.OmitBody)
+        {
+            return;
+        }
+
+        response.ContentLength ??= payload.Length;
+        await response.Body.WriteAsync(payload, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>An SQS request over the AWS Query protocol: form-encoded parameters, an XML response.</summary>

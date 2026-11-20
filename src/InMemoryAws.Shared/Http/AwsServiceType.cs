@@ -28,5 +28,10 @@ public enum AwsServiceType
     /// <summary>
     /// Amazon DynamoDB Streams
     /// </summary>
-    DynamoDbStreams
+    DynamoDbStreams,
+
+    /// <summary>
+    /// Amazon Simple Storage Service (S3)
+    /// </summary>
+    S3
 }

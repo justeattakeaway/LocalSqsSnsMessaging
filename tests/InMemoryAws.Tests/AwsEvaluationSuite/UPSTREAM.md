@@ -37,21 +37,25 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | [`sns`](#behavioralsns) | 245 | 207 | 1 | 38 | 0 |
 | [`sns__sqs`](#behavioralsns__sqs) | 12 | 12 | 0 | 0 | 0 |
 | [`sqs`](#behavioralsqs) | 306 | 271 | 3 | 35 | 0 |
-| **Total** | **1765** | **1575** | **20** | **190** | **0** |
+| [`s3`](#behaviorals3) | 481 | 465 | 2 | 16 | 0 |
+| [`s3__sqs`](#behaviorals3__sqs) | 16 | 13 | 0 | 3 | 0 |
+| [`s3__sns__sqs`](#behaviorals3__sns__sqs) | 2 | 2 | 0 | 0 | 0 |
+| [`events__s3__sqs`](#behavioralevents__s3__sqs) | 38 | 37 | 2 | 1 | 0 |
+| **Total** | **2302** | **2092** | **24** | **210** | **0** |
 
 ### Not ported, by reason
 
 | Reason | Checks |
 |---|---:|
 | EventBridge v2 | 40 |
-| CloudFormation stacks | 29 |
-| KMS keys | 19 |
+| CloudFormation stacks | 38 |
+| KMS keys | 25 |
 | S3 (exports and imports) | 18 |
-| IAM roles, users and identity policies | 16 |
+| IAM roles, users and identity policies | 17 |
 | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles | 13 |
-| IAM role and identity-policy enforcement | 8 |
+| IAM role and identity-policy enforcement | 9 |
+| IAM roles and role assumption | 9 |
 | Kinesis streaming destinations | 8 |
-| IAM roles and role assumption | 7 |
 | Application Auto Scaling | 6 |
 | CloudWatch Logs delivery-status logging (IAM, Logs) | 4 |
 | Firehose subscriptions (Firehose, S3, IAM) | 4 |
@@ -59,20 +63,21 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | Lambda targets | 4 |
 | Step Functions targets | 4 |
 | CloudWatch metrics | 2 |
+| Lambda functions, with IAM roles | 2 |
 | CloudWatch Logs targets | 1 |
 | CloudWatch alarms | 1 |
 | Kinesis targets | 1 |
-| Lambda functions, with IAM roles | 1 |
 
 ### Known gaps, by root cause
 
 | `FidelityGap` | Checks |
 |---|---:|
+| `EventBridgeUngrantedTargets` | 6 |
 | `DynamoDbAuthentication` | 4 |
 | `DynamoDbThroughput` | 4 |
-| `EventBridgeUngrantedTargets` | 4 |
 | `EmulatorBudget` | 3 |
 | `Other` | 2 |
+| `SecureTransport` | 2 |
 | `Validation` | 2 |
 | `DynamoDbDetail` | 1 |
 
@@ -1910,3 +1915,560 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.visibility-timeout-natural-expiry` | `4df2823` | ported | `Sqs/VisibilityTimeoutNaturalExpiry.cs` |
 | `sqs.visibility-timeout-out-of-range-rejected` | `4df2823` | ported | `Sqs/VisibilityTimeoutOutOfRangeRejected.cs` |
 | `sqs.visibility-timeout-shorten-and-receive-override` | `4df2823` | ported | `Sqs/VisibilityTimeoutShortenAndReceiveOverride.cs` |
+
+## behavioral/s3
+
+| Check | Last changed | Status | Port or reason |
+|---|---|---|---|
+| `s3.50-bucket-fanout-object-isolation-and-negative-space` | `4df2823` | ported | `S3/Check50BucketFanoutObjectIsolationAndNegativeSpace.cs` |
+| `s3.abac-policy-enforcement` | `4df2823` | not ported | IAM roles and role assumption |
+| `s3.abort-multipart-nosuchupload-after-complete` | `4df2823` | ported | `S3/AbortMultipartNosuchuploadAfterComplete.cs` |
+| `s3.acl-disabled-bucket-rejects-put-object-acl` | `4df2823` | ported | `S3/AclDisabledBucketRejectsPutObjectAcl.cs` |
+| `s3.annotation-name-validation-rejected` | `4df2823` | ported | `S3/AnnotationNameValidationRejected.cs` |
+| `s3.bucket-abac-invalid-status-rejected` | `4df2823` | ported | `S3/BucketAbacInvalidStatusRejected.cs` |
+| `s3.bucket-abac-roundtrip` | `4df2823` | ported | `S3/BucketAbacRoundtrip.cs` |
+| `s3.bucket-accelerate-configuration-roundtrip` | `4df2823` | ported | `S3/BucketAccelerateConfigurationRoundtrip.cs` |
+| `s3.bucket-acl-conflicting-grants-rejected` | `4df2823` | ported | `S3/BucketAclConflictingGrantsRejected.cs` |
+| `s3.bucket-acl-owner-full-control-default` | `4df2823` | ported | `S3/BucketAclOwnerFullControlDefault.cs` |
+| `s3.bucket-acl-public-grant-blocked-by-public-access-block-rejected` | `4df2823` | ported | `S3/BucketAclPublicGrantBlockedByPublicAccessBlockRejected.cs` |
+| `s3.bucket-acl-put-get-roundtrip` | `4df2823` | ported | `S3/BucketAclPutGetRoundtrip.cs` |
+| `s3.bucket-acl-roundtrip` | `4df2823` | ported | `S3/BucketAclRoundtrip.cs` |
+| `s3.bucket-acl-write-blocked-by-ownership-enforced` | `4df2823` | ported | `S3/BucketAclWriteBlockedByOwnershipEnforced.cs` |
+| `s3.bucket-analytics-configuration-lifecycle` | `4df2823` | ported | `S3/BucketAnalyticsConfigurationLifecycle.cs` |
+| `s3.bucket-analytics-configuration-roundtrip` | `4df2823` | ported | `S3/BucketAnalyticsConfigurationRoundtrip.cs` |
+| `s3.bucket-create-delete` | `4df2823` | ported | `S3/BucketCreateDelete.cs` |
+| `s3.bucket-default-retention-derives-the-retain-until-date-and-blocks-the-delete` | `4df2823` | ported | `S3/BucketDefaultRetentionDerivesTheRetainUntilDateAndBlocksTheDelete.cs` |
+| `s3.bucket-encryption-config-lifecycle` | `4df2823` | ported | `S3/BucketEncryptionConfigLifecycle.cs` |
+| `s3.bucket-encryption-lifecycle` | `4df2823` | ported | `S3/BucketEncryptionLifecycle.cs` |
+| `s3.bucket-holding-more-than-sixty-four-mib-reads-back-every-object` | `4df2823` | ported | `S3/BucketHoldingMoreThanSixtyFourMibReadsBackEveryObject.cs` |
+| `s3.bucket-intelligent-tiering-archive-tier-minimum-days-rejected` | `4df2823` | ported | `S3/BucketIntelligentTieringArchiveTierMinimumDaysRejected.cs` |
+| `s3.bucket-intelligent-tiering-configuration-lifecycle` | `4df2823` | ported | `S3/BucketIntelligentTieringConfigurationLifecycle.cs` |
+| `s3.bucket-intelligent-tiering-filtered-configs-replace-not-duplicate` | `4df2823` | ported | `S3/BucketIntelligentTieringFilteredConfigsReplaceNotDuplicate.cs` |
+| `s3.bucket-intelligent-tiering-roundtrip` | `4df2823` | ported | `S3/BucketIntelligentTieringRoundtrip.cs` |
+| `s3.bucket-inventory-configuration-lifecycle` | `4df2823` | ported | `S3/BucketInventoryConfigurationLifecycle.cs` |
+| `s3.bucket-inventory-configuration-roundtrip` | `4df2823` | ported | `S3/BucketInventoryConfigurationRoundtrip.cs` |
+| `s3.bucket-logging-config-roundtrip` | `4df2823` | ported | `S3/BucketLoggingConfigRoundtrip.cs` |
+| `s3.bucket-logging-roundtrip` | `4df2823` | ported | `S3/BucketLoggingRoundtrip.cs` |
+| `s3.bucket-metadata-annotation-table-update` | `4df2823` | ported | `S3/BucketMetadataAnnotationTableUpdate.cs` |
+| `s3.bucket-metadata-configuration-duplicate-create-rejected` | `4df2823` | ported | `S3/BucketMetadataConfigurationDuplicateCreateRejected.cs` |
+| `s3.bucket-metadata-configuration-lifecycle` | `4df2823` | ported | `S3/BucketMetadataConfigurationLifecycle.cs` |
+| `s3.bucket-metadata-configuration-roundtrip` | `4df2823` | ported | `S3/BucketMetadataConfigurationRoundtrip.cs` |
+| `s3.bucket-metadata-inventory-table-update` | `4df2823` | ported | `S3/BucketMetadataInventoryTableUpdate.cs` |
+| `s3.bucket-metadata-journal-table-update` | `4df2823` | ported | `S3/BucketMetadataJournalTableUpdate.cs` |
+| `s3.bucket-metadata-table-configuration-lifecycle` | `4df2823` | ported | `S3/BucketMetadataTableConfigurationLifecycle.cs` |
+| `s3.bucket-metadata-table-update-roundtrip` | `4df2823` | ported | `S3/BucketMetadataTableUpdateRoundtrip.cs` |
+| `s3.bucket-metadata-table-updates-refused-while-journal-creating` | `4df2823` | ported | `S3/BucketMetadataTableUpdatesRefusedWhileJournalCreating.cs` |
+| `s3.bucket-metrics-configuration-delete-reflected-in-list-then-get-rejected` | `4df2823` | ported | `S3/BucketMetricsConfigurationDeleteReflectedInListThenGetRejected.cs` |
+| `s3.bucket-metrics-configuration-filter-prefix-and-tag-combo` | `4df2823` | ported | `S3/BucketMetricsConfigurationFilterPrefixAndTagCombo.cs` |
+| `s3.bucket-metrics-configuration-multi-filter-listing` | `4df2823` | ported | `S3/BucketMetricsConfigurationMultiFilterListing.cs` |
+| `s3.bucket-ownership-controls-invalid-value-rejected` | `4df2823` | ported | `S3/BucketOwnershipControlsInvalidValueRejected.cs` |
+| `s3.bucket-ownership-controls-lifecycle` | `4df2823` | ported | `S3/BucketOwnershipControlsLifecycle.cs` |
+| `s3.bucket-ownership-controls-roundtrip` | `4df2823` | ported | `S3/BucketOwnershipControlsRoundtrip.cs` |
+| `s3.bucket-policy-deny-enforcement` | `4df2823` | ported | `S3/BucketPolicyDenyEnforcement.cs` |
+| `s3.bucket-policy-roundtrip` | `4df2823` | ported | `S3/BucketPolicyRoundtrip.cs` |
+| `s3.bucket-policy-status-reflects-policy` | `4df2823` | ported | `S3/BucketPolicyStatusReflectsPolicy.cs` |
+| `s3.bucket-replication-config-lifecycle` | `4df2823` | ported | `S3/BucketReplicationConfigLifecycle.cs` |
+| `s3.bucket-replication-configuration-lifecycle` | `4df2823` | ported | `S3/BucketReplicationConfigurationLifecycle.cs` |
+| `s3.bucket-replication-destination-validation-rejected` | `4df2823` | ported | `S3/BucketReplicationDestinationValidationRejected.cs` |
+| `s3.bucket-replication-lifecycle` | `4df2823` | ported | `S3/BucketReplicationLifecycle.cs` |
+| `s3.bucket-replication-requires-versioning-rejected` | `4df2823` | ported | `S3/BucketReplicationRequiresVersioningRejected.cs` |
+| `s3.bucket-replication-roundtrip` | `4df2823` | ported | `S3/BucketReplicationRoundtrip.cs` |
+| `s3.bucket-request-payment-roundtrip` | `4df2823` | ported | `S3/BucketRequestPaymentRoundtrip.cs` |
+| `s3.bucket-subresource-deletes-leave-bucket-and-objects-intact` | `4df2823` | ported | `S3/BucketSubresourceDeletesLeaveBucketAndObjectsIntact.cs` |
+| `s3.bucket-tagging-roundtrip` | `4df2823` | ported | `S3/BucketTaggingRoundtrip.cs` |
+| `s3.bucket-website-config-lifecycle` | `4df2823` | ported | `S3/BucketWebsiteConfigLifecycle.cs` |
+| `s3.bucket-website-configuration-lifecycle` | `4df2823` | ported | `S3/BucketWebsiteConfigurationLifecycle.cs` |
+| `s3.bucket-website-roundtrip` | `4df2823` | ported | `S3/BucketWebsiteRoundtrip.cs` |
+| `s3.checksum-crc32` | `4df2823` | ported | `S3/ChecksumCrc32.cs` |
+| `s3.checksum-sha256` | `4df2823` | ported | `S3/ChecksumSha256.cs` |
+| `s3.cli-create-sdk-read-s3` | `4df2823` | ported | `S3/CliCreateSdkReadS3.cs` |
+| `s3.cli-s3-cp-large-file-multipart-checksum-defaults` | `4df2823` | ported | `S3/CliS3CpLargeFileMultipartChecksumDefaults.cs` |
+| `s3.cli-s3-cp-large-file-multipart-etag-shape` | `4df2823` | ported | `S3/CliS3CpLargeFileMultipartEtagShape.cs` |
+| `s3.cli-s3-get-nonexistent-key-error` | `4df2823` | ported | `S3/CliS3GetNonexistentKeyError.cs` |
+| `s3.cli-s3-put-get-roundtrip` | `4df2823` | ported | `S3/CliS3PutGetRoundtrip.cs` |
+| `s3.cli-script-s3-sync-workflow` | `4df2823` | ported | `S3/CliScriptS3SyncWorkflow.cs` |
+| `s3.conc-s3-conditional-writes-complete-multipart-if-none-match-rejected-when-key-appears-mid-upload` | `4df2823` | ported | `S3/ConcS3ConditionalWritesCompleteMultipartIfNoneMatchRejectedWhenKeyAppearsMidUpload.cs` |
+| `s3.conc-s3-conditional-writes-complete-multipart-stale-if-match-rejected` | `4df2823` | ported | `S3/ConcS3ConditionalWritesCompleteMultipartStaleIfMatchRejected.cs` |
+| `s3.conc-s3-conditional-writes-concurrent-multipart-completions-exactly-one-wins` | `4df2823` | ported | `S3/ConcS3ConditionalWritesConcurrentMultipartCompletionsExactlyOneWins.cs` |
+| `s3.conc-s3-conditional-writes-get-during-overwrite-returns-a-whole-version` | `4df2823` | ported | `S3/ConcS3ConditionalWritesGetDuringOverwriteReturnsAWholeVersion.cs` |
+| `s3.conc-s3-conditional-writes-if-match-on-absent-key-rejected-and-nothing-created` | `4df2823` | ported | `S3/ConcS3ConditionalWritesIfMatchOnAbsentKeyRejectedAndNothingCreated.cs` |
+| `s3.conc-s3-conditional-writes-if-match-over-delete-marker-rejected` | `4df2823` | ported | `S3/ConcS3ConditionalWritesIfMatchOverDeleteMarkerRejected.cs` |
+| `s3.conc-s3-conditional-writes-lock-stale-holder-release-rejected` | `4df2823` | ported | `S3/ConcS3ConditionalWritesLockStaleHolderReleaseRejected.cs` |
+| `s3.conc-s3-conditional-writes-optimistic-counter-loses-no-increment` | `4df2823` | ported | `S3/ConcS3ConditionalWritesOptimisticCounterLosesNoIncrement.cs` |
+| `s3.conc-s3-conditional-writes-read-after-conditional-overwrite-every-read-path-is-current` | `4df2823` | ported | `S3/ConcS3ConditionalWritesReadAfterConditionalOverwriteEveryReadPathIsCurrent.cs` |
+| `s3.conc-s3-conditional-writes-unconditional-concurrent-puts-leave-exactly-one-whole-body` | `4df2823` | ported | `S3/ConcS3ConditionalWritesUnconditionalConcurrentPutsLeaveExactlyOneWholeBody.cs` |
+| `s3.conc-s3-conditional-writes-versioned-noncurrent-etag-if-match-rejected` | `4df2823` | ported | `S3/ConcS3ConditionalWritesVersionedNoncurrentEtagIfMatchRejected.cs` |
+| `s3.concurrent-conditional-create-exactly-one-wins` | `4df2823` | ported | `S3/ConcurrentConditionalCreateExactlyOneWins.cs` |
+| `s3.concurrent-multipart-completion-race` | `4df2823` | ported | `S3/ConcurrentMultipartCompletionRace.cs` |
+| `s3.concurrent-put-if-none-match-exactly-one-wins` | `4df2823` | ported | `S3/ConcurrentPutIfNoneMatchExactlyOneWins.cs` |
+| `s3.concurrent-versioned-puts-no-lost-writes` | `4df2823` | ported | `S3/ConcurrentVersionedPutsNoLostWrites.cs` |
+| `s3.content-encoding-preserved` | `4df2823` | ported | `S3/ContentEncodingPreserved.cs` |
+| `s3.content-type-preserved` | `4df2823` | ported | `S3/ContentTypePreserved.cs` |
+| `s3.copy-object-and-ranged-get-return-exact-source-bytes-then-batch-delete-removes-both` | `4df2823` | ported | `S3/CopyObjectAndRangedGetReturnExactSourceBytesThenBatchDeleteRemovesBoth.cs` |
+| `s3.copy-object-annotation-exclude-directive-skips-default-copies` | `4df2823` | ported | `S3/CopyObjectAnnotationExcludeDirectiveSkipsDefaultCopies.cs` |
+| `s3.copy-object-cross-bucket` | `4df2823` | ported | `S3/CopyObjectCrossBucket.cs` |
+| `s3.copy-object-from-specific-version-source` | `4df2823` | ported | `S3/CopyObjectFromSpecificVersionSource.cs` |
+| `s3.copy-object-glacier-not-in-active-tier-error` | `4df2823` | ported | `S3/CopyObjectGlacierNotInActiveTierError.cs` |
+| `s3.copy-object-glacier-source-error` | `4df2823` | ported | `S3/CopyObjectGlacierSourceError.cs` |
+| `s3.copy-object-if-match-on-the-destination-refuses-a-stale-etag` | `4df2823` | ported | `S3/CopyObjectIfMatchOnTheDestinationRefusesAStaleEtag.cs` |
+| `s3.copy-object-into-directory-bucket-rejects-source-tags-and-destination-ssec` | `4df2823` | ported | `S3/CopyObjectIntoDirectoryBucketRejectsSourceTagsAndDestinationSsec.cs` |
+| `s3.copy-object-metadata-copy` | `4df2823` | ported | `S3/CopyObjectMetadataCopy.cs` |
+| `s3.copy-object-metadata-replace` | `4df2823` | ported | `S3/CopyObjectMetadataReplace.cs` |
+| `s3.copy-object-missing-source-permission-denied` | `4df2823` | ported | `S3/CopyObjectMissingSourcePermissionDenied.cs` |
+| `s3.copy-object-not-in-active-tier-rejected` | `4df2823` | ported | `S3/CopyObjectNotInActiveTierRejected.cs` |
+| `s3.copy-object-same-bucket` | `4df2823` | ported | `S3/CopyObjectSameBucket.cs` |
+| `s3.copy-object-source-if-match-mismatch-rejected` | `4df2823` | ported | `S3/CopyObjectSourceIfMatchMismatchRejected.cs` |
+| `s3.copy-object-to-itself-no-change-rejected` | `4df2823` | ported | `S3/CopyObjectToItselfNoChangeRejected.cs` |
+| `s3.copy-object-under-if-none-match-policy` | `4df2823` | ported | `S3/CopyObjectUnderIfNoneMatchPolicy.cs` |
+| `s3.cors-configuration-roundtrip` | `4df2823` | ported | `S3/CorsConfigurationRoundtrip.cs` |
+| `s3.cors-delete` | `4df2823` | ported | `S3/CorsDelete.cs` |
+| `s3.cors-preflight-allowed-origin-returns-rule-headers` | `4df2823` | ported | `S3/CorsPreflightAllowedOriginReturnsRuleHeaders.cs` |
+| `s3.cors-preflight-disallowed-method-rejected-allowed-method-passes` | `4df2823` | ported | `S3/CorsPreflightDisallowedMethodRejectedAllowedMethodPasses.cs` |
+| `s3.cors-preflight-disallowed-origin-rejected-allowed-origin-passes` | `4df2823` | ported | `S3/CorsPreflightDisallowedOriginRejectedAllowedOriginPasses.cs` |
+| `s3.cors-preflight-on-bucket-without-cors-configuration-rejected` | `4df2823` | ported | `S3/CorsPreflightOnBucketWithoutCorsConfigurationRejected.cs` |
+| `s3.cors-preflight-refused-after-delete-bucket-cors` | `4df2823` | ported | `S3/CorsPreflightRefusedAfterDeleteBucketCors.cs` |
+| `s3.cors-presigned-put-and-get-with-origin-carry-allow-origin` | `4df2823` | ported | `S3/CorsPresignedPutAndGetWithOriginCarryAllowOrigin.cs` |
+| `s3.cors-presigned-with-origin-without-cors-config-no-cors-headers` | `4df2823` | ported | `S3/CorsPresignedWithOriginWithoutCorsConfigNoCorsHeaders.cs` |
+| `s3.create-bucket-invalid-name-rejected` | `4df2823` | ported | `S3/CreateBucketInvalidNameRejected.cs` |
+| `s3.create-bucket-invalid-name-variants-rejected` | `4df2823` | ported | `S3/CreateBucketInvalidNameVariantsRejected.cs` |
+| `s3.create-bucket-metadata-table-configuration-name-conflict-rejected` | `4df2823` | ported | `S3/CreateBucketMetadataTableConfigurationNameConflictRejected.cs` |
+| `s3.create-bucket-reserved-prefix-or-suffix-rejected` | `4df2823` | ported | `S3/CreateBucketReservedPrefixOrSuffixRejected.cs` |
+| `s3.create-session-express-zone` | `4df2823` | ported | `S3/CreateSessionExpressZone.cs` |
+| `s3.create-session-no-such-bucket` | `4df2823` | ported | `S3/CreateSessionNoSuchBucket.cs` |
+| `s3.create-session-nosuchbucket` | `4df2823` | ported | `S3/CreateSessionNosuchbucketGeneralPurposeBucket.cs` |
+| `s3.create-session-roundtrip` | `4df2823` | ported | `S3/CreateSessionRoundtrip.cs` |
+| `s3.create-session-token-ttl` | `4df2823` | ported | `S3/CreateSessionTokenTtl.cs` |
+| `s3.deep-s3-immutability-compliance-lock-extends-and-overwrites-but-weakening-rejected` | `4df2823` | ported | `S3/DeepS3ImmutabilityComplianceLockExtendsAndOverwritesButWeakeningRejected.cs` |
+| `s3.deep-s3-immutability-composite-sha256-checksum-reports-parts` | `4df2823` | ported | `S3/DeepS3ImmutabilityCompositeSha256ChecksumReportsParts.cs` |
+| `s3.deep-s3-immutability-copy-metadata-directive-replace-drops-unrestated` | `4df2823` | ported | `S3/DeepS3ImmutabilityCopyMetadataDirectiveReplaceDropsUnrestated.cs` |
+| `s3.deep-s3-immutability-copy-tagging-directive-independent-of-metadata` | `4df2823` | ported | `S3/DeepS3ImmutabilityCopyTaggingDirectiveIndependentOfMetadata.cs` |
+| `s3.deep-s3-immutability-copy-unknown-tagging-directive-rejected` | `4df2823` | ported | `S3/DeepS3ImmutabilityCopyUnknownTaggingDirectiveRejected.cs` |
+| `s3.deep-s3-immutability-governance-bypass-without-permission-denied` | `4df2823` | ported | `S3/DeepS3ImmutabilityGovernanceBypassWithoutPermissionDenied.cs` |
+| `s3.deep-s3-immutability-legal-hold-blocks-bypass-independent-of-retention-rejected` | `4df2823` | ported | `S3/DeepS3ImmutabilityLegalHoldBlocksBypassIndependentOfRetentionRejected.cs` |
+| `s3.deep-s3-immutability-multipart-etag-is-md5-of-part-md5s` | `4df2823` | ported | `S3/DeepS3ImmutabilityMultipartEtagIsMd5OfPartMd5s.cs` |
+| `s3.deep-s3-immutability-requester-pays-anonymous-with-payer-header-rejected` | `4df2823` | ported | `S3/DeepS3ImmutabilityRequesterPaysAnonymousWithPayerHeaderRejected.cs` |
+| `s3.deep-s3-immutability-upload-part-wrong-sha256-rejected-slot-stays-empty` | `4df2823` | ported | `S3/DeepS3ImmutabilityUploadPartWrongSha256RejectedSlotStaysEmpty.cs` |
+| `s3.deep-s3-storage-class-copy-in-place-to-deep-archive-closes-reads` | `4df2823` | ported | `S3/DeepS3StorageClassCopyInPlaceToDeepArchiveClosesReads.cs` |
+| `s3.deep-s3-storage-class-deep-archive-expedited-restore-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassDeepArchiveExpeditedRestoreRejected.cs` |
+| `s3.deep-s3-storage-class-deep-archive-get-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassDeepArchiveGetRejected.cs` |
+| `s3.deep-s3-storage-class-express-onezone-class-put-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassExpressOnezoneClassPutRejected.cs` |
+| `s3.deep-s3-storage-class-glacier-ir-restore-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassGlacierIrRestoreRejected.cs` |
+| `s3.deep-s3-storage-class-lifecycle-transition-colder-before-warmer-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassLifecycleTransitionColderBeforeWarmerRejected.cs` |
+| `s3.deep-s3-storage-class-lifecycle-transition-glacier-to-deep-archive-gap-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassLifecycleTransitionGlacierToDeepArchiveGapRejected.cs` |
+| `s3.deep-s3-storage-class-lifecycle-transition-ia-to-glacier-gap-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassLifecycleTransitionIaToGlacierGapRejected.cs` |
+| `s3.deep-s3-storage-class-lifecycle-transition-invalid-target-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassLifecycleTransitionInvalidTargetRejected.cs` |
+| `s3.deep-s3-storage-class-multipart-class-complete-after-abort-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassMultipartClassCompleteAfterAbortRejected.cs` |
+| `s3.deep-s3-storage-class-noncurrent-expiration-zero-days-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassNoncurrentExpirationZeroDaysRejected.cs` |
+| `s3.deep-s3-storage-class-onezone-ia-intelligent-tiering-direct-put` | `4df2823` | ported | `S3/DeepS3StorageClassOnezoneIaIntelligentTieringDirectPut.cs` |
+| `s3.deep-s3-storage-class-outposts-class-put-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassOutpostsClassPutRejected.cs` |
+| `s3.deep-s3-storage-class-restore-tier-downgrade-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassRestoreTierDowngradeRejected.cs` |
+| `s3.deep-s3-storage-class-restore-zero-days-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassRestoreZeroDaysRejected.cs` |
+| `s3.deep-s3-storage-class-versioned-expiration-rule-targets-current-version` | `4df2823` | ported | `S3/DeepS3StorageClassVersionedExpirationRuleTargetsCurrentVersion.cs` |
+| `s3.delete-bucket-holding-only-a-delete-marker-rejected-bucket-not-empty` | `4df2823` | ported | `S3/DeleteBucketHoldingOnlyADeleteMarkerRejectedBucketNotEmpty.cs` |
+| `s3.delete-bucket-with-metadata-table-configuration-blocked` | `4df2823` | ported | `S3/DeleteBucketWithMetadataTableConfigurationBlocked.cs` |
+| `s3.delete-nonempty-bucket-rejected-across-20-bucket-fanout` | `4df2823` | ported | `S3/DeleteNonemptyBucketRejectedAcross20BucketFanout.cs` |
+| `s3.delete-object-annotation-error-paths` | `4df2823` | ported | `S3/DeleteObjectAnnotationErrorPaths.cs` |
+| `s3.delete-object-annotation-missing-rejected` | `4df2823` | ported | `S3/DeleteObjectAnnotationMissingRejected.cs` |
+| `s3.delete-object-nonexistent-idempotent` | `4df2823` | ported | `S3/DeleteObjectNonexistentIdempotent.cs` |
+| `s3.delete-object-policy-requires-if-match-header` | `4df2823` | ported | `S3/DeleteObjectPolicyRequiresIfMatchHeader.cs` |
+| `s3.delete-object-under-legal-hold-rejected` | `4df2823` | ported | `S3/DeleteObjectUnderLegalHoldRejected.cs` |
+| `s3.delete-object-under-retention-rejected` | `4df2823` | ported | `S3/DeleteObjectUnderRetentionRejected.cs` |
+| `s3.delete-objects-conditional-etag-mismatch-survives` | `4df2823` | ported | `S3/DeleteObjectsConditionalEtagMismatchSurvives.cs` |
+| `s3.delete-objects-empty-list-rejected` | `4df2823` | ported | `S3/DeleteObjectsEmptyListRejected.cs` |
+| `s3.delete-objects-exceeds-max-keys-rejected` | `4df2823` | ported | `S3/DeleteObjectsExceedsMaxKeysRejected.cs` |
+| `s3.delete-objects-partial-failure` | `4df2823` | ported | `S3/DeleteObjectsPartialFailure.cs` |
+| `s3.delete-objects-quiet-mode` | `4df2823` | ported | `S3/DeleteObjectsQuietMode.cs` |
+| `s3.delete-objects-that-misses-one-key-leaves-delete-bucket-refused` | `4df2823` | ported | `S3/DeleteObjectsThatMissesOneKeyLeavesDeleteBucketRefused.cs` |
+| `s3.deleting-the-only-object-under-a-nested-prefix-removes-its-implied-directories` | `4df2823` | ported | `S3/DeletingTheOnlyObjectUnderANestedPrefixRemovesItsImpliedDirectories.cs` |
+| `s3.deploy-s3-1-bucket-update-versioning-policy-rename` | `4df2823` | not ported | CloudFormation stacks |
+| `s3.deploy-s3-1-rename-onto-owned-bucket-rejected` | `4df2823` | not ported | CloudFormation stacks |
+| `s3.deploy-s3-bucket-default-encryption-applied` | `4df2823` | not ported | CloudFormation stacks |
+| `s3.deploy-s3-bucket-public-access-block-enforced-rejected` | `4df2823` | not ported | CloudFormation stacks |
+| `s3.deploy-s3-bucket-versioning-behavior` | `4df2823` | not ported | CloudFormation stacks |
+| `s3.directory-bucket-multipart-complete-etag-is-not-an-md5-composite` | `4df2823` | ported | `S3/DirectoryBucketMultipartCompleteEtagIsNotAnMd5Composite.cs` |
+| `s3.directory-bucket-rejects-object-tagging-versioning-notification-and-replication` | `4df2823` | ported | `S3/DirectoryBucketRejectsObjectTaggingVersioningNotificationAndReplication.cs` |
+| `s3.directory-buckets-listing` | `4df2823` | ported | `S3/DirectoryBucketsListing.cs` |
+| `s3.e2e-log-rotation-pattern` | `4df2823` | ported | `S3/E2eLogRotationPattern.cs` |
+| `s3.e2e-website-deployment` | `4df2823` | ported | `S3/E2eWebsiteDeployment.cs` |
+| `s3.empty-and-odd-sized-objects-under-unicode-keys-round-trip-with-md5-etags` | `4df2823` | ported | `S3/EmptyAndOddSizedObjectsUnderUnicodeKeysRoundTripWithMd5Etags.cs` |
+| `s3.encryption-enforcement-reject-unencrypted` | `4df2823` | ported | `S3/EncryptionEnforcementRejectUnencrypted.cs` |
+| `s3.error-bucket-already-owned` | `4df2823` | ported | `S3/ErrorBucketAlreadyOwned.cs` |
+| `s3.error-bucket-not-empty` | `4df2823` | ported | `S3/ErrorBucketNotEmpty.cs` |
+| `s3.error-invalid-bucket-name` | `4df2823` | ported | `S3/ErrorInvalidBucketName.cs` |
+| `s3.error-no-such-bucket` | `4df2823` | ported | `S3/ErrorNoSuchBucket.cs` |
+| `s3.error-no-such-key` | `4df2823` | ported | `S3/ErrorNoSuchKey.cs` |
+| `s3.etag-is-md5-for-single-put` | `4df2823` | ported | `S3/EtagIsMd5ForSinglePut.cs` |
+| `s3.expected-bucket-owner-mismatch-rejected` | `4df2823` | ported | `S3/ExpectedBucketOwnerMismatchRejected.cs` |
+| `s3.get-bucket-replication-not-configured-rejected` | `4df2823` | ported | `S3/GetBucketReplicationNotConfiguredRejected.cs` |
+| `s3.get-bucket-versioning-unset-fresh` | `4df2823` | ported | `S3/GetBucketVersioningUnsetFresh.cs` |
+| `s3.get-bucket-website-not-configured-rejected` | `4df2823` | ported | `S3/GetBucketWebsiteNotConfiguredRejected.cs` |
+| `s3.get-glacier-object-without-restore-rejected` | `4df2823` | ported | `S3/GetGlacierObjectWithoutRestoreRejected.cs` |
+| `s3.get-object-acl-no-such-key` | `4df2823` | ported | `S3/GetObjectAclNoSuchKey.cs` |
+| `s3.get-object-annotation-nosuchannotation` | `4df2823` | ported | `S3/GetObjectAnnotationNosuchannotation.cs` |
+| `s3.get-object-attributes-invalid-attribute-name-rejected` | `4df2823` | ported | `S3/GetObjectAttributesInvalidAttributeNameRejected.cs` |
+| `s3.get-object-attributes-no-such-key` | `4df2823` | ported | `S3/GetObjectAttributesNoSuchKey.cs` |
+| `s3.get-object-attributes-nosuchkey` | `4df2823` | ported | `S3/GetObjectAttributesNosuchkeyCompact.cs` |
+| `s3.get-object-attributes-size-etag` | `4df2823` | ported | `S3/GetObjectAttributesSizeEtag.cs` |
+| `s3.get-object-invalid-object-state-glacier` | `4df2823` | ported | `S3/GetObjectInvalidObjectStateGlacier.cs` |
+| `s3.get-object-invalid-state-archived` | `4df2823` | ported | `S3/GetObjectInvalidStateArchived.cs` |
+| `s3.get-object-nonexistent-version-errors` | `4df2823` | ported | `S3/GetObjectNonexistentVersionErrors.cs` |
+| `s3.get-object-part-number-reads-single-part` | `4df2823` | ported | `S3/GetObjectPartNumberReadsSinglePart.cs` |
+| `s3.get-object-torrent` | `4df2823` | ported | `S3/GetObjectTorrent.cs` |
+| `s3.get-object-torrent-unsupported-rejected` | `4df2823` | ported | `S3/GetObjectTorrentUnsupportedRejected.cs` |
+| `s3.head-object-metadata` | `4df2823` | ported | `S3/HeadObjectMetadata.cs` |
+| `s3.head-object-on-delete-marker-rejected` | `4df2823` | ported | `S3/HeadObjectOnDeleteMarkerRejected.cs` |
+| `s3.identity-policy-s3-prefix-condition-scopes-listbucket-and-getobject-to-a-home-prefix` | `4df2823` | not ported | IAM roles and role assumption |
+| `s3.if-match-failure` | `4df2823` | ported | `S3/IfMatchFailure.cs` |
+| `s3.if-match-success` | `4df2823` | ported | `S3/IfMatchSuccess.cs` |
+| `s3.if-modified-since` | `4df2823` | ported | `S3/IfModifiedSince.cs` |
+| `s3.if-none-match` | `4df2823` | ported | `S3/IfNoneMatch.cs` |
+| `s3.lifecycle-abort-incomplete-multipart` | `4df2823` | ported | `S3/LifecycleAbortIncompleteMultipart.cs` |
+| `s3.lifecycle-abort-incomplete-multipart-invalid-days-rejected` | `4df2823` | ported | `S3/LifecycleAbortIncompleteMultipartInvalidDaysRejected.cs` |
+| `s3.lifecycle-expiration-ttl` | `4df2823` | ported | `S3/LifecycleExpirationTtl.cs` |
+| `s3.lifecycle-rule-delete` | `4df2823` | ported | `S3/LifecycleRuleDelete.cs` |
+| `s3.lifecycle-rule-roundtrip` | `4df2823` | ported | `S3/LifecycleRuleRoundtrip.cs` |
+| `s3.lifecycle-transition-server-side` | `4df2823` | ported | `S3/LifecycleTransitionServerSide.cs` |
+| `s3.list-directory-buckets-isolation` | `4df2823` | ported | `S3/ListDirectoryBucketsIsolation.cs` |
+| `s3.list-directory-buckets-rejects-regular-bucket-ops` | `4df2823` | ported | `S3/ListDirectoryBucketsRejectsRegularBucketOps.cs` |
+| `s3.list-multipart-uploads-paginates-and-groups-common-prefixes` | `4df2823` | ported | `S3/ListMultipartUploadsPaginatesAndGroupsCommonPrefixes.cs` |
+| `s3.list-object-annotations-invalid-prefix` | `4df2823` | ported | `S3/ListObjectAnnotationsInvalidPrefix.cs` |
+| `s3.list-object-versions` | `4df2823` | ported | `S3/ListObjectVersions.cs` |
+| `s3.list-object-versions-pages-one-key-written-more-than-one-thousand-times` | `4df2823` | ported | `S3/ListObjectVersionsPagesOneKeyWrittenMoreThanOneThousandTimes.cs` |
+| `s3.list-object-versions-pagination-markers` | `4df2823` | ported | `S3/ListObjectVersionsPaginationMarkers.cs` |
+| `s3.list-objects-nosuchbucket` | `4df2823` | ported | `S3/ListObjectsNosuchbucket.cs` |
+| `s3.list-objects-v1-basic-listing` | `4df2823` | ported | `S3/ListObjectsV1BasicListing.cs` |
+| `s3.list-objects-v1-marker-pagination` | `4df2823` | ported | `S3/ListObjectsV1MarkerPagination.cs` |
+| `s3.list-objects-v2-basic` | `4df2823` | ported | `S3/ListObjectsV2Basic.cs` |
+| `s3.list-objects-v2-byte-order-and-delimiter-paging` | `4df2823` | ported | `S3/ListObjectsV2ByteOrderAndDelimiterPaging.cs` |
+| `s3.list-objects-v2-default-page-holds-one-thousand-keys-of-a-larger-bucket` | `4df2823` | ported | `S3/ListObjectsV2DefaultPageHoldsOneThousandKeysOfALargerBucket.cs` |
+| `s3.list-objects-v2-delimiter` | `4df2823` | ported | `S3/ListObjectsV2Delimiter.cs` |
+| `s3.list-objects-v2-is-exact-on-the-first-read-after-a-bulk-delete` | `4df2823` | ported | `S3/ListObjectsV2IsExactOnTheFirstReadAfterABulkDelete.cs` |
+| `s3.list-objects-v2-prefix` | `4df2823` | ported | `S3/ListObjectsV2Prefix.cs` |
+| `s3.list-parts-max-parts-pagination-returns-each-part-once` | `4df2823` | ported | `S3/ListPartsMaxPartsPaginationReturnsEachPartOnce.cs` |
+| `s3.metadata-table-configuration-create-active-status` | `4df2823` | ported | `S3/MetadataTableConfigurationCreateActiveStatus.cs` |
+| `s3.metadata-table-configuration-delete-removes-table` | `4df2823` | ported | `S3/MetadataTableConfigurationDeleteRemovesTable.cs` |
+| `s3.metadata-table-configuration-duplicate-create-rejected` | `4df2823` | ported | `S3/MetadataTableConfigurationDuplicateCreateRejected.cs` |
+| `s3.metadata-table-configuration-get-without-create-rejected` | `4df2823` | ported | `S3/MetadataTableConfigurationGetWithoutCreateRejected.cs` |
+| `s3.metadata-table-configuration-invalid-schema-rejected` | `4df2823` | ported | `S3/MetadataTableConfigurationInvalidSchemaRejected.cs` |
+| `s3.metadata-table-server-managed-updates` | `4df2823` | ported | `S3/MetadataTableServerManagedUpdates.cs` |
+| `s3.multipart-abort` | `4df2823` | ported | `S3/MultipartAbort.cs` |
+| `s3.multipart-abort-no-such-upload-rejected` | `4df2823` | ported | `S3/MultipartAbortNoSuchUploadRejected.cs` |
+| `s3.multipart-complete-invalid-part-etag-rejected` | `4df2823` | ported | `S3/MultipartCompleteInvalidPartEtagRejected.cs` |
+| `s3.multipart-complete-out-of-order-rejected` | `4df2823` | ported | `S3/MultipartCompleteOutOfOrderRejected.cs` |
+| `s3.multipart-complete-part-ordering-enforced` | `4df2823` | ported | `S3/MultipartCompletePartOrderingEnforced.cs` |
+| `s3.multipart-complete-part-too-small-rejected` | `4df2823` | ported | `S3/MultipartCompletePartTooSmallRejected.cs` |
+| `s3.multipart-etag-format` | `4df2823` | ported | `S3/MultipartEtagFormat.cs` |
+| `s3.multipart-list-parts` | `4df2823` | ported | `S3/MultipartListParts.cs` |
+| `s3.multipart-list-parts-after-abort-rejected` | `4df2823` | ported | `S3/MultipartListPartsAfterAbortRejected.cs` |
+| `s3.multipart-list-uploads-then-abort-nonexistent` | `4df2823` | ported | `S3/MultipartListUploadsThenAbortNonexistent.cs` |
+| `s3.multipart-part-number-ordering` | `4df2823` | ported | `S3/MultipartPartNumberOrdering.cs` |
+| `s3.multipart-upload-and-presigned-get-round-trip` | `4df2823` | ported | `S3/MultipartUploadAndPresignedGetRoundTrip.cs` |
+| `s3.multipart-upload-complete` | `4df2823` | ported | `S3/MultipartUploadComplete.cs` |
+| `s3.multipart-upload-complete-wrong-part-order-rejected` | `4df2823` | ported | `S3/MultipartUploadCompleteWrongPartOrderRejected.cs` |
+| `s3.multipart-upload-concurrent-part-overwrite` | `4df2823` | ported | `S3/MultipartUploadConcurrentPartOverwrite.cs` |
+| `s3.multipart-upload-part-invalid-number-rejected` | `4df2823` | ported | `S3/MultipartUploadPartInvalidNumberRejected.cs` |
+| `s3.multipart-upload-visible-in-list-until-complete` | `4df2823` | ported | `S3/MultipartUploadVisibleInListUntilComplete.cs` |
+| `s3.multipart-upload-with-sparse-part-numbers-uploaded-in-reverse-round-trips` | `4df2823` | ported | `S3/MultipartUploadWithSparsePartNumbersUploadedInReverseRoundTrips.cs` |
+| `s3.notification-fifo-destination-rejected` | `4df2823` | ported | `S3/NotificationFifoDestinationRejected.cs` |
+| `s3.notification-filter-non-matching-key-not-delivered` | `4df2823` | ported | `S3/NotificationFilterNonMatchingKeyNotDelivered.cs` |
+| `s3.notification-invalid-destination-rejected` | `4df2823` | ported | `S3/NotificationInvalidDestinationRejected.cs` |
+| `s3.notification-sqs-test-event-format` | `4df2823` | ported | `S3/NotificationSqsTestEventFormat.cs` |
+| `s3.notification-to-sqs` | `4df2823` | ported | `S3/NotificationToSqs.cs` |
+| `s3.object-acl-canned-roundtrip` | `4df2823` | ported | `S3/ObjectAclCannedRoundtrip.cs` |
+| `s3.object-acl-lifecycle-nonexistent-key` | `4df2823` | ported | `S3/ObjectAclLifecycleNonexistentKey.cs` |
+| `s3.object-acl-lifecycle-nosuchkey` | `4df2823` | ported | `S3/ObjectAclLifecycleNosuchkey.cs` |
+| `s3.object-annotation-crud-lifecycle` | `4df2823` | ported | `S3/ObjectAnnotationCrudLifecycle.cs` |
+| `s3.object-annotation-full-crud-lifecycle` | `4df2823` | ported | `S3/ObjectAnnotationFullCrudLifecycle.cs` |
+| `s3.object-annotation-name-too-long-rejected` | `4df2823` | ported | `S3/ObjectAnnotationNameTooLongRejected.cs` |
+| `s3.object-annotation-not-found-errors` | `4df2823` | ported | `S3/ObjectAnnotationNotFoundErrors.cs` |
+| `s3.object-annotation-reserved-prefix-rejected` | `4df2823` | ported | `S3/ObjectAnnotationReservedPrefixRejected.cs` |
+| `s3.object-annotation-roundtrip` | `4df2823` | ported | `S3/ObjectAnnotationRoundtrip.cs` |
+| `s3.object-annotation-validation-errors-rejected` | `4df2823` | ported | `S3/ObjectAnnotationValidationErrorsRejected.cs` |
+| `s3.object-attributes-reflects-state` | `4df2823` | ported | `S3/ObjectAttributesReflectsState.cs` |
+| `s3.object-attributes-returns-metadata` | `4df2823` | ported | `S3/ObjectAttributesReturnsMetadata.cs` |
+| `s3.object-key-1024-bytes-boundary-rejected` | `4df2823` | ported | `S3/ObjectKey1024BytesBoundaryRejected.cs` |
+| `s3.object-legal-hold-blocks-delete` | `4df2823` | ported | `S3/ObjectLegalHoldBlocksDelete.cs` |
+| `s3.object-legal-hold-lifecycle` | `4df2823` | ported | `S3/ObjectLegalHoldLifecycle.cs` |
+| `s3.object-legal-hold-requires-object-lock-rejected` | `4df2823` | ported | `S3/ObjectLegalHoldRequiresObjectLockRejected.cs` |
+| `s3.object-legal-hold-roundtrip` | `4df2823` | ported | `S3/ObjectLegalHoldRoundtrip.cs` |
+| `s3.object-lock-configuration-roundtrip` | `4df2823` | ported | `S3/ObjectLockConfigurationRoundtrip.cs` |
+| `s3.object-lock-enable-on-versioned-bucket` | `4df2823` | ported | `S3/ObjectLockEnableOnVersionedBucket.cs` |
+| `s3.object-lock-event-hold-requires-mode-duration-and-floor-date-rejected` | `4df2823` | ported | `S3/ObjectLockEventHoldRequiresModeDurationAndFloorDateRejected.cs` |
+| `s3.object-lock-ops-require-lock-enabled-bucket` | `4df2823` | ported | `S3/ObjectLockOpsRequireLockEnabledBucket.cs` |
+| `s3.object-lock-requires-versioning-rejected` | `4df2823` | ported | `S3/ObjectLockRequiresVersioningRejected.cs` |
+| `s3.object-lock-subresource-puts-leave-the-object-body-and-versions-intact` | `4df2823` | ported | `S3/ObjectLockSubresourcePutsLeaveTheObjectBodyAndVersionsIntact.cs` |
+| `s3.object-metadata-unicode-value-round-trip` | `4df2823` | ported | `S3/ObjectMetadataUnicodeValueRoundTrip.cs` |
+| `s3.object-ownership-enforced-blocks-object-acl` | `4df2823` | ported | `S3/ObjectOwnershipEnforcedBlocksObjectAcl.cs` |
+| `s3.object-put-get-delete` | `4df2823` | ported | `S3/ObjectPutGetDelete.cs` |
+| `s3.object-retention-compliance-cannot-shorten` | `4df2823` | ported | `S3/ObjectRetentionComplianceCannotShorten.cs` |
+| `s3.object-retention-governance-blocks-delete` | `4df2823` | ported | `S3/ObjectRetentionGovernanceBlocksDelete.cs` |
+| `s3.object-retention-governance-bypass-delete` | `4df2823` | ported | `S3/ObjectRetentionGovernanceBypassDelete.cs` |
+| `s3.object-retention-lifecycle` | `4df2823` | ported | `S3/ObjectRetentionLifecycle.cs` |
+| `s3.object-retention-roundtrip` | `4df2823` | ported | `S3/ObjectRetentionRoundtrip.cs` |
+| `s3.object-retention-shorten-governance-without-bypass-rejected` | `4df2823` | ported | `S3/ObjectRetentionShortenGovernanceWithoutBypassRejected.cs` |
+| `s3.object-retention-until-date-enforces-window` | `4df2823` | ported | `S3/ObjectRetentionUntilDateEnforcesWindow.cs` |
+| `s3.object-storage-class-reflected` | `4df2823` | ported | `S3/ObjectStorageClassReflected.cs` |
+| `s3.object-system-metadata-roundtrip` | `4df2823` | ported | `S3/ObjectSystemMetadataRoundtrip.cs` |
+| `s3.object-tagging-delete` | `4df2823` | ported | `S3/ObjectTaggingDelete.cs` |
+| `s3.object-tagging-exceeds-limit-rejected` | `4df2823` | ported | `S3/ObjectTaggingExceedsLimitRejected.cs` |
+| `s3.object-tagging-roundtrip` | `4df2823` | ported | `S3/ObjectTaggingRoundtrip.cs` |
+| `s3.object-torrent-retrieval` | `4df2823` | ported | `S3/ObjectTorrentRetrieval.cs` |
+| `s3.object-user-metadata-keys-lowercased` | `4df2823` | ported | `S3/ObjectUserMetadataKeysLowercased.cs` |
+| `s3.objects-totalling-over-128-mib-across-three-buckets-all-read-back` | `4df2823` | ported | `S3/ObjectsTotallingOver128MibAcrossThreeBucketsAllReadBack.cs` |
+| `s3.op-contract-delete-bucket` | `4df2823` | ported | `S3/OpContractDeleteBucket.cs` |
+| `s3.op-contract-delete-bucket-cors` | `4df2823` | ported | `S3/OpContractDeleteBucketCors.cs` |
+| `s3.op-contract-delete-bucket-lifecycle` | `4df2823` | ported | `S3/OpContractDeleteBucketLifecycle.cs` |
+| `s3.op-contract-delete-bucket-metrics-configuration` | `4df2823` | ported | `S3/OpContractDeleteBucketMetricsConfiguration.cs` |
+| `s3.op-contract-delete-bucket-policy` | `4df2823` | ported | `S3/OpContractDeleteBucketPolicy.cs` |
+| `s3.op-contract-delete-bucket-tagging` | `4df2823` | ported | `S3/OpContractDeleteBucketTagging.cs` |
+| `s3.op-contract-delete-object-tagging` | `4df2823` | ported | `S3/OpContractDeleteObjectTagging.cs` |
+| `s3.op-contract-delete-objects` | `4df2823` | ported | `S3/OpContractDeleteObjects.cs` |
+| `s3.op-contract-delete-public-access-block` | `4df2823` | ported | `S3/OpContractDeletePublicAccessBlock.cs` |
+| `s3.op-contract-get-bucket-cors` | `4df2823` | ported | `S3/OpContractGetBucketCors.cs` |
+| `s3.op-contract-get-bucket-lifecycle-configuration` | `4df2823` | ported | `S3/OpContractGetBucketLifecycleConfiguration.cs` |
+| `s3.op-contract-get-bucket-location` | `4df2823` | ported | `S3/OpContractGetBucketLocation.cs` |
+| `s3.op-contract-get-bucket-metrics-configuration` | `4df2823` | ported | `S3/OpContractGetBucketMetricsConfiguration.cs` |
+| `s3.op-contract-get-bucket-notification-configuration` | `4df2823` | ported | `S3/OpContractGetBucketNotificationConfiguration.cs` |
+| `s3.op-contract-get-bucket-policy` | `4df2823` | ported | `S3/OpContractGetBucketPolicy.cs` |
+| `s3.op-contract-getBucketTagging` | `4df2823` | ported | `S3/OpContractGetBucketTagging.cs` |
+| `s3.op-contract-getBucketVersioning` | `4df2823` | ported | `S3/OpContractGetBucketVersioning.cs` |
+| `s3.op-contract-getObjectTagging` | `4df2823` | ported | `S3/OpContractGetObjectTagging.cs` |
+| `s3.op-contract-getPublicAccessBlock` | `4df2823` | ported | `S3/OpContractGetPublicAccessBlock.cs` |
+| `s3.op-contract-headBucket` | `4df2823` | ported | `S3/OpContractHeadBucket.cs` |
+| `s3.op-contract-listBucketMetricsConfigurations` | `4df2823` | ported | `S3/OpContractListBucketMetricsConfigurations.cs` |
+| `s3.op-contract-listObjectVersions` | `4df2823` | ported | `S3/OpContractListObjectVersions.cs` |
+| `s3.op-contract-listObjectsV2` | `4df2823` | ported | `S3/OpContractListObjectsV2.cs` |
+| `s3.op-contract-put-bucket-tagging-invalid-tag-rejected` | `4df2823` | ported | `S3/OpContractPutBucketTaggingInvalidTagRejected.cs` |
+| `s3.op-contract-put-object-tagging-invalid-tag-rejected` | `4df2823` | ported | `S3/OpContractPutObjectTaggingInvalidTagRejected.cs` |
+| `s3.op-contract-putBucketCors` | `4df2823` | ported | `S3/OpContractPutBucketCors.cs` |
+| `s3.op-contract-putBucketLifecycleConfiguration` | `4df2823` | ported | `S3/OpContractPutBucketLifecycleConfiguration.cs` |
+| `s3.op-contract-putBucketMetricsConfiguration` | `4df2823` | ported | `S3/OpContractPutBucketMetricsConfiguration.cs` |
+| `s3.op-contract-putBucketNotificationConfiguration` | `4df2823` | not ported | Lambda functions, with IAM roles |
+| `s3.op-contract-putBucketVersioning` | `4df2823` | ported | `S3/OpContractPutBucketVersioning.cs` |
+| `s3.op-contract-uploadPartCopy` | `4df2823` | ported | `S3/OpContractUploadPartCopy.cs` |
+| `s3.post-object-form-upload-enforces-its-policy-conditions` | `4df2823` | ported | `S3/PostObjectFormUploadEnforcesItsPolicyConditions.cs` |
+| `s3.presigned-get` | `4df2823` | ported | `S3/PresignedGet.cs` |
+| `s3.presigned-post-expired-policy-rejected-and-writes-nothing` | `4df2823` | ported | `S3/PresignedPostExpiredPolicyRejectedAndWritesNothing.cs` |
+| `s3.presigned-post-form-upload-substitutes-filename-and-matches-content-type` | `4df2823` | ported | `S3/PresignedPostFormUploadSubstitutesFilenameAndMatchesContentType.cs` |
+| `s3.presigned-put` | `4df2823` | ported | `S3/PresignedPut.cs` |
+| `s3.presigned-put-requires-every-signed-header-and-refuses-an-over-week-expiry` | `4df2823` | ported | `S3/PresignedPutRequiresEverySignedHeaderAndRefusesAnOverWeekExpiry.cs` |
+| `s3.presigned-upload-part-urls-assemble-a-multipart-object-read-by-presigned-ranged-get` | `4df2823` | ported | `S3/PresignedUploadPartUrlsAssembleAMultipartObjectReadByPresignedRangedGet.cs` |
+| `s3.public-access-block` | `4df2823` | ported | `S3/PublicAccessBlock.cs` |
+| `s3.public-access-block-blocks-public-acl` | `4df2823` | ported | `S3/PublicAccessBlockBlocksPublicAcl.cs` |
+| `s3.public-access-block-rejects-public-policy` | `4df2823` | ported | `S3/PublicAccessBlockRejectsPublicPolicy.cs` |
+| `s3.public-access-block-state-machine` | `4df2823` | ported | `S3/PublicAccessBlockStateMachine.cs` |
+| `s3.put-bucket-metrics-configuration-invalid-id-rejected` | `4df2823` | ported | `S3/PutBucketMetricsConfigurationInvalidIdRejected.cs` |
+| `s3.put-get-roundtrip-binary` | `4df2823` | ported | `S3/PutGetRoundtripBinary.cs` |
+| `s3.put-object-acl-no-such-key` | `4df2823` | ported | `S3/PutObjectAclNoSuchKey.cs` |
+| `s3.put-object-annotation-limits` | `4df2823` | ported | `S3/PutObjectAnnotationLimits.cs` |
+| `s3.put-object-append-conditional-offset-contention` | `4df2823` | ported | `S3/PutObjectAppendConditionalOffsetContention.cs` |
+| `s3.put-object-append-write-offset-rejected` | `4df2823` | ported | `S3/PutObjectAppendWriteOffsetRejected.cs` |
+| `s3.put-object-bad-content-md5-rejected` | `4df2823` | ported | `S3/PutObjectBadContentMd5Rejected.cs` |
+| `s3.put-object-conditional-write-optimistic-lock` | `4df2823` | ported | `S3/PutObjectConditionalWriteOptimisticLock.cs` |
+| `s3.put-object-encryption-type-mismatch` | `4df2823` | ported | `S3/PutObjectEncryptionTypeMismatch.cs` |
+| `s3.put-object-encryption-type-mismatch-rejected` | `4df2823` | ported | `S3/PutObjectEncryptionTypeMismatchRejected.cs` |
+| `s3.put-object-if-match-conditional` | `4df2823` | ported | `S3/PutObjectIfMatchConditional.cs` |
+| `s3.put-object-if-match-matches-an-etag-restored-by-rewriting-identical-bytes` | `4df2823` | ported | `S3/PutObjectIfMatchMatchesAnEtagRestoredByRewritingIdenticalBytes.cs` |
+| `s3.put-object-if-match-refuses-a-composite-etag-replaced-by-another-multipart-upload` | `4df2823` | ported | `S3/PutObjectIfMatchRefusesACompositeEtagReplacedByAnotherMultipartUpload.cs` |
+| `s3.put-object-if-match-takes-a-multipart-etag-and-refuses-it-once-stale` | `4df2823` | ported | `S3/PutObjectIfMatchTakesAMultipartEtagAndRefusesItOnceStale.cs` |
+| `s3.put-object-if-none-match-precondition` | `4df2823` | ported | `S3/PutObjectIfNoneMatchPrecondition.cs` |
+| `s3.put-object-invalid-request-rejected` | `4df2823` | ported | `S3/PutObjectInvalidRequestRejected.cs` |
+| `s3.put-object-invalid-write-offset` | `4df2823` | ported | `S3/PutObjectInvalidWriteOffset.cs` |
+| `s3.put-object-invalid-write-offset-rejected` | `4df2823` | ported | `S3/PutObjectInvalidWriteOffsetRejected.cs` |
+| `s3.put-object-policy-requires-if-none-match-header` | `4df2823` | ported | `S3/PutObjectPolicyRequiresIfNoneMatchHeader.cs` |
+| `s3.put-object-sha1-checksum-round-trip-and-bad-digest-rejected` | `4df2823` | ported | `S3/PutObjectSha1ChecksumRoundTripAndBadDigestRejected.cs` |
+| `s3.put-object-sse-kms-encryption-context-round-trips-then-malformed-rejected` | `4df2823` | not ported | KMS keys |
+| `s3.range-read-byte-range` | `4df2823` | ported | `S3/RangeReadByteRange.cs` |
+| `s3.range-read-middle` | `4df2823` | ported | `S3/RangeReadMiddle.cs` |
+| `s3.range-read-open-end` | `4df2823` | ported | `S3/RangeReadOpenEnd.cs` |
+| `s3.range-read-suffix` | `4df2823` | ported | `S3/RangeReadSuffix.cs` |
+| `s3.range-read-unsatisfiable-rejected` | `4df2823` | ported | `S3/RangeReadUnsatisfiableRejected.cs` |
+| `s3.rename-object-concurrent-idempotency` | `4df2823` | ported | `S3/RenameObjectConcurrentIdempotency.cs` |
+| `s3.rename-object-destination-exists-rejected` | `4df2823` | ported | `S3/RenameObjectDestinationExistsRejected.cs` |
+| `s3.rename-object-idempotency-mismatch` | `4df2823` | ported | `S3/RenameObjectIdempotencyMismatch.cs` |
+| `s3.rename-object-idempotency-token` | `4df2823` | ported | `S3/RenameObjectIdempotencyToken.cs` |
+| `s3.rename-object-idempotency-token-mismatch` | `4df2823` | ported | `S3/RenameObjectIdempotencyTokenMismatch.cs` |
+| `s3.rename-object-lifecycle` | `4df2823` | ported | `S3/RenameObjectLifecycle.cs` |
+| `s3.rename-object-source-if-none-match-precondition-rejected` | `4df2823` | ported | `S3/RenameObjectSourceIfNoneMatchPreconditionRejected.cs` |
+| `s3.rename-object-state-transition` | `4df2823` | ported | `S3/RenameObjectStateTransition.cs` |
+| `s3.replication-covers-the-eligible-prefix-only-and-withholds-the-delete-marker` | `4df2823` | ported | `S3/ReplicationCoversTheEligiblePrefixOnlyAndWithholdsTheDeleteMarker.cs` |
+| `s3.replication-server-side-execution` | `4df2823` | ported | `S3/ReplicationServerSideExecution.cs` |
+| `s3.requester-pays-enforcement` | `4df2823` | ported | `S3/RequesterPaysEnforcement.cs` |
+| `s3.restore-archived-object-active-tier-error` | `4df2823` | ported | `S3/RestoreArchivedObjectActiveTierError.cs` |
+| `s3.restore-object-duplicate-in-progress-rejected` | `4df2823` | ported | `S3/RestoreObjectDuplicateInProgressRejected.cs` |
+| `s3.restore-object-glacier-transition` | `4df2823` | ported | `S3/RestoreObjectGlacierTransition.cs` |
+| `s3.restore-object-on-standard-rejected` | `4df2823` | ported | `S3/RestoreObjectOnStandardRejected.cs` |
+| `s3.restore-object-server-side-tier-transition` | `4df2823` | ported | `S3/RestoreObjectServerSideTierTransition.cs` |
+| `s3.restore-object-temporary-availability-window` | `4df2823` | ported | `S3/RestoreObjectTemporaryAvailabilityWindow.cs` |
+| `s3.restore-object-ttl-expiry-reverts` | `4df2823` | ported | `S3/RestoreObjectTtlExpiryReverts.cs` |
+| `s3.s3-chunked-upload-missing-decoded-content-length-rejected-object-absent` | `4df2823` | ported | `S3/S3ChunkedUploadMissingDecodedContentLengthRejectedObjectAbsent.cs` |
+| `s3.s3-chunked-upload-trailer-checksum-mismatch-rejected-object-absent` | `4df2823` | ported | `S3/S3ChunkedUploadTrailerChecksumMismatchRejectedObjectAbsent.cs` |
+| `s3.s3-chunked-upload-trailer-checksum-stores-object-and-checksum` | `4df2823` | ported | `S3/S3ChunkedUploadTrailerChecksumStoresObjectAndChecksum.cs` |
+| `s3.s3-chunked-upload-trailer-name-mismatch-rejected-object-absent` | `4df2823` | ported | `S3/S3ChunkedUploadTrailerNameMismatchRejectedObjectAbsent.cs` |
+| `s3.s3-chunked-upload-wrong-chunk-signature-rejected-object-absent` | `4df2823` | ported | `S3/S3ChunkedUploadWrongChunkSignatureRejectedObjectAbsent.cs` |
+| `s3.s3-complete-multipart-with-a-wrong-full-object-checksum-is-rejected-and-no-object-exists` | `4df2823` | ported | `S3/S3CompleteMultipartWithAWrongFullObjectChecksumIsRejectedAndNoObjectExists.cs` |
+| `s3.s3-concurrent-copy-while-the-source-is-being-deleted-never-yields-a-partial-object` | `4df2823` | ported | `S3/S3ConcurrentCopyWhileTheSourceIsBeingDeletedNeverYieldsAPartialObject.cs` |
+| `s3.s3-conditional-precedence-and-lifecycle-headers-copy` | `4df2823` | ported | `S3/S3ConditionalPrecedenceAndLifecycleHeadersCopy.cs` |
+| `s3.s3-conditional-precedence-and-lifecycle-headers-get` | `4df2823` | ported | `S3/S3ConditionalPrecedenceAndLifecycleHeadersGet.cs` |
+| `s3.s3-conditional-precedence-and-lifecycle-headers-lifecycle-mpu` | `4df2823` | ported | `S3/S3ConditionalPrecedenceAndLifecycleHeadersLifecycleMpu.cs` |
+| `s3.s3-conditional-precedence-and-lifecycle-headers-mpu-parts` | `4df2823` | ported | `S3/S3ConditionalPrecedenceAndLifecycleHeadersMpuParts.cs` |
+| `s3.s3-delete-marker-hides-the-object-while-the-version-still-returns-its-bytes` | `4df2823` | ported | `S3/S3DeleteMarkerHidesTheObjectWhileTheVersionStillReturnsItsBytes.cs` |
+| `s3.s3-delete-object-tagging-clears-only-the-addressed-version-tag-set` | `4df2823` | ported | `S3/S3DeleteObjectTaggingClearsOnlyTheAddressedVersionTagSet.cs` |
+| `s3.s3-delete-object-with-a-stale-if-match-etag-is-refused-and-the-object-survives` | `4df2823` | ported | `S3/S3DeleteObjectWithAStaleIfMatchEtagIsRefusedAndTheObjectSurvives.cs` |
+| `s3.s3-delete-objects-batch` | `4df2823` | ported | `S3/S3DeleteObjectsBatch.cs` |
+| `s3.s3-delete-objects-reports-every-requested-key-version-pair-exactly-once` | `4df2823` | ported | `S3/S3DeleteObjectsReportsEveryRequestedKeyVersionPairExactlyOnce.cs` |
+| `s3.s3-express-append-produces-the-exact-concatenation-of-three-offset-writes` | `4df2823` | ported | `S3/S3ExpressAppendProducesTheExactConcatenationOfThreeOffsetWrites.cs` |
+| `s3.s3-full-object-crc64nvme-over-multipart-equals-the-whole-object-checksum` | `4df2823` | ported | `S3/S3FullObjectCrc64nvmeOverMultipartEqualsTheWholeObjectChecksum.cs` |
+| `s3.s3-if-none-match-star-put-is-atomic-across-a-delete-marker` | `4df2823` | ported | `S3/S3IfNoneMatchStarPutIsAtomicAcrossADeleteMarker.cs` |
+| `s3.s3-lcp-rejects-inverted-or-equal-object-size-range` | `4df2823` | ported | `S3/S3LcpRejectsInvertedOrEqualObjectSizeRange.cs` |
+| `s3.s3-object-lock-compliance-cannot-be-bypassed-while-governance-can` | `4df2823` | ported | `S3/S3ObjectLockComplianceCannotBeBypassedWhileGovernanceCan.cs` |
+| `s3.s3-put-object-with-a-deliberately-wrong-crc32-is-rejected-and-the-key-is-absent` | `4df2823` | ported | `S3/S3PutObjectWithADeliberatelyWrongCrc32IsRejectedAndTheKeyIsAbsent.cs` |
+| `s3.s3-refused-conditional-gets-create-no-version-and-leave-the-object-intact` | `4df2823` | ported | `S3/S3RefusedConditionalGetsCreateNoVersionAndLeaveTheObjectIntact.cs` |
+| `s3.s3-sse-kms-object-is-unreadable-while-its-cmk-is-disabled-and-readable-again-after` | `4df2823` | not ported | KMS keys |
+| `s3.s3-ssec-and-endpoint-enforcement-secure-transport-deny-policy-refuses-plaintext-http-and-allows-https` | `4df2823` | known gap: SecureTransport | `S3/S3SsecAndEndpointEnforcementSecureTransportDenyPolicyRefusesPlaintextHttpAndAllowsHttps.cs` |
+| `s3.s3-ssec-and-endpoint-enforcement-ssec-copy-to-sse-s3-without-the-copy-source-key-rejected` | `4df2823` | ported | `S3/S3SsecAndEndpointEnforcementSsecCopyToSseS3WithoutTheCopySourceKeyRejected.cs` |
+| `s3.s3-ssec-and-endpoint-enforcement-ssec-multipart-upload-round-trips-only-with-the-customer-key` | `4df2823` | ported | `S3/S3SsecAndEndpointEnforcementSsecMultipartUploadRoundTripsOnlyWithTheCustomerKey.cs` |
+| `s3.s3-ssec-and-endpoint-enforcement-ssec-request-over-plain-http-rejected` | `4df2823` | ported | `S3/S3SsecAndEndpointEnforcementSsecRequestOverPlainHttpRejected.cs` |
+| `s3.s3-ssec-and-endpoint-enforcement-ssec-upload-part-copy-rekeys-an-ssec-source-into-a-multipart-object` | `4df2823` | ported | `S3/S3SsecAndEndpointEnforcementSsecUploadPartCopyRekeysAnSsecSourceIntoAMultipartObject.cs` |
+| `s3.s3-ssec-and-endpoint-enforcement-website-endpoint-serving-an-ssec-object-rejected` | `4df2823` | ported | `S3/S3SsecAndEndpointEnforcementWebsiteEndpointServingAnSsecObjectRejected.cs` |
+| `s3.s3-ssec-and-endpoint-enforcement-website-redirect-location-answers-301-while-rest-serves-the-body` | `4df2823` | ported | `S3/S3SsecAndEndpointEnforcementWebsiteRedirectLocationAnswers301WhileRestServesTheBody.cs` |
+| `s3.s3-ssec-and-endpoint-enforcement-website-routing-rule-on-404-redirects-missing-keys` | `4df2823` | ported | `S3/S3SsecAndEndpointEnforcementWebsiteRoutingRuleOn404RedirectsMissingKeys.cs` |
+| `s3.s3-strong-read-after-write` | `4df2823` | ported | `S3/S3StrongReadAfterWrite.cs` |
+| `s3.s3-website-hosting-bare-folder-path-redirects-to-trailing-slash` | `4df2823` | ported | `S3/S3WebsiteHostingBareFolderPathRedirectsToTrailingSlash.cs` |
+| `s3.s3-website-hosting-missing-key-with-no-error-document-is-rejected-with-the-default-error-page` | `4df2823` | ported | `S3/S3WebsiteHostingMissingKeyWithNoErrorDocumentIsRejectedWithTheDefaultErrorPage.cs` |
+| `s3.s3-website-hosting-redirect-all-requests-to-answers-301-to-the-target-host` | `4df2823` | ported | `S3/S3WebsiteHostingRedirectAllRequestsToAnswers301ToTheTargetHost.cs` |
+| `s3.s3checksum-copy-object-computes-the-requested-algorithm-from-the-bytes` | `4df2823` | ported | `S3/S3checksumCopyObjectComputesTheRequestedAlgorithmFromTheBytes.cs` |
+| `s3.s3checksum-crc32c-mismatch-rejected-and-no-object-lands` | `4df2823` | ported | `S3/S3checksumCrc32cMismatchRejectedAndNoObjectLands.cs` |
+| `s3.s3checksum-digest-is-a-property-of-the-bytes-in-a-derived-second-region` | `4df2823` | ported | `S3/S3checksumDigestIsAPropertyOfTheBytesInADerivedSecondRegion.cs` |
+| `s3.s3checksum-incompatible-algorithm-and-type-pairs-rejected` | `4df2823` | ported | `S3/S3checksumIncompatibleAlgorithmAndTypePairsRejected.cs` |
+| `s3.s3checksum-malformed-header-rejected-as-invalid-request-not-baddigest` | `4df2823` | ported | `S3/S3checksumMalformedHeaderRejectedAsInvalidRequestNotBaddigest.cs` |
+| `s3.s3checksum-part-scoped-read-returns-the-part-digest-not-the-composite` | `4df2823` | ported | `S3/S3checksumPartScopedReadReturnsThePartDigestNotTheComposite.cs` |
+| `s3.s3checksum-presigned-put-query-crc32-mismatch-then-match` | `4df2823` | ported | `S3/S3checksumPresignedPutQueryCrc32MismatchThenMatch.cs` |
+| `s3.s3checksum-presigned-put-query-malformed-base64-rejected` | `4df2823` | ported | `S3/S3checksumPresignedPutQueryMalformedBase64Rejected.cs` |
+| `s3.s3checksum-presigned-put-query-sha256-mismatch-then-match` | `4df2823` | ported | `S3/S3checksumPresignedPutQuerySha256MismatchThenMatch.cs` |
+| `s3.s3checksum-sha256-mismatch-refuses-the-overwrite-and-the-stored-bytes-survive` | `4df2823` | ported | `S3/S3checksumSha256MismatchRefusesTheOverwriteAndTheStoredBytesSurvive.cs` |
+| `s3.s3checksum-upload-part-mismatch-rejected-and-the-part-is-absent` | `4df2823` | ported | `S3/S3checksumUploadPartMismatchRejectedAndThePartIsAbsent.cs` |
+| `s3.s3crr-a-version-delete-is-never-replicated-even-with-marker-replication-enabled` | `4df2823` | ported | `S3/S3crrAVersionDeleteIsNeverReplicatedEvenWithMarkerReplicationEnabled.cs` |
+| `s3.s3crr-a-write-to-the-replica-never-propagates-back-to-the-source` | `4df2823` | ported | `S3/S3crrAWriteToTheReplicaNeverPropagatesBackToTheSource.cs` |
+| `s3.s3crr-delete-marker-replicates-only-where-marker-replication-is-enabled` | `4df2823` | ported | `S3/S3crrDeleteMarkerReplicatesOnlyWhereMarkerReplicationIsEnabled.cs` |
+| `s3.s3crr-new-object-replicates-byte-identical-to-a-derived-peer-region` | `4df2823` | ported | `S3/S3crrNewObjectReplicatesByteIdenticalToADerivedPeerRegion.cs` |
+| `s3.s3crr-object-written-before-the-rule-is-never-backfilled` | `4df2823` | ported | `S3/S3crrObjectWrittenBeforeTheRuleIsNeverBackfilled.cs` |
+| `s3.s3crr-replication-fails-visibly-when-the-role-cannot-write-the-destination` | `4df2823` | not ported | IAM role and identity-policy enforcement |
+| `s3.s3unicode-a-nul-byte-in-an-object-key-is-rejected` | `4df2823` | ported | `S3/S3unicodeANulByteInAnObjectKeyIsRejected.cs` |
+| `s3.s3unicode-astral-emoji-key-and-opaque-body-are-byte-exact` | `4df2823` | ported | `S3/S3unicodeAstralEmojiKeyAndOpaqueBodyAreByteExact.cs` |
+| `s3.s3unicode-carriage-return-in-a-key-survives-the-list-xml-byte-exact` | `4df2823` | ported | `S3/S3unicodeCarriageReturnInAKeySurvivesTheListXmlByteExact.cs` |
+| `s3.s3unicode-combining-marks-in-a-key-are-not-normalised` | `4df2823` | ported | `S3/S3unicodeCombiningMarksInAKeyAreNotNormalised.cs` |
+| `s3.s3unicode-copy-source-with-plus-and-percent-resolves-literally` | `4df2823` | ported | `S3/S3unicodeCopySourceWithPlusAndPercentResolvesLiterally.cs` |
+| `s3.s3unicode-delete-objects-xml-rejects-a-control-char-a-put-key-accepts` | `4df2823` | ported | `S3/S3unicodeDeleteObjectsXmlRejectsAControlCharAPutKeyAccepts.cs` |
+| `s3.s3unicode-leading-and-trailing-spaces-in-a-key-are-preserved` | `4df2823` | ported | `S3/S3unicodeLeadingAndTrailingSpacesInAKeyArePreserved.cs` |
+| `s3.s3unicode-list-objects-url-encoding-is-form-encoded-not-rfc3986` | `4df2823` | ported | `S3/S3unicodeListObjectsUrlEncodingIsFormEncodedNotRfc3986.cs` |
+| `s3.s3unicode-list-objects-with-an-unsupported-encoding-type-is-rejected` | `4df2823` | ported | `S3/S3unicodeListObjectsWithAnUnsupportedEncodingTypeIsRejected.cs` |
+| `s3.s3unicode-object-tag-value-with-an-astral-emoji-rejected` | `4df2823` | ported | `S3/S3unicodeObjectTagValueWithAnAstralEmojiRejected.cs` |
+| `s3.s3unicode-rfc3986-reserved-chars-in-a-key-are-literal` | `4df2823` | ported | `S3/S3unicodeRfc3986ReservedCharsInAKeyAreLiteral.cs` |
+| `s3.s3x-s3express-session-and-listing-cross-bucket-token-denied` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingCrossBucketTokenDenied.cs` |
+| `s3.s3x-s3express-session-and-listing-expired-token-denied` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingExpiredTokenDenied.cs` |
+| `s3.s3x-s3express-session-and-listing-inflight-mpu-prefix-listed` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingInflightMpuPrefixListed.cs` |
+| `s3.s3x-s3express-session-and-listing-non-slash-delimiter-rejected` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingNonSlashDelimiterRejected.cs` |
+| `s3.s3x-s3express-session-and-listing-readonly-session-put-denied` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingReadonlySessionPutDenied.cs` |
+| `s3.s3x-s3express-session-and-listing-readwrite-session-round-trip` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingReadwriteSessionRoundTrip.cs` |
+| `s3.s3x-s3express-session-and-listing-start-after-rejected` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingStartAfterRejected.cs` |
+| `s3.s3x-s3express-session-and-listing-unterminated-prefix-rejected` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingUnterminatedPrefixRejected.cs` |
+| `s3.secure-transport-policy-plain-http-denied` | `4df2823` | known gap: SecureTransport | `S3/SecureTransportPolicyPlainHttpDenied.cs` |
+| `s3.select-object-content-permission-denied` | `4df2823` | not ported | IAM roles, users and identity policies |
+| `s3.sigv4skew-cross-region-credential-scope-rejected` | `4df2823` | ported | `S3/Sigv4skewCrossRegionCredentialScopeRejected.cs` |
+| `s3.sigv4skew-future-dated-put-outside-window-rejected` | `4df2823` | ported | `S3/Sigv4skewFutureDatedPutOutsideWindowRejected.cs` |
+| `s3.sigv4skew-past-dated-put-outside-window-rejected` | `4df2823` | ported | `S3/Sigv4skewPastDatedPutOutsideWindowRejected.cs` |
+| `s3.sigv4skew-presigned-get-altered-expires-param-rejected` | `4df2823` | ported | `S3/Sigv4skewPresignedGetAlteredExpiresParamRejected.cs` |
+| `s3.sigv4skew-presigned-get-date-shifted-one-second-rejected` | `4df2823` | ported | `S3/Sigv4skewPresignedGetDateShiftedOneSecondRejected.cs` |
+| `s3.sigv4skew-presigned-get-refusal-names-its-expiry-window` | `4df2823` | ported | `S3/Sigv4skewPresignedGetRefusalNamesItsExpiryWindow.cs` |
+| `s3.sigv4skew-presigned-put-after-expiry-writes-no-object-rejected` | `4df2823` | ported | `S3/Sigv4skewPresignedPutAfterExpiryWritesNoObjectRejected.cs` |
+| `s3.sigv4skew-window-enforced-in-derived-second-region-rejected` | `4df2823` | ported | `S3/Sigv4skewWindowEnforcedInDerivedSecondRegionRejected.cs` |
+| `s3.sse-c-wrong-customer-key-rejected` | `4df2823` | ported | `S3/SseCWrongCustomerKeyRejected.cs` |
+| `s3.sse-kms` | `4df2823` | not ported | KMS keys |
+| `s3.sse-s3-default` | `4df2823` | ported | `S3/SseS3Default.cs` |
+| `s3.sse-s3-explicit` | `4df2823` | ported | `S3/SseS3Explicit.cs` |
+| `s3.ssec-head-object-requires-the-matching-customer-key` | `4df2823` | ported | `S3/SsecHeadObjectRequiresTheMatchingCustomerKey.cs` |
+| `s3.storage-class-reduced-redundancy` | `4df2823` | ported | `S3/StorageClassReducedRedundancy.cs` |
+| `s3.storage-class-standard` | `4df2823` | ported | `S3/StorageClassStandard.cs` |
+| `s3.update-object-encryption-error-paths` | `4df2823` | not ported | KMS keys |
+| `s3.update-object-encryption-error-preconditions` | `4df2823` | not ported | KMS keys |
+| `s3.update-object-encryption-errors` | `4df2823` | not ported | KMS keys |
+| `s3.upload-part-copy-source-if-match-takes-a-composite-etag-and-refuses-it-once-stale` | `4df2823` | ported | `S3/UploadPartCopySourceIfMatchTakesACompositeEtagAndRefusesItOnceStale.cs` |
+| `s3.upload-part-of-twenty-mib-completes-and-reads-back-exactly` | `4df2823` | ported | `S3/UploadPartOfTwentyMibCompletesAndReadsBackExactly.cs` |
+| `s3.versioning-delete-marker` | `4df2823` | ported | `S3/VersioningDeleteMarker.cs` |
+| `s3.versioning-enable` | `4df2823` | ported | `S3/VersioningEnable.cs` |
+| `s3.versioning-get-specific-version` | `4df2823` | ported | `S3/VersioningGetSpecificVersion.cs` |
+| `s3.versioning-produces-version-ids` | `4df2823` | ported | `S3/VersioningProducesVersionIds.cs` |
+| `s3.versioning-suspended-null-version` | `4df2823` | ported | `S3/VersioningSuspendedNullVersion.cs` |
+| `s3.website-endpoint-serves-index-and-error-documents-and-refuses-writes` | `4df2823` | ported | `S3/WebsiteEndpointServesIndexAndErrorDocumentsAndRefusesWrites.cs` |
+
+## behavioral/s3__sqs
+
+| Check | Last changed | Status | Port or reason |
+|---|---|---|---|
+| `s3__sqs.a-denied-put-creates-no-object-and-emits-no-notification` | `4df2823` | ported | `S3Sqs/ADeniedPutCreatesNoObjectAndEmitsNoNotification.cs` |
+| `s3__sqs.an-aborted-multipart-upload-emits-no-object-created-notification` | `4df2823` | ported | `S3Sqs/AnAbortedMultipartUploadEmitsNoObjectCreatedNotification.cs` |
+| `s3__sqs.deploy-s3-3-drift-versioning-suspended-out-of-band` | `4df2823` | not ported | CloudFormation stacks |
+| `s3__sqs.deploy-s3-3-notification-nonexistent-queue-rollback-rejected` | `4df2823` | not ported | CloudFormation stacks |
+| `s3__sqs.deploy-s3-3-notification-queue-without-policy-rollback-rejected` | `4df2823` | not ported | CloudFormation stacks |
+| `s3__sqs.inline-tagging-and-canned-acl-on-write-withhold-tagging-and-acl-events` | `4df2823` | ported | `S3Sqs/InlineTaggingAndCannedAclOnWriteWithholdTaggingAndAclEvents.cs` |
+| `s3__sqs.notification-destination-validation-rejects-unresolvable-queue` | `4df2823` | ported | `S3Sqs/NotificationDestinationValidationRejectsUnresolvableQueue.cs` |
+| `s3__sqs.object-acl-put-event-reaches-only-its-queue` | `4df2823` | ported | `S3Sqs/ObjectAclPutEventReachesOnlyItsQueue.cs` |
+| `s3__sqs.object-created-copy-event-reaches-only-its-queue` | `4df2823` | ported | `S3Sqs/ObjectCreatedCopyEventReachesOnlyItsQueue.cs` |
+| `s3__sqs.object-tagging-delete-event-reaches-only-its-queue` | `4df2823` | ported | `S3Sqs/ObjectTaggingDeleteEventReachesOnlyItsQueue.cs` |
+| `s3__sqs.object-tagging-put-event-reaches-only-its-queue` | `4df2823` | ported | `S3Sqs/ObjectTaggingPutEventReachesOnlyItsQueue.cs` |
+| `s3__sqs.overlapping-object-tagging-wildcard-configuration-rejected` | `4df2823` | ported | `S3Sqs/OverlappingObjectTaggingWildcardConfigurationRejected.cs` |
+| `s3__sqs.s3-notification-disjoint-prefix-routes-only-matching-queue` | `4df2823` | ported | `S3Sqs/S3NotificationDisjointPrefixRoutesOnlyMatchingQueue.cs` |
+| `s3__sqs.s3-object-created-put-subscription-withholds-the-multipart-completion-event` | `4df2823` | ported | `S3Sqs/S3ObjectCreatedPutSubscriptionWithholdsTheMultipartCompletionEvent.cs` |
+| `s3__sqs.s3-object-removed-delete-subscription-withholds-the-delete-marker-event` | `4df2823` | ported | `S3Sqs/S3ObjectRemovedDeleteSubscriptionWithholdsTheDeleteMarkerEvent.cs` |
+| `s3__sqs.s3-sequencer-is-the-only-total-order-over-one-key` | `4df2823` | ported | `S3Sqs/S3SequencerIsTheOnlyTotalOrderOverOneKey.cs` |
+
+## behavioral/s3__sns__sqs
+
+| Check | Last changed | Status | Port or reason |
+|---|---|---|---|
+| `s3__sns__sqs.s3-notification-without-topic-policy-rejected` | `4df2823` | ported | `S3SnsSqs/S3NotificationWithoutTopicPolicyRejected.cs` |
+| `s3__sns__sqs.s3-object-created-notifies-sns` | `4df2823` | ported | `S3SnsSqs/S3ObjectCreatedNotifiesSns.cs` |
+
+## behavioral/events__s3__sqs
+
+| Check | Last changed | Status | Port or reason |
+|---|---|---|---|
+| `events__s3__sqs.a-post-object-upload-is-withheld-from-a-putobject-scoped-rule` | `4df2823` | ported | `EventsS3Sqs/APostObjectUploadIsWithheldFromAPutobjectScopedRule.cs` |
+| `events__s3__sqs.cfn-s3-eventbridge-sqs-deploy` | `4df2823` | not ported | CloudFormation stacks |
+| `events__s3__sqs.eventbridge-dlq-on-target-failure` | `4df2823` | known gap: EventBridgeUngrantedTargets | `EventsS3Sqs/EventbridgeDlqOnTargetFailure.cs` |
+| `events__s3__sqs.eventbridge-fanout-multiple-sqs-targets` | `4df2823` | ported | `EventsS3Sqs/EventbridgeFanoutMultipleSqsTargets.cs` |
+| `events__s3__sqs.eventbridge-fifo-queue-target-arn` | `4df2823` | ported | `EventsS3Sqs/EventbridgeFifoQueueTargetArn.cs` |
+| `events__s3__sqs.eventbridge-full-envelope-fields-sqs` | `4df2823` | ported | `EventsS3Sqs/EventbridgeFullEnvelopeFieldsSqs.cs` |
+| `events__s3__sqs.eventbridge-input-transformer-sqs` | `4df2823` | ported | `EventsS3Sqs/EventbridgeInputTransformerSqs.cs` |
+| `events__s3__sqs.eventbridge-pattern-filtering-sqs` | `4df2823` | ported | `EventsS3Sqs/EventbridgePatternFilteringSqs.cs` |
+| `events__s3__sqs.eventbridge-put-targets-invalid-queue-arn-rejected` | `4df2823` | ported | `EventsS3Sqs/EventbridgePutTargetsInvalidQueueArnRejected.cs` |
+| `events__s3__sqs.eventbridge-rule-to-sqs-target` | `4df2823` | ported | `EventsS3Sqs/EventbridgeRuleToSqsTarget.cs` |
+| `events__s3__sqs.eventbridge-target-without-queue-policy-silently-fails` | `4df2823` | known gap: EventBridgeUngrantedTargets | `EventsS3Sqs/EventbridgeTargetWithoutQueuePolicySilentlyFails.cs` |
+| `events__s3__sqs.object-restore-initiated-and-tags-added-carry-their-own-detail-types` | `4df2823` | ported | `EventsS3Sqs/ObjectRestoreInitiatedAndTagsAddedCarryTheirOwnDetailTypes.cs` |
+| `events__s3__sqs.obs-s3-3-acl-rejected-under-bucket-owner-enforced-emits-no-event` | `4df2823` | ported | `EventsS3Sqs/ObsS33AclRejectedUnderBucketOwnerEnforcedEmitsNoEvent.cs` |
+| `events__s3__sqs.obs-s3-3-copy-object-reaches-both-paths-with-copy-reason` | `4df2823` | ported | `EventsS3Sqs/ObsS33CopyObjectReachesBothPathsWithCopyReason.cs` |
+| `events__s3__sqs.obs-s3-3-copy-scoped-routes-withhold-a-plain-put` | `4df2823` | ported | `EventsS3Sqs/ObsS33CopyScopedRoutesWithholdAPlainPut.cs` |
+| `events__s3__sqs.obs-s3-3-object-acl-put-reaches-both-paths` | `4df2823` | ported | `EventsS3Sqs/ObsS33ObjectAclPutReachesBothPaths.cs` |
+| `events__s3__sqs.obs-s3-3-object-tagging-put-and-delete-reach-both-paths` | `4df2823` | ported | `EventsS3Sqs/ObsS33ObjectTaggingPutAndDeleteReachBothPaths.cs` |
+| `events__s3__sqs.obs-s3-3-tags-deleted-withheld-from-tags-added-routes` | `4df2823` | ported | `EventsS3Sqs/ObsS33TagsDeletedWithheldFromTagsAddedRoutes.cs` |
+| `events__s3__sqs.obs-s3-3-versioned-delete-marker-and-version-delete-reach-both-paths` | `4df2823` | ported | `EventsS3Sqs/ObsS33VersionedDeleteMarkerAndVersionDeleteReachBothPaths.cs` |
+| `events__s3__sqs.removing-eventbridge-configuration-withholds-envelope-but-native-queue-still-delivers` | `4df2823` | ported | `EventsS3Sqs/RemovingEventbridgeConfigurationWithholdsEnvelopeButNativeQueueStillDelivers.cs` |
+| `events__s3__sqs.s3-event-message-format-fields` | `4df2823` | ported | `EventsS3Sqs/S3EventMessageFormatFields.cs` |
+| `events__s3__sqs.s3-event-wrong-type-not-delivered` | `4df2823` | ported | `EventsS3Sqs/S3EventWrongTypeNotDelivered.cs` |
+| `events__s3__sqs.s3-eventbridge-not-enabled-no-delivery` | `4df2823` | ported | `EventsS3Sqs/S3EventbridgeNotEnabledNoDelivery.cs` |
+| `events__s3__sqs.s3-eventbridge-to-sqs` | `4df2823` | ported | `EventsS3Sqs/S3EventbridgeToSqs.cs` |
+| `events__s3__sqs.s3-multi-event-type-routing-sqs` | `4df2823` | ported | `EventsS3Sqs/S3MultiEventTypeRoutingSqs.cs` |
+| `events__s3__sqs.s3-notification-to-sqs-direct` | `4df2823` | ported | `EventsS3Sqs/S3NotificationToSqsDirect.cs` |
+| `events__s3__sqs.s3-notification-without-queue-policy-fails` | `4df2823` | ported | `EventsS3Sqs/S3NotificationWithoutQueuePolicyFails.cs` |
+| `events__s3__sqs.s3-queue-notification-filter-delivers-only-matching-url-encoded-keys` | `4df2823` | ported | `EventsS3Sqs/S3QueueNotificationFilterDeliversOnlyMatchingUrlEncodedKeys.cs` |
+| `events__s3__sqs.s3-queue-notification-names-copy-multipart-and-delete-events` | `4df2823` | ported | `EventsS3Sqs/S3QueueNotificationNamesCopyMultipartAndDeleteEvents.cs` |
+| `events__s3__sqs.sqs-policy-wrong-source-arn-blocks-delivery` | `4df2823` | ported | `EventsS3Sqs/SqsPolicyWrongSourceArnBlocksDelivery.cs` |
+| `events__s3__sqs.sqs-queue-policy-sourcearn-scoping` | `4df2823` | ported | `EventsS3Sqs/SqsQueuePolicySourcearnScoping.cs` |
+| `events__s3__sqs.xsvc-s3-1-acl-update-and-tag-delete-route-to-their-own-rules` | `4df2823` | ported | `EventsS3Sqs/XsvcS31AclUpdateAndTagDeleteRouteToTheirOwnRules.cs` |
+| `events__s3__sqs.xsvc-s3-1-input-transformer-renders-s3-uri-not-envelope` | `4df2823` | ported | `EventsS3Sqs/XsvcS31InputTransformerRendersS3UriNotEnvelope.cs` |
+| `events__s3__sqs.xsvc-s3-1-key-anything-but-filter-withholds-excluded-keys` | `4df2823` | ported | `EventsS3Sqs/XsvcS31KeyAnythingButFilterWithholdsExcludedKeys.cs` |
+| `events__s3__sqs.xsvc-s3-1-key-prefix-filter-withholds-near-miss-keys` | `4df2823` | ported | `EventsS3Sqs/XsvcS31KeyPrefixFilterWithholdsNearMissKeys.cs` |
+| `events__s3__sqs.xsvc-s3-1-key-suffix-filter-withholds-near-miss-keys` | `4df2823` | ported | `EventsS3Sqs/XsvcS31KeySuffixFilterWithholdsNearMissKeys.cs` |
+| `events__s3__sqs.xsvc-s3-1-size-numeric-range-filter-withholds-out-of-range-objects` | `4df2823` | ported | `EventsS3Sqs/XsvcS31SizeNumericRangeFilterWithholdsOutOfRangeObjects.cs` |
+| `events__s3__sqs.xsvc-s3-1-versioned-delete-emits-object-deleted-with-deletion-type` | `4df2823` | ported | `EventsS3Sqs/XsvcS31VersionedDeleteEmitsObjectDeletedWithDeletionType.cs` |

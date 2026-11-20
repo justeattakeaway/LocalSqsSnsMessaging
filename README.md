@@ -5,7 +5,7 @@
 
 ## Overview
 
-This .NET library is intended to provide a simple in-memory drop-in replacement for the AWS SDK for SQS, SNS, EventBridge and DynamoDB, primarily for testing (but can be used for local development too).
+This .NET library is intended to provide a simple in-memory drop-in replacement for the AWS SDK for SQS, SNS, EventBridge, DynamoDB and S3, primarily for testing (but can be used for local development too).
 
 It comes in two flavours that share the same in-memory cloud (`InMemoryAwsCloud`):
 
@@ -30,8 +30,9 @@ It comes in two flavours that share the same in-memory cloud (`InMemoryAwsCloud`
 | **SNS** | Topics (standard and FIFO), `sqs` and `http`/`https` subscriptions (and `email`/`email-json`, which stay pending confirmation), raw message delivery, [filter policies](#sns-filter-policies) on message attributes or the message body, [HTTP/S delivery](#sns-httphttps-subscriptions) with the confirmation handshake, retries and delivery policies, [subscription dead-letter queues](#sns-subscription-dead-letter-queues), topic attributes, permissions (explicit denies in topic policies are enforced) and tags. Mobile push platform applications and endpoints, and SMS settings, opt-outs and the SMS sandbox, are kept and answered for, but nothing is sent to a device or phone. |
 | **EventBridge** | Event buses, rules with [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html), `PutEvents` routing to SQS (standard and FIFO), SNS and event bus targets, input transformers, target dead-letter queues, scheduled rules, archives and replays, connections and API destinations (HTTP calls through the cloud's `HttpClient`, with auth, rate limits and retries), global endpoints (replication without health-check failover), tags, `TestEventPattern`. See [EventBridge](#eventbridge). |
 | **DynamoDB** | Tables with global and local secondary indexes, item reads and writes, condition, update, projection, filter and key-condition expressions (and the legacy `Expected`/`QueryFilter`/`AttributeUpdates` parameters), Query and Scan (paging, parallel scan), batches, transactions with idempotency tokens, PartiQL, DynamoDB Streams, time to live, on-demand backups and restores (including point in time), tags, resource policies, consumed capacity, vector indexes and `SearchVectors`. See [DynamoDB](#dynamodb). |
+| **S3** | Buckets (general purpose and directory buckets), objects with metadata, ranges, conditional reads and writes, multipart uploads, copies, renames and appends, flexible checksums (CRC32, CRC32C, CRC64NVME, SHA-1, SHA-256), versioning and delete markers, listing (v1, v2, versions, uploads), tagging, Object Lock, ACLs and Object Ownership, bucket policies (explicit denies enforced) and Block Public Access, presigned URLs and POST uploads, CORS, website hosting, lifecycle, replication, default encryption and SSE-C, storage classes and restores, event notifications to SQS, SNS and EventBridge, S3 Metadata configurations, object annotations, and the bucket configurations S3 only stores (metrics, analytics, inventory, Intelligent-Tiering, logging, acceleration, request payment, ABAC). See [S3](#s3). |
 
-SNS data protection policies, and subscriptions over other protocols (`sms`, `application`, `lambda`, `firehose`), throw `NotSupportedException`. DynamoDB operations for features of other services (S3 exports and imports, Kinesis destinations, auto scaling) answer `UnknownOperationException`.
+SNS data protection policies, and subscriptions over other protocols (`sms`, `application`, `lambda`, `firehose`), throw `NotSupportedException`. DynamoDB operations for features of other services (S3 exports and imports, Kinesis destinations, auto scaling) answer `UnknownOperationException`. S3's `SelectObjectContent`, `WriteGetObjectResponse` (Object Lambda), `UpdateObjectEncryption` (KMS keys) and the deprecated metadata-table operations answer `NotImplemented`.
 
 ## Why?
 
@@ -70,6 +71,7 @@ dotnet add package AWSSDK.SQS
 | `AWSSDK.EventBridge` | `CreateEventBridgeClient()` |
 | `AWSSDK.DynamoDBv2` | `CreateDynamoDbClient()`, and on AWS SDK v3 `CreateDynamoDbStreamsClient()` |
 | `AWSSDK.DynamoDBStreams` (AWS SDK v4) | `CreateDynamoDbStreamsClient()` |
+| `AWSSDK.S3` | `CreateS3Client()` |
 
 The files are added by the package's MSBuild targets (`build/InMemoryAws.targets`), whichever way the SDK is referenced: directly, transitively, through `packages.config` or as a plain assembly reference. They need C# 7.3 or later, and are `internal` to your project. Your IDE sees them like any other file; they aren't copied into your source tree.
 
@@ -338,6 +340,36 @@ Vector indexes (`VectorIndexes` on CreateTable, `VectorIndexUpdates` on UpdateTa
 
 DynamoDB Streams is served too, through `aws.CreateDynamoDbStreamsClient()`. In AWS SDK v4 its client is a separate package, `AWSSDK.DynamoDBStreams`, which your project needs to reference for the method to appear.
 
+### S3
+
+`aws.CreateS3Client()` gives a real `AmazonS3Client`, addressing buckets path-style; clients you configure yourself may use virtual-hosted-style addresses (`bucket.s3.region.amazonaws.com`) too, and both reach the same buckets.
+
+```csharp
+using Amazon.S3.Model;
+
+var aws = new InMemoryAwsCloud();
+using var s3 = aws.CreateS3Client();
+await s3.PutBucketAsync("invoices");
+await s3.PutObjectAsync(new PutObjectRequest { BucketName = "invoices", Key = "2024/001.json", ContentBody = "{}" });
+
+var listed = await s3.ListObjectsV2Async(new ListObjectsV2Request { BucketName = "invoices", Prefix = "2024/" });
+```
+
+Requests are validated and answered as S3 does, with its error codes and messages, over its REST-XML protocol: the SDK's streamed uploads (`aws-chunked`, with trailing checksums) are decoded and their checksums checked, ETags are MD5s (of the parts' MD5s for a multipart object), keys list in UTF-8 byte order, and an object written without a checksum gets S3's CRC64NVME. Bucket names are global, as on AWS, but each bucket lives in the region it was created in: outside `us-east-1`, CreateBucket needs that region as its `LocationConstraint`, and a request signed for another region is refused with the bucket's region in `x-amz-bucket-region`. New buckets block SSE-C uploads, as S3 does since April 2026, until PutBucketEncryption allows them.
+
+Event notifications are delivered during the request that causes them: to SQS queues and SNS topics (whose policies must admit `s3.amazonaws.com`, as PutBucketNotificationConfiguration checks), and with `EventBridgeConfiguration` to the default event bus. Time-based behaviour runs on the cloud's `TimeProvider`: Object Lock retention, restores of archived objects, presigned URL expiry, CreateSession credentials, and lifecycle expiry dates in `x-amz-expiration`. Lifecycle rules, replication and inventory are validated and stored, and replication copies each write at once, but nothing transitions or expires objects in the background.
+
+Signatures aren't checked by default. To have S3 authenticate requests (SigV4 headers and presigned URLs, chunk signatures, and a 15-minute clock-skew window), give the cloud the secret of each access key whose requests it should check:
+
+```csharp
+var aws = new InMemoryAwsCloud
+{
+    SecretAccessKeys = new Dictionary<string, string> { ["AKIDEXAMPLE"] = "secret" },
+};
+```
+
+Requests signed with any other access key, and unsigned ones, are served as before.
+
 ### Integrating with an existing `HttpClientFactory`
 
 When integration-testing an application that registers its own `Amazon.Runtime.HttpClientFactory`
@@ -367,7 +399,7 @@ var client = new HttpClient(handler);
 
 ## Standalone server
 
-If you'd rather run something out of process, for example for a non-.NET service or to poke at queues by hand, the same cloud is available as a small HTTP server that speaks the SQS, SNS, EventBridge and DynamoDB wire protocols. Point any AWS SDK at it with `ServiceURL = "http://localhost:5050"` and fake credentials.
+If you'd rather run something out of process, for example for a non-.NET service or to poke at queues by hand, the same cloud is available as a small HTTP server that speaks the SQS, SNS, EventBridge, DynamoDB and S3 wire protocols. Point any AWS SDK at it with `ServiceURL = "http://localhost:5050"` and fake credentials (for S3, also `ForcePathStyle = true`, or boto3's `addressing_style: path`).
 
 Run it with Docker:
 

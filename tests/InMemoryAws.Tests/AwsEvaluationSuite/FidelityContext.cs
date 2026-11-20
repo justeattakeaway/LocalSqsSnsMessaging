@@ -1,5 +1,6 @@
 using Amazon.DynamoDBv2;
 using Amazon.EventBridge;
+using Amazon.S3;
 using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
@@ -76,6 +77,7 @@ public sealed class FidelityContext : IAsyncDisposable
     private readonly Dictionary<string, AmazonEventBridgeClient> _eventsClients = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AmazonDynamoDBClient> _dynamoClients = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Amazon.DynamoDBStreams.AmazonDynamoDBStreamsClient> _streamsClients = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, AmazonS3Client> _s3Clients = new(StringComparer.Ordinal);
     private readonly FidelityStopwatch _clock;
     private readonly TimeSpan _budget;
     private readonly CancellationTokenSource _stopPump = new();
@@ -85,6 +87,7 @@ public sealed class FidelityContext : IAsyncDisposable
     private readonly RequestLatencyHandler _eventsHandler;
     private readonly RequestLatencyHandler _dynamoHandler;
     private readonly RequestLatencyHandler _streamsHandler;
+    private readonly RequestLatencyHandler _s3Handler;
     private readonly IDisposable _noTraceContext;
     private readonly Dictionary<object, DateTimeOffset> _delayDeadlines = [];
     private readonly System.Diagnostics.Stopwatch _realClock = System.Diagnostics.Stopwatch.StartNew();
@@ -105,6 +108,10 @@ public sealed class FidelityContext : IAsyncDisposable
             // As in AWS, only existing KMS keys work.
             KmsKeyAliases = new HashSet<string>(StringComparer.Ordinal),
 
+            // As in AWS, S3 authenticates requests signed with the checks' credentials (access key
+            // "test", secret "test"): their signatures, request times and presigned URL expiries.
+            SecretAccessKeys = new Dictionary<string, string>(StringComparer.Ordinal) { ["test"] = "test" },
+
             // As in AWS, a vector index UpdateTable adds is CREATING for a while (allocating, then
             // backfilling) before it is ACTIVE. AWS takes minutes; this is short enough for a
             // check's budget and long enough for a check to see each phase.
@@ -114,6 +121,11 @@ public sealed class FidelityContext : IAsyncDisposable
             // through CREATING and DELETING, and the checks see each status and the refusals that
             // go with it. AWS takes seconds to minutes; the checks' waiters poll every second or two.
             DynamoDbTransitionDelay = TimeSpan.FromSeconds(2),
+
+            // As in AWS, an S3 Metadata configuration's tables are CREATING for a while before they
+            // are ACTIVE, and S3 refuses to update them meanwhile. AWS takes about a minute; the
+            // checks poll every few seconds.
+            S3MetadataTableCreationDelay = TimeSpan.FromSeconds(10),
         };
         // The HTTP endpoints the cloud calls (API destinations, OAuth token requests) are the check's
         // own stand-ins (HttpEndpoints); nothing reaches the network.
@@ -123,6 +135,7 @@ public sealed class FidelityContext : IAsyncDisposable
         _eventsHandler = new RequestLatencyHandler(this, AwsServiceType.EventBridge);
         _dynamoHandler = new RequestLatencyHandler(this, AwsServiceType.DynamoDb);
         _streamsHandler = new RequestLatencyHandler(this, AwsServiceType.DynamoDbStreams);
+        _s3Handler = new RequestLatencyHandler(this, AwsServiceType.S3);
         CurrentContext.Value = this;
 
         // boto3 sends no trace context. The test run's SDK tracing would otherwise add a traceparent
@@ -313,6 +326,85 @@ public sealed class FidelityContext : IAsyncDisposable
         return client;
     }
 
+    /// <summary><c>ctx.client("s3")</c>: the default S3 client, in <see cref="Region"/>.</summary>
+    public AmazonS3Client S3 => S3Client();
+
+    /// <summary>
+    /// <c>ctx.client("s3", region=..., config=Config(...))</c>. Clients are cached per combination, like
+    /// the runner's, and retry as the runner's do (standard mode, 3 attempts). As boto3 does against AWS,
+    /// they address buckets virtual-hosted style (<c>bucket.s3.region.amazonaws.com</c>) unless
+    /// <paramref name="pathStyle"/> is set, and compute and validate checksums when supported.
+    /// </summary>
+    /// <param name="region">The client's region; defaults to <see cref="Region"/>.</param>
+    /// <param name="pathStyle">True for <c>Config(s3={"addressing_style": "path"})</c>.</param>
+    /// <param name="unsigned">True for <c>Config(signature_version=UNSIGNED)</c>.</param>
+    /// <param name="maxAttempts">botocore's <c>max_attempts</c>: attempts in all, retries included.</param>
+    /// <param name="requestChecksumCalculation">botocore's <c>request_checksum_calculation</c>.</param>
+    /// <param name="accessKey">The access key the client signs with.</param>
+    /// <param name="plainHttp">True for an <c>endpoint_url</c> with the <c>http</c> scheme: requests go without TLS.</param>
+    public AmazonS3Client S3Client(
+        string? region = null,
+        bool pathStyle = false,
+        bool unsigned = false,
+        int maxAttempts = 3,
+        RequestChecksumCalculation? requestChecksumCalculation = null,
+        string accessKey = "test",
+        bool plainHttp = false)
+    {
+        region ??= Region;
+        var key = $"{region}|{pathStyle}|{unsigned}|{maxAttempts}|{requestChecksumCalculation}|{accessKey}|{plainHttp}";
+        if (_s3Clients.TryGetValue(key, out var existing))
+        {
+            return existing;
+        }
+
+        var config = new AmazonS3Config
+        {
+            RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(region),
+            ForcePathStyle = pathStyle,
+            UseHttp = plainHttp,
+            RetryMode = RequestRetryMode.Standard,
+            MaxErrorRetry = Math.Max(0, maxAttempts - 1),
+            HttpClientFactory = new VirtualTimeHttpClientFactory(_s3Handler),
+        };
+        if (requestChecksumCalculation is { } calculation)
+        {
+            config.RequestChecksumCalculation = calculation;
+        }
+
+        AWSCredentials credentials = unsigned ? new AnonymousAWSCredentials() : new BasicAWSCredentials(accessKey, "test");
+        var sessions = new VirtualTimeS3ExpressSessions(Time);
+        config.S3ExpressCredentialProvider = sessions;
+        var client = new AmazonS3Client(credentials, config);
+        sessions.Client = client;
+        _s3Clients[key] = client;
+        return client;
+    }
+
+    /// <summary>
+    /// <c>ctx.client("s3", creds=...)</c> with botocore's S3 Express identity cache replaced: a new S3
+    /// client (never cached) that signs every directory bucket request with the session
+    /// <paramref name="sessions"/> resolves, instead of minting its own with CreateSession.
+    /// </summary>
+    public AmazonS3Client S3SessionClient(Amazon.S3.IS3ExpressCredentialProvider sessions, AWSCredentials credentials)
+    {
+        var config = new AmazonS3Config
+        {
+            RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(Region),
+            RetryMode = RequestRetryMode.Standard,
+            MaxErrorRetry = 2,
+            HttpClientFactory = new VirtualTimeHttpClientFactory(_s3Handler),
+            S3ExpressCredentialProvider = sessions,
+        };
+        var client = new AmazonS3Client(credentials, config);
+        OnCleanup(() =>
+        {
+            client.Dispose();
+            return Task.CompletedTask;
+        });
+        return client;
+    }
+
     /// <summary>
     /// A role ARN for a check that creates an IAM role only to put its ARN on a rule or target. The
     /// cloud models no IAM: it accepts any well-formed role ARN and never assumes it.
@@ -370,6 +462,7 @@ public sealed class FidelityContext : IAsyncDisposable
             AwsServiceType.EventBridge => "events",
             AwsServiceType.DynamoDb => "dynamodb",
             AwsServiceType.DynamoDbStreams => "streams.dynamodb",
+            AwsServiceType.S3 => "s3",
             _ => "sqs",
         };
 #pragma warning disable CA2000 // The HttpClient owns and disposes the handler.
@@ -598,6 +691,11 @@ public sealed class FidelityContext : IAsyncDisposable
             client.Dispose();
         }
 
+        foreach (var client in _s3Clients.Values)
+        {
+            client.Dispose();
+        }
+
         Cloud.HttpClient.Dispose();
         HttpEndpoints.Dispose();
 
@@ -609,6 +707,7 @@ public sealed class FidelityContext : IAsyncDisposable
         _eventsHandler.Dispose();
         _dynamoHandler.Dispose();
         _streamsHandler.Dispose();
+        _s3Handler.Dispose();
         _noTraceContext.Dispose();
     }
 
@@ -659,6 +758,47 @@ public sealed class FidelityContext : IAsyncDisposable
     /// <see cref="RequestLatencyHandler"/> for its service. The SDK's process-wide HttpClient cache
     /// is bypassed: it would hand one check's clients another check's handler, cloud and clock.
     /// </summary>
+    /// <summary>
+    /// The S3 Express session cache of a check's S3 clients: mints a session with CreateSession for each
+    /// directory bucket and reuses it until a minute before it expires, on the check's virtual clock (the
+    /// SDK's own cache reads the real one, so a check that waits out a session's five minutes would sign
+    /// with an expired token, where botocore, on AWS's clock, mints a new one).
+    /// </summary>
+    private sealed class VirtualTimeS3ExpressSessions(TimeProvider time) : IS3ExpressCredentialProvider
+    {
+        private readonly Dictionary<string, Amazon.S3.Model.SessionCredentials> _sessions = new(StringComparer.Ordinal);
+        private readonly SemaphoreSlim _gate = new(1, 1);
+
+        public AmazonS3Client? Client { get; set; }
+
+        public Amazon.S3.Model.SessionCredentials ResolveSessionCredentials(string bucketName) =>
+            ResolveSessionCredentialsAsync(bucketName).GetAwaiter().GetResult();
+
+        public async Task<Amazon.S3.Model.SessionCredentials> ResolveSessionCredentialsAsync(string bucketName, CancellationToken cancellationToken = default)
+        {
+            await _gate.WaitAsync(cancellationToken);
+            try
+            {
+                var now = time.GetUtcNow().UtcDateTime;
+                if (_sessions.TryGetValue(bucketName, out var cached) && cached.Expiration is { } expiration
+                    && expiration.ToUniversalTime() - TimeSpan.FromMinutes(1) > now)
+                {
+                    return cached;
+                }
+
+                var session = await Client!.CreateSessionAsync(new Amazon.S3.Model.CreateSessionRequest { BucketName = bucketName }, cancellationToken);
+                _sessions[bucketName] = session.Credentials;
+                return session.Credentials;
+            }
+            finally
+            {
+                _gate.Release();
+            }
+        }
+
+        public void Dispose() => _gate.Dispose();
+    }
+
     private sealed class VirtualTimeHttpClientFactory(RequestLatencyHandler handler) : HttpClientFactory
     {
         public override HttpClient CreateHttpClient(IClientConfig clientConfig) => new(handler, disposeHandler: false);

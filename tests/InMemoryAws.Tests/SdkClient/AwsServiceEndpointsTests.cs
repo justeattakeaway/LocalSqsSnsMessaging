@@ -2,6 +2,7 @@ using Amazon.DynamoDBStreams;
 using Amazon.DynamoDBv2;
 using Amazon.EventBridge;
 using Amazon.Runtime;
+using Amazon.S3;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using InMemoryAws.Http;
@@ -22,6 +23,7 @@ public sealed class AwsServiceEndpointsTests
         yield return () => (AwsServiceType.EventBridge, new AmazonEventBridgeConfig());
         yield return () => (AwsServiceType.DynamoDb, new AmazonDynamoDBConfig());
         yield return () => (AwsServiceType.DynamoDbStreams, new AmazonDynamoDBStreamsConfig());
+        yield return () => (AwsServiceType.S3, new AmazonS3Config());
     }
 
     [Test]
@@ -35,7 +37,7 @@ public sealed class AwsServiceEndpointsTests
     }
 
     [Test]
-    [Arguments("s3")]
+    [Arguments("lambda")]
     [Arguments("SQS")]
     [Arguments("")]
     [Arguments(null)]

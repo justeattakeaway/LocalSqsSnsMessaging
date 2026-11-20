@@ -6,6 +6,7 @@
     <PackageVersion Include="AWSSDK.DynamoDBv2" Version="4.1.0.1" />
     <PackageVersion Include="AWSSDK.DynamoDBStreams" Version="4.1.1" />
     <PackageVersion Include="AWSSDK.EventBridge" Version="4.1.0.1" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.1.1" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.1.0.1" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.1.0.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
