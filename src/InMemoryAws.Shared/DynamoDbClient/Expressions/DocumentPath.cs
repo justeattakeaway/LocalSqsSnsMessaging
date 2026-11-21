@@ -319,6 +319,58 @@ internal sealed class DocumentPath : IEquatable<DocumentPath>
         return false;
     }
 
+    /// <summary>
+    /// Whether the path can't be updated in <paramref name="item"/>: it crosses a value that
+    /// can't hold its next step, or a step before its last names nothing (a missing attribute or
+    /// map key, an index past a list's end). Only the final step may be missing.
+    /// </summary>
+    public bool IsInvalidForUpdate(IReadOnlyDictionary<string, DynamoValue> item)
+    {
+        if (IsTopLevel)
+        {
+            return false;
+        }
+
+        if (!item.TryGetValue(AttributeName, out var current))
+        {
+            return true;
+        }
+
+        for (var i = 1; i < Steps.Count; i++)
+        {
+            var step = Steps[i];
+            var last = i == Steps.Count - 1;
+            if (step.IsIndex)
+            {
+                if (current.Type != DynamoType.L)
+                {
+                    return true;
+                }
+
+                if (step.Index >= current.L.Count)
+                {
+                    return !last;
+                }
+
+                current = current.L[step.Index];
+            }
+            else
+            {
+                if (current.Type != DynamoType.M)
+                {
+                    return true;
+                }
+
+                if (!current.M.TryGetValue(step.Name!, out current!))
+                {
+                    return !last;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>Whether <paramref name="other"/> starts with every step of this path.</summary>
     public bool IsPrefixOf(DocumentPath other)
     {

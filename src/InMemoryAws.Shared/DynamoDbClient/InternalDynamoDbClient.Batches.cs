@@ -591,7 +591,7 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             var updated = old is null ? table.KeySchema.ToAttributes(key) : new Dictionary<string, DynamoValue>(old, StringComparer.Ordinal);
-            InElement(() => update.Apply(updated));
+            InElement(() => update.Apply(updated, itemExists: old is not null));
             if (DynamoValueRules.ExceedsDepth(updated))
             {
                 throw DynamoDbErrors.Validation(DynamoValueRules.NestingExceeded);

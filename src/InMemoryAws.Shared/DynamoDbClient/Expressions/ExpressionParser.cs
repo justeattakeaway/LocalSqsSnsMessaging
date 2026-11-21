@@ -1041,10 +1041,16 @@ internal sealed class ExpressionParser
         return new SetValue(left, null, Subtract: false);
     }
 
-    private SetOperand SetOperand()
+    /// <param name="withinListAppend">Whether the operand is one of list_append's own, where another list_append may not appear.</param>
+    private SetOperand SetOperand(bool withinListAppend = false)
     {
         if (PeekCall() is { } name)
         {
+            if (name == "list_append" && withinListAppend)
+            {
+                throw ExpressionErrors.Invalid(_member, "The function is not allowed to be used this way in an expression; function: list_append");
+            }
+
             _at += 2;
             _operators++;
             Descend();
@@ -1053,6 +1059,12 @@ internal sealed class ExpressionParser
             {
                 case "if_not_exists":
                 {
+                    // Its first operand must name a document path: a function or a value there is refused.
+                    if (PeekCall() is not null || Peek() is { Kind: TokenKind.Placeholder })
+                    {
+                        throw ExpressionErrors.Invalid(_member, "Operator or function requires a document path; operator or function: if_not_exists");
+                    }
+
                     var path = Path();
                     Expect(TokenKind.Comma);
                     operand = new IfNotExistsOperand(path, SetOperand());
@@ -1061,9 +1073,9 @@ internal sealed class ExpressionParser
 
                 case "list_append":
                 {
-                    var first = SetOperand();
+                    var first = SetOperand(withinListAppend: true);
                     Expect(TokenKind.Comma);
-                    operand = new ListAppendOperand(first, SetOperand());
+                    operand = new ListAppendOperand(first, SetOperand(withinListAppend: true));
                     break;
                 }
 
