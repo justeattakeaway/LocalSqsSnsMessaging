@@ -180,7 +180,7 @@ internal sealed partial class InternalDynamoDbClient
                     }
                 }
 
-                changed = update.Apply(updated);
+                changed = update.Apply(updated, itemExists: old is not null);
             }
 
             CheckIndexKeys(table, updated, update: true);
@@ -529,6 +529,11 @@ internal sealed partial class InternalDynamoDbClient
         CheckVectorAttributes(table, item);
     }
 
+    /// <summary>
+    /// Refuses an item whose secondary index key attribute has another type than the index
+    /// declares, or is over the key size limit for its role (2048 bytes for a partition key,
+    /// 1024 for a sort key).
+    /// </summary>
     private static void CheckIndexKeyTypesOnly(DynamoTable table, Dictionary<string, DynamoValue> item)
     {
         foreach (var index in table.GlobalIndexes.Concat(table.LocalIndexes))

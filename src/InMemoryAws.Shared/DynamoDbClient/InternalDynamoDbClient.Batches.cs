@@ -606,7 +606,7 @@ internal sealed partial class InternalDynamoDbClient
             after = updated;
             try
             {
-                InElement(() => update.Apply(updated));
+                InElement(() => update.Apply(updated, itemExists: old is not null));
             }
             catch (DynamoDbException refusal) when (refusal.ErrorCode == "ValidationException" && IsStoredItemRefusal(refusal.Message))
             {

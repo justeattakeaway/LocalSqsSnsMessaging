@@ -71,8 +71,12 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
 
     public IReadOnlyList<UpdateAction> Actions { get; } = actions;
 
-    /// <summary>Applies the actions to <paramref name="item"/> in place, returning the paths that changed.</summary>
-    public List<DocumentPath> Apply(Dictionary<string, DynamoValue> item)
+    /// <summary>
+    /// Applies the actions to <paramref name="item"/> in place, returning the paths that changed.
+    /// <paramref name="itemExists"/> is false when the update creates the item: a <c>REMOVE</c> or
+    /// <c>DELETE</c> through a missing parent is then a no-op, as there is nothing to check the path against.
+    /// </summary>
+    public List<DocumentPath> Apply(Dictionary<string, DynamoValue> item, bool itemExists = true)
     {
         var before = new Dictionary<string, DynamoValue>(item, StringComparer.Ordinal);
         var changed = new List<DocumentPath>();
@@ -91,7 +95,7 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
                 }
 
                 case RemoveAction remove:
-                    if (remove.Path.CrossesNonContainer(before))
+                    if (itemExists ? remove.Path.IsInvalidForUpdate(before) : remove.Path.CrossesNonContainer(before))
                     {
                         throw DynamoDbErrors.Validation(DocumentPath.InvalidForUpdate);
                     }
@@ -108,7 +112,7 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
                 }
 
                 case DeleteAction delete:
-                    if (Delete(delete, before, item))
+                    if (Delete(delete, before, item, itemExists))
                     {
                         changed.Add(delete.Path);
                     }
@@ -189,7 +193,8 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
         for (var i = 0; i < path.Steps.Count; i++)
         {
             var step = path.Steps[i];
-            bytes += (i == 0 ? 0 : 4) + (step.IsIndex ? 0 : Encoding.UTF8.GetByteCount(step.Name!));
+            // A step past the first costs 4 bytes; a list index one more, whatever its digits.
+            bytes += (i == 0 ? 0 : 4) + (step.IsIndex ? 1 : Encoding.UTF8.GetByteCount(step.Name!));
         }
 
         return bytes;
@@ -239,13 +244,21 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
         return DynamoValue.FromNumber(Arithmetic(left, right, value.Subtract));
     }
 
-    /// <summary>The sum or difference of two numbers, rounded to 38 significant digits as DynamoDB rounds it.</summary>
+    /// <summary>
+    /// The sum or difference of two numbers. A result that needs more than 38 significant digits is
+    /// refused as an overflow, as DynamoDB refuses it, however small its magnitude.
+    /// </summary>
     public static DynamoNumber Arithmetic(DynamoValue left, DynamoValue right, bool subtract)
     {
         var a = DynamoValueRules.ParseNumber(left.N, enveloped: false);
         var b = DynamoValueRules.ParseNumber(right.N, enveloped: false);
         var fault = DynamoNumber.Add(a, subtract ? b.Negate() : b, out var result);
-        return fault == DynamoNumberFault.None ? result : throw DynamoValueRules.NumberRefusal(string.Empty, fault, enveloped: false);
+        return fault switch
+        {
+            DynamoNumberFault.None => result,
+            DynamoNumberFault.Precision => throw DynamoValueRules.NumberRefusal(string.Empty, DynamoNumberFault.Overflow, enveloped: false),
+            _ => throw DynamoValueRules.NumberRefusal(string.Empty, fault, enveloped: false),
+        };
     }
 
     private DynamoValue Evaluate(SetOperand operand, Dictionary<string, DynamoValue> before)
@@ -373,7 +386,7 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
         };
     }
 
-    private bool Delete(DeleteAction action, Dictionary<string, DynamoValue> before, Dictionary<string, DynamoValue> item)
+    private bool Delete(DeleteAction action, Dictionary<string, DynamoValue> before, Dictionary<string, DynamoValue> item, bool itemExists)
     {
         var value = action.Value;
         if (value.IsSet && value.SetCount == 0)
@@ -387,7 +400,7 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
             throw OperandTypeFor("DELETE", "ALLOWED_FOR_ADD_OPERAND", value);
         }
 
-        if (action.Path.CrossesNonContainer(before))
+        if (itemExists ? action.Path.IsInvalidForUpdate(before) : action.Path.CrossesNonContainer(before))
         {
             throw DynamoDbErrors.Validation(DocumentPath.InvalidForUpdate);
         }
