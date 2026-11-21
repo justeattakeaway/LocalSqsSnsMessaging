@@ -41,15 +41,18 @@ internal sealed partial class InternalDynamoDbClient
                 .Concat(request.GlobalSecondaryIndexes?.SelectMany(i => i.KeySchema ?? []) ?? [])
                 .Select(e => e.AttributeName!),
             StringComparer.Ordinal);
+        // The billing mode and the table's throughput are checked before the key schema.
+        var billingMode = request.BillingMode ?? "PROVISIONED";
+        var onDemand = billingMode == "PAY_PER_REQUEST";
+        CheckThroughput(request.ProvisionedThroughput, onDemand, indexName: null);
+        CheckTableThroughputQuota(request.ProvisionedThroughput);
+
         var keySchema = ParseKeySchema(request.KeySchema, definitions, indexName: null, keyAttributes);
         if (request.StreamSpecification is { StreamEnabled: not true, StreamViewType: not null })
         {
             throw DynamoDbErrors.InvalidParameter("Table is being created with a stream disabled, UpdateViewType should not be specified");
         }
 
-        var billingMode = request.BillingMode ?? "PROVISIONED";
-        var onDemand = billingMode == "PAY_PER_REQUEST";
-        CheckThroughput(request.ProvisionedThroughput, onDemand, indexName: null);
         CheckOnDemandThroughput(billingMode, request.OnDemandThroughput, request.GlobalSecondaryIndexes?.Select(i => i.OnDemandThroughput));
         CheckTableClass(request.TableClass);
 
@@ -181,7 +184,7 @@ internal sealed partial class InternalDynamoDbClient
         {
             if (stream.StreamEnabled == true && stream.StreamViewType is null)
             {
-                throw DynamoDbErrors.InvalidParameter("Table is being created with a stream enabled, but StreamViewType is not specified");
+                throw DynamoDbErrors.InvalidParameter("Table is being created with a stream enabled, UpdateViewType is required");
             }
 
             table.StreamEnabled = stream.StreamEnabled == true;
@@ -284,18 +287,25 @@ internal sealed partial class InternalDynamoDbClient
         }
         else if (elements.Count == 2 && elements[1].KeyType != "RANGE")
         {
+            // An undefined key attribute is refused before the second element's key type.
+            CheckKeysDefined();
             throw DynamoDbErrors.Validation("Invalid KeySchema: The second KeySchemaElement is not a RANGE key type");
         }
 
-        var undefined = elements.Where(e => !definitions.Any(d => string.Equals(d.Name, e.AttributeName, StringComparison.Ordinal))).ToList();
-        if (undefined.Count > 0)
-        {
-            if (indexName is null && keyAttributes is not null && definitions.All(d => keyAttributes.Contains(d.Name)))
-            {
-                throw DynamoDbErrors.Validation(KeyWithoutDefinition);
-            }
+        CheckKeysDefined();
 
-            throw UndefinedIndexKeys(elements, definitions.Select(d => d.Name));
+        void CheckKeysDefined()
+        {
+            var undefined = elements.Where(e => !definitions.Any(d => string.Equals(d.Name, e.AttributeName, StringComparison.Ordinal))).ToList();
+            if (undefined.Count > 0)
+            {
+                if (indexName is null && keyAttributes is not null && definitions.All(d => keyAttributes.Contains(d.Name)))
+                {
+                    throw DynamoDbErrors.Validation(KeyWithoutDefinition);
+                }
+
+                throw UndefinedIndexKeys(elements, definitions.Select(d => d.Name));
+            }
         }
 
         // A repeated key attribute leaves an element without a definition of its own, unless the
@@ -394,6 +404,24 @@ internal sealed partial class InternalDynamoDbClient
             throw indexName is null
                 ? DynamoDbErrors.InvalidParameter("ReadCapacityUnits and WriteCapacityUnits must both be specified when BillingMode is PROVISIONED")
                 : DynamoDbErrors.InvalidParameter($"Both ReadCapacityUnits and WriteCapacityUnits must be specified for index: {indexName}");
+        }
+    }
+
+    /// <summary>
+    /// The per-table throughput ceiling DescribeLimits reports: a table provisioned above it is
+    /// refused, its read capacity checked first.
+    /// </summary>
+    private void CheckTableThroughputQuota(ProvisionedThroughput? throughput)
+    {
+        foreach (var (member, requested) in new (string, long?)[] { ("ReadCapacityUnits", throughput?.ReadCapacityUnits), ("WriteCapacityUnits", throughput?.WriteCapacityUnits) })
+        {
+            if (requested > TableMaxCapacityUnits)
+            {
+                throw DynamoDbErrors.LimitExceeded(
+                    $"The requested {member}, {requested.Value.ToString(CultureInfo.InvariantCulture)}, is above the per table maximum for the account in {Region}. "
+                    + $"Per table maximum: {TableMaxCapacityUnits.ToString(CultureInfo.InvariantCulture)}. "
+                    + "Refer to the Amazon DynamoDB Developer Guide for current limits and how to request higher limits.");
+            }
         }
     }
 
@@ -629,6 +657,12 @@ internal sealed partial class InternalDynamoDbClient
             CheckOnDemandThroughput(billingMode, request.OnDemandThroughput);
             if (request.AttributeDefinitions is { } definitions)
             {
+                var duplicated = definitions.GroupBy(d => d.AttributeName, StringComparer.Ordinal).FirstOrDefault(g => g.Count() > 1);
+                if (duplicated is not null)
+                {
+                    throw DynamoDbErrors.Validation($"Attribute Name is duplicated: {duplicated.Key}");
+                }
+
                 foreach (var definition in definitions)
                 {
                     var type = ParseScalarType(definition.AttributeType);
@@ -951,7 +985,7 @@ internal sealed partial class InternalDynamoDbClient
             var index = table.FindIndex(change.IndexName!);
             if (index is null || !index.IsGlobal)
             {
-                throw DynamoDbErrors.ResourceNotFound($"Requested resource not found: Index: {change.IndexName} not found");
+                throw DynamoDbErrors.ResourceNotFound($"Requested resource not found: Index {change.IndexName} for table {table.Name}");
             }
 
             return () =>
@@ -1089,6 +1123,12 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation("Number of Tags exceed the current limit for the provided ResourceArn");
             }
 
+            // aws: keys are AWS's own; a request carrying one applies none of its tags.
+            if (tags.FirstOrDefault(t => t.Key?.StartsWith("aws:", StringComparison.Ordinal) == true) is { } reserved)
+            {
+                throw DynamoDbErrors.Validation($"Tag Key cannot be prefixed with aws:, Key: {reserved.Key}");
+            }
+
             var newKeys = tags.Select(t => t.Key!).Where(k => !resourceTags.Any(t => string.Equals(t.Key, k, StringComparison.Ordinal))).Distinct(StringComparer.Ordinal).Count();
             if (resourceTags.Count + newKeys > MaxTags)
             {
@@ -1132,15 +1172,21 @@ internal sealed partial class InternalDynamoDbClient
 
     // Limits and endpoints
 
+    /// <summary>The account's provisioned capacity ceiling, read and write alike, as DescribeLimits reports it.</summary>
+    private const long AccountMaxCapacityUnits = 80000;
+
+    /// <summary>A table's provisioned capacity ceiling, read and write alike, as DescribeLimits reports it.</summary>
+    private const long TableMaxCapacityUnits = 40000;
+
     public Task<DescribeLimitsResponse> DescribeLimitsAsync(DescribeLimitsRequest request, CancellationToken cancellationToken = default)
     {
         Record("DescribeLimits");
         return Task.FromResult(new DescribeLimitsResponse
         {
-            AccountMaxReadCapacityUnits = 80000,
-            AccountMaxWriteCapacityUnits = 80000,
-            TableMaxReadCapacityUnits = 40000,
-            TableMaxWriteCapacityUnits = 40000,
+            AccountMaxReadCapacityUnits = AccountMaxCapacityUnits,
+            AccountMaxWriteCapacityUnits = AccountMaxCapacityUnits,
+            TableMaxReadCapacityUnits = TableMaxCapacityUnits,
+            TableMaxWriteCapacityUnits = TableMaxCapacityUnits,
         });
     }
 

@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_s3x_s3express_session_and_listing_cross_bucket_token_denied.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,8 +22,8 @@ public sealed class S3xS3expressSessionAndListingCrossBucketTokenDenied
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var bucketA = await S3Fidelity.DirectoryBucket(ctx, s3, "sim2real-s3x-xa-");
-        var bucketB = await S3Fidelity.DirectoryBucket(ctx, s3, "sim2real-s3x-xb-");
+        var bucketA = await S3Fidelity.DirectoryBucket(ctx, ctx.S3Control, "sim2real-s3x-xa-");
+        var bucketB = await S3Fidelity.DirectoryBucket(ctx, ctx.S3Control, "sim2real-s3x-xb-");
         const string key = "x/object.txt";
         await s3.PutObjectAsync(new PutObjectRequest { BucketName = bucketA, Key = key, ContentBody = "bucket-a-original" });
         await s3.PutObjectAsync(new PutObjectRequest { BucketName = bucketB, Key = key, ContentBody = "bucket-b-original" });

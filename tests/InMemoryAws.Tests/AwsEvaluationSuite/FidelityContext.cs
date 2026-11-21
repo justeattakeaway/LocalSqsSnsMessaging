@@ -330,6 +330,13 @@ public sealed class FidelityContext : IAsyncDisposable
     public AmazonS3Client S3 => S3Client();
 
     /// <summary>
+    /// <c>ctx.client("s3", config=Config(s3={"disable_s3_express_session_auth": True}))</c>: the checks'
+    /// <c>_s3_control(ctx)</c>, for a directory bucket's control calls, which AWS serves without an S3
+    /// Express session (signed with the account's own credentials, never a CreateSession token).
+    /// </summary>
+    public AmazonS3Client S3Control => S3Client(disableS3ExpressSessionAuth: true);
+
+    /// <summary>
     /// <c>ctx.client("s3", region=..., config=Config(...))</c>. Clients are cached per combination, like
     /// the runner's, and retry as the runner's do (standard mode, 3 attempts). As boto3 does against AWS,
     /// they address buckets virtual-hosted style (<c>bucket.s3.region.amazonaws.com</c>) unless
@@ -342,6 +349,7 @@ public sealed class FidelityContext : IAsyncDisposable
     /// <param name="requestChecksumCalculation">botocore's <c>request_checksum_calculation</c>.</param>
     /// <param name="accessKey">The access key the client signs with.</param>
     /// <param name="plainHttp">True for an <c>endpoint_url</c> with the <c>http</c> scheme: requests go without TLS.</param>
+    /// <param name="disableS3ExpressSessionAuth">botocore's <c>disable_s3_express_session_auth</c>.</param>
     public AmazonS3Client S3Client(
         string? region = null,
         bool pathStyle = false,
@@ -349,10 +357,11 @@ public sealed class FidelityContext : IAsyncDisposable
         int maxAttempts = 3,
         RequestChecksumCalculation? requestChecksumCalculation = null,
         string accessKey = "test",
-        bool plainHttp = false)
+        bool plainHttp = false,
+        bool disableS3ExpressSessionAuth = false)
     {
         region ??= Region;
-        var key = $"{region}|{pathStyle}|{unsigned}|{maxAttempts}|{requestChecksumCalculation}|{accessKey}|{plainHttp}";
+        var key = $"{region}|{pathStyle}|{unsigned}|{maxAttempts}|{requestChecksumCalculation}|{accessKey}|{plainHttp}|{disableS3ExpressSessionAuth}";
         if (_s3Clients.TryGetValue(key, out var existing))
         {
             return existing;
@@ -366,6 +375,7 @@ public sealed class FidelityContext : IAsyncDisposable
             RetryMode = RequestRetryMode.Standard,
             MaxErrorRetry = Math.Max(0, maxAttempts - 1),
             HttpClientFactory = new VirtualTimeHttpClientFactory(_s3Handler),
+            DisableS3ExpressSessionAuth = disableS3ExpressSessionAuth,
         };
         if (requestChecksumCalculation is { } calculation)
         {

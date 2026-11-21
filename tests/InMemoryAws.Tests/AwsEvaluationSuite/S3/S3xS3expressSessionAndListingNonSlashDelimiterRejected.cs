@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_s3x_s3express_session_and_listing_non_slash_delimiter_rejected.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -24,8 +24,8 @@ public sealed class S3xS3expressSessionAndListingNonSlashDelimiterRejected
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var directory = await S3Fidelity.DirectoryBucket(ctx, s3, "sim2real-s3x-dl-");
-        var twin = await S3Fidelity.GeneralPurposeBucket(ctx, s3, "sim2real-s3x-dl-gp-", Check);
+        var directory = await S3Fidelity.DirectoryBucket(ctx, ctx.S3Control, "sim2real-s3x-dl-");
+        var twin = await S3Fidelity.GeneralPurposeBucket(ctx, ctx.S3Control, "sim2real-s3x-dl-gp-", Check);
         const string key = "k/part-1.txt";
         foreach (var bucket in new[] { directory, twin })
         {

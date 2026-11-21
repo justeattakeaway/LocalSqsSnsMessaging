@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_put_object_encryption_type_mismatch_rejected.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +22,7 @@ public sealed class PutObjectEncryptionTypeMismatchRejected
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, s3, FidelityContext.UniqueName("sim2realdb"), S3Fidelity.ExpressZoneIds[ctx.Region]);
+        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, FidelityContext.UniqueName("sim2realdb"), S3Fidelity.ExpressZoneIds[ctx.Region]);
         var key = FidelityContext.UniqueName("append-enc") + ".log";
         var initialBody = "seed-data!"u8.ToArray(); // implicitly SSE-S3 encrypted (directory bucket default)
         var created = await s3.PutObjectAsync(new PutObjectRequest { BucketName = bucket, Key = key, InputStream = new MemoryStream(initialBody) });

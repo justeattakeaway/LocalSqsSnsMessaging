@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_put_object_append_write_offset_rejected.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +22,7 @@ public sealed class PutObjectAppendWriteOffsetRejected
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var bucket = await S3Fidelity.NewDirectoryBucket(ctx, s3);
+        var bucket = await S3Fidelity.NewDirectoryBucket(ctx, ctx.S3Control);
         const string key = "wo-target.bin";
         var initial = "123456789"u8.ToArray(); // 9 bytes
         await s3.PutObjectAsync(new PutObjectRequest { BucketName = bucket, Key = key, InputStream = new MemoryStream(initial) });

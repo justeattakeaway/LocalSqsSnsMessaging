@@ -32,22 +32,22 @@ internal static class SqsJsonSerializers
                 request.Label = LabelElem.GetString();
 
             // AWSAccountIds
-            if (root.TryGetProperty("AWSAccountIds", out var AWSAccountIdsElem) && AWSAccountIdsElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("AWSAccountIds", out var AWSAccountIdsElem) && Serialization.AwsJsonMemberTypes.IsList(AWSAccountIdsElem))
             {
                 request.AWSAccountIds = new List<string>();
                 foreach (var item in AWSAccountIdsElem.EnumerateArray())
                 {
-                    request.AWSAccountIds.Add(item.GetString()!);
+                    request.AWSAccountIds.Add(Serialization.AwsJsonMemberTypes.ReadListString(item));
                 }
             }
 
             // Actions
-            if (root.TryGetProperty("Actions", out var ActionsElem) && ActionsElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Actions", out var ActionsElem) && Serialization.AwsJsonMemberTypes.IsList(ActionsElem))
             {
                 request.Actions = new List<string>();
                 foreach (var item in ActionsElem.EnumerateArray())
                 {
-                    request.Actions.Add(item.GetString()!);
+                    request.Actions.Add(Serialization.AwsJsonMemberTypes.ReadListString(item));
                 }
             }
 
@@ -152,7 +152,7 @@ internal static class SqsJsonSerializers
                 request.QueueUrl = QueueUrlElem.GetString();
 
             // Entries
-            if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Entries", out var EntriesElem) && Serialization.AwsJsonMemberTypes.IsList(EntriesElem))
             {
                 request.Entries = new List<ChangeMessageVisibilityBatchRequestEntry>();
                 foreach (var item in EntriesElem.EnumerateArray())
@@ -322,7 +322,7 @@ internal static class SqsJsonSerializers
                 request.QueueUrl = QueueUrlElem.GetString();
 
             // Entries
-            if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Entries", out var EntriesElem) && Serialization.AwsJsonMemberTypes.IsList(EntriesElem))
             {
                 request.Entries = new List<DeleteMessageBatchRequestEntry>();
                 foreach (var item in EntriesElem.EnumerateArray())
@@ -432,12 +432,12 @@ internal static class SqsJsonSerializers
                 request.QueueUrl = QueueUrlElem.GetString();
 
             // AttributeNames
-            if (root.TryGetProperty("AttributeNames", out var AttributeNamesElem) && AttributeNamesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("AttributeNames", out var AttributeNamesElem) && Serialization.AwsJsonMemberTypes.IsList(AttributeNamesElem))
             {
                 request.AttributeNames = new List<string>();
                 foreach (var item in AttributeNamesElem.EnumerateArray())
                 {
-                    request.AttributeNames.Add(item.GetString()!);
+                    request.AttributeNames.Add(Serialization.AwsJsonMemberTypes.ReadListString(item));
                 }
             }
 
@@ -766,32 +766,32 @@ internal static class SqsJsonSerializers
                 request.QueueUrl = QueueUrlElem.GetString();
 
             // AttributeNames
-            if (root.TryGetProperty("AttributeNames", out var AttributeNamesElem) && AttributeNamesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("AttributeNames", out var AttributeNamesElem) && Serialization.AwsJsonMemberTypes.IsList(AttributeNamesElem))
             {
                 request.AttributeNames = new List<string>();
                 foreach (var item in AttributeNamesElem.EnumerateArray())
                 {
-                    request.AttributeNames.Add(item.GetString()!);
+                    request.AttributeNames.Add(Serialization.AwsJsonMemberTypes.ReadListString(item));
                 }
             }
 
             // MessageSystemAttributeNames
-            if (root.TryGetProperty("MessageSystemAttributeNames", out var MessageSystemAttributeNamesElem) && MessageSystemAttributeNamesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("MessageSystemAttributeNames", out var MessageSystemAttributeNamesElem) && Serialization.AwsJsonMemberTypes.IsList(MessageSystemAttributeNamesElem))
             {
                 request.MessageSystemAttributeNames = new List<string>();
                 foreach (var item in MessageSystemAttributeNamesElem.EnumerateArray())
                 {
-                    request.MessageSystemAttributeNames.Add(item.GetString()!);
+                    request.MessageSystemAttributeNames.Add(Serialization.AwsJsonMemberTypes.ReadListString(item));
                 }
             }
 
             // MessageAttributeNames
-            if (root.TryGetProperty("MessageAttributeNames", out var MessageAttributeNamesElem) && MessageAttributeNamesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("MessageAttributeNames", out var MessageAttributeNamesElem) && Serialization.AwsJsonMemberTypes.IsList(MessageAttributeNamesElem))
             {
                 request.MessageAttributeNames = new List<string>();
                 foreach (var item in MessageAttributeNamesElem.EnumerateArray())
                 {
-                    request.MessageAttributeNames.Add(item.GetString()!);
+                    request.MessageAttributeNames.Add(Serialization.AwsJsonMemberTypes.ReadListString(item));
                 }
             }
 
@@ -1084,7 +1084,7 @@ internal static class SqsJsonSerializers
                 request.QueueUrl = QueueUrlElem.GetString();
 
             // Entries
-            if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Entries", out var EntriesElem) && Serialization.AwsJsonMemberTypes.IsList(EntriesElem))
             {
                 request.Entries = new List<SendMessageBatchRequestEntry>();
                 foreach (var item in EntriesElem.EnumerateArray())
@@ -1369,12 +1369,12 @@ internal static class SqsJsonSerializers
                 request.QueueUrl = QueueUrlElem.GetString();
 
             // TagKeys
-            if (root.TryGetProperty("TagKeys", out var TagKeysElem) && TagKeysElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("TagKeys", out var TagKeysElem) && Serialization.AwsJsonMemberTypes.IsList(TagKeysElem))
             {
                 request.TagKeys = new List<string>();
                 foreach (var item in TagKeysElem.EnumerateArray())
                 {
-                    request.TagKeys.Add(item.GetString()!);
+                    request.TagKeys.Add(Serialization.AwsJsonMemberTypes.ReadListString(item));
                 }
             }
 

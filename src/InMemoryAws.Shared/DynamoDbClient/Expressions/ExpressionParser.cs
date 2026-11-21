@@ -500,6 +500,9 @@ internal sealed class ExpressionParser
     private static DynamoDbException Overlap(string member, string one, string two) =>
         ExpressionErrors.Invalid(member, $"Two document paths overlap with each other; must remove or rewrite one of these paths; path one: {one}, path two: {two}");
 
+    /// <summary>The words the expression grammar reads as operators, never as an attribute name.</summary>
+    private static readonly string[] GrammarKeywords = ["AND", "OR", "NOT", "BETWEEN", "IN"];
+
     private bool AtEnd => _at >= _tokens.Count;
 
     private ExpressionToken? Peek(int offset = 0) => _at + offset < _tokens.Count ? _tokens[_at + offset] : null;
@@ -645,7 +648,10 @@ internal sealed class ExpressionParser
 
     private string PathName()
     {
-        if (Peek() is { Kind: TokenKind.Word } word && word.Text[0] is >= '0' and <= '9')
+        // A name can't start with a digit, nor be one of the grammar's own keywords: `a = :v AND
+        // AND b = :v` fails at the second AND, not as a reserved attribute name.
+        if (Peek() is { Kind: TokenKind.Word } word
+            && (word.Text[0] is >= '0' and <= '9' || GrammarKeywords.Contains(word.Text, StringComparer.OrdinalIgnoreCase)))
         {
             throw SyntaxError();
         }
@@ -801,6 +807,7 @@ internal sealed class ExpressionParser
         }
 
         var right = Operand();
+        CheckDistinct(token.Text, left, right);
         if (token.Operator is not (CompareOperator.Equal or CompareOperator.NotEqual))
         {
             CheckOrderable(token.Text, left);
@@ -819,7 +826,7 @@ internal sealed class ExpressionParser
         }
     }
 
-    /// <summary>Refuses a function whose first operand is the same path as another of its operands.</summary>
+    /// <summary>Refuses a comparison or function whose first operand is the same path as another of its operands.</summary>
     private void CheckDistinct(string function, Operand first, Operand other)
     {
         if (first is PathOperand { Path: var path } && other is PathOperand { Path: var otherPath } && path.Equals(otherPath))
@@ -889,6 +896,7 @@ internal sealed class ExpressionParser
                     }
                 }
 
+                CheckDistinct("attribute_type", new PathOperand(path), wanted);
                 node = new AttributeTypeCondition(path, wanted);
                 break;
             }
@@ -1041,10 +1049,16 @@ internal sealed class ExpressionParser
         return new SetValue(left, null, Subtract: false);
     }
 
-    private SetOperand SetOperand()
+    /// <param name="withinListAppend">Whether the operand is one of list_append's own, where another list_append may not appear.</param>
+    private SetOperand SetOperand(bool withinListAppend = false)
     {
         if (PeekCall() is { } name)
         {
+            if (name == "list_append" && withinListAppend)
+            {
+                throw ExpressionErrors.Invalid(_member, "The function is not allowed to be used this way in an expression; function: list_append");
+            }
+
             _at += 2;
             _operators++;
             Descend();
@@ -1053,6 +1067,12 @@ internal sealed class ExpressionParser
             {
                 case "if_not_exists":
                 {
+                    // Its first operand must name a document path: a function or a value there is refused.
+                    if (PeekCall() is not null || Peek() is { Kind: TokenKind.Placeholder })
+                    {
+                        throw ExpressionErrors.Invalid(_member, "Operator or function requires a document path; operator or function: if_not_exists");
+                    }
+
                     var path = Path();
                     Expect(TokenKind.Comma);
                     operand = new IfNotExistsOperand(path, SetOperand());
@@ -1061,9 +1081,9 @@ internal sealed class ExpressionParser
 
                 case "list_append":
                 {
-                    var first = SetOperand();
+                    var first = SetOperand(withinListAppend: true);
                     Expect(TokenKind.Comma);
-                    operand = new ListAppendOperand(first, SetOperand());
+                    operand = new ListAppendOperand(first, SetOperand(withinListAppend: true));
                     break;
                 }
 

@@ -10,7 +10,8 @@ namespace InMemoryAws;
 /// </summary>
 /// <remarks>
 /// A token encodes the offset of the next item. A token this class did not issue is refused with
-/// <c>ValidationException</c> "Parameter NextToken is not valid.", as EventBridge refuses one.
+/// <c>ValidationException</c> "Parameter NextToken is not valid.", as EventBridge refuses one
+/// (some operations word it differently: <c>invalidTokenMessage</c>).
 /// </remarks>
 internal static class EventBridgePage
 {
@@ -19,8 +20,12 @@ internal static class EventBridgePage
     /// <summary>The largest <c>Limit</c> EventBridge accepts.</summary>
     private const int MaxLimit = 100;
 
+    /// <summary>The refusal of a token this class did not issue, as most list operations word it.</summary>
+    public const string InvalidTokenMessage = "Parameter NextToken is not valid.";
+
     /// <summary>Takes the page of <paramref name="items"/> that <paramref name="nextToken"/> and <paramref name="limit"/> select.</summary>
-    public static List<T> Take<T>(IReadOnlyList<T> items, int? limit, string? nextToken, out string? newNextToken)
+    public static List<T> Take<T>(
+        IReadOnlyList<T> items, int? limit, string? nextToken, out string? newNextToken, string invalidTokenMessage = InvalidTokenMessage)
     {
         if (limit is < 1 or > MaxLimit)
         {
@@ -30,7 +35,7 @@ internal static class EventBridgePage
                     : $"1 validation error detected: Value '{limit}' at 'limit' failed to satisfy constraint: Member must have value less than or equal to {MaxLimit}");
         }
 
-        var start = string.IsNullOrEmpty(nextToken) ? 0 : DecodeToken(nextToken!);
+        var start = string.IsNullOrEmpty(nextToken) ? 0 : DecodeToken(nextToken!, invalidTokenMessage);
         var count = Math.Max(0, Math.Min(limit ?? int.MaxValue, items.Count - start));
         var page = new List<T>(count);
         for (var i = start; i < start + count; i++)
@@ -45,7 +50,7 @@ internal static class EventBridgePage
     private static string EncodeToken(int offset) =>
         Convert.ToBase64String(Encoding.UTF8.GetBytes(TokenPrefix + offset.ToString(CultureInfo.InvariantCulture)));
 
-    private static int DecodeToken(string token)
+    private static int DecodeToken(string token, string invalidTokenMessage)
     {
         string decoded;
         try
@@ -54,17 +59,15 @@ internal static class EventBridgePage
         }
         catch (FormatException)
         {
-            throw InvalidToken();
+            throw new InternalValidationException(invalidTokenMessage);
         }
 
         if (!decoded.StartsWith(TokenPrefix, StringComparison.Ordinal)
             || !int.TryParse(decoded[TokenPrefix.Length..], NumberStyles.None, CultureInfo.InvariantCulture, out var offset))
         {
-            throw InvalidToken();
+            throw new InternalValidationException(invalidTokenMessage);
         }
 
         return offset;
     }
-
-    private static InternalValidationException InvalidToken() => new("Parameter NextToken is not valid.");
 }

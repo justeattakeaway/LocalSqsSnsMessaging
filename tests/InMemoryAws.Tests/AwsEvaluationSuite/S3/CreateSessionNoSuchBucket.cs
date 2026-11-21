@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_create_session_no_such_bucket.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +22,7 @@ public sealed class CreateSessionNoSuchBucket
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
         var baseName = FidelityContext.UniqueName("sim2real-behav-sess-").ToLowerInvariant().TrimEnd('-');
-        var (bucket, az) = await S3Fidelity.CreateDirectoryBucket(ctx, s3, baseName, S3Fidelity.ExpressZoneIds[ctx.Region]);
+        var (bucket, az) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, baseName, S3Fidelity.ExpressZoneIds[ctx.Region]);
 
         // Positive control: CreateSession succeeds on a real directory bucket.
         var control = await S3Fidelity.CreateSession(s3, bucket);
@@ -31,7 +31,7 @@ public sealed class CreateSessionNoSuchBucket
         // The AZ segment must belong to the region under test, otherwise S3 Express endpoint
         // resolution cannot build a resolvable hostname and the request never reaches the service.
         var missing = $"{baseName}-missing--{az}--x-s3";
-        var listedBefore = await DirectoryBucketNames(s3);
+        var listedBefore = await DirectoryBucketNames(ctx.S3Control);
         Ensure(!listedBefore.Contains(missing), $"bucket {missing} unexpectedly already present in {Py.Repr(listedBefore)}");
         var err = await S3Fidelity.ErrorPair(() => S3Fidelity.CreateSession(s3, missing), "expected a ClientError, but the call succeeded");
         Ensure(
@@ -39,7 +39,7 @@ public sealed class CreateSessionNoSuchBucket
             $"expected NoSuchBucket with AWS's exact message, got {S3Fidelity.Repr(err)}");
 
         // Effect absent: an independent read confirms the bucket does not exist.
-        var listedAfter = await DirectoryBucketNames(s3);
+        var listedAfter = await DirectoryBucketNames(ctx.S3Control);
         Ensure(!listedAfter.Contains(missing), $"bucket {missing} unexpectedly present in {Py.Repr(listedAfter)}");
     }
 

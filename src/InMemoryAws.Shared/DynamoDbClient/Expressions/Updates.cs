@@ -71,8 +71,12 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
 
     public IReadOnlyList<UpdateAction> Actions { get; } = actions;
 
-    /// <summary>Applies the actions to <paramref name="item"/> in place, returning the paths that changed.</summary>
-    public List<DocumentPath> Apply(Dictionary<string, DynamoValue> item)
+    /// <summary>
+    /// Applies the actions to <paramref name="item"/> in place, returning the paths that changed.
+    /// <paramref name="itemExists"/> is false when the update creates the item: a <c>REMOVE</c> or
+    /// <c>DELETE</c> through a missing parent is then a no-op, as there is nothing to check the path against.
+    /// </summary>
+    public List<DocumentPath> Apply(Dictionary<string, DynamoValue> item, bool itemExists = true)
     {
         var before = new Dictionary<string, DynamoValue>(item, StringComparer.Ordinal);
         var changed = new List<DocumentPath>();
@@ -91,7 +95,7 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
                 }
 
                 case RemoveAction remove:
-                    if (remove.Path.CrossesNonContainer(before))
+                    if (itemExists ? remove.Path.IsInvalidForUpdate(before) : remove.Path.CrossesNonContainer(before))
                     {
                         throw DynamoDbErrors.Validation(DocumentPath.InvalidForUpdate);
                     }
@@ -108,7 +112,7 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
                 }
 
                 case DeleteAction delete:
-                    if (Delete(delete, before, item))
+                    if (Delete(delete, before, item, itemExists))
                     {
                         changed.Add(delete.Path);
                     }
@@ -189,7 +193,8 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
         for (var i = 0; i < path.Steps.Count; i++)
         {
             var step = path.Steps[i];
-            bytes += (i == 0 ? 0 : 4) + (step.IsIndex ? 0 : Encoding.UTF8.GetByteCount(step.Name!));
+            // A step past the first costs 4 bytes; a list index one more, whatever its digits.
+            bytes += (i == 0 ? 0 : 4) + (step.IsIndex ? 1 : Encoding.UTF8.GetByteCount(step.Name!));
         }
 
         return bytes;
@@ -239,13 +244,21 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
         return DynamoValue.FromNumber(Arithmetic(left, right, value.Subtract));
     }
 
-    /// <summary>The sum or difference of two numbers, rounded to 38 significant digits as DynamoDB rounds it.</summary>
+    /// <summary>
+    /// The sum or difference of two numbers. A result that needs more than 38 significant digits is
+    /// refused as an overflow, as DynamoDB refuses it, however small its magnitude.
+    /// </summary>
     public static DynamoNumber Arithmetic(DynamoValue left, DynamoValue right, bool subtract)
     {
         var a = DynamoValueRules.ParseNumber(left.N, enveloped: false);
         var b = DynamoValueRules.ParseNumber(right.N, enveloped: false);
         var fault = DynamoNumber.Add(a, subtract ? b.Negate() : b, out var result);
-        return fault == DynamoNumberFault.None ? result : throw DynamoValueRules.NumberRefusal(string.Empty, fault, enveloped: false);
+        return fault switch
+        {
+            DynamoNumberFault.None => result,
+            DynamoNumberFault.Precision => throw DynamoValueRules.NumberRefusal(string.Empty, DynamoNumberFault.Overflow, enveloped: false),
+            _ => throw DynamoValueRules.NumberRefusal(string.Empty, fault, enveloped: false),
+        };
     }
 
     private DynamoValue Evaluate(SetOperand operand, Dictionary<string, DynamoValue> before)
@@ -301,14 +314,14 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
     /// <summary>
     /// An operand of the wrong type. A value the expression itself supplies is refused as an
     /// invalid UpdateExpression (inside the envelope), or bare for a PartiQL statement; a value
-    /// read from the stored item is refused as an operand of the wrong type, as DynamoDB refuses it
-    /// only once it has read the item.
+    /// read from the stored item is refused as an operand of the wrong type, by an UpdateExpression
+    /// and a PartiQL UPDATE alike, as DynamoDB refuses it only once it has read the item.
     /// </summary>
     private DynamoDbException IncorrectOperand(string operatorOrFunction, DynamoType type, SetOperand operand) =>
-        Member != "UpdateExpression"
-            ? DynamoDbErrors.Validation($"Incorrect operand type for operator or function; operator or function: {operatorOrFunction}, operand type: {type}")
-            : ReadsItem(operand)
-                ? DynamoDbErrors.Validation(IncorrectOperandType)
+        ReadsItem(operand) && Member is "UpdateExpression" or PartiQL.PartiQLParser.UpdateMember
+            ? DynamoDbErrors.Validation(IncorrectOperandType)
+            : Member != "UpdateExpression"
+                ? DynamoDbErrors.Validation($"Incorrect operand type for operator or function; operator or function: {operatorOrFunction}, operand type: {type}")
                 : ExpressionErrors.IncorrectOperand(Member, operatorOrFunction, type);
 
     /// <summary>Whether an operand's value came from the stored item rather than from the expression.</summary>
@@ -373,7 +386,7 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
         };
     }
 
-    private bool Delete(DeleteAction action, Dictionary<string, DynamoValue> before, Dictionary<string, DynamoValue> item)
+    private bool Delete(DeleteAction action, Dictionary<string, DynamoValue> before, Dictionary<string, DynamoValue> item, bool itemExists)
     {
         var value = action.Value;
         if (value.IsSet && value.SetCount == 0)
@@ -387,7 +400,7 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
             throw OperandTypeFor("DELETE", "ALLOWED_FOR_ADD_OPERAND", value);
         }
 
-        if (action.Path.CrossesNonContainer(before))
+        if (itemExists ? action.Path.IsInvalidForUpdate(before) : action.Path.CrossesNonContainer(before))
         {
             throw DynamoDbErrors.Validation(DocumentPath.InvalidForUpdate);
         }
@@ -468,7 +481,13 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
                     actions.Add(update.Value is null ? new RemoveAction(path) : new DeleteAction(path, update.Value));
                     break;
                 case "ADD":
-                    actions.Add(new AddAction(path, Required(name, update)));
+                    var added = Required(name, update);
+                    if (added.Type is not (DynamoType.N or DynamoType.NS or DynamoType.SS or DynamoType.BS or DynamoType.L))
+                    {
+                        throw DynamoDbErrors.ValidationClause($"One or more parameter values were invalid: ADD action is not supported for the type {added.Type}");
+                    }
+
+                    actions.Add(new AddAction(path, added));
                     break;
                 default:
                     throw DynamoDbErrors.Validation($"One or more parameter values were invalid: Unknown AttributeUpdates action: {update.Action} for attribute {name}");

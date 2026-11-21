@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_s3x_s3express_session_and_listing_readonly_session_put_denied.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +21,7 @@ public sealed class S3xS3expressSessionAndListingReadonlySessionPutDenied
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var bucket = await S3Fidelity.DirectoryBucket(ctx, s3, "sim2real-s3x-ro-");
+        var bucket = await S3Fidelity.DirectoryBucket(ctx, ctx.S3Control, "sim2real-s3x-ro-");
         const string key = "ro/target.txt";
         var original = "written-by-readwrite-v1"u8.ToArray();
         var replacement = "attempted-by-readonly-v2"u8.ToArray();

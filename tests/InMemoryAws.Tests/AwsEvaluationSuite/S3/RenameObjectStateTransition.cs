@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_rename_object_state_transition.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -18,7 +18,7 @@ public sealed class RenameObjectStateTransition
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, s3, FidelityContext.UniqueName("sim2realdb"), S3Fidelity.ExpressZoneIds[ctx.Region]);
+        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, FidelityContext.UniqueName("sim2realdb"), S3Fidelity.ExpressZoneIds[ctx.Region]);
         const string srcKey = "src-object.txt";
         const string dstKey = "dst-object.txt";
         var body = "rename-me-content"u8.ToArray();
