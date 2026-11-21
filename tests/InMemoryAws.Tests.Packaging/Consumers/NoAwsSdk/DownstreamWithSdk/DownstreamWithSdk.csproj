@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Gets InMemoryAws through Lib, and references the AWS SDK itself. -->
+  <ItemGroup>
+    <ProjectReference Include="../Lib/Lib.csproj" />
+    <PackageReference Include="AWSSDK.SQS" />
+  </ItemGroup>
+</Project>

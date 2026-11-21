@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="InMemoryAws" />
+    <PackageReference Include="AWSSDK.SQS" />
+    <InternalsVisibleTo Include="Tests" />
+  </ItemGroup>
+</Project>

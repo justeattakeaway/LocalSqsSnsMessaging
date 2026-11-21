@@ -6,8 +6,13 @@
     (PackageReference, transitively, packages.config or a plain assembly reference), so the code
     compiles against whichever AWS SDK version (3.7 or 4) the project uses.
 
-    Set InMemoryAwsSdkSources to false to add none of them, for example when two projects that both
-    reference InMemoryAws see each other's internals (InternalsVisibleTo), or to wire clients by hand.
+    NuGet imports this file (through buildTransitive/InMemoryAws.targets) into every project that gets
+    InMemoryAws, directly or through a project or package reference, so each of them that references the
+    AWS SDK compiles its own internal copy.
+
+    Set InMemoryAwsSdkSources to false to add none of them: in a project that sees the internals of
+    another project with a copy (InternalsVisibleTo), which would otherwise make every call ambiguous
+    (CS0121), or to wire clients by hand.
   -->
   <PropertyGroup>
     <InMemoryAwsSdkSources Condition=" '$(InMemoryAwsSdkSources)' == '' ">true</InMemoryAwsSdkSources>

@@ -126,7 +126,8 @@ function DotNetPack {
 $awsSdkV3Tests = Join-Path $solutionPath "tests" "InMemoryAws.Tests.AwsSdkV3" "InMemoryAws.Tests.AwsSdkV3.csproj"
 $testProjects = @(
     @{ Project = (Join-Path $solutionPath "tests" "InMemoryAws.Tests" "InMemoryAws.Tests.csproj") },
-    @{ Project = $awsSdkV3Tests; Framework = "net10.0" }
+    @{ Project = $awsSdkV3Tests; Framework = "net10.0" },
+    @{ Project = (Join-Path $solutionPath "tests" "InMemoryAws.Tests.Packaging" "InMemoryAws.Tests.Packaging.csproj") }
 )
 
 # .NET Framework test runs need Windows.

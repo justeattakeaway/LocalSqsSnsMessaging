@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Sees Shared's internals, so Shared's copy of the AWS SDK glue too. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <InMemoryAwsSdkSources Condition=" '$(OptOut)' == 'true' ">false</InMemoryAwsSdkSources>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Shared/Shared.csproj" />
+  </ItemGroup>
+</Project>
