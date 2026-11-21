@@ -17,6 +17,23 @@ internal static class AwsJsonReader
         }
     }
 
+    /// <summary>
+    /// A map member, as DynamoDB's service framework reads one: a scalar is an "Unexpected field
+    /// type", and an array is refused with no message at all.
+    /// </summary>
+    public static void ExpectMap(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                return;
+            case JsonValueKind.Array:
+                throw new InternalSerializationException(string.Empty);
+            default:
+                throw new InternalSerializationException("Unexpected field type");
+        }
+    }
+
     public static void ExpectArray(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Array)

@@ -184,7 +184,8 @@ internal static class DynamoDbWireProtocol
             writer.WriteString("__type", $"{ErrorNamespace(code)}#{code}");
             if (message.Length > 0)
             {
-                writer.WriteString("message", message);
+                // The service framework's SerializationException names its member as coral does.
+                writer.WriteString(code == "SerializationException" ? "Message" : "message", message);
             }
 
             members?.WriteMembers(writer);

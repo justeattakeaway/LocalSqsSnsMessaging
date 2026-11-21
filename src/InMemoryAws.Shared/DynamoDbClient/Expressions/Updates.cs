@@ -301,14 +301,14 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
     /// <summary>
     /// An operand of the wrong type. A value the expression itself supplies is refused as an
     /// invalid UpdateExpression (inside the envelope), or bare for a PartiQL statement; a value
-    /// read from the stored item is refused as an operand of the wrong type, as DynamoDB refuses it
-    /// only once it has read the item.
+    /// read from the stored item is refused as an operand of the wrong type, by an UpdateExpression
+    /// and a PartiQL UPDATE alike, as DynamoDB refuses it only once it has read the item.
     /// </summary>
     private DynamoDbException IncorrectOperand(string operatorOrFunction, DynamoType type, SetOperand operand) =>
-        Member != "UpdateExpression"
-            ? DynamoDbErrors.Validation($"Incorrect operand type for operator or function; operator or function: {operatorOrFunction}, operand type: {type}")
-            : ReadsItem(operand)
-                ? DynamoDbErrors.Validation(IncorrectOperandType)
+        ReadsItem(operand) && Member is "UpdateExpression" or PartiQL.PartiQLParser.UpdateMember
+            ? DynamoDbErrors.Validation(IncorrectOperandType)
+            : Member != "UpdateExpression"
+                ? DynamoDbErrors.Validation($"Incorrect operand type for operator or function; operator or function: {operatorOrFunction}, operand type: {type}")
                 : ExpressionErrors.IncorrectOperand(Member, operatorOrFunction, type);
 
     /// <summary>Whether an operand's value came from the stored item rather than from the expression.</summary>

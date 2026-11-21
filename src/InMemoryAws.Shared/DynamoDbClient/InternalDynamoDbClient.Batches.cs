@@ -378,6 +378,9 @@ internal sealed partial class InternalDynamoDbClient
         /// <summary>An Update of an absent item that only takes things away, which writes nothing.</summary>
         public bool CreatesNothing { get; init; }
 
+        /// <summary>The refusal an Update met applying itself to the stored item, reported once its condition holds.</summary>
+        public string? UpdateFailure { get; init; }
+
         public bool Check => After is null && !Delete && !CreatesNothing;
     }
 
@@ -441,9 +444,11 @@ internal sealed partial class InternalDynamoDbClient
             foreach (var write in writes)
             {
                 var holds = write.Condition is null || InElement(() => write.Condition.Evaluate(write.Old));
-                reasons.Add(holds
-                    ? CancellationReason.None
-                    : new CancellationReason("ConditionalCheckFailed", DynamoDbConditionalCheckFailedException.DefaultMessage, write.ReturnValuesOnConditionCheckFailure == "ALL_OLD" ? write.Old : null));
+                reasons.Add(!holds
+                    ? new CancellationReason("ConditionalCheckFailed", DynamoDbConditionalCheckFailedException.DefaultMessage, write.ReturnValuesOnConditionCheckFailure == "ALL_OLD" ? write.Old : null)
+                    : write.UpdateFailure is { } failure
+                        ? new CancellationReason("ValidationError", failure)
+                        : CancellationReason.None);
             }
 
             if (reasons.Any(r => r.Code != "None"))
@@ -453,6 +458,7 @@ internal sealed partial class InternalDynamoDbClient
 
             var units = new Dictionary<DynamoTable, (double Table, Dictionary<string, double> Indexes)>();
             var vectorBytes = new Dictionary<DynamoTable, Dictionary<string, double>>();
+            var metrics = new Dictionary<string, List<ItemCollectionMetrics>>(StringComparer.Ordinal);
             foreach (var write in writes)
             {
                 if (write.Delete)
@@ -480,6 +486,10 @@ internal sealed partial class InternalDynamoDbClient
                     }
 
                     AddVectorWriteBytes(vectorBytes, write.Table, write.Old, write.Delete ? null : write.After);
+                    if (CollectionMetrics(request.ReturnItemCollectionMetrics, write.Table, write.Key) is { } metric)
+                    {
+                        (metrics.TryGetValue(write.Table.Name, out var list) ? list : metrics[write.Table.Name] = []).Add(metric);
+                    }
                 }
 
                 units[write.Table] = (tableUnits, indexUnits);
@@ -495,6 +505,7 @@ internal sealed partial class InternalDynamoDbClient
             return Task.FromResult(new TransactWriteItemsResponse
             {
                 ConsumedCapacity = capacity.Count > 0 ? capacity : null,
+                ItemCollectionMetrics = metrics.Count > 0 ? metrics : null,
             });
         }
     }
@@ -572,6 +583,7 @@ internal sealed partial class InternalDynamoDbClient
         var old = table.Get(key);
         var after = action.Item;
         var createsNothing = false;
+        string? updateFailure = null;
         if (action.Update is { } update)
         {
             foreach (var change in update.Actions)
@@ -591,7 +603,23 @@ internal sealed partial class InternalDynamoDbClient
             }
 
             var updated = old is null ? table.KeySchema.ToAttributes(key) : new Dictionary<string, DynamoValue>(old, StringComparer.Ordinal);
-            InElement(() => update.Apply(updated));
+            after = updated;
+            try
+            {
+                InElement(() => update.Apply(updated));
+            }
+            catch (DynamoDbException refusal) when (refusal.ErrorCode == "ValidationException" && IsStoredItemRefusal(refusal.Message))
+            {
+                // What only the stored item makes wrong (an operand of the wrong type, a path
+                // through a scalar) cancels the transaction with this element's own reason, once
+                // its condition is known to hold.
+                updateFailure = refusal.Message;
+            }
+        }
+
+        if (action.Update is { } applied && updateFailure is null)
+        {
+            var updated = after!;
             if (DynamoValueRules.ExceedsDepth(updated))
             {
                 throw DynamoDbErrors.Validation(DynamoValueRules.NestingExceeded);
@@ -603,8 +631,12 @@ internal sealed partial class InternalDynamoDbClient
             CheckIndexKeyValues(table, updated, update: true);
 
             // As UpdateItem: an update whose every action only takes something away adds no item where there was none.
-            createsNothing = old is null && update.Actions.Count > 0 && updated.Keys.All(table.KeySchema.IsKeyAttribute);
+            createsNothing = old is null && applied.Actions.Count > 0 && updated.Keys.All(table.KeySchema.IsKeyAttribute);
             after = createsNothing ? null : updated;
+        }
+        else if (updateFailure is not null)
+        {
+            after = null;
         }
 
         if (earlier.Any(w => ReferenceEquals(w.Table, table) && w.Key.Equals(key)))
@@ -622,8 +654,13 @@ internal sealed partial class InternalDynamoDbClient
             After = after,
             Delete = action.Delete,
             CreatesNothing = createsNothing,
+            UpdateFailure = updateFailure,
         };
     }
+
+    /// <summary>Whether an update's refusal comes from the stored item it met rather than from the request.</summary>
+    private static bool IsStoredItemRefusal(string message) =>
+        message is UpdateProgram.IncorrectOperandType or DocumentPath.InvalidForUpdate or UpdateProgram.MissingOperandAttribute;
 
     /// <summary>A replayed transaction's capacity: the transactional read of each item it addresses.</summary>
     private List<ConsumedCapacity>? ReplayCapacity(string? returnConsumedCapacity, List<TransactAction> actions)
