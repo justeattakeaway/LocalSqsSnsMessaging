@@ -19,6 +19,23 @@ public static partial class S3Fidelity
         byte[] fileBytes,
         string? fileContentType = null)
     {
+        var (status, _, body) = await PostFormAnswer(ctx, url, fields, fileName, fileBytes, fileContentType);
+        return (status, body);
+    }
+
+    /// <summary>
+    /// <see cref="PostForm"/>, sending <paramref name="extraHeaders"/> too (a browser's <c>Origin</c>), and
+    /// answering the response's headers (lower-case names) as well.
+    /// </summary>
+    public static async Task<(int Status, Dictionary<string, string> Headers, byte[] Body)> PostFormAnswer(
+        FidelityContext ctx,
+        string url,
+        IReadOnlyList<KeyValuePair<string, string>> fields,
+        string fileName,
+        byte[] fileBytes,
+        string? fileContentType = null,
+        IReadOnlyDictionary<string, string>? extraHeaders = null)
+    {
         ArgumentNullException.ThrowIfNull(fields);
         ArgumentNullException.ThrowIfNull(fileBytes);
         var boundary = $"----sim2real{Guid.NewGuid():N}";
@@ -39,12 +56,17 @@ public static partial class S3Fidelity
             ["Content-Type"] = $"multipart/form-data; boundary={boundary}",
             ["Content-Length"] = bytes.Length.ToString(System.Globalization.CultureInfo.InvariantCulture),
         };
+        foreach (var (name, value) in extraHeaders ?? new Dictionary<string, string>())
+        {
+            headers[name] = value;
+        }
+
         var (status, answered, answer) = await Send(ctx, "POST", url, headers, bytes);
         if (status == 307 && answered.TryGetValue("location", out var location))
         {
-            (status, _, answer) = await Send(ctx, "POST", location, headers, bytes);
+            (status, answered, answer) = await Send(ctx, "POST", location, headers, bytes);
         }
 
-        return (status, answer);
+        return (status, answered, answer);
     }
 }

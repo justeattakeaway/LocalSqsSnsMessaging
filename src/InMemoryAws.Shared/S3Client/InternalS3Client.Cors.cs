@@ -13,8 +13,11 @@ namespace InMemoryAws.S3;
 /// A preflight is answered from the first rule that allows its origin, its
 /// <c>Access-Control-Request-Method</c> and every header in its <c>Access-Control-Request-Headers</c>:
 /// 200 with the rule's <c>Access-Control-*</c> headers and no body. A bucket without CORS rules, or a
-/// preflight no rule allows, is refused 403 <c>AccessForbidden</c> with no <c>Access-Control-*</c>
-/// headers. Preflights are anonymous, so no bucket policy applies to them.
+/// preflight no rule allows (one naming no method among them), is refused 403 <c>AccessForbidden</c>
+/// with no <c>Access-Control-*</c> headers. Preflights are anonymous, so neither a signature (a
+/// preflight to a presigned URL carries the actual request's) nor a bucket policy applies to them.
+/// An actual request with an <c>Origin</c> a rule allows gets the rule's headers whether it succeeds
+/// or is refused, so a page's script can read the refusal.
 /// </remarks>
 internal sealed partial class InternalS3Client
 {
@@ -109,11 +112,8 @@ internal sealed partial class InternalS3Client
             throw S3Errors.InvalidArgument("Insufficient information. Origin request header needed.");
         }
 
-        if (request.Header("Access-Control-Request-Method") is not { Length: > 0 } method)
-        {
-            throw S3Errors.InvalidArgument("Invalid Access-Control-Request-Method: null");
-        }
-
+        // A preflight that names no method is one no rule allows.
+        var method = request.Header("Access-Control-Request-Method") is { Length: > 0 } requested ? requested : null;
         var resourceType = request.PathKind == S3PathKind.Object ? "OBJECT" : "BUCKET";
         CORSRule? matched = null;
         string[] requestedHeaders;
@@ -137,7 +137,8 @@ internal sealed partial class InternalS3Client
                 .ToArray();
             foreach (var rule in rules)
             {
-                if (rule.AllowedMethods!.Contains(method, StringComparer.Ordinal)
+                if (method is not null
+                    && rule.AllowedMethods!.Contains(method, StringComparer.Ordinal)
                     && rule.AllowedOrigins!.Exists(allowed => WildcardMatch(allowed, origin, ignoreCase: false))
                     && Array.TrueForAll(requestedHeaders, h => (rule.AllowedHeaders ?? []).Exists(allowed => WildcardMatch(allowed, h, ignoreCase: true))))
                 {

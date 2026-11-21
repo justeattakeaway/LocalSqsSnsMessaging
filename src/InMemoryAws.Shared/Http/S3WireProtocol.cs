@@ -35,9 +35,17 @@ internal static partial class S3WireProtocol
         System.Diagnostics.Activity? activity = null;
 #endif
         Exception? failure = null;
+
+        // A browser's preflight is anonymous: one sent to a presigned URL carries the signature of the
+        // request it asks about, which S3 doesn't check.
+        var preflight = request.Method == "OPTIONS" && request.PathKind != S3PathKind.Service;
         try
         {
-            S3RequestAuthentication.Check(request, cloud);
+            if (!preflight)
+            {
+                S3RequestAuthentication.Check(request, cloud);
+            }
+
             S3ChunkedBody.Decode(request);
 
             // S3's front end refuses a NUL in an object key before any operation sees it: a bare 400,
@@ -49,7 +57,7 @@ internal static partial class S3WireProtocol
 
             operation = IsDirectoryBucketControl(request) && request.PathKind == S3PathKind.Service && request.Method == "GET"
                 ? "ListDirectoryBuckets"
-                : request.Method == "OPTIONS" && request.PathKind != S3PathKind.Service ? "PreflightRequest"
+                : preflight ? "PreflightRequest"
                 : InternalS3Client.IsPostObject(request) ? "PostObject" : Route(request);
             if (operation is null)
             {
@@ -109,11 +117,21 @@ internal static partial class S3WireProtocol
             failure = ex;
             response = Error(ex.ErrorCode ?? "InternalError", ex.Message, ex.StatusCode, ex.Details, ex.Headers, requestId);
             InternalS3Client.AddDirectoryBucketRegion(request, cloud, response);
+
+            // A refusal of an actual cross-origin request carries the CORS rule's grant, as a success does.
+            if (!preflight)
+            {
+                InternalS3Client.AddCorsHeaders(request, cloud, response);
+            }
         }
         catch (AwsServiceException ex)
         {
             failure = ex;
             response = Error(ex.ErrorCode ?? "InternalError", ex.Message, ex.StatusCode, [], [], requestId);
+            if (!preflight)
+            {
+                InternalS3Client.AddCorsHeaders(request, cloud, response);
+            }
         }
 #pragma warning disable CA1031 // Any other failure is an internal error, answered in the protocol.
         catch (Exception ex)
