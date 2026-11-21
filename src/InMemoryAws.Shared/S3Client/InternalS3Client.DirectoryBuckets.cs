@@ -191,9 +191,10 @@ internal sealed partial class InternalS3Client
     }
 
     /// <summary>
-    /// Refuses what a directory bucket doesn't support: object tags (<c>NotImplemented</c>), and the
-    /// versioning, notification and replication configurations, whose documents S3 reads as a
-    /// malformed <c>CreateBucketConfiguration</c> (<c>InvalidArgument</c>).
+    /// Refuses what a directory bucket doesn't support: object tags (<c>NotImplemented</c>), the
+    /// versioning, notification, replication and Transfer Acceleration configurations, whose documents
+    /// S3 reads as a malformed <c>CreateBucketConfiguration</c> (<c>InvalidArgument</c>), and reading
+    /// Transfer Acceleration (<c>MethodNotAllowed</c>).
     /// </summary>
     private static void CheckDirectoryOperation(string? operation)
     {
@@ -207,6 +208,10 @@ internal sealed partial class InternalS3Client
                 throw S3Errors.InvalidArgument("NotificationConfiguration is not valid, expected CreateBucketConfiguration");
             case "PutBucketReplication":
                 throw S3Errors.InvalidArgument("ReplicationConfiguration is not valid, expected CreateBucketConfiguration");
+            case "PutBucketAccelerateConfiguration":
+                throw S3Errors.InvalidArgument("AccelerateConfiguration is not valid, expected CreateBucketConfiguration");
+            case "GetBucketAccelerateConfiguration":
+                throw S3Errors.MethodNotAllowed("GET", "BUCKET");
         }
     }
 

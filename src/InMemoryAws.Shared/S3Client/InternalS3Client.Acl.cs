@@ -352,7 +352,8 @@ internal sealed partial class InternalS3Client
 
     /// <summary>
     /// The ACL a request asks for, from a canned ACL, grant headers or an access control policy
-    /// document; null when it asks for none. A canned ACL and grant headers together are refused.
+    /// document; null when it asks for none. A canned ACL and grant headers together are refused, as is
+    /// either one with a policy document (<c>UnexpectedContent</c>).
     /// </summary>
     private static List<Grant>? RequestedAcl(
         string? canned,
@@ -376,6 +377,12 @@ internal sealed partial class InternalS3Client
         if (canned is not null && hasHeaderGrants)
         {
             throw S3Errors.InvalidRequest("Specifying both Canned ACLs and Header Grants is not allowed");
+        }
+
+        // An ACL in the headers leaves the request no room for an access control policy body.
+        if ((canned is not null || hasHeaderGrants) && policy is not null)
+        {
+            throw new S3Exception("UnexpectedContent", "This request does not support content", HttpStatusCode.BadRequest);
         }
 
         if (canned is not null)

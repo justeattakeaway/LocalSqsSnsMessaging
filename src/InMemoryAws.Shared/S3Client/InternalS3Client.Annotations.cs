@@ -29,6 +29,7 @@ internal sealed partial class InternalS3Client
         {
             var bucket = GetBucket(request.Bucket);
             var version = AnnotatedVersion(bucket, request.Key, request.VersionId);
+            CheckObjectIfMatch(version, request.ObjectIfMatch);
             var annotations = version.Annotations ??= new SortedDictionary<string, S3Annotation>(S3KeyComparer.Instance);
             if (!annotations.ContainsKey(name) && annotations.Count >= MaxAnnotations)
             {
@@ -82,6 +83,7 @@ internal sealed partial class InternalS3Client
         {
             var bucket = GetBucket(request.Bucket);
             var version = AnnotatedVersion(bucket, request.Key, request.VersionId);
+            CheckObjectIfMatch(version, request.ObjectIfMatch);
             version.Annotations?.Remove(name);
             return Task.FromResult(new DeleteObjectAnnotationOutput());
         }
@@ -152,6 +154,18 @@ internal sealed partial class InternalS3Client
 
         var current = bucket.Current(checkedKey);
         return current is null || current.IsDeleteMarker ? throw S3Errors.NoSuchKey(checkedKey) : current;
+    }
+
+    /// <summary>
+    /// Put and DeleteObjectAnnotation's <c>x-amz-object-if-match</c>: the annotated version's ETag must
+    /// be one it names (<c>PreconditionFailed</c> otherwise).
+    /// </summary>
+    private static void CheckObjectIfMatch(S3ObjectVersion version, string? objectIfMatch)
+    {
+        if (objectIfMatch is not null && !ETagMatches(objectIfMatch, version.ETag))
+        {
+            throw S3Errors.PreconditionFailed("x-amz-object-if-match");
+        }
     }
 
     /// <summary>

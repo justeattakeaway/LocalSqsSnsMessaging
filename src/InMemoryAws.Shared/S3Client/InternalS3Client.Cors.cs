@@ -25,14 +25,19 @@ internal sealed partial class InternalS3Client
     /// <summary>
     /// Replaces the bucket's CORS rules. Each rule needs at least one allowed method and origin; a
     /// method S3 can't allow is <c>InvalidRequest</c>, an origin or header with more than one
-    /// <c>*</c> is <c>InvalidRequest</c>, and more than 100 rules is <c>MalformedXML</c>.
+    /// <c>*</c> is <c>InvalidRequest</c>, as is more than 100 rules.
     /// </summary>
     public override Task<PutBucketCorsOutput> PutBucketCorsAsync(PutBucketCorsRequest request, CancellationToken cancellationToken)
     {
         var rules = request.CORSConfiguration?.CORSRules;
-        if (rules is null || rules.Count == 0 || rules.Count > MaxCorsRules)
+        if (rules is null || rules.Count == 0)
         {
             throw S3Errors.MalformedXml();
+        }
+
+        if (rules.Count > MaxCorsRules)
+        {
+            throw S3Errors.InvalidRequest($"The number of CORS rules should not exceed allowed limit of {MaxCorsRules} rules.");
         }
 
         foreach (var rule in rules)

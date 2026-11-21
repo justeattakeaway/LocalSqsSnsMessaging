@@ -261,7 +261,7 @@ internal sealed partial class InternalS3Client
         var replaceMetadata = request.MetadataDirective == "REPLACE";
         var replaceTags = request.TaggingDirective == "REPLACE";
         var newAlgorithm = request.ChecksumAlgorithm is null ? null : S3Checksums.Normalize(request.ChecksumAlgorithm)
-            ?? throw S3Errors.InvalidRequest("Checksum algorithm provided is unsupported. Please try again with any of the valid types: [CRC32, CRC32C, CRC64NVME, SHA1, SHA256]");
+            ?? throw S3Errors.InvalidRequest("Checksum algorithm provided is unsupported. Please try again with any of the valid types: [CRC32, CRC32C, CRC64NVME, MD5, SHA1, SHA256, SHA512, XXHASH128, XXHASH3, XXHASH64]");
         var storageClass = request.StorageClass is null ? null : CheckStorageClass(request.StorageClass);
 
         lock (Store.Gate)
@@ -808,7 +808,7 @@ internal sealed partial class InternalS3Client
         if (algorithm is null && sdkAlgorithm is not null)
         {
             algorithm = S3Checksums.Normalize(sdkAlgorithm)
-                ?? throw S3Errors.InvalidRequest("Checksum algorithm provided is unsupported. Please try again with any of the valid types: [CRC32, CRC32C, CRC64NVME, SHA1, SHA256]");
+                ?? throw S3Errors.InvalidRequest("Checksum algorithm provided is unsupported. Please try again with any of the valid types: [CRC32, CRC32C, CRC64NVME, MD5, SHA1, SHA256, SHA512, XXHASH128, XXHASH3, XXHASH64]");
             value = S3Checksums.Compute(algorithm, data);
         }
 

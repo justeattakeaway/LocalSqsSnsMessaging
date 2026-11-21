@@ -125,12 +125,15 @@ internal sealed partial class InternalS3Client
     private static S3Exception NoSuchBucketPolicy(S3Bucket bucket) =>
         new("NoSuchBucketPolicy", "The bucket policy does not exist", HttpStatusCode.NotFound, ("BucketName", bucket.Name));
 
+    /// <summary>The largest bucket policy S3 keeps, in bytes once whitespace is removed.</summary>
+    private const int MaxBucketPolicyBytes = 20480;
+
     private static S3Exception MalformedPolicy(string message) =>
         new("MalformedPolicy", message, HttpStatusCode.BadRequest);
 
     /// <summary>
-    /// Refuses a policy document S3 can't use: not a JSON object, no statements, a statement without
-    /// a valid <c>Effect</c>, an action outside S3, or a resource outside this bucket.
+    /// Refuses a policy document S3 can't use: not a JSON object, over 20 KB, no statements, a
+    /// statement without a valid <c>Effect</c>, an action outside S3, or a resource outside this bucket.
     /// </summary>
     private static void ValidateBucketPolicy(S3Bucket bucket, string text)
     {
@@ -148,6 +151,12 @@ internal sealed partial class InternalS3Client
         if (document is null)
         {
             throw MalformedPolicy("Policies must be valid JSON and the first byte must be '{'");
+        }
+
+        // The size limit applies to the document with its insignificant whitespace removed.
+        if (System.Text.Encoding.UTF8.GetByteCount(document.ToJsonString()) > MaxBucketPolicyBytes)
+        {
+            throw MalformedPolicy($"Normalized policy document exceeds the maximum allowed size of {MaxBucketPolicyBytes} bytes");
         }
 
         var statements = document["Statement"] switch

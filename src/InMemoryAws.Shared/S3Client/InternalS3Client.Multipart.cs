@@ -17,7 +17,7 @@ internal sealed partial class InternalS3Client
     public override Task<CreateMultipartUploadOutput> CreateMultipartUploadAsync(CreateMultipartUploadRequest request, CancellationToken cancellationToken)
     {
         var algorithm = request.ChecksumAlgorithm is null ? null : S3Checksums.Normalize(request.ChecksumAlgorithm)
-            ?? throw S3Errors.InvalidRequest("Checksum algorithm provided is unsupported. Please try again with any of the valid types: [CRC32, CRC32C, CRC64NVME, SHA1, SHA256]");
+            ?? throw S3Errors.InvalidRequest("Checksum algorithm provided is unsupported. Please try again with any of the valid types: [CRC32, CRC32C, CRC64NVME, MD5, SHA1, SHA256, SHA512, XXHASH128, XXHASH3, XXHASH64]");
         var checksumType = request.ChecksumType;
         if (checksumType is not (null or "COMPOSITE" or "FULL_OBJECT"))
         {
