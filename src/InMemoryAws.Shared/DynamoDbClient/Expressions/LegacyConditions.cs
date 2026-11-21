@@ -89,9 +89,20 @@ internal static class LegacyConditions
             throw DynamoDbErrors.InvalidParameter($"ComparisonOperator {op} is not valid for {bad.Type} AttributeValue type");
         }
 
+        // CONTAINS and NOT_CONTAINS look for one scalar (BOOL and NULL included, which match nothing); IN's candidates are scalars.
+        if (op is "CONTAINS" or "NOT_CONTAINS" && operands[0].Type is DynamoType.SS or DynamoType.NS or DynamoType.BS or DynamoType.M or DynamoType.L)
+        {
+            throw DynamoDbErrors.InvalidParameter($"ComparisonOperator {op} is not valid for {operands[0].Type} AttributeValue type");
+        }
+
+        if (op == "IN" && operands.FirstOrDefault(o => o.Type is DynamoType.SS or DynamoType.NS or DynamoType.BS) is { } set)
+        {
+            throw DynamoDbErrors.InvalidParameter($"ComparisonOperator {op} is not valid for {set.Type} AttributeValue type");
+        }
+
         if (op == "BETWEEN" && operands[0].Type == operands[1].Type && DynamoKeyOrder.Compare(operands[0], operands[1]) > 0)
         {
-            throw DynamoDbErrors.Validation($"The BETWEEN operator requires upper bound to be greater than or equal to lower bound; lower bound operand: AttributeValue: {Brief(operands[0])}, upper bound operand: AttributeValue: {Brief(operands[1])}");
+            throw DynamoDbErrors.InvalidParameter("The BETWEEN condition was provided a range where the lower bound is greater than the upper bound");
         }
     }
 
