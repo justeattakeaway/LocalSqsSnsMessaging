@@ -4,7 +4,7 @@ Every check in the tracked directories of AWS's [emulator evaluation suite](http
 and what became of it here. `tools/SyncEvaluationSuite` writes this file from upstream and the
 ports' headers; see [README.md](README.md#keeping-up-with-upstream) for how to update the suite.
 
-Pinned commit: [`4df2823`](https://github.com/aws/aws-emulator-evaluation-suite/tree/4df2823bafface2ada35f482c07ff6668cc078e1) (`4df2823bafface2ada35f482c07ff6668cc078e1`)
+Pinned commit: [`abd0811`](https://github.com/aws/aws-emulator-evaluation-suite/tree/abd08117ad242c3e244125df9d525c41eb6f7d91) (`abd08117ad242c3e244125df9d525c41eb6f7d91`)
 
 Edit by hand only:
 
@@ -23,25 +23,26 @@ the port). The *Last changed* column is the last upstream commit to change the c
 
 | Directory | Checks | Ported | Known gaps | Not ported | To do |
 |---|---:|---:|---:|---:|---:|
-| [`dynamodb`](#behavioraldynamodb) | 886 | 837 | 11 | 49 | 0 |
+| [`dynamodb`](#behavioraldynamodb) | 1156 | 837 | 11 | 49 | 270 |
 | [`dynamodbstreams`](#behavioraldynamodbstreams) | 16 | 16 | 0 | 0 | 0 |
+| [`dynamodb__dynamodbstreams`](#behavioraldynamodb__dynamodbstreams) | 1 | 0 | 0 | 0 | 1 |
 | [`eventbridgev2`](#behavioraleventbridgev2) | 17 | 0 | 0 | 17 | 0 |
 | [`eventbridgev2__iam__sns__sqs`](#behavioraleventbridgev2__iam__sns__sqs) | 2 | 0 | 0 | 2 | 0 |
 | [`eventbridgev2__iam__sqs`](#behavioraleventbridgev2__iam__sqs) | 21 | 0 | 0 | 21 | 0 |
-| [`events`](#behavioralevents) | 200 | 179 | 4 | 21 | 0 |
+| [`events`](#behavioralevents) | 216 | 179 | 4 | 21 | 16 |
 | [`events__iam__lambda__sqs`](#behavioralevents__iam__lambda__sqs) | 1 | 0 | 0 | 1 | 0 |
 | [`events__iam__sns__sqs__sts`](#behavioralevents__iam__sns__sqs__sts) | 1 | 0 | 0 | 1 | 0 |
 | [`events__iam__sqs__stepfunctions`](#behavioralevents__iam__sqs__stepfunctions) | 3 | 0 | 0 | 3 | 0 |
 | [`events__iam__sts`](#behavioralevents__iam__sts) | 1 | 0 | 0 | 1 | 0 |
-| [`events__sqs`](#behavioralevents__sqs) | 54 | 53 | 1 | 1 | 0 |
-| [`sns`](#behavioralsns) | 245 | 207 | 1 | 38 | 0 |
-| [`sns__sqs`](#behavioralsns__sqs) | 12 | 12 | 0 | 0 | 0 |
-| [`sqs`](#behavioralsqs) | 306 | 271 | 3 | 35 | 0 |
-| [`s3`](#behaviorals3) | 481 | 465 | 2 | 16 | 0 |
-| [`s3__sqs`](#behaviorals3__sqs) | 16 | 13 | 0 | 3 | 0 |
-| [`s3__sns__sqs`](#behaviorals3__sns__sqs) | 2 | 2 | 0 | 0 | 0 |
+| [`events__sqs`](#behavioralevents__sqs) | 60 | 53 | 1 | 1 | 6 |
+| [`sns`](#behavioralsns) | 252 | 207 | 1 | 38 | 7 |
+| [`sns__sqs`](#behavioralsns__sqs) | 14 | 12 | 0 | 0 | 2 |
+| [`sqs`](#behavioralsqs) | 327 | 271 | 3 | 35 | 21 |
+| [`s3`](#behaviorals3) | 539 | 465 | 2 | 16 | 91 |
+| [`s3__sqs`](#behaviorals3__sqs) | 18 | 13 | 0 | 3 | 2 |
+| [`s3__sns__sqs`](#behaviorals3__sns__sqs) | 3 | 2 | 0 | 0 | 1 |
 | [`events__s3__sqs`](#behavioralevents__s3__sqs) | 38 | 37 | 2 | 1 | 0 |
-| **Total** | **2302** | **2092** | **24** | **210** | **0** |
+| **Total** | **2686** | **2092** | **24** | **210** | **417** |
 
 ### Not ported, by reason
 
@@ -111,6 +112,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.batch-execute-statement-condition-and-duplicate-failures-echo-table-name` | `4df2823` | ported | `DynamoDb/BatchExecuteStatementConditionAndDuplicateFailuresEchoTableName.cs` |
 | `dynamodb.batch-execute-statement-condition-failure-returns-item-in-error` | `4df2823` | ported | `DynamoDb/BatchExecuteStatementConditionFailureReturnsItemInError.cs` |
 | `dynamodb.batch-execute-statement-consistent-read-is-billed-per-member` | `4df2823` | ported | `DynamoDb/BatchExecuteStatementConsistentReadIsBilledPerMember.cs` |
+| `dynamodb.batch-execute-statement-explicit-none-return-values-omits-item` | `abd0811` | **new** |  |
 | `dynamodb.batch-execute-statement-index-qualified-select-rejected-per-slot` | `4df2823` | ported | `DynamoDb/BatchExecuteStatementIndexQualifiedSelectRejectedPerSlot.cs` |
 | `dynamodb.batch-execute-statement-malformed-slot-siblings-execute` | `4df2823` | ported | `DynamoDb/BatchExecuteStatementMalformedSlotSiblingsExecute.cs` |
 | `dynamodb.batch-execute-statement-multi-attribute-gsi-select-rejected-per-slot` | `4df2823` | ported | `DynamoDb/BatchExecuteStatementMultiAttributeGsiSelectRejectedPerSlot.cs` |
@@ -119,14 +121,21 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.batch-execute-statement-return-consumed-capacity-enum-rejected` | `4df2823` | ported | `DynamoDb/BatchExecuteStatementReturnConsumedCapacityEnumRejected.cs` |
 | `dynamodb.batch-execute-statement-returning-delete-old-and-update-remove-modified-new` | `4df2823` | ported | `DynamoDb/BatchExecuteStatementReturningDeleteOldAndUpdateRemoveModifiedNew.cs` |
 | `dynamodb.batch-execute-statement-returning-update-vs-delete-rejected` | `4df2823` | ported | `DynamoDb/BatchExecuteStatementReturningUpdateVsDeleteRejected.cs` |
+| `dynamodb.batch-execute-statement-select-absent-key-slot-carries-neither-item-nor-error` | `abd0811` | **new** |  |
+| `dynamodb.batch-execute-statement-select-missing-parameter-is-a-slot-error` | `abd0811` | **new** |  |
 | `dynamodb.batch-execute-statement-set-add-no-error-slot` | `4df2823` | ported | `DynamoDb/BatchExecuteStatementSetAddNoErrorSlot.cs` |
 | `dynamodb.batch-execute-statement-throttling-enforced` | `4df2823` | known gap: DynamoDbThroughput | `DynamoDb/BatchExecuteStatementThrottlingEnforced.cs` |
+| `dynamodb.batch-execute-statement-update-stored-type-mismatch-is-a-slot-error-rejected` | `abd0811` | **new** |  |
 | `dynamodb.batch-get-item-always-reports-unprocessed-keys` | `4df2823` | ported | `DynamoDb/BatchGetItemAlwaysReportsUnprocessedKeys.cs` |
+| `dynamodb.batch-get-item-consumed-capacity-itemizes-per-table-and-charges-absent-keys` | `abd0811` | **new** |  |
 | `dynamodb.batch-get-item-duplicate-keys-rejected` | `4df2823` | ported | `DynamoDb/BatchGetItemDuplicateKeysRejected.cs` |
 | `dynamodb.batch-get-item-expression-and-legacy-parameter-rules` | `4df2823` | ported | `DynamoDb/BatchGetItemExpressionAndLegacyParameterRules.cs` |
+| `dynamodb.batch-get-item-full-response-at-max-key-count-returns-exact-capacity` | `abd0811` | **new** |  |
+| `dynamodb.batch-get-item-key-cap-is-aggregate-across-tables-rejected` | `abd0811` | **new** |  |
 | `dynamodb.batch-get-item-multi-table-absent-keys-return-empty-list` | `4df2823` | ported | `DynamoDb/BatchGetItemMultiTableAbsentKeysReturnEmptyList.cs` |
 | `dynamodb.batch-get-item-over-the-hundred-key-cap-rejected` | `4df2823` | ported | `DynamoDb/BatchGetItemOverTheHundredKeyCapRejected.cs` |
 | `dynamodb.batch-get-item-oversized-echoes-consistent-read-in-unprocessed-keys` | `4df2823` | ported | `DynamoDb/BatchGetItemOversizedEchoesConsistentReadInUnprocessedKeys.cs` |
+| `dynamodb.batch-get-item-partial-response-capacity-bounded-by-returned-items` | `abd0811` | **new** |  |
 | `dynamodb.batch-get-item-returns-complete-set` | `4df2823` | ported | `DynamoDb/BatchGetItemReturnsCompleteSet.cs` |
 | `dynamodb.batch-get-item-rounds-each-item-to-4kb-before-summing` | `4df2823` | ported | `DynamoDb/BatchGetItemRoundsEachItemTo4kbBeforeSumming.cs` |
 | `dynamodb.batch-get-item-unknown-table-rejected` | `4df2823` | ported | `DynamoDb/BatchGetItemUnknownTableRejected.cs` |
@@ -138,26 +147,35 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.batch-request-shape-defects-rejected` | `4df2823` | ported | `DynamoDb/BatchRequestShapeDefectsRejected.cs` |
 | `dynamodb.batch-return-options-invalid-enum-rejected` | `4df2823` | ported | `DynamoDb/BatchReturnOptionsInvalidEnumRejected.cs` |
 | `dynamodb.batch-write-duplicate-key-rejected` | `4df2823` | ported | `DynamoDb/BatchWriteDuplicateKeyRejected.cs` |
+| `dynamodb.batch-write-item-aggregate-25-item-limit-spans-every-table-in-the-call` | `abd0811` | **new** |  |
 | `dynamodb.batch-write-item-and-delete-item-index-capacity-arms-follow-item-estate` | `4df2823` | known gap: EmulatorBudget | `DynamoDb/BatchWriteItemAndDeleteItemIndexCapacityArmsFollowItemEstate.cs` |
+| `dynamodb.batch-write-item-capacity-per-table-entries-include-delete-requests` | `abd0811` | **new** |  |
 | `dynamodb.batch-write-item-delete-of-a-missing-item-still-consumes-a-write-unit` | `4df2823` | ported | `DynamoDb/BatchWriteItemDeleteOfAMissingItemStillConsumesAWriteUnit.cs` |
 | `dynamodb.batch-write-item-full-batch-accepted` | `4df2823` | ported | `DynamoDb/BatchWriteItemFullBatchAccepted.cs` |
 | `dynamodb.batch-write-item-gsi-key-type-mismatch-rejected` | `4df2823` | ported | `DynamoDb/BatchWriteItemGsiKeyTypeMismatchRejected.cs` |
+| `dynamodb.batch-write-item-index-capacity-arms-mixed-sparse-lsi-item` | `abd0811` | **new** |  |
 | `dynamodb.batch-write-item-key-defects-message-diverges-from-put-item` | `4df2823` | ported | `DynamoDb/BatchWriteItemKeyDefectsMessageDivergesFromPutItem.cs` |
 | `dynamodb.batch-write-item-mixed-put-delete` | `4df2823` | ported | `DynamoDb/BatchWriteItemMixedPutDelete.cs` |
 | `dynamodb.batch-write-item-multi-table-put-and-delete` | `4df2823` | ported | `DynamoDb/BatchWriteItemMultiTablePutAndDelete.cs` |
 | `dynamodb.batch-write-item-multi-table-unknown-table-rejected` | `4df2823` | ported | `DynamoDb/BatchWriteItemMultiTableUnknownTableRejected.cs` |
+| `dynamodb.batch-write-item-oversized-gsi-partition-key-value-rejected-whole` | `abd0811` | **new** |  |
 | `dynamodb.batch-write-item-oversized-item-among-valid-batch-rejected-whole` | `4df2823` | ported | `DynamoDb/BatchWriteItemOversizedItemAmongValidBatchRejectedWhole.cs` |
 | `dynamodb.batch-write-item-put-and-delete-for-the-same-key-rejected` | `4df2823` | ported | `DynamoDb/BatchWriteItemPutAndDeleteForTheSameKeyRejected.cs` |
 | `dynamodb.batch-write-item-put-request-accepts-32-levels-rejects-33` | `4df2823` | ported | `DynamoDb/BatchWriteItemPutRequestAccepts32LevelsRejects33.cs` |
 | `dynamodb.batch-write-item-rejects-whole-call-for-one-oversized-nested-put` | `4df2823` | ported | `DynamoDb/BatchWriteItemRejectsWholeCallForOneOversizedNestedPut.cs` |
 | `dynamodb.batch-write-item-rounds-each-item-to-1kb-then-sums` | `4df2823` | ported | `DynamoDb/BatchWriteItemRoundsEachItemTo1kbThenSums.cs` |
+| `dynamodb.batch-write-item-size-boundary-missing-table` | `abd0811` | **new** |  |
 | `dynamodb.batch-write-item-throttle-accounting-loses-no-key` | `4df2823` | known gap: DynamoDbThroughput | `DynamoDb/BatchWriteItemThrottleAccountingLosesNoKey.cs` |
+| `dynamodb.batch-write-item-two-number-attributes-byte-cost-sum-pinned-at-400kb-boundary` | `abd0811` | **new** |  |
 | `dynamodb.batch-write-over-25-rejected` | `4df2823` | ported | `DynamoDb/BatchWriteOver25Rejected.cs` |
 | `dynamodb.batch-write-put-25` | `4df2823` | ported | `DynamoDb/BatchWritePut25.cs` |
 | `dynamodb.batchwriteitem-request-over-16mib-rejected-413-before-auth` | `4df2823` | known gap: DynamoDbAuthentication | `DynamoDb/BatchwriteitemRequestOver16mibRejected413BeforeAuth.cs` |
+| `dynamodb.batchwriteitem-requestitems-wrong-json-type-rejected` | `abd0811` | **new** |  |
 | `dynamodb.binary-range-key-item-set-and-nested-path-updates-then-table-refuses-reads` | `4df2823` | ported | `DynamoDb/BinaryRangeKeyItemSetAndNestedPathUpdatesThenTableRefusesReads.cs` |
+| `dynamodb.binary-sort-key-greater-than-excludes-pivot` | `abd0811` | **new** |  |
 | `dynamodb.binary-sort-key-orders-by-unsigned-bytes` | `4df2823` | ported | `DynamoDb/BinarySortKeyOrdersByUnsignedBytes.cs` |
 | `dynamodb.bool-and-null-attribute-byte-cost-at-item-size-gate` | `4df2823` | ported | `DynamoDb/BoolAndNullAttributeByteCostAtItemSizeGate.cs` |
+| `dynamodb.bulk-put-items-client-token-replay-returns-one-operation` | `abd0811` | **new** |  |
 | `dynamodb.capacity-mode-switches-both-ways` | `4df2823` | ported | `DynamoDb/CapacityModeSwitchesBothWays.cs` |
 | `dynamodb.cli-create-sdk-read-dynamodb` | `4df2823` | ported | `DynamoDb/CliCreateSdkReadDynamodb.cs` |
 | `dynamodb.cli-dynamodb-get-nonexistent-table-error` | `4df2823` | ported | `DynamoDb/CliDynamodbGetNonexistentTableError.cs` |
@@ -172,6 +190,9 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.conc-ddb-optimistic-transact-check-and-update-same-key-rejected` | `4df2823` | ported | `DynamoDb/ConcDdbOptimisticTransactCheckAndUpdateSameKeyRejected.cs` |
 | `dynamodb.conc-ddb-optimistic-transact-race-cancelled-leaves-no-partial-write` | `4df2823` | ported | `DynamoDb/ConcDdbOptimisticTransactRaceCancelledLeavesNoPartialWrite.cs` |
 | `dynamodb.conc-ddb-optimistic-version-race-one-winner-per-round` | `4df2823` | ported | `DynamoDb/ConcDdbOptimisticVersionRaceOneWinnerPerRound.cs` |
+| `dynamodb.concurrent-add-put-interleave-final-counter-matches-last-add` | `abd0811` | **new** |  |
+| `dynamodb.concurrent-add-returns-exact-permutation-of-counter-values` | `abd0811` | **new** |  |
+| `dynamodb.concurrent-conditional-put-distinct-writers-winner-matches-read` | `abd0811` | **new** |  |
 | `dynamodb.concurrent-create-backup-duplicate-name-accepted` | `4df2823` | ported | `DynamoDb/ConcurrentCreateBackupDuplicateNameAccepted.cs` |
 | `dynamodb.concurrent-create-table-single-winner` | `4df2823` | ported | `DynamoDb/ConcurrentCreateTableSingleWinner.cs` |
 | `dynamodb.concurrent-delete-backup-single-winner` | `4df2823` | ported | `DynamoDb/ConcurrentDeleteBackupSingleWinner.cs` |
@@ -185,9 +206,13 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.condition-attribute-exists` | `4df2823` | ported | `DynamoDb/ConditionAttributeExists.cs` |
 | `dynamodb.condition-attribute-not-exists` | `4df2823` | ported | `DynamoDb/ConditionAttributeNotExists.cs` |
 | `dynamodb.condition-attribute-type-gates-the-write` | `4df2823` | ported | `DynamoDb/ConditionAttributeTypeGatesTheWrite.cs` |
+| `dynamodb.condition-attribute-type-names-on-update-item` | `abd0811` | **new** |  |
 | `dynamodb.condition-comparison-operators` | `4df2823` | ported | `DynamoDb/ConditionComparisonOperators.cs` |
+| `dynamodb.condition-contains-list-map-ns-bs-membership-on-update-item` | `abd0811` | **new** |  |
+| `dynamodb.condition-contains-on-string-is-case-sensitive-for-update` | `abd0811` | **new** |  |
 | `dynamodb.condition-contains-set-element-gates-update-and-delete` | `4df2823` | ported | `DynamoDb/ConditionContainsSetElementGatesUpdateAndDelete.cs` |
 | `dynamodb.condition-expression-contains-same-path-and-between-reversed-rejected` | `4df2823` | ported | `DynamoDb/ConditionExpressionContainsSamePathAndBetweenReversedRejected.cs` |
+| `dynamodb.condition-expression-gt-begins-with-in-as-put-item-condition` | `abd0811` | **new** |  |
 | `dynamodb.condition-nested-document-paths-that-hold-apply-the-write` | `4df2823` | ported | `DynamoDb/ConditionNestedDocumentPathsThatHoldApplyTheWrite.cs` |
 | `dynamodb.condition-nested-path-type-mismatch-fails-the-condition` | `4df2823` | ported | `DynamoDb/ConditionNestedPathTypeMismatchFailsTheCondition.cs` |
 | `dynamodb.condition-non-orderable-path-and-size-of-unsupported-type-evaluate-false` | `4df2823` | ported | `DynamoDb/ConditionNonOrderablePathAndSizeOfUnsupportedTypeEvaluateFalse.cs` |
@@ -210,6 +235,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.create-backup-nonexistent-table` | `4df2823` | ported | `DynamoDb/CreateBackupNonexistentTable.cs` |
 | `dynamodb.create-describe-delete` | `4df2823` | ported | `DynamoDb/CreateDescribeDelete.cs` |
 | `dynamodb.create-global-table-already-exists-rejected` | `4df2823` | ported | `DynamoDb/CreateGlobalTableAlreadyExistsRejected.cs` |
+| `dynamodb.create-table-attribute-name-over-255-chars-rejected` | `abd0811` | **new** |  |
 | `dynamodb.create-table-exceeds-limit-rejected` | `4df2823` | ported | `DynamoDb/CreateTableExceedsLimitRejected.cs` |
 | `dynamodb.create-table-gsi-key-not-in-attribute-definitions-rejected` | `4df2823` | ported | `DynamoDb/CreateTableGsiKeyNotInAttributeDefinitionsRejected.cs` |
 | `dynamodb.create-table-gsi-key-schema-hash-after-range-rejected` | `4df2823` | ported | `DynamoDb/CreateTableGsiKeySchemaHashAfterRangeRejected.cs` |
@@ -222,8 +248,12 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.create-table-provisioned-without-throughput` | `4df2823` | ported | `DynamoDb/CreateTableProvisionedWithoutThroughput.cs` |
 | `dynamodb.create-table-rejects-invalid-table-class-value` | `4df2823` | ported | `DynamoDb/CreateTableRejectsInvalidTableClassValue.cs` |
 | `dynamodb.create-table-rejects-malformed-requests` | `4df2823` | ported | `DynamoDb/CreateTableRejectsMalformedRequests.cs` |
+| `dynamodb.create-table-rejects-provisioned-throughput-above-the-per-table-quota` | `abd0811` | **new** |  |
 | `dynamodb.create-table-sse-enabled-without-kms-key-uses-aws-managed-key` | `4df2823` | not ported | KMS keys |
+| `dynamodb.create-table-stream-enabled-without-a-view-type-rejected` | `abd0811` | **new** |  |
 | `dynamodb.create-table-table-class-reported-at-create-and-describe` | `4df2823` | ported | `DynamoDb/CreateTableTableClassReportedAtCreateAndDescribe.cs` |
+| `dynamodb.create-table-tablename-wrong-type-rejected` | `abd0811` | **new** |  |
+| `dynamodb.create-table-throughput-validation-precedes-keyschema-validation` | `abd0811` | **new** |  |
 | `dynamodb.create-table-unused-attribute-definitions` | `4df2823` | ported | `DynamoDb/CreateTableUnusedAttributeDefinitions.cs` |
 | `dynamodb.create-table-vector-index-include-projection-requires-non-key-attributes-rejected` | `4df2823` | ported | `DynamoDb/CreateTableVectorIndexIncludeProjectionRequiresNonKeyAttributesRejected.cs` |
 | `dynamodb.create-table-vector-index-two-hash-search-schema-elements-rejected` | `4df2823` | ported | `DynamoDb/CreateTableVectorIndexTwoHashSearchSchemaElementsRejected.cs` |
@@ -240,6 +270,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.ddb-numeric-sort-key-query-orders-at-magnitude-extremes` | `4df2823` | ported | `DynamoDb/DdbNumericSortKeyQueryOrdersAtMagnitudeExtremes.cs` |
 | `dynamodb.ddb-partiql-is-type-name-filters-bool-and-string-attributes` | `4df2823` | ported | `DynamoDb/DdbPartiqlIsTypeNameFiltersBoolAndStringAttributes.cs` |
 | `dynamodb.ddb-partiql-is-type-name-rejects-update-leaves-item-unchanged` | `4df2823` | ported | `DynamoDb/DdbPartiqlIsTypeNameRejectsUpdateLeavesItemUnchanged.cs` |
+| `dynamodb.ddb-query-filter-size-counts-binary-set-number-set-elements-and-nested-map-keys` | `abd0811` | **new** |  |
 | `dynamodb.ddb-query-filter-size-counts-bytes-elements-or-keys-by-attribute-type` | `4df2823` | ported | `DynamoDb/DdbQueryFilterSizeCountsBytesElementsOrKeysByAttributeType.cs` |
 | `dynamodb.ddb-query-size-function-rejected-in-key-condition` | `4df2823` | ported | `DynamoDb/DdbQuerySizeFunctionRejectedInKeyCondition.cs` |
 | `dynamodb.ddbctl-table-refuses-changes-while-creating-and-deleting` | `4df2823` | ported | `DynamoDb/DdbctlTableRefusesChangesWhileCreatingAndDeleting.cs` |
@@ -283,21 +314,35 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.delete-backup-in-use-during-restore-rejected` | `4df2823` | ported | `DynamoDb/DeleteBackupInUseDuringRestoreRejected.cs` |
 | `dynamodb.delete-backup-not-found-rejected` | `4df2823` | ported | `DynamoDb/DeleteBackupNotFoundRejected.cs` |
 | `dynamodb.delete-item` | `4df2823` | ported | `DynamoDb/DeleteItem.cs` |
+| `dynamodb.delete-item-condition-attribute-type-with-an-unknown-type-name-rejected` | `abd0811` | **new** |  |
 | `dynamodb.delete-item-condition-between-bounds-validated` | `4df2823` | ported | `DynamoDb/DeleteItemConditionBetweenBoundsValidated.cs` |
+| `dynamodb.delete-item-condition-contains-list-of-maps-partial-operand-false` | `abd0811` | **new** |  |
 | `dynamodb.delete-item-condition-expression-attribute-not-exists` | `4df2823` | ported | `DynamoDb/DeleteItemConditionExpressionAttributeNotExists.cs` |
 | `dynamodb.delete-item-condition-expression-invalid-attribute-name-rejected` | `4df2823` | ported | `DynamoDb/DeleteItemConditionExpressionInvalidAttributeNameRejected.cs` |
+| `dynamodb.delete-item-condition-expression-non-distinct-operands-rejected` | `abd0811` | **new** |  |
+| `dynamodb.delete-item-condition-function-pins-size-nested-absence-bs-type-and-members` | `abd0811` | **new** |  |
+| `dynamodb.delete-item-condition-functions-that-hold-apply-the-delete` | `abd0811` | **new** |  |
+| `dynamodb.delete-item-condition-in-operand-compares-maps-structurally` | `abd0811` | **new** |  |
+| `dynamodb.delete-item-condition-list-nested-ordering-not-in-parenthesized-forms-near-miss-rejected` | `abd0811` | **new** |  |
+| `dynamodb.delete-item-condition-nested-map-member-existence-gates-the-delete` | `abd0811` | **new** |  |
+| `dynamodb.delete-item-condition-or-and-precedence-applies-the-delete` | `abd0811` | **new** |  |
+| `dynamodb.delete-item-condition-type-mismatch-and-absent-size-evaluate-false` | `abd0811` | **new** |  |
+| `dynamodb.delete-item-conditional-check-failure-response-carries-no-consumed-capacity` | `abd0811` | **new** |  |
 | `dynamodb.delete-item-expected-and-conditionexpression-mutually-exclusive-rejected` | `4df2823` | ported | `DynamoDb/DeleteItemExpectedAndConditionexpressionMutuallyExclusiveRejected.cs` |
 | `dynamodb.delete-item-idempotent-missing-key` | `4df2823` | ported | `DynamoDb/DeleteItemIdempotentMissingKey.cs` |
 | `dynamodb.delete-item-key-duplicate-set-member-byte-order-rejected` | `4df2823` | ported | `DynamoDb/DeleteItemKeyDuplicateSetMemberByteOrderRejected.cs` |
 | `dynamodb.delete-item-nonexistent-key-is-noop` | `4df2823` | ported | `DynamoDb/DeleteItemNonexistentKeyIsNoop.cs` |
 | `dynamodb.delete-item-on-a-missing-item-still-consumes-a-write-unit` | `4df2823` | ported | `DynamoDb/DeleteItemOnAMissingItemStillConsumesAWriteUnit.cs` |
+| `dynamodb.delete-item-three-term-condition-expression-and-gates-the-delete` | `abd0811` | **new** |  |
 | `dynamodb.delete-item-write-capacity-billed-on-deleted-item-size` | `4df2823` | ported | `DynamoDb/DeleteItemWriteCapacityBilledOnDeletedItemSize.cs` |
+| `dynamodb.delete-item-write-capacity-billed-on-mixed-number-binary-set-item-size` | `abd0811` | **new** |  |
 | `dynamodb.delete-resource-policy-idempotent` | `4df2823` | ported | `DynamoDb/DeleteResourcePolicyIdempotent.cs` |
 | `dynamodb.delete-resource-policy-nonexistent-idempotent-or-rejected` | `4df2823` | ported | `DynamoDb/DeleteResourcePolicyNonexistentIdempotentOrRejected.cs` |
 | `dynamodb.delete-set-operand-type-mismatch-rejected` | `4df2823` | ported | `DynamoDb/DeleteSetOperandTypeMismatchRejected.cs` |
 | `dynamodb.delete-table-source-region-within-24h-of-replica-add-rejected` | `4df2823` | ported | `DynamoDb/DeleteTableSourceRegionWithin24hOfReplicaAddRejected.cs` |
 | `dynamodb.delete-table-twice-rejected-not-silently-succeeds` | `4df2823` | ported | `DynamoDb/DeleteTableTwiceRejectedNotSilentlySucceeds.cs` |
 | `dynamodb.delete-table-with-active-gsi-reports-deleting` | `4df2823` | ported | `DynamoDb/DeleteTableWithActiveGsiReportsDeleting.cs` |
+| `dynamodb.deletetable-tablename-wrong-json-type-serialization-exception` | `abd0811` | **new** |  |
 | `dynamodb.deletion-protection-blocks-delete` | `4df2823` | ported | `DynamoDb/DeletionProtectionBlocksDelete.cs` |
 | `dynamodb.deletion-protection-permits-item-deletes-and-survives-a-stream-update` | `4df2823` | ported | `DynamoDb/DeletionProtectionPermitsItemDeletesAndSurvivesAStreamUpdate.cs` |
 | `dynamodb.deletion-protection-turned-on-by-update-table-refuses-delete` | `4df2823` | ported | `DynamoDb/DeletionProtectionTurnedOnByUpdateTableRefusesDelete.cs` |
@@ -308,6 +353,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.deploy-cfn-ttl-attribute-expires-item` | `4df2823` | not ported | CloudFormation stacks |
 | `dynamodb.deploy-dynamodb-1-cfn-global-table-bidirectional-then-replica-removal-rejected` | `4df2823` | not ported | CloudFormation stacks |
 | `dynamodb.describe-backup-not-found-rejected` | `4df2823` | ported | `DynamoDb/DescribeBackupNotFoundRejected.cs` |
+| `dynamodb.describe-continuous-backups-deleted-table-rejected` | `abd0811` | **new** |  |
 | `dynamodb.describe-contributor-insights-not-found-rejected` | `4df2823` | ported | `DynamoDb/DescribeContributorInsightsNotFoundRejected.cs` |
 | `dynamodb.describe-contributor-insights-resource-not-found-rejected` | `4df2823` | ported | `DynamoDb/DescribeContributorInsightsResourceNotFoundRejected.cs` |
 | `dynamodb.describe-endpoints` | `4df2823` | ported | `DynamoDb/DescribeEndpoints.cs` |
@@ -317,7 +363,10 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.describe-kinesis-streaming-destination-resource-not-found-rejected` | `4df2823` | ported | `DynamoDb/DescribeKinesisStreamingDestinationResourceNotFoundRejected.cs` |
 | `dynamodb.describe-limits` | `4df2823` | ported | `DynamoDb/DescribeLimits.cs` |
 | `dynamodb.describe-limits-returns-account-capacity` | `4df2823` | ported | `DynamoDb/DescribeLimitsReturnsAccountCapacity.cs` |
+| `dynamodb.describe-table-after-delete-table-reads-deleting-until-not-found` | `abd0811` | **new** |  |
+| `dynamodb.describe-table-returns-each-member-create-table-set` | `abd0811` | **new** |  |
 | `dynamodb.describetable-authorization-header-and-x-amz-algorithm-query-conflict-rejected` | `4df2823` | ported | `DynamoDb/DescribetableAuthorizationHeaderAndXAmzAlgorithmQueryConflictRejected.cs` |
+| `dynamodb.describetable-tablename-wrong-json-type-rejected` | `abd0811` | **new** |  |
 | `dynamodb.disable-kinesis-never-enabled` | `4df2823` | not ported | Kinesis streaming destinations |
 | `dynamodb.disable-kinesis-streaming-destination-not-enabled-rejected` | `4df2823` | not ported | Kinesis streaming destinations |
 | `dynamodb.disable-kinesis-streaming-destination-omits-configuration` | `4df2823` | not ported | Kinesis streaming destinations |
@@ -345,11 +394,14 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.error-validation-empty-key` | `4df2823` | ported | `DynamoDb/ErrorValidationEmptyKey.cs` |
 | `dynamodb.eventually-consistent-get-consumes-half-of-a-strong-get` | `4df2823` | ported | `DynamoDb/EventuallyConsistentGetConsumesHalfOfAStrongGet.cs` |
 | `dynamodb.exclusive-start-key-outside-range-and-missing-attribute-rejected` | `4df2823` | ported | `DynamoDb/ExclusiveStartKeyOutsideRangeAndMissingAttributeRejected.cs` |
+| `dynamodb.execute-statement-attribute-exists-two-operands-rejected` | `abd0811` | **new** |  |
 | `dynamodb.execute-statement-conditional-update-failure` | `4df2823` | ported | `DynamoDb/ExecuteStatementConditionalUpdateFailure.cs` |
 | `dynamodb.execute-statement-extra-token-after-complete-statement-rejected` | `4df2823` | ported | `DynamoDb/ExecuteStatementExtraTokenAfterCompleteStatementRejected.cs` |
 | `dynamodb.execute-statement-function-requires-document-path-or-operand-count-rejected` | `4df2823` | ported | `DynamoDb/ExecuteStatementFunctionRequiresDocumentPathOrOperandCountRejected.cs` |
 | `dynamodb.execute-statement-gsi-consistent-read-rejected-while-lsi-consistent-read-succeeds` | `4df2823` | ported | `DynamoDb/ExecuteStatementGsiConsistentReadRejectedWhileLsiConsistentReadSucceeds.cs` |
+| `dynamodb.execute-statement-in-operator-with-101-operands-rejected` | `abd0811` | **new** |  |
 | `dynamodb.execute-statement-index-select-paginated-token-rejected-on-other-index` | `4df2823` | ported | `DynamoDb/ExecuteStatementIndexSelectPaginatedTokenRejectedOnOtherIndex.cs` |
+| `dynamodb.execute-statement-insert-parameter-nesting-depth-32-levels-accepted-33-rejected` | `abd0811` | **new** |  |
 | `dynamodb.execute-statement-invalid-partiql-rejected` | `4df2823` | ported | `DynamoDb/ExecuteStatementInvalidPartiqlRejected.cs` |
 | `dynamodb.execute-statement-limit-clause-rejected` | `4df2823` | ported | `DynamoDb/ExecuteStatementLimitClauseRejected.cs` |
 | `dynamodb.execute-statement-literal-leading-dot-with-no-mantissa-digit-rejected` | `4df2823` | ported | `DynamoDb/ExecuteStatementLiteralLeadingDotWithNoMantissaDigitRejected.cs` |
@@ -364,6 +416,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.execute-statement-rejects-foreign-next-token` | `4df2823` | ported | `DynamoDb/ExecuteStatementRejectsForeignNextToken.cs` |
 | `dynamodb.execute-statement-rejects-non-numeric-n-parameter` | `4df2823` | ported | `DynamoDb/ExecuteStatementRejectsNonNumericNParameter.cs` |
 | `dynamodb.execute-statement-rejects-out-of-range-n-parameter` | `4df2823` | ported | `DynamoDb/ExecuteStatementRejectsOutOfRangeNParameter.cs` |
+| `dynamodb.execute-statement-return-consumed-capacity-enum-rejected` | `abd0811` | **new** |  |
 | `dynamodb.execute-statement-select-multi-attribute-gsi-key-rejected` | `4df2823` | ported | `DynamoDb/ExecuteStatementSelectMultiAttributeGsiKeyRejected.cs` |
 | `dynamodb.execute-statement-select-through-gsi-without-equality-scans-and-filters` | `4df2823` | ported | `DynamoDb/ExecuteStatementSelectThroughGsiWithoutEqualityScansAndFilters.cs` |
 | `dynamodb.execute-statement-undefined-function-and-projection-function-rejected` | `4df2823` | ported | `DynamoDb/ExecuteStatementUndefinedFunctionAndProjectionFunctionRejected.cs` |
@@ -384,12 +437,15 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.execute-transaction-read-responses-three-way-shape-and-write-consumed-capacity` | `4df2823` | ported | `DynamoDb/ExecuteTransactionReadResponsesThreeWayShapeAndWriteConsumedCapacity.cs` |
 | `dynamodb.execute-transaction-replay-bills-exactly-wcu-then-rcu` | `4df2823` | ported | `DynamoDb/ExecuteTransactionReplayBillsExactlyWcuThenRcu.cs` |
 | `dynamodb.execute-transaction-set-add-commits` | `4df2823` | ported | `DynamoDb/ExecuteTransactionSetAddCommits.cs` |
+| `dynamodb.execute-transaction-update-path-invalid-for-stored-item-cancels-rejected` | `abd0811` | **new** |  |
+| `dynamodb.execute-transaction-writes-maintain-gsi-and-lsi-entries` | `abd0811` | **new** |  |
 | `dynamodb.export-client-token-conflict` | `4df2823` | not ported | S3 (exports and imports) |
 | `dynamodb.export-conflict-duplicate-rejected` | `4df2823` | not ported | S3 (exports and imports) |
 | `dynamodb.export-invalid-export-time-rejected` | `4df2823` | not ported | S3 (exports and imports) |
 | `dynamodb.export-invalid-time` | `4df2823` | not ported | S3 (exports and imports) |
 | `dynamodb.export-lifecycle` | `4df2823` | not ported | S3 (exports and imports) |
 | `dynamodb.export-table-lifecycle-to-completed` | `4df2823` | not ported | S3 (exports and imports) |
+| `dynamodb.export-table-to-point-in-time-invalid-export-format-rejected` | `abd0811` | **new** |  |
 | `dynamodb.export-to-point-in-time-invalid-time-rejected` | `4df2823` | not ported | S3 (exports and imports) |
 | `dynamodb.expression-attribute-keys-without-prefix-rejected-on-item-ops` | `4df2823` | ported | `DynamoDb/ExpressionAttributeKeysWithoutPrefixRejectedOnItemOps.cs` |
 | `dynamodb.expression-attribute-map-key-syntax-and-length-rejected` | `4df2823` | ported | `DynamoDb/ExpressionAttributeMapKeySyntaxAndLengthRejected.cs` |
@@ -397,6 +453,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.expression-attribute-placeholders-without-an-expression-rejected` | `4df2823` | ported | `DynamoDb/ExpressionAttributePlaceholdersWithoutAnExpressionRejected.cs` |
 | `dynamodb.filter-and-key-condition-expression-size-limit-rejected` | `4df2823` | ported | `DynamoDb/FilterAndKeyConditionExpressionSizeLimitRejected.cs` |
 | `dynamodb.filter-expression-operator-limit-in-counts-as-one` | `4df2823` | ported | `DynamoDb/FilterExpressionOperatorLimitInCountsAsOne.cs` |
+| `dynamodb.get-item-and-query-expression-and-legacy-parameter-mixing-rejected` | `abd0811` | **new** |  |
 | `dynamodb.get-item-and-query-return-consumed-capacity-invalid-enum-rejected` | `4df2823` | ported | `DynamoDb/GetItemAndQueryReturnConsumedCapacityInvalidEnumRejected.cs` |
 | `dynamodb.get-item-attributes-to-get-omits-a-missing-attribute` | `4df2823` | ported | `DynamoDb/GetItemAttributesToGetOmitsAMissingAttribute.cs` |
 | `dynamodb.get-item-key-with-attribute-outside-schema-rejected` | `4df2823` | ported | `DynamoDb/GetItemKeyWithAttributeOutsideSchemaRejected.cs` |
@@ -430,6 +487,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.gsi-delete-prunes-unshared-attribute-definitions-while-lsi-survives` | `4df2823` | ported | `DynamoDb/GsiDeletePrunesUnsharedAttributeDefinitionsWhileLsiSurvives.cs` |
 | `dynamodb.gsi-duplicate-composite-keys-do-not-collapse` | `4df2823` | ported | `DynamoDb/GsiDuplicateCompositeKeysDoNotCollapse.cs` |
 | `dynamodb.gsi-four-hash-attribute-key-query-order-free-and-tracks-moves-and-deletes` | `4df2823` | ported | `DynamoDb/GsiFourHashAttributeKeyQueryOrderFreeAndTracksMovesAndDeletes.cs` |
+| `dynamodb.gsi-hash-only-query-orders-by-two-range-keys-sparse-range-item-excluded` | `abd0811` | **new** |  |
 | `dynamodb.gsi-independent-throughput-scaling` | `4df2823` | ported | `DynamoDb/GsiIndependentThroughputScaling.cs` |
 | `dynamodb.gsi-key-attribute-must-be-scalar` | `4df2823` | ported | `DynamoDb/GsiKeyAttributeMustBeScalar.cs` |
 | `dynamodb.gsi-key-attribute-update-moves-the-index-entry` | `4df2823` | ported | `DynamoDb/GsiKeyAttributeUpdateMovesTheIndexEntry.cs` |
@@ -441,10 +499,14 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.gsi-query-consistent-read-rejected` | `4df2823` | ported | `DynamoDb/GsiQueryConsistentReadRejected.cs` |
 | `dynamodb.gsi-query-consumes-half-a-read-unit` | `4df2823` | ported | `DynamoDb/GsiQueryConsumesHalfAReadUnit.cs` |
 | `dynamodb.gsi-query-exclusive-start-key-missing-an-index-key-attribute-rejected` | `4df2823` | ported | `DynamoDb/GsiQueryExclusiveStartKeyMissingAnIndexKeyAttributeRejected.cs` |
+| `dynamodb.gsi-query-filter-on-base-table-pk-and-sk-narrows-to-one-item` | `abd0811` | **new** |  |
+| `dynamodb.gsi-query-filter-on-its-own-aliased-key-attribute-rejected` | `abd0811` | **new** |  |
+| `dynamodb.gsi-query-filter-on-its-own-key-attributes-rejected` | `abd0811` | **new** |  |
 | `dynamodb.gsi-query-last-evaluated-key-carries-every-table-and-index-key-attribute` | `4df2823` | ported | `DynamoDb/GsiQueryLastEvaluatedKeyCarriesEveryTableAndIndexKeyAttribute.cs` |
 | `dynamodb.gsi-query-omits-attributes-the-projection-excludes` | `4df2823` | ported | `DynamoDb/GsiQueryOmitsAttributesTheProjectionExcludes.cs` |
 | `dynamodb.gsi-query-paginates-with-last-evaluated-key` | `4df2823` | ported | `DynamoDb/GsiQueryPaginatesWithLastEvaluatedKey.cs` |
 | `dynamodb.gsi-query-paging-over-tied-index-keys-matches-unpaged-read` | `4df2823` | ported | `DynamoDb/GsiQueryPagingOverTiedIndexKeysMatchesUnpagedRead.cs` |
+| `dynamodb.gsi-query-select-all-attributes-exclusive-start-key-missing-or-extra-attribute-rejected` | `abd0811` | **new** |  |
 | `dynamodb.gsi-read-capacity-is-sized-by-the-projection-not-the-base-item` | `4df2823` | ported | `DynamoDb/GsiReadCapacityIsSizedByTheProjectionNotTheBaseItem.cs` |
 | `dynamodb.gsi-scan-all-projection-and-filtered-limit-paging` | `4df2823` | ported | `DynamoDb/GsiScanAllProjectionAndFilteredLimitPaging.cs` |
 | `dynamodb.gsi-scan-filter-expression-parenthesized-or-under-and` | `4df2823` | ported | `DynamoDb/GsiScanFilterExpressionParenthesizedOrUnderAnd.cs` |
@@ -477,7 +539,11 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.kinesis-streaming-destination-enable-disable-lifecycle` | `4df2823` | not ported | Kinesis streaming destinations |
 | `dynamodb.kinesis-streaming-destination-lifecycle` | `4df2823` | not ported | Kinesis streaming destinations |
 | `dynamodb.kinesis-streaming-lifecycle` | `4df2823` | not ported | Kinesis streaming destinations |
+| `dynamodb.legacy-attribute-updates-add-binary-scalar-rejected` | `abd0811` | **new** |  |
+| `dynamodb.legacy-attribute-updates-combined-delete-add-set-add-list-on-absent-item` | `abd0811` | **new** |  |
+| `dynamodb.legacy-attribute-updates-delete-index-key-and-set-members-return-values` | `abd0811` | **new** |  |
 | `dynamodb.legacy-attribute-updates-dotted-name-is-literal` | `4df2823` | ported | `DynamoDb/LegacyAttributeUpdatesDottedNameIsLiteral.cs` |
+| `dynamodb.legacy-attribute-updates-put-whole-map-and-mixed-delete-put-return-values` | `abd0811` | **new** |  |
 | `dynamodb.legacy-attributes-to-get-duplicate-name-rejected` | `4df2823` | ported | `DynamoDb/LegacyAttributesToGetDuplicateNameRejected.cs` |
 | `dynamodb.legacy-attributes-to-get-empty-item-and-whole-nested-values` | `4df2823` | ported | `DynamoDb/LegacyAttributesToGetEmptyItemAndWholeNestedValues.cs` |
 | `dynamodb.legacy-expected-and-default-or-explicit-put-item-ge-exists-false` | `4df2823` | ported | `DynamoDb/LegacyExpectedAndDefaultOrExplicitPutItemGeExistsFalse.cs` |
@@ -502,7 +568,9 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.list-imports-and-exports-empty-for-new-table` | `4df2823` | ported | `DynamoDb/ListImportsAndExportsEmptyForNewTable.cs` |
 | `dynamodb.list-imports-pagination-consistent-order` | `4df2823` | not ported | S3 (exports and imports) |
 | `dynamodb.list-index-past-end-set-appends-and-remove-shifts` | `4df2823` | ported | `DynamoDb/ListIndexPastEndSetAppendsAndRemoveShifts.cs` |
+| `dynamodb.list-tables-limit-two-walk-matches-the-default-page-walk` | `abd0811` | **new** |  |
 | `dynamodb.list-tables-pages-names-in-byte-order-across-punctuation` | `4df2823` | ported | `DynamoDb/ListTablesPagesNamesInByteOrderAcrossPunctuation.cs` |
+| `dynamodb.list-tags-of-resource-arn-wrong-json-type-rejected` | `abd0811` | **new** |  |
 | `dynamodb.lsi-consistent-query-pages-with-filter-counts-per-page` | `4df2823` | ported | `DynamoDb/LsiConsistentQueryPagesWithFilterCountsPerPage.cs` |
 | `dynamodb.lsi-consistent-read` | `4df2823` | ported | `DynamoDb/LsiConsistentRead.cs` |
 | `dynamodb.lsi-keys-only-projection-omits-attributes` | `4df2823` | ported | `DynamoDb/LsiKeysOnlyProjectionOmitsAttributes.cs` |
@@ -512,17 +580,22 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.lsi-query-pagination-exclusive-start-key` | `4df2823` | ported | `DynamoDb/LsiQueryPaginationExclusiveStartKey.cs` |
 | `dynamodb.lsi-query-pagination-over-tied-index-sort-key` | `4df2823` | ported | `DynamoDb/LsiQueryPaginationOverTiedIndexSortKey.cs` |
 | `dynamodb.lsi-query-sort-key-comparison-and-prefix-operators` | `4df2823` | ported | `DynamoDb/LsiQuerySortKeyComparisonAndPrefixOperators.cs` |
+| `dynamodb.lsi-query-sort-key-comparisons-return-full-item-body` | `abd0811` | **new** |  |
 | `dynamodb.lsi-query-sort-key-operand-type-mismatch-rejected` | `4df2823` | ported | `DynamoDb/LsiQuerySortKeyOperandTypeMismatchRejected.cs` |
 | `dynamodb.lsi-query-sort-key-value-type-mismatch-rejected` | `4df2823` | ported | `DynamoDb/LsiQuerySortKeyValueTypeMismatchRejected.cs` |
 | `dynamodb.lsi-query-supports-consistent-read` | `4df2823` | ported | `DynamoDb/LsiQuerySupportsConsistentRead.cs` |
 | `dynamodb.lsi-scan-all-and-include-projections-with-consistent-read` | `4df2823` | ported | `DynamoDb/LsiScanAllAndIncludeProjectionsWithConsistentRead.cs` |
+| `dynamodb.lsi-scan-exclusive-start-key-missing-an-index-key-attribute-rejected` | `abd0811` | **new** |  |
+| `dynamodb.lsi-scan-filter-and-limit-paging-over-tied-sort-key` | `abd0811` | **new** |  |
 | `dynamodb.lsi-scan-pagination-exclusive-start-key` | `4df2823` | ported | `DynamoDb/LsiScanPaginationExclusiveStartKey.cs` |
 | `dynamodb.lsi-scan-pagination-over-tied-index-sort-key` | `4df2823` | ported | `DynamoDb/LsiScanPaginationOverTiedIndexSortKey.cs` |
+| `dynamodb.lsi-select-all-attributes-query-bills-base-table-per-item-across-multiple-items` | `abd0811` | **new** |  |
 | `dynamodb.lsi-sparse-item-omitted-from-index-query-and-scan` | `4df2823` | ported | `DynamoDb/LsiSparseItemOmittedFromIndexQueryAndScan.cs` |
 | `dynamodb.malformed-n-in-expression-value-rejected-before-evaluation` | `4df2823` | ported | `DynamoDb/MalformedNInExpressionValueRejectedBeforeEvaluation.cs` |
 | `dynamodb.malformed-n-in-key-is-top-level-validation-not-cancellation` | `4df2823` | ported | `DynamoDb/MalformedNInKeyIsTopLevelValidationNotCancellation.cs` |
 | `dynamodb.mid-flight-socket-kill-recovery-probe-proves-exactly-once` | `4df2823` | ported | `DynamoDb/MidFlightSocketKillRecoveryProbeProvesExactlyOnce.cs` |
 | `dynamodb.multiple-simultaneous-constraint-violations-rejected` | `4df2823` | known gap: DynamoDbDetail | `DynamoDb/MultipleSimultaneousConstraintViolationsRejected.cs` |
+| `dynamodb.nested-placeholder-path-missing-segment-rejected` | `abd0811` | **new** |  |
 | `dynamodb.nesting-depth-error-precedence-across-malformed-requests` | `4df2823` | ported | `DynamoDb/NestingDepthErrorPrecedenceAcrossMalformedRequests.cs` |
 | `dynamodb.nesting-depth-limit-applies-to-attribute-updates-and-condition-only-values` | `4df2823` | ported | `DynamoDb/NestingDepthLimitAppliesToAttributeUpdatesAndConditionOnlyValues.cs` |
 | `dynamodb.nesting-depth-limit-covers-transact-condition-check-and-legacy-expected-values` | `4df2823` | ported | `DynamoDb/NestingDepthLimitCoversTransactConditionCheckAndLegacyExpectedValues.cs` |
@@ -531,6 +604,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.null-false-batchget-mixed-projection-and-query-keyconditions-with-expressions` | `4df2823` | ported | `DynamoDb/NullFalseBatchgetMixedProjectionAndQueryKeyconditionsWithExpressions.cs` |
 | `dynamodb.number-byte-cost-exact-at-400kb-boundary-put-item-and-batch-write-item` | `4df2823` | ported | `DynamoDb/NumberByteCostExactAt400kbBoundaryPutItemAndBatchWriteItem.cs` |
 | `dynamodb.number-byte-cost-matches-documented-approximation` | `4df2823` | ported | `DynamoDb/NumberByteCostMatchesDocumentedApproximation.cs` |
+| `dynamodb.number-byte-cost-trailing-zero-trim-depends-on-fraction-presence` | `abd0811` | **new** |  |
+| `dynamodb.number-byte-cost-zero-trim-and-mid-fraction-literals-at-409600-boundary` | `abd0811` | **new** |  |
 | `dynamodb.number-canonicalization-boundaries` | `4df2823` | ported | `DynamoDb/NumberCanonicalizationBoundaries.cs` |
 | `dynamodb.number-magnitude-floor-put-update-batchwrite` | `4df2823` | ported | `DynamoDb/NumberMagnitudeFloorPutUpdateBatchwrite.cs` |
 | `dynamodb.number-precision-limited-to-38-digits` | `4df2823` | ported | `DynamoDb/NumberPrecisionLimitedTo38Digits.cs` |
@@ -540,15 +615,20 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.numeric-sort-key-orders-numerically` | `4df2823` | ported | `DynamoDb/NumericSortKeyOrdersNumerically.cs` |
 | `dynamodb.on-demand-table-accepts-a-new-index-with-no-throughput` | `4df2823` | ported | `DynamoDb/OnDemandTableAcceptsANewIndexWithNoThroughput.cs` |
 | `dynamodb.on-demand-throughput-round-trips-at-create-then-update-changes-both-ceilings` | `4df2823` | ported | `DynamoDb/OnDemandThroughputRoundTripsAtCreateThenUpdateChangesBothCeilings.cs` |
+| `dynamodb.online-gsi-add-echoes-include-projection-with-composite-key` | `abd0811` | **new** |  |
 | `dynamodb.oversized-item-to-a-missing-table-not-found-on-put-rejected-on-batch-write` | `4df2823` | ported | `DynamoDb/OversizedItemToAMissingTableNotFoundOnPutRejectedOnBatchWrite.cs` |
 | `dynamodb.parallel-scan-segment-co-locates-every-sort-key-under-one-partition-key` | `4df2823` | ported | `DynamoDb/ParallelScanSegmentCoLocatesEverySortKeyUnderOnePartitionKey.cs` |
 | `dynamodb.parallel-scan-segments-partition-the-table-exactly-once` | `4df2823` | ported | `DynamoDb/ParallelScanSegmentsPartitionTheTableExactlyOnce.cs` |
+| `dynamodb.parallel-scan-totalsegments-4-segments-nest-exactly-inside-totalsegments-2-halves` | `abd0811` | **new** |  |
 | `dynamodb.partiql-and-classic-api-address-one-item-store` | `4df2823` | ported | `DynamoDb/PartiqlAndClassicApiAddressOneItemStore.cs` |
+| `dynamodb.partiql-attribute-exists-on-absent-nested-path-is-false` | `abd0811` | **new** |  |
 | `dynamodb.partiql-attribute-exists-splits-null-typed-from-missing` | `4df2823` | ported | `DynamoDb/PartiqlAttributeExistsSplitsNullTypedFromMissing.cs` |
 | `dynamodb.partiql-contains-and-begins-with-select-exact-matching-set` | `4df2823` | ported | `DynamoDb/PartiqlContainsAndBeginsWithSelectExactMatchingSet.cs` |
 | `dynamodb.partiql-delete-noop-on-absent-key-and-update-from-rejected` | `4df2823` | ported | `DynamoDb/PartiqlDeleteNoopOnAbsentKeyAndUpdateFromRejected.cs` |
 | `dynamodb.partiql-delete-returning-all-new-rejected` | `4df2823` | ported | `DynamoDb/PartiqlDeleteReturningAllNewRejected.cs` |
+| `dynamodb.partiql-delete-returning-modified-clauses-rejected` | `abd0811` | **new** |  |
 | `dynamodb.partiql-equal-and-not-equal-over-list-map-set-and-mixed-type-in` | `4df2823` | ported | `DynamoDb/PartiqlEqualAndNotEqualOverListMapSetAndMixedTypeIn.cs` |
+| `dynamodb.partiql-equal-excludes-stored-null-from-string-operand` | `abd0811` | **new** |  |
 | `dynamodb.partiql-equal-matches-binary-set-and-map-operands-by-value` | `4df2823` | ported | `DynamoDb/PartiqlEqualMatchesBinarySetAndMapOperandsByValue.cs` |
 | `dynamodb.partiql-from-clause-path-arity-rejected` | `4df2823` | ported | `DynamoDb/PartiqlFromClausePathArityRejected.cs` |
 | `dynamodb.partiql-hash-and-unterminated-block-comment-rejected` | `4df2823` | ported | `DynamoDb/PartiqlHashAndUnterminatedBlockCommentRejected.cs` |
@@ -562,19 +642,27 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.partiql-select-between-in-or-order-by-desc-and-not-equal` | `4df2823` | ported | `DynamoDb/PartiqlSelectBetweenInOrOrderByDescAndNotEqual.cs` |
 | `dynamodb.partiql-select-condition-function-forms` | `4df2823` | ported | `DynamoDb/PartiqlSelectConditionFunctionForms.cs` |
 | `dynamodb.partiql-select-gsi-include-projection-nonprojected-filter-rejected` | `4df2823` | ported | `DynamoDb/PartiqlSelectGsiIncludeProjectionNonprojectedFilterRejected.cs` |
+| `dynamodb.partiql-select-gsi-order-by-sort-key-requires-hash-equality` | `abd0811` | **new** |  |
 | `dynamodb.partiql-select-index-qualified-capacity-table-and-index-arms` | `4df2823` | ported | `DynamoDb/PartiqlSelectIndexQualifiedCapacityTableAndIndexArms.cs` |
 | `dynamodb.partiql-select-index-qualifier-projection-follows-index-type` | `4df2823` | ported | `DynamoDb/PartiqlSelectIndexQualifierProjectionFollowsIndexType.cs` |
 | `dynamodb.partiql-select-index-unprojected-filter-refusal-scoped-to-key-condition` | `4df2823` | ported | `DynamoDb/PartiqlSelectIndexUnprojectedFilterRefusalScopedToKeyCondition.cs` |
+| `dynamodb.partiql-select-keys-only-gsi-and-projected-attribute-list-lsi-charge-no-table-arm` | `abd0811` | **new** |  |
 | `dynamodb.partiql-select-lsi-keys-only-nonprojected-filter-and-in-between-key-forms` | `4df2823` | ported | `DynamoDb/PartiqlSelectLsiKeysOnlyNonprojectedFilterAndInBetweenKeyForms.cs` |
+| `dynamodb.partiql-select-lsi-order-by-sort-key-requires-hash-equality` | `abd0811` | **new** |  |
+| `dynamodb.partiql-select-lsi-unprojected-filter-scoping-unkeyed-or-between` | `abd0811` | **new** |  |
+| `dynamodb.partiql-select-ors-bare-partition-branch-with-negated-sort-key-branch` | `abd0811` | **new** |  |
 | `dynamodb.partiql-select-projects-nested-map-and-list-paths` | `4df2823` | ported | `DynamoDb/PartiqlSelectProjectsNestedMapAndListPaths.cs` |
 | `dynamodb.partiql-select-through-gsi-qualifier` | `4df2823` | ported | `DynamoDb/PartiqlSelectThroughGsiQualifier.cs` |
 | `dynamodb.partiql-select-through-lsi-qualifier` | `4df2823` | ported | `DynamoDb/PartiqlSelectThroughLsiQualifier.cs` |
 | `dynamodb.partiql-set-add-literal-ss-and-ns` | `4df2823` | ported | `DynamoDb/PartiqlSetAddLiteralSsAndNs.cs` |
 | `dynamodb.partiql-set-add-on-absent-item-rejected` | `4df2823` | ported | `DynamoDb/PartiqlSetAddOnAbsentItemRejected.cs` |
 | `dynamodb.partiql-set-add-set-delete-accepted-forms` | `4df2823` | ported | `DynamoDb/PartiqlSetAddSetDeleteAcceptedForms.cs` |
+| `dynamodb.partiql-set-add-three-argument-arity-rejected` | `abd0811` | **new** |  |
 | `dynamodb.partiql-set-delete-and-parameter-sets` | `4df2823` | ported | `DynamoDb/PartiqlSetDeleteAndParameterSets.cs` |
+| `dynamodb.partiql-set-delete-number-set-literal-from-string-set-rejected` | `abd0811` | **new** |  |
 | `dynamodb.partiql-single-quote-literal-escaping` | `4df2823` | ported | `DynamoDb/PartiqlSingleQuoteLiteralEscaping.cs` |
 | `dynamodb.partiql-size-and-attribute-type-select-exact-sets-and-reject-incompatible-size` | `4df2823` | ported | `DynamoDb/PartiqlSizeAndAttributeTypeSelectExactSetsAndRejectIncompatibleSize.cs` |
+| `dynamodb.partiql-statement-index-key-type-mismatch-rejected` | `abd0811` | **new** |  |
 | `dynamodb.partiql-true-false-null-literals-are-case-insensitive` | `4df2823` | ported | `DynamoDb/PartiqlTrueFalseNullLiteralsAreCaseInsensitive.cs` |
 | `dynamodb.partiql-typed-item-insert-update-select-then-deleted-table-refuses-statements` | `4df2823` | ported | `DynamoDb/PartiqlTypedItemInsertUpdateSelectThenDeletedTableRefusesStatements.cs` |
 | `dynamodb.partiql-unicode-string-round-trip` | `4df2823` | ported | `DynamoDb/PartiqlUnicodeStringRoundTrip.cs` |
@@ -588,11 +676,15 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.partiql-update-negative-list-index-rejected` | `4df2823` | ported | `DynamoDb/PartiqlUpdateNegativeListIndexRejected.cs` |
 | `dynamodb.partiql-update-returning-modified-images-on-nested-paths` | `4df2823` | ported | `DynamoDb/PartiqlUpdateReturningModifiedImagesOnNestedPaths.cs` |
 | `dynamodb.partiql-update-returning-modified-images-over-list-indices` | `4df2823` | ported | `DynamoDb/PartiqlUpdateReturningModifiedImagesOverListIndices.cs` |
+| `dynamodb.partiql-update-returning-modified-old-images-over-list-indices` | `abd0811` | **new** |  |
 | `dynamodb.partiql-update-set-list-append-non-list-literal-operand-rejected` | `4df2823` | ported | `DynamoDb/PartiqlUpdateSetListAppendNonListLiteralOperandRejected.cs` |
 | `dynamodb.partiql-update-set-literal-and-set-add-reject-mixed-type-set-members` | `4df2823` | ported | `DynamoDb/PartiqlUpdateSetLiteralAndSetAddRejectMixedTypeSetMembers.cs` |
 | `dynamodb.partiql-update-set-remove-nested-map-and-list-paths` | `4df2823` | ported | `DynamoDb/PartiqlUpdateSetRemoveNestedMapAndListPaths.cs` |
 | `dynamodb.partiql-update-set-subtraction-applies-and-multiply-divide-rejected` | `4df2823` | ported | `DynamoDb/PartiqlUpdateSetSubtractionAppliesAndMultiplyDivideRejected.cs` |
+| `dynamodb.partiql-update-where-and-updateitem-condition-expression-agree-on-equal-and-not-equal-for-list-and-map` | `abd0811` | **new** |  |
+| `dynamodb.partiql-update-where-and-updateitem-condition-expression-agree-on-equal-and-not-equal-for-sets-and-null` | `abd0811` | **new** |  |
 | `dynamodb.partiql-update-where-and-updateitem-condition-expression-agree-on-set-and-map-equality` | `4df2823` | ported | `DynamoDb/PartiqlUpdateWhereAndUpdateitemConditionExpressionAgreeOnSetAndMapEquality.cs` |
+| `dynamodb.partiql-update-where-ors-bare-partition-branch-with-negated-sort-key-branch-rejected` | `abd0811` | **new** |  |
 | `dynamodb.partiql-write-and-transaction-condition-function-ccf` | `4df2823` | ported | `DynamoDb/PartiqlWriteAndTransactionConditionFunctionCcf.cs` |
 | `dynamodb.partiql-write-through-index-qualifier-rejected` | `4df2823` | ported | `DynamoDb/PartiqlWriteThroughIndexQualifierRejected.cs` |
 | `dynamodb.plain-write-racing-a-transaction-rejected` | `4df2823` | ported | `DynamoDb/PlainWriteRacingATransactionRejected.cs` |
@@ -629,21 +721,32 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.put-item-and-batch-write-item-size-limit-includes-all-projected-lsi-entry` | `4df2823` | ported | `DynamoDb/PutItemAndBatchWriteItemSizeLimitIncludesAllProjectedLsiEntry.cs` |
 | `dynamodb.put-item-and-search-vectors-return-consumed-capacity-invalid-enum-rejected` | `4df2823` | ported | `DynamoDb/PutItemAndSearchVectorsReturnConsumedCapacityInvalidEnumRejected.cs` |
 | `dynamodb.put-item-binary-set-zero-length-member-round-trips` | `4df2823` | ported | `DynamoDb/PutItemBinarySetZeroLengthMemberRoundTrips.cs` |
+| `dynamodb.put-item-condition-attribute-exists-and-contains-set-member` | `abd0811` | **new** |  |
+| `dynamodb.put-item-condition-expression-between-true-and-false` | `abd0811` | **new** |  |
+| `dynamodb.put-item-condition-expression-equality-n-attribute-vs-s-value-evaluates-false` | `abd0811` | **new** |  |
+| `dynamodb.put-item-condition-in-operator-number-list-and-map-structural-equality` | `abd0811` | **new** |  |
 | `dynamodb.put-item-condition-nested-document-paths-and-functions-rejected` | `4df2823` | ported | `DynamoDb/PutItemConditionNestedDocumentPathsAndFunctionsRejected.cs` |
 | `dynamodb.put-item-condition-nested-document-paths-and-functions-that-hold` | `4df2823` | ported | `DynamoDb/PutItemConditionNestedDocumentPathsAndFunctionsThatHold.cs` |
+| `dynamodb.put-item-condition-three-level-path-list-index-and-nested-comparison-hold` | `abd0811` | **new** |  |
+| `dynamodb.put-item-condition-three-level-path-list-index-and-nested-comparison-rejected` | `abd0811` | **new** |  |
+| `dynamodb.put-item-consumed-capacity-pins-1024-byte-boundary-and-overwrite-follows-larger-image` | `abd0811` | **new** |  |
 | `dynamodb.put-item-consumed-capacity-sums-table-and-index-arms` | `4df2823` | ported | `DynamoDb/PutItemConsumedCapacitySumsTableAndIndexArms.cs` |
 | `dynamodb.put-item-default-response-omits-attributes` | `4df2823` | ported | `DynamoDb/PutItemDefaultResponseOmitsAttributes.cs` |
 | `dynamodb.put-item-fractional-and-negative-hash-key-omits-consumed-capacity` | `4df2823` | ported | `DynamoDb/PutItemFractionalAndNegativeHashKeyOmitsConsumedCapacity.cs` |
 | `dynamodb.put-item-gsi-key-type-mismatch-rejected` | `4df2823` | ported | `DynamoDb/PutItemGsiKeyTypeMismatchRejected.cs` |
 | `dynamodb.put-item-key-type-mismatch-rejected` | `4df2823` | ported | `DynamoDb/PutItemKeyTypeMismatchRejected.cs` |
+| `dynamodb.put-item-list-holding-string-set-sole-empty-string-member-round-trips` | `abd0811` | **new** |  |
+| `dynamodb.put-item-list-holding-string-set-two-empty-string-members-rejected-as-duplicate` | `abd0811` | **new** |  |
 | `dynamodb.put-item-nested-map-set-and-number-list-contents-count-toward-item-size-limit` | `4df2823` | ported | `DynamoDb/PutItemNestedMapSetAndNumberListContentsCountTowardItemSizeLimit.cs` |
 | `dynamodb.put-item-nested-set-in-list-or-map-empty-rejected-empty-string-member-round-trips` | `4df2823` | ported | `DynamoDb/PutItemNestedSetInListOrMapEmptyRejectedEmptyStringMemberRoundTrips.cs` |
+| `dynamodb.put-item-not-attribute-exists-condition-on-new-key` | `abd0811` | **new** |  |
 | `dynamodb.put-item-number-precision-exceeds-limit-rejected` | `4df2823` | ported | `DynamoDb/PutItemNumberPrecisionExceedsLimitRejected.cs` |
 | `dynamodb.put-item-omitting-a-gsi-key-is-a-sparse-write` | `4df2823` | ported | `DynamoDb/PutItemOmittingAGsiKeyIsASparseWrite.cs` |
 | `dynamodb.put-item-on-deleting-table-rejected` | `4df2823` | ported | `DynamoDb/PutItemOnDeletingTableRejected.cs` |
 | `dynamodb.put-item-oversized-overwrite-rejected-ignoring-existing-image` | `4df2823` | ported | `DynamoDb/PutItemOversizedOverwriteRejectedIgnoringExistingImage.cs` |
 | `dynamodb.put-item-overwrite-consumed-capacity-follows-larger-item-image` | `4df2823` | ported | `DynamoDb/PutItemOverwriteConsumedCapacityFollowsLargerItemImage.cs` |
 | `dynamodb.put-item-overwrite-replaces-item` | `4df2823` | ported | `DynamoDb/PutItemOverwriteReplacesItem.cs` |
+| `dynamodb.put-item-return-consumed-capacity-indexes-on-table-with-no-secondary-indexes` | `abd0811` | **new** |  |
 | `dynamodb.put-item-sparse-write-charges-no-index-capacity` | `4df2823` | ported | `DynamoDb/PutItemSparseWriteChargesNoIndexCapacity.cs` |
 | `dynamodb.put-item-two-empty-members-in-ss-and-bs-rejected-as-duplicate-collections` | `4df2823` | ported | `DynamoDb/PutItemTwoEmptyMembersInSsAndBsRejectedAsDuplicateCollections.cs` |
 | `dynamodb.put-item-vector-hash-search-schema-missing-vs-empty-string` | `4df2823` | ported | `DynamoDb/PutItemVectorHashSearchSchemaMissingVsEmptyString.cs` |
@@ -654,32 +757,66 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.put-resource-policy-revision-id-conflict-rejected` | `4df2823` | ported | `DynamoDb/PutResourcePolicyRevisionIdConflictRejected.cs` |
 | `dynamodb.put-return-values-all-old` | `4df2823` | ported | `DynamoDb/PutReturnValuesAllOld.cs` |
 | `dynamodb.put-update-delete-item-return-consumed-capacity-invalid-enum-rejected` | `4df2823` | ported | `DynamoDb/PutUpdateDeleteItemReturnConsumedCapacityInvalidEnumRejected.cs` |
+| `dynamodb.putitem-condition-attribute-type-matches-bool-null-string-binary-set` | `abd0811` | **new** |  |
+| `dynamodb.putitem-condition-begins-with-ns-ss-contains-and-size-between-gate-the-write` | `abd0811` | **new** |  |
 | `dynamodb.putitem-condition-comparison-on-missing-attribute` | `4df2823` | ported | `DynamoDb/PutitemConditionComparisonOnMissingAttribute.cs` |
+| `dynamodb.putitem-condition-contains-binary-set-member-gates-the-write` | `abd0811` | **new** |  |
+| `dynamodb.putitem-condition-contains-partial-map-in-list-is-false` | `abd0811` | **new** |  |
 | `dynamodb.putitem-condition-expression-and-or-not-precedence` | `4df2823` | ported | `DynamoDb/PutitemConditionExpressionAndOrNotPrecedence.cs` |
+| `dynamodb.putitem-condition-expression-le-lt-ge-ordering-operators` | `abd0811` | **new** |  |
+| `dynamodb.putitem-condition-not-over-attribute-exists-and-less-than-boundary` | `abd0811` | **new** |  |
+| `dynamodb.putitem-condition-size-of-missing-attribute-evaluates-false` | `abd0811` | **new** |  |
 | `dynamodb.putitem-not-contains-condition-gates-the-write` | `4df2823` | ported | `DynamoDb/PutitemNotContainsConditionGatesTheWrite.cs` |
 | `dynamodb.query-and-put-item-placeholder-and-reserved-word-validation` | `4df2823` | ported | `DynamoDb/QueryAndPutItemPlaceholderAndReservedWordValidation.cs` |
 | `dynamodb.query-and-update-item-placeholders-without-an-expression-rejected` | `4df2823` | ported | `DynamoDb/QueryAndUpdateItemPlaceholdersWithoutAnExpressionRejected.cs` |
+| `dynamodb.query-attribute-type-filter-selects-collection-and-null-types` | `abd0811` | **new** |  |
+| `dynamodb.query-base-table-exclusive-start-key-partition-key-type-mismatch-rejected` | `abd0811` | **new** |  |
 | `dynamodb.query-base-table-primary-key-in-filter-expression-rejected` | `4df2823` | ported | `DynamoDb/QueryBaseTablePrimaryKeyInFilterExpressionRejected.cs` |
 | `dynamodb.query-begins-with` | `4df2823` | ported | `DynamoDb/QueryBeginsWith.cs` |
 | `dynamodb.query-capacity-gsi-rejects-consistent-read-lsi-accepts-it` | `4df2823` | ported | `DynamoDb/QueryCapacityGsiRejectsConsistentReadLsiAcceptsIt.cs` |
+| `dynamodb.query-exclusive-start-key-never-written-item-returns-empty-page-and-missing-sort-key-rejected` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-and-binds-tighter-than-or` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-attribute-exists-and-contains-compound` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-attribute-type-with-an-unknown-type-name-rejected` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-begins-with-binary-attribute` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-begins-with-non-string-binary-operand-rejected` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-between-chains-with-and` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-contains-binary-set-selects-exact-member` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-contains-empty-string-set-member-matches-the-holder` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-contains-ns-member-type-strict` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-contains-on-list-by-element-type` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-dangling-logical-operator-rejected` | `abd0811` | **new** |  |
 | `dynamodb.query-filter-expression` | `4df2823` | ported | `DynamoDb/QueryFilterExpression.cs` |
 | `dynamodb.query-filter-expression-between-reversed-bounds-rejected` | `4df2823` | ported | `DynamoDb/QueryFilterExpressionBetweenReversedBoundsRejected.cs` |
+| `dynamodb.query-filter-expression-in-operator-empty-list-rejected` | `abd0811` | **new** |  |
 | `dynamodb.query-filter-expression-in-operator-with-101-operands-rejected` | `4df2823` | ported | `DynamoDb/QueryFilterExpressionInOperatorWith101OperandsRejected.cs` |
 | `dynamodb.query-filter-expression-never-and-partly-matching-costs-nothing` | `4df2823` | ported | `DynamoDb/QueryFilterExpressionNeverAndPartlyMatchingCostsNothing.cs` |
+| `dynamodb.query-filter-expression-null-type-equality` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-expression-number-comparators-and-in` | `abd0811` | **new** |  |
 | `dynamodb.query-filter-expression-operators-match-scan-twin-in-partition` | `4df2823` | ported | `DynamoDb/QueryFilterExpressionOperatorsMatchScanTwinInPartition.cs` |
+| `dynamodb.query-filter-expression-ordering-comparison-non-orderable-operand-rejected` | `abd0811` | **new** |  |
 | `dynamodb.query-filter-expression-parentheses-and-document-paths` | `4df2823` | ported | `DynamoDb/QueryFilterExpressionParenthesesAndDocumentPaths.cs` |
 | `dynamodb.query-filter-expression-redundant-parentheses-rejected` | `4df2823` | ported | `DynamoDb/QueryFilterExpressionRedundantParenthesesRejected.cs` |
 | `dynamodb.query-filter-expression-undefined-value-rejected-over-a-1mb-partition` | `4df2823` | ported | `DynamoDb/QueryFilterExpressionUndefinedValueRejectedOverA1mbPartition.cs` |
 | `dynamodb.query-filter-legacy-ands-by-default-ors-under-conditional-operator` | `4df2823` | ported | `DynamoDb/QueryFilterLegacyAndsByDefaultOrsUnderConditionalOperator.cs` |
 | `dynamodb.query-filter-legacy-comparison-operators-beyond-eq` | `4df2823` | ported | `DynamoDb/QueryFilterLegacyComparisonOperatorsBeyondEq.cs` |
 | `dynamodb.query-filter-legacy-not-null-with-value-list-rejected` | `4df2823` | ported | `DynamoDb/QueryFilterLegacyNotNullWithValueListRejected.cs` |
+| `dynamodb.query-filter-nested-map-list-paths-and-number-index` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-not-begins-with-or-precedence` | `abd0811` | **new** |  |
+| `dynamodb.query-filter-not-over-missing-attribute-equality` | `abd0811` | **new** |  |
+| `dynamodb.query-gsi-and-lsi-filter-on-base-table-sort-key-accepted` | `abd0811` | **new** |  |
 | `dynamodb.query-gsi-four-range-key-schema-orders-narrows-and-reverses` | `4df2823` | ported | `DynamoDb/QueryGsiFourRangeKeySchemaOrdersNarrowsAndReverses.cs` |
 | `dynamodb.query-gsi-four-range-key-schema-skipping-two-attributes-rejected` | `4df2823` | ported | `DynamoDb/QueryGsiFourRangeKeySchemaSkippingTwoAttributesRejected.cs` |
 | `dynamodb.query-gsi-multi-range-key-schema-requires-equality-prefix` | `4df2823` | ported | `DynamoDb/QueryGsiMultiRangeKeySchemaRequiresEqualityPrefix.cs` |
+| `dynamodb.query-gsi-two-hash-one-range-key-exclusive-start-key-missing-an-attribute-rejected` | `abd0811` | **new** |  |
+| `dynamodb.query-gsi-two-hash-one-range-key-limit-pages-last-evaluated-key` | `abd0811` | **new** |  |
 | `dynamodb.query-indexes-capacity-sums-bytes-once-across-table-gsi-and-lsi` | `4df2823` | ported | `DynamoDb/QueryIndexesCapacitySumsBytesOnceAcrossTableGsiAndLsi.cs` |
 | `dynamodb.query-key-condition` | `4df2823` | ported | `DynamoDb/QueryKeyCondition.cs` |
+| `dynamodb.query-key-condition-clause-order-matches-across-operators` | `abd0811` | **new** |  |
 | `dynamodb.query-key-condition-document-path-forms-and-reserved-head-rejected` | `4df2823` | ported | `DynamoDb/QueryKeyConditionDocumentPathFormsAndReservedHeadRejected.cs` |
 | `dynamodb.query-key-condition-duplicate-sort-key-clause-and-nested-path-rejected` | `4df2823` | ported | `DynamoDb/QueryKeyConditionDuplicateSortKeyClauseAndNestedPathRejected.cs` |
+| `dynamodb.query-key-condition-empty-string-key-value-rejected` | `abd0811` | **new** |  |
+| `dynamodb.query-key-condition-expression-contains-function-rejected` | `abd0811` | **new** |  |
 | `dynamodb.query-key-condition-expression-third-predicate-rejected` | `4df2823` | ported | `DynamoDb/QueryKeyConditionExpressionThirdPredicateRejected.cs` |
 | `dynamodb.query-key-condition-ge-negative-n-sort-key-numeric-order` | `4df2823` | ported | `DynamoDb/QueryKeyConditionGeNegativeNSortKeyNumericOrder.cs` |
 | `dynamodb.query-key-condition-non-key-missing-partition-begins-with-partition-rejected` | `4df2823` | ported | `DynamoDb/QueryKeyConditionNonKeyMissingPartitionBeginsWithPartitionRejected.cs` |
@@ -693,6 +830,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.query-matching-nothing-still-consumes-read-capacity` | `4df2823` | ported | `DynamoDb/QueryMatchingNothingStillConsumesReadCapacity.cs` |
 | `dynamodb.query-mixing-key-conditions-and-expression-rejected` | `4df2823` | ported | `DynamoDb/QueryMixingKeyConditionsAndExpressionRejected.cs` |
 | `dynamodb.query-natural-1mb-page-truncation` | `4df2823` | ported | `DynamoDb/QueryNatural1mbPageTruncation.cs` |
+| `dynamodb.query-negative-limit-rejected` | `abd0811` | **new** |  |
 | `dynamodb.query-nested-non-redundant-parenthesized-key-condition` | `4df2823` | ported | `DynamoDb/QueryNestedNonRedundantParenthesizedKeyCondition.cs` |
 | `dynamodb.query-never-returns-an-empty-page-with-a-last-evaluated-key` | `4df2823` | ported | `DynamoDb/QueryNeverReturnsAnEmptyPageWithALastEvaluatedKey.cs` |
 | `dynamodb.query-on-index-consumed-capacity-attributes-the-index` | `4df2823` | ported | `DynamoDb/QueryOnIndexConsumedCapacityAttributesTheIndex.cs` |
@@ -702,10 +840,15 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.query-pagination-no-duplicates` | `4df2823` | ported | `DynamoDb/QueryPaginationNoDuplicates.cs` |
 | `dynamodb.query-reverse-pages-at-1mb-in-descending-key-order` | `4df2823` | ported | `DynamoDb/QueryReversePagesAt1mbInDescendingKeyOrder.cs` |
 | `dynamodb.query-scan-exclusive-start-key-empty-value-rejected` | `4df2823` | ported | `DynamoDb/QueryScanExclusiveStartKeyEmptyValueRejected.cs` |
+| `dynamodb.query-scan-filterexpression-nested-path-into-unqueried-index-key` | `abd0811` | **new** |  |
 | `dynamodb.query-scan-index-forward-false` | `4df2823` | ported | `DynamoDb/QueryScanIndexForwardFalse.cs` |
+| `dynamodb.query-select-all-attributes-on-partial-projection-gsi-rejected` | `abd0811` | **new** |  |
+| `dynamodb.query-select-count-capacity-matches-full-read-across-multipage-1mb-boundaries-with-mixed-item-sizes` | `abd0811` | **new** |  |
+| `dynamodb.query-select-count-with-indexes-capacity-under-the-1mb-limit-omits-lastevaluatedkey` | `abd0811` | **new** |  |
 | `dynamodb.query-unbalanced-nested-key-condition-rejected` | `4df2823` | ported | `DynamoDb/QueryUnbalancedNestedKeyConditionRejected.cs` |
 | `dynamodb.query-undefined-expression-value-precedes-resource-not-found` | `4df2823` | ported | `DynamoDb/QueryUndefinedExpressionValuePrecedesResourceNotFound.cs` |
 | `dynamodb.query-value-first-key-condition-operand-message-states-operator-as-written` | `4df2823` | ported | `DynamoDb/QueryValueFirstKeyConditionOperandMessageStatesOperatorAsWritten.cs` |
+| `dynamodb.query-value-first-range-comparison-on-hash-key-wrong-type` | `abd0811` | **new** |  |
 | `dynamodb.query-value-first-sort-key-comparison-and-size-of-absent-attribute` | `4df2823` | ported | `DynamoDb/QueryValueFirstSortKeyComparisonAndSizeOfAbsentAttribute.cs` |
 | `dynamodb.re-enabling-a-stream-mints-a-new-descriptor` | `4df2823` | ported | `DynamoDb/ReEnablingAStreamMintsANewDescriptor.cs` |
 | `dynamodb.replica-auto-scaling-describe-update` | `4df2823` | not ported | Application Auto Scaling |
@@ -736,42 +879,80 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.restore-to-point-in-time-invalid-restore-time-rejected` | `4df2823` | ported | `DynamoDb/RestoreToPointInTimeInvalidRestoreTimeRejected.cs` |
 | `dynamodb.restore-to-point-in-time-invalid-time-rejected` | `4df2823` | ported | `DynamoDb/RestoreToPointInTimeInvalidTimeRejected.cs` |
 | `dynamodb.restore-to-point-in-time-lifecycle` | `4df2823` | ported | `DynamoDb/RestoreToPointInTimeLifecycle.cs` |
+| `dynamodb.restore-to-point-in-time-target-name-already-exists-rejected` | `abd0811` | **new** |  |
+| `dynamodb.scan-1mb-page-boundary-counts-attribute-name-bytes-not-only-values` | `abd0811` | **new** |  |
+| `dynamodb.scan-1mb-page-boundary-on-a-hash-only-table-with-small-attributes` | `abd0811` | **new** |  |
+| `dynamodb.scan-1mb-page-is-the-minimal-byte-prefix-crossing-the-limit` | `abd0811` | **new** |  |
 | `dynamodb.scan-all-projected-attributes-rejects-attributes-to-get` | `4df2823` | ported | `DynamoDb/ScanAllProjectedAttributesRejectsAttributesToGet.cs` |
 | `dynamodb.scan-and-query-filter-ordering-comparison-on-a-set-attribute-rejected` | `4df2823` | ported | `DynamoDb/ScanAndQueryFilterOrderingComparisonOnASetAttributeRejected.cs` |
 | `dynamodb.scan-and-query-filter-set-equality-compares-members-not-order-or-subset` | `4df2823` | ported | `DynamoDb/ScanAndQueryFilterSetEqualityComparesMembersNotOrderOrSubset.cs` |
 | `dynamodb.scan-combined-filter-and-projection-does-not-reduce-consumed-capacity` | `4df2823` | ported | `DynamoDb/ScanCombinedFilterAndProjectionDoesNotReduceConsumedCapacity.cs` |
 | `dynamodb.scan-conditional-operator-or-unions-legacy-filters` | `4df2823` | ported | `DynamoDb/ScanConditionalOperatorOrUnionsLegacyFilters.cs` |
+| `dynamodb.scan-exclusive-start-key-from-another-segment-rejected` | `abd0811` | **new** |  |
 | `dynamodb.scan-exclusive-start-key-naming-a-deleted-item-resumes-without-error` | `4df2823` | ported | `DynamoDb/ScanExclusiveStartKeyNamingADeletedItemResumesWithoutError.cs` |
 | `dynamodb.scan-exclusive-start-key-naming-an-attribute-outside-the-key-schema-rejected` | `4df2823` | ported | `DynamoDb/ScanExclusiveStartKeyNamingAnAttributeOutsideTheKeySchemaRejected.cs` |
+| `dynamodb.scan-filter-attribute-type-matches-collection-and-set-types` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-begins-with-non-string-operand-rejected` | `4df2823` | ported | `DynamoDb/ScanFilterBeginsWithNonStringOperandRejected.cs` |
 | `dynamodb.scan-filter-between-binary-attribute-reversed-bounds-rejected` | `4df2823` | ported | `DynamoDb/ScanFilterBetweenBinaryAttributeReversedBoundsRejected.cs` |
 | `dynamodb.scan-filter-between-binary-attribute-unsigned-byte-order-inclusive` | `4df2823` | ported | `DynamoDb/ScanFilterBetweenBinaryAttributeUnsignedByteOrderInclusive.cs` |
+| `dynamodb.scan-filter-between-dangling-and-conjunct-rejected` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-between-operator-rejected-for-bs-and-ns-operands` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-between-trailing-and-conjunct-precedence` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-binary-attribute-unsigned-byte-order` | `4df2823` | ported | `DynamoDb/ScanFilterBinaryAttributeUnsignedByteOrder.cs` |
+| `dynamodb.scan-filter-conditional-operator-default-matches-and-diverges-from-or` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-conditional-operator-document-value-equality` | `4df2823` | ported | `DynamoDb/ScanFilterConditionalOperatorDocumentValueEquality.cs` |
+| `dynamodb.scan-filter-contains-document-typed-operand-rejected` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-contains-exact-member-and-size-of-bs-and-ns` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-contains-operand-type-matrix-legacy-and-expression` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-eq-and-contains-type-strict-across-s-n-b` | `4df2823` | ported | `DynamoDb/ScanFilterEqAndContainsTypeStrictAcrossSNB.cs` |
+| `dynamodb.scan-filter-expression-between-mixed-type-bounds-rejected` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-expression-le-and-lt-on-numeric-decimals-and-negatives` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-expression-le-ge-and-binary-begins-with` | `4df2823` | ported | `DynamoDb/ScanFilterExpressionLeGeAndBinaryBeginsWith.cs` |
+| `dynamodb.scan-filter-expression-lt-gt-non-orderable-operand-rejected` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-expression-non-distinct-comparator-and-aliased-operands-rejected` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-expression-non-distinct-function-nested-path-operands-rejected` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-expression-not-and-per-comparison-parens` | `4df2823` | ported | `DynamoDb/ScanFilterExpressionNotAndPerComparisonParens.cs` |
 | `dynamodb.scan-filter-expression-ordering-comparison-non-orderable-operand-rejected` | `4df2823` | ported | `DynamoDb/ScanFilterExpressionOrderingComparisonNonOrderableOperandRejected.cs` |
 | `dynamodb.scan-filter-expression-redundant-nested-parens-rejected` | `4df2823` | ported | `DynamoDb/ScanFilterExpressionRedundantNestedParensRejected.cs` |
+| `dynamodb.scan-filter-in-operator-binary-operand-exact-byte-match` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-in-operator-empty-operand-list-rejected` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-le-lt-ge-binary-attribute-and-legacy-between-unsigned-byte-order` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-legacy-between-binary-attribute-reversed-bounds-rejected` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-legacy-contains-set-typed-operand-rejected` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-legacy-contains-wrong-operand-count-rejected` | `4df2823` | ported | `DynamoDb/ScanFilterLegacyContainsWrongOperandCountRejected.cs` |
 | `dynamodb.scan-filter-legacy-in-string-and-numeric` | `4df2823` | ported | `DynamoDb/ScanFilterLegacyInStringAndNumeric.cs` |
 | `dynamodb.scan-filter-legacy-in-with-a-large-operand-list` | `4df2823` | ported | `DynamoDb/ScanFilterLegacyInWithALargeOperandList.cs` |
+| `dynamodb.scan-filter-legacy-non-equality-comparator-rejected-on-set-types` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-legacy-numeric-decimal-negative` | `4df2823` | ported | `DynamoDb/ScanFilterLegacyNumericDecimalNegative.cs` |
+| `dynamodb.scan-filter-legacy-set-equality-eq-ne-on-ss-ns-bs` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-legacy-string-byte-order` | `4df2823` | ported | `DynamoDb/ScanFilterLegacyStringByteOrder.cs` |
+| `dynamodb.scan-filter-list-index-paths-under-or-and-attribute-type-on-nested-paths` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-ne-and-not-contains-on-missing-attribute` | `4df2823` | ported | `DynamoDb/ScanFilterNeAndNotContainsOnMissingAttribute.cs` |
+| `dynamodb.scan-filter-nested-document-path-forms` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-not-contains-operand-type-matrix-legacy-and-expression` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-not-equal-type-strict-across-s-n-b` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-ordering-comparators-reject-list-and-map-operands` | `abd0811` | **new** |  |
+| `dynamodb.scan-filter-size-counts-utf16-code-units-not-bytes` | `abd0811` | **new** |  |
 | `dynamodb.scan-filter-size-covers-s-b-ss-l-m-not-n` | `4df2823` | ported | `DynamoDb/ScanFilterSizeCoversSBSsLMNotN.cs` |
+| `dynamodb.scan-filter-size-function-name-is-case-sensitive` | `abd0811` | **new** |  |
+| `dynamodb.scan-filterexpression-key-path-through-function-or-alias-rejected` | `abd0811` | **new** |  |
+| `dynamodb.scan-gsi-include-projection-unprojected-attribute-rejected-base-table-contrast` | `abd0811` | **new** |  |
 | `dynamodb.scan-pages-at-1mb-with-and-without-never-matching-filter` | `4df2823` | ported | `DynamoDb/ScanPagesAt1mbWithAndWithoutNeverMatchingFilter.cs` |
 | `dynamodb.scan-pagination-exclusive-start-key` | `4df2823` | ported | `DynamoDb/ScanPaginationExclusiveStartKey.cs` |
 | `dynamodb.scan-parallel-segments` | `4df2823` | ported | `DynamoDb/ScanParallelSegments.cs` |
 | `dynamodb.scan-query-conditional-operator-needs-two-filter-conditions-rejected` | `4df2823` | ported | `DynamoDb/ScanQueryConditionalOperatorNeedsTwoFilterConditionsRejected.cs` |
 | `dynamodb.scan-query-legacy-and-expression-mixing-names-every-parameter-rejected` | `4df2823` | ported | `DynamoDb/ScanQueryLegacyAndExpressionMixingNamesEveryParameterRejected.cs` |
+| `dynamodb.scan-return-consumed-capacity-invalid-enum-rejected` | `abd0811` | **new** |  |
 | `dynamodb.scan-returns-all-items` | `4df2823` | ported | `DynamoDb/ScanReturnsAllItems.cs` |
 | `dynamodb.scan-select-all-attributes-on-partial-projection-index-rejected` | `4df2823` | ported | `DynamoDb/ScanSelectAllAttributesOnPartialProjectionIndexRejected.cs` |
+| `dynamodb.scan-totalsegments-above-the-model-maximum-rejected` | `abd0811` | **new** |  |
 | `dynamodb.scan-with-filter` | `4df2823` | ported | `DynamoDb/ScanWithFilter.cs` |
 | `dynamodb.sdk-retry-replays-the-wire-and-only-the-token-stops-the-duplicate` | `4df2823` | ported | `DynamoDb/SdkRetryReplaysTheWireAndOnlyTheTokenStopsTheDuplicate.cs` |
 | `dynamodb.search-vectors-consumed-capacity-is-vector-bytes-only-floored-and-scales` | `4df2823` | ported | `DynamoDb/SearchVectorsConsumedCapacityIsVectorBytesOnlyFlooredAndScales.cs` |
 | `dynamodb.search-vectors-dimension-mismatch-rejected` | `4df2823` | ported | `DynamoDb/SearchVectorsDimensionMismatchRejected.cs` |
 | `dynamodb.search-vectors-dot-product-order-and-score-precision` | `4df2823` | ported | `DynamoDb/SearchVectorsDotProductOrderAndScorePrecision.cs` |
+| `dynamodb.search-vectors-dot-product-score-rounds-integer-above-2-24-to-float32` | `abd0811` | **new** |  |
+| `dynamodb.search-vectors-expression-attribute-name-mismatch-rejected` | `abd0811` | **new** |  |
 | `dynamodb.search-vectors-expression-attribute-value-mismatch-rejected` | `4df2823` | ported | `DynamoDb/SearchVectorsExpressionAttributeValueMismatchRejected.cs` |
 | `dynamodb.search-vectors-non-numeric-search-vector-element-rejected` | `4df2823` | ported | `DynamoDb/SearchVectorsNonNumericSearchVectorElementRejected.cs` |
 | `dynamodb.search-vectors-not-found` | `4df2823` | ported | `DynamoDb/SearchVectorsNotFound.cs` |
@@ -783,9 +964,11 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.select-non-specific-values-reject-projection-expression` | `4df2823` | ported | `DynamoDb/SelectNonSpecificValuesRejectProjectionExpression.cs` |
 | `dynamodb.server-side-point-in-time-recovery-enforced-after-enable` | `4df2823` | ported | `DynamoDb/ServerSidePointInTimeRecoveryEnforcedAfterEnable.cs` |
 | `dynamodb.set-arithmetic-grouping-size-utf16-and-add-empty-string-to-set` | `4df2823` | ported | `DynamoDb/SetArithmeticGroupingSizeUtf16AndAddEmptyStringToSet.cs` |
+| `dynamodb.set-arithmetic-missing-operand-on-absent-item-rejected` | `abd0811` | **new** |  |
 | `dynamodb.set-arithmetic-on-missing-attribute-rejected` | `4df2823` | ported | `DynamoDb/SetArithmeticOnMissingAttributeRejected.cs` |
 | `dynamodb.sets-reject-empty-and-duplicate-members` | `4df2823` | ported | `DynamoDb/SetsRejectEmptyAndDuplicateMembers.cs` |
 | `dynamodb.sigv4-auth-missing-forms-give-missing-authentication-token` | `4df2823` | known gap: DynamoDbAuthentication | `DynamoDb/Sigv4AuthMissingFormsGiveMissingAuthenticationToken.cs` |
+| `dynamodb.sigv4-non-aws4-header-and-query-missing-signedheaders-rejected` | `abd0811` | **new** |  |
 | `dynamodb.sigv4-query-string-presigned-list-tables-accepted` | `4df2823` | ported | `DynamoDb/Sigv4QueryStringPresignedListTablesAccepted.cs` |
 | `dynamodb.sigv4-query-string-presigned-list-tables-tampered-signature-rejected` | `4df2823` | known gap: DynamoDbAuthentication | `DynamoDb/Sigv4QueryStringPresignedListTablesTamperedSignatureRejected.cs` |
 | `dynamodb.sse-with-a-kms-alias-reports-the-resolved-key-arn` | `4df2823` | not ported | KMS keys |
@@ -808,9 +991,12 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.table-replica-auto-scaling-update-reflected` | `4df2823` | not ported | Application Auto Scaling |
 | `dynamodb.table-with-sort-key` | `4df2823` | ported | `DynamoDb/TableWithSortKey.cs` |
 | `dynamodb.tag-overwrite-absent-untag-and-recreated-table-starts-untagged` | `4df2823` | ported | `DynamoDb/TagOverwriteAbsentUntagAndRecreatedTableStartsUntagged.cs` |
+| `dynamodb.tag-resource-aws-prefixed-key-rejected-and-its-companion-key-not-applied` | `abd0811` | **new** |  |
 | `dynamodb.tag-resource-exceeds-tag-limit-rejected` | `4df2823` | ported | `DynamoDb/TagResourceExceedsTagLimitRejected.cs` |
 | `dynamodb.tag-resource-nonexistent-stream-arn-rejected` | `4df2823` | ported | `DynamoDb/TagResourceNonexistentStreamArnRejected.cs` |
+| `dynamodb.tag-resource-second-call-adds-keys-and-retagging-replaces-the-value` | `abd0811` | **new** |  |
 | `dynamodb.transact-condition-check-on-absent-item-passes-without-creating-it` | `4df2823` | ported | `DynamoDb/TransactConditionCheckOnAbsentItemPassesWithoutCreatingIt.cs` |
+| `dynamodb.transact-condition-check-unknown-attribute-type-name-rejected` | `abd0811` | **new** |  |
 | `dynamodb.transact-get-and-write-items-table-arn-naming-another-region-rejected` | `4df2823` | ported | `DynamoDb/TransactGetAndWriteItemsTableArnNamingAnotherRegionRejected.cs` |
 | `dynamodb.transact-get-items` | `4df2823` | ported | `DynamoDb/TransactGetItems.cs` |
 | `dynamodb.transact-get-items-aggregate-size-over-4mb-rejected` | `4df2823` | ported | `DynamoDb/TransactGetItemsAggregateSizeOver4mbRejected.cs` |
@@ -827,22 +1013,34 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.transact-oversized-hash-key-cancels-with-validation-error` | `4df2823` | ported | `DynamoDb/TransactOversizedHashKeyCancelsWithValidationError.cs` |
 | `dynamodb.transact-token-replay-consumed-capacity-is-a-read-not-a-write` | `4df2823` | ported | `DynamoDb/TransactTokenReplayConsumedCapacityIsAReadNotAWrite.cs` |
 | `dynamodb.transact-unused-expression-attribute-name-on-condition-check-and-get-rejected` | `4df2823` | ported | `DynamoDb/TransactUnusedExpressionAttributeNameOnConditionCheckAndGetRejected.cs` |
+| `dynamodb.transact-update-bare-guard-shapes-on-absent-key-cancel` | `abd0811` | **new** |  |
 | `dynamodb.transact-update-condition-needs-item-cancels-the-passing-sibling` | `4df2823` | ported | `DynamoDb/TransactUpdateConditionNeedsItemCancelsThePassingSibling.cs` |
+| `dynamodb.transact-update-if-not-exists-seeds-counter-and-list-on-absent-item` | `abd0811` | **new** |  |
+| `dynamodb.transact-update-operand-type-mismatch-with-stored-value-cancels-rejected` | `abd0811` | **new** |  |
+| `dynamodb.transact-update-path-invalid-for-stored-item-cancels-rejected` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-aggregate-size-over-4mb-rejected` | `4df2823` | ported | `DynamoDb/TransactWriteAggregateSizeOver4mbRejected.cs` |
 | `dynamodb.transact-write-all-or-nothing` | `4df2823` | ported | `DynamoDb/TransactWriteAllOrNothing.cs` |
+| `dynamodb.transact-write-cancellation-omits-capacity-and-collection-metrics` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-condition-check-and-conditional-put-billing` | `4df2823` | ported | `DynamoDb/TransactWriteConditionCheckAndConditionalPutBilling.cs` |
 | `dynamodb.transact-write-condition-check-failure-returns-item-rejected` | `4df2823` | ported | `DynamoDb/TransactWriteConditionCheckFailureReturnsItemRejected.cs` |
+| `dynamodb.transact-write-condition-function-type-mismatch-and-list-exact-match` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-condition-non-orderable-literal-rejected` | `4df2823` | ported | `DynamoDb/TransactWriteConditionNonOrderableLiteralRejected.cs` |
 | `dynamodb.transact-write-conflict-reason-is-transaction-conflict` | `4df2823` | ported | `DynamoDb/TransactWriteConflictReasonIsTransactionConflict.cs` |
 | `dynamodb.transact-write-delete-condition-failure-cancels-transaction` | `4df2823` | ported | `DynamoDb/TransactWriteDeleteConditionFailureCancelsTransaction.cs` |
 | `dynamodb.transact-write-exceeds-100-items` | `4df2823` | ported | `DynamoDb/TransactWriteExceeds100Items.cs` |
 | `dynamodb.transact-write-expression-parse-errors-rejected-top-level` | `4df2823` | ported | `DynamoDb/TransactWriteExpressionParseErrorsRejectedTopLevel.cs` |
+| `dynamodb.transact-write-four-simultaneous-failures-all-old-items-rejected` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-idempotency-mismatch` | `4df2823` | ported | `DynamoDb/TransactWriteIdempotencyMismatch.cs` |
 | `dynamodb.transact-write-idempotency-token` | `4df2823` | ported | `DynamoDb/TransactWriteIdempotencyToken.cs` |
 | `dynamodb.transact-write-items-cancelled-by-condition-failure-reports-no-consumed-capacity` | `4df2823` | ported | `DynamoDb/TransactWriteItemsCancelledByConditionFailureReportsNoConsumedCapacity.cs` |
 | `dynamodb.transact-write-items-client-token-idempotent-mismatch-rejected` | `4df2823` | ported | `DynamoDb/TransactWriteItemsClientTokenIdempotentMismatchRejected.cs` |
+| `dynamodb.transact-write-items-condition-check-contains-set-cancels-with-all-old-item` | `abd0811` | **new** |  |
+| `dynamodb.transact-write-items-condition-check-list-index-and-nested-path-cancels` | `abd0811` | **new** |  |
+| `dynamodb.transact-write-items-condition-evaluated-before-update-runtime-validation` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-items-condition-expression-defects-match-putitem-message` | `4df2823` | ported | `DynamoDb/TransactWriteItemsConditionExpressionDefectsMatchPutitemMessage.cs` |
 | `dynamodb.transact-write-items-consumes-twice-a-plain-write` | `4df2823` | ported | `DynamoDb/TransactWriteItemsConsumesTwiceAPlainWrite.cs` |
+| `dynamodb.transact-write-items-delete-of-absent-item-is-a-no-op-that-still-commits` | `abd0811` | **new** |  |
+| `dynamodb.transact-write-items-delete-operand-type-and-condition-check-reasons-track-item-identity` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-items-delete-with-failed-condition-cancels-other-deletes-too` | `4df2823` | ported | `DynamoDb/TransactWriteItemsDeleteWithFailedConditionCancelsOtherDeletesToo.cs` |
 | `dynamodb.transact-write-items-duplicate-key-rejected` | `4df2823` | ported | `DynamoDb/TransactWriteItemsDuplicateKeyRejected.cs` |
 | `dynamodb.transact-write-items-empty-index-key-validates-not-cancels` | `4df2823` | ported | `DynamoDb/TransactWriteItemsEmptyIndexKeyValidatesNotCancels.cs` |
@@ -850,23 +1048,33 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.transact-write-items-first-fatal-defect-reported-depends-on-defect-class` | `4df2823` | ported | `DynamoDb/TransactWriteItemsFirstFatalDefectReportedDependsOnDefectClass.cs` |
 | `dynamodb.transact-write-items-index-key-type-mismatch-cancels-not-validates` | `4df2823` | ported | `DynamoDb/TransactWriteItemsIndexKeyTypeMismatchCancelsNotValidates.cs` |
 | `dynamodb.transact-write-items-invalid-table-name-names-member-path` | `4df2823` | ported | `DynamoDb/TransactWriteItemsInvalidTableNameNamesMemberPath.cs` |
+| `dynamodb.transact-write-items-key-schema-mismatch-suppresses-sibling-cancellation-reason` | `abd0811` | **new** |  |
+| `dynamodb.transact-write-items-maintain-gsi-and-lsi-entries` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-items-missing-table-is-resource-not-found` | `4df2823` | ported | `DynamoDb/TransactWriteItemsMissingTableIsResourceNotFound.cs` |
+| `dynamodb.transact-write-items-mixed-condition-functions-commit` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-items-near-4mb-aggregate-commits` | `4df2823` | ported | `DynamoDb/TransactWriteItemsNear4mbAggregateCommits.cs` |
+| `dynamodb.transact-write-items-nested-aliased-reserved-words-and-document-functions-commit` | `abd0811` | **new** |  |
+| `dynamodb.transact-write-items-nested-unaliased-reserved-word-in-condition-check-rejected` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-items-nesting-violation-is-top-level-validation-not-cancellation` | `4df2823` | ported | `DynamoDb/TransactWriteItemsNestingViolationIsTopLevelValidationNotCancellation.cs` |
 | `dynamodb.transact-write-items-over-the-item-cap-rejected` | `4df2823` | ported | `DynamoDb/TransactWriteItemsOverTheItemCapRejected.cs` |
 | `dynamodb.transact-write-items-overlength-token-masks-other-violations-rejected` | `4df2823` | ported | `DynamoDb/TransactWriteItemsOverlengthTokenMasksOtherViolationsRejected.cs` |
 | `dynamodb.transact-write-items-parenthesized-conditions-apply-and-cancel` | `4df2823` | ported | `DynamoDb/TransactWriteItemsParenthesizedConditionsApplyAndCancel.cs` |
+| `dynamodb.transact-write-items-per-item-all-old-opt-in-across-condition-failures` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-items-put-and-update-accept-flat-409600-byte-item` | `4df2823` | ported | `DynamoDb/TransactWriteItemsPutAndUpdateAcceptFlat409600ByteItem.cs` |
 | `dynamodb.transact-write-items-put-condition-value-nesting-depth-rejected` | `4df2823` | ported | `DynamoDb/TransactWriteItemsPutConditionValueNestingDepthRejected.cs` |
+| `dynamodb.transact-write-items-put-delete-update-function-conditions-cancel-in-order` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-items-put-over-item-size-limit` | `4df2823` | ported | `DynamoDb/TransactWriteItemsPutOverItemSizeLimit.cs` |
 | `dynamodb.transact-write-items-put-string-set-with-zero-members-rejected` | `4df2823` | ported | `DynamoDb/TransactWriteItemsPutStringSetWithZeroMembersRejected.cs` |
 | `dynamodb.transact-write-items-several-deletes-of-distinct-items-all-apply` | `4df2823` | ported | `DynamoDb/TransactWriteItemsSeveralDeletesOfDistinctItemsAllApply.cs` |
 | `dynamodb.transact-write-items-token-replay-bills-exact-capacity-for-item-size` | `4df2823` | ported | `DynamoDb/TransactWriteItemsTokenReplayBillsExactCapacityForItemSize.cs` |
 | `dynamodb.transact-write-items-unused-expression-attribute-value-on-second-action-rejected` | `4df2823` | ported | `DynamoDb/TransactWriteItemsUnusedExpressionAttributeValueOnSecondActionRejected.cs` |
 | `dynamodb.transact-write-items-update-attribute-not-exists-upserts` | `4df2823` | ported | `DynamoDb/TransactWriteItemsUpdateAttributeNotExistsUpserts.cs` |
+| `dynamodb.transact-write-items-update-child-of-list-scalar-cancels-with-validation-error` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-items-update-grows-item-over-size-limit` | `4df2823` | ported | `DynamoDb/TransactWriteItemsUpdateGrowsItemOverSizeLimit.cs` |
 | `dynamodb.transact-write-items-update-key-and-empty-index-key-rejections` | `4df2823` | ported | `DynamoDb/TransactWriteItemsUpdateKeyAndEmptyIndexKeyRejections.cs` |
 | `dynamodb.transact-write-items-update-over-size-limit-new-and-existing-item-both-regions` | `4df2823` | ported | `DynamoDb/TransactWriteItemsUpdateOverSizeLimitNewAndExistingItemBothRegions.cs` |
+| `dynamodb.transact-write-items-update-runtime-arithmetic-error-reports-validation-error-reason` | `abd0811` | **new** |  |
+| `dynamodb.transact-write-items-update-shares-update-items-floor-bound-ceiling-at-a-short-key` | `abd0811` | **new** |  |
 | `dynamodb.transact-write-multi-table-atomicity` | `4df2823` | ported | `DynamoDb/TransactWriteMultiTableAtomicity.cs` |
 | `dynamodb.transact-write-skew-on-absent-keys-never-commits-both` | `4df2823` | ported | `DynamoDb/TransactWriteSkewOnAbsentKeysNeverCommitsBoth.cs` |
 | `dynamodb.transact-write-stale-version-update-cancels-its-companion-put` | `4df2823` | ported | `DynamoDb/TransactWriteStaleVersionUpdateCancelsItsCompanionPut.cs` |
@@ -880,60 +1088,116 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.ttl-expired-item-auto-deletion` | `4df2823` | ported | `DynamoDb/TtlExpiredItemAutoDeletion.cs` |
 | `dynamodb.ttl-rename-while-enabled-rejected` | `4df2823` | ported | `DynamoDb/TtlRenameWhileEnabledRejected.cs` |
 | `dynamodb.unbalanced-parenthesized-condition-expression-rejected` | `4df2823` | ported | `DynamoDb/UnbalancedParenthesizedConditionExpressionRejected.cs` |
+| `dynamodb.untag-resource-after-retagging-a-present-key-removes-it-from-the-table` | `abd0811` | **new** |  |
+| `dynamodb.untag-resource-of-fresh-keys-restores-the-table-tags-listed-before` | `abd0811` | **new** |  |
 | `dynamodb.unused-expression-attribute-value-and-name-rejected` | `4df2823` | ported | `DynamoDb/UnusedExpressionAttributeValueAndNameRejected.cs` |
+| `dynamodb.update-add-creates-missing-number-set-and-unions-overlapping-binary-set` | `abd0811` | **new** |  |
 | `dynamodb.update-continuous-backups-nonexistent` | `4df2823` | ported | `DynamoDb/UpdateContinuousBackupsNonexistent.cs` |
 | `dynamodb.update-delete-last-set-element-removes-attribute` | `4df2823` | ported | `DynamoDb/UpdateDeleteLastSetElementRemovesAttribute.cs` |
+| `dynamodb.update-delete-set-absent-noop-partial-subset-and-full-preimage` | `abd0811` | **new** |  |
+| `dynamodb.update-expression-add-delete-duplicate-set-operand-members-rejected` | `abd0811` | **new** |  |
 | `dynamodb.update-expression-add-number` | `4df2823` | ported | `DynamoDb/UpdateExpressionAddNumber.cs` |
 | `dynamodb.update-expression-add-to-set` | `4df2823` | ported | `DynamoDb/UpdateExpressionAddToSet.cs` |
 | `dynamodb.update-expression-delete-from-set` | `4df2823` | ported | `DynamoDb/UpdateExpressionDeleteFromSet.cs` |
 | `dynamodb.update-expression-malformed-syntax-rejected` | `4df2823` | ported | `DynamoDb/UpdateExpressionMalformedSyntaxRejected.cs` |
 | `dynamodb.update-expression-remove` | `4df2823` | ported | `DynamoDb/UpdateExpressionRemove.cs` |
 | `dynamodb.update-expression-set` | `4df2823` | ported | `DynamoDb/UpdateExpressionSet.cs` |
+| `dynamodb.update-item-add-and-delete-through-nested-placeholders-match-whole-item-exactly` | `abd0811` | **new** |  |
+| `dynamodb.update-item-add-and-delete-through-nested-placeholders-reject-mismatched-leaf-types` | `abd0811` | **new** |  |
+| `dynamodb.update-item-add-arithmetic-result-exceeding-precision-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-item-add-decimal-arithmetic-precision` | `abd0811` | **new** |  |
 | `dynamodb.update-item-add-delete-empty-set-operand-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemAddDeleteEmptySetOperandRejected.cs` |
 | `dynamodb.update-item-add-delete-empty-string-set-member-and-zero-length-binary-set-member` | `4df2823` | ported | `DynamoDb/UpdateItemAddDeleteEmptyStringSetMemberAndZeroLengthBinarySetMember.cs` |
+| `dynamodb.update-item-add-delete-on-map-attribute-and-nested-arithmetic-type-mismatch-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-item-add-delete-operand-type-rejects-list-and-string` | `abd0811` | **new** |  |
+| `dynamodb.update-item-add-empty-number-and-binary-set-operand-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-item-add-list-index-type-mismatch-and-missing-attribute-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-item-add-null-operand-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-item-add-on-list-index-arithmetic-vs-append-past-end` | `abd0811` | **new** |  |
+| `dynamodb.update-item-add-string-set-onto-scalar-string-rejected` | `abd0811` | **new** |  |
 | `dynamodb.update-item-add-type-mismatch` | `4df2823` | ported | `DynamoDb/UpdateItemAddTypeMismatch.cs` |
+| `dynamodb.update-item-addition-and-if-not-exists-overhead-ignores-growth-and-path-absence` | `abd0811` | **new** |  |
 | `dynamodb.update-item-and-transact-update-empty-gsi-and-lsi-keys-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemAndTransactUpdateEmptyGsiAndLsiKeysRejected.cs` |
+| `dynamodb.update-item-arithmetic-clause-overhead-ignores-operand-name-length-and-alias` | `abd0811` | **new** |  |
+| `dynamodb.update-item-attribute-exists-and-comparison-condition-on-absent-key` | `abd0811` | **new** |  |
+| `dynamodb.update-item-bool-condition-value-exists-form-and-expression-equality-return-values` | `abd0811` | **new** |  |
 | `dynamodb.update-item-chained-arithmetic-operators-on-list-index-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemChainedArithmeticOperatorsOnListIndexRejected.cs` |
+| `dynamodb.update-item-clause-overhead-ignores-operand-value-and-removed-members` | `abd0811` | **new** |  |
+| `dynamodb.update-item-condition-begins-with-binary-byte-prefix` | `abd0811` | **new** |  |
 | `dynamodb.update-item-condition-expression-over-4096-bytes-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemConditionExpressionOver4096BytesRejected.cs` |
+| `dynamodb.update-item-condition-failure-surfaces-nested-item-on-deep-path` | `abd0811` | **new** |  |
+| `dynamodb.update-item-condition-list-null-bool-equality-and-in-over-map` | `abd0811` | **new** |  |
+| `dynamodb.update-item-condition-string-lexicographic-comparison` | `abd0811` | **new** |  |
+| `dynamodb.update-item-condition-type-mismatch-and-missing-attribute-evaluate-false` | `abd0811` | **new** |  |
+| `dynamodb.update-item-creates-and-grows-items-across-the-1kb-write-capacity-boundary` | `abd0811` | **new** |  |
+| `dynamodb.update-item-delete-string-operand-on-absent-item` | `abd0811` | **new** |  |
 | `dynamodb.update-item-expression-substitution-total-size-over-2mb-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemExpressionSubstitutionTotalSizeOver2mbRejected.cs` |
 | `dynamodb.update-item-growth-over-size-limit-with-all-projected-lsi-entry` | `4df2823` | ported | `DynamoDb/UpdateItemGrowthOverSizeLimitWithAllProjectedLsiEntry.cs` |
+| `dynamodb.update-item-gsi-key-move-recharges-an-all-projected-lsi` | `abd0811` | **new** |  |
+| `dynamodb.update-item-gsi-partition-key-value-over-2048-bytes-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-item-if-not-exists-charge-only-refused-on-existing-target` | `abd0811` | **new** |  |
 | `dynamodb.update-item-if-not-exists-document-path-fallback-and-existing-subtract` | `4df2823` | ported | `DynamoDb/UpdateItemIfNotExistsDocumentPathFallbackAndExistingSubtract.cs` |
 | `dynamodb.update-item-if-not-exists-second-operand-missing-attribute-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemIfNotExistsSecondOperandMissingAttributeRejected.cs` |
 | `dynamodb.update-item-if-not-exists-size-checked-before-condition` | `4df2823` | ported | `DynamoDb/UpdateItemIfNotExistsSizeCheckedBeforeCondition.cs` |
 | `dynamodb.update-item-index-capacity-ladder-follows-key-vs-projected-change` | `4df2823` | known gap: EmulatorBudget | `DynamoDb/UpdateItemIndexCapacityLadderFollowsKeyVsProjectedChange.cs` |
 | `dynamodb.update-item-key-attribute-immutable` | `4df2823` | ported | `DynamoDb/UpdateItemKeyAttributeImmutable.cs` |
 | `dynamodb.update-item-key-schema-mismatch` | `4df2823` | ported | `DynamoDb/UpdateItemKeySchemaMismatch.cs` |
+| `dynamodb.update-item-legacy-delete-and-arithmetic-set-on-hash-key-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-item-list-index-set-target-charge-below-plain-set` | `abd0811` | **new** |  |
 | `dynamodb.update-item-lsi-key-type-mismatch-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemLsiKeyTypeMismatchRejected.cs` |
 | `dynamodb.update-item-lsi-sort-key-move-and-combined-gsi-lsi-move` | `4df2823` | ported | `DynamoDb/UpdateItemLsiSortKeyMoveAndCombinedGsiLsiMove.cs` |
 | `dynamodb.update-item-malformed-or-overflowing-number-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemMalformedOrOverflowingNumberRejected.cs` |
+| `dynamodb.update-item-many-clause-combo-updated-new-omits-out-of-bounds-list-append` | `abd0811` | **new** |  |
 | `dynamodb.update-item-mixing-attribute-updates-and-expression-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemMixingAttributeUpdatesAndExpressionRejected.cs` |
+| `dynamodb.update-item-multiple-simultaneous-key-violations-reports-one` | `abd0811` | **new** |  |
 | `dynamodb.update-item-nested-arithmetic-mixed-clauses-and-if-not-exists-parent` | `4df2823` | ported | `DynamoDb/UpdateItemNestedArithmeticMixedClausesAndIfNotExistsParent.cs` |
+| `dynamodb.update-item-nested-function-operand-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-item-nested-path-set-target-charge-below-plain-set` | `abd0811` | **new** |  |
 | `dynamodb.update-item-number-set-condition-exact-at-full-precision` | `4df2823` | ported | `DynamoDb/UpdateItemNumberSetConditionExactAtFullPrecision.cs` |
 | `dynamodb.update-item-numeric-set-precision-preserved` | `4df2823` | ported | `DynamoDb/UpdateItemNumericSetPrecisionPreserved.cs` |
+| `dynamodb.update-item-remove-list-index-cost-is-independent-of-index-digit-count` | `abd0811` | **new** |  |
 | `dynamodb.update-item-remove-missing-map-key-noop-and-set-empty-list-index` | `4df2823` | ported | `DynamoDb/UpdateItemRemoveMissingMapKeyNoopAndSetEmptyListIndex.cs` |
 | `dynamodb.update-item-request-shape-byte-charges-by-clause-kind` | `4df2823` | ported | `DynamoDb/UpdateItemRequestShapeByteChargesByClauseKind.cs` |
 | `dynamodb.update-item-return-values-distinguishes-all-five-arms` | `4df2823` | ported | `DynamoDb/UpdateItemReturnValuesDistinguishesAllFiveArms.cs` |
 | `dynamodb.update-item-return-values-omit-attributes-when-no-value-qualifies` | `4df2823` | ported | `DynamoDb/UpdateItemReturnValuesOmitAttributesWhenNoValueQualifies.cs` |
+| `dynamodb.update-item-return-values-pin-deep-nested-leaf-updates` | `abd0811` | **new** |  |
+| `dynamodb.update-item-reused-document-value-and-add-to-set-bill-exactly-their-real-growth` | `abd0811` | **new** |  |
+| `dynamodb.update-item-set-arithmetic-into-a-different-target-attribute` | `abd0811` | **new** |  |
+| `dynamodb.update-item-set-arithmetic-result-over-38-significant-digits-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-item-set-arithmetic-wrong-type-source-into-different-target-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-item-set-decimal-arithmetic-updated-old-new` | `abd0811` | **new** |  |
 | `dynamodb.update-item-set-empty-string-set-rejected-top-and-nested` | `4df2823` | ported | `DynamoDb/UpdateItemSetEmptyStringSetRejectedTopAndNested.cs` |
 | `dynamodb.update-item-set-list-append-add-exceeding-400kb-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemSetListAppendAddExceeding400kbRejected.cs` |
 | `dynamodb.update-item-set-list-index-on-missing-item-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemSetListIndexOnMissingItemRejected.cs` |
 | `dynamodb.update-item-set-list-preserves-element-order` | `4df2823` | ported | `DynamoDb/UpdateItemSetListPreservesElementOrder.cs` |
+| `dynamodb.update-item-set-null-overwrites-scalar-type-and-creates-new-attribute` | `abd0811` | **new** |  |
 | `dynamodb.update-item-set-remove-fixed-action-cost-ceiling` | `4df2823` | ported | `DynamoDb/UpdateItemSetRemoveFixedActionCostCeiling.cs` |
 | `dynamodb.update-item-set-size-ceiling-bisected-and-stable` | `4df2823` | ported | `DynamoDb/UpdateItemSetSizeCeilingBisectedAndStable.cs` |
 | `dynamodb.update-item-set-ss-sole-empty-string-member-top-and-nested` | `4df2823` | ported | `DynamoDb/UpdateItemSetSsSoleEmptyStringMemberTopAndNested.cs` |
+| `dynamodb.update-item-set-through-list-element-into-aliased-map-child` | `abd0811` | **new** |  |
 | `dynamodb.update-item-set-to-current-value-still-enforces-condition-expression-rejected` | `4df2823` | ported | `DynamoDb/UpdateItemSetToCurrentValueStillEnforcesConditionExpressionRejected.cs` |
+| `dynamodb.update-item-set-value-first-operand-order-same-attribute` | `abd0811` | **new** |  |
 | `dynamodb.update-item-size-ceiling-counts-key-and-untouched-attribute-bytes` | `4df2823` | ported | `DynamoDb/UpdateItemSizeCeilingCountsKeyAndUntouchedAttributeBytes.cs` |
+| `dynamodb.update-item-size-floor-excludes-short-sort-key` | `abd0811` | **new** |  |
+| `dynamodb.update-item-size-floor-treats-key-name-and-value-bytes-equally` | `abd0811` | **new** |  |
+| `dynamodb.update-item-subtraction-list-append-and-nested-path-cost-no-more-than-a-direct-write` | `abd0811` | **new** |  |
+| `dynamodb.update-item-subtraction-literal-operand-type-mismatch-rejected` | `abd0811` | **new** |  |
 | `dynamodb.update-item-updated-new-includes-unchanged-set-value-and-upsert` | `4df2823` | ported | `DynamoDb/UpdateItemUpdatedNewIncludesUnchangedSetValueAndUpsert.cs` |
 | `dynamodb.update-item-updated-new-old-rebuild-nested-leaves-only` | `4df2823` | ported | `DynamoDb/UpdateItemUpdatedNewOldRebuildNestedLeavesOnly.cs` |
 | `dynamodb.update-item-without-actions-upserts-key-only-item` | `4df2823` | ported | `DynamoDb/UpdateItemWithoutActionsUpsertsKeyOnlyItem.cs` |
 | `dynamodb.update-list-append-on-ghost-attribute-rejected` | `4df2823` | ported | `DynamoDb/UpdateListAppendOnGhostAttributeRejected.cs` |
 | `dynamodb.update-remove-add-delete-through-invalid-path-rejected` | `4df2823` | ported | `DynamoDb/UpdateRemoveAddDeleteThroughInvalidPathRejected.cs` |
+| `dynamodb.update-remove-add-delete-through-missing-key-under-an-existing-map-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-remove-add-delete-through-missing-parent-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-remove-through-missing-nested-parent-rejected` | `abd0811` | **new** |  |
 | `dynamodb.update-return-values` | `4df2823` | ported | `DynamoDb/UpdateReturnValues.cs` |
 | `dynamodb.update-return-values-updated-old-and-new-scope` | `4df2823` | ported | `DynamoDb/UpdateReturnValuesUpdatedOldAndNewScope.cs` |
 | `dynamodb.update-set-arithmetic-and-list-append-type-mismatch-rejected` | `4df2823` | ported | `DynamoDb/UpdateSetArithmeticAndListAppendTypeMismatchRejected.cs` |
+| `dynamodb.update-set-copies-missing-attribute-rejected` | `abd0811` | **new** |  |
 | `dynamodb.update-set-replaces-the-existing-value-without-merging` | `4df2823` | ported | `DynamoDb/UpdateSetReplacesTheExistingValueWithoutMerging.cs` |
 | `dynamodb.update-set-through-missing-intermediate-map-rejected` | `4df2823` | ported | `DynamoDb/UpdateSetThroughMissingIntermediateMapRejected.cs` |
 | `dynamodb.update-set-through-missing-map-path-rejected` | `4df2823` | ported | `DynamoDb/UpdateSetThroughMissingMapPathRejected.cs` |
+| `dynamodb.update-set-through-scalar-parent-and-scalar-list-element-child-rejected` | `abd0811` | **new** |  |
 | `dynamodb.update-table-billing-mode-pay-per-request-no-op-accepted` | `4df2823` | ported | `DynamoDb/UpdateTableBillingModePayPerRequestNoOpAccepted.cs` |
 | `dynamodb.update-table-billing-mode-provisioned-same-value-rejected` | `4df2823` | ported | `DynamoDb/UpdateTableBillingModeProvisionedSameValueRejected.cs` |
 | `dynamodb.update-table-billing-mode-transitions-updating-to-active` | `4df2823` | ported | `DynamoDb/UpdateTableBillingModeTransitionsUpdatingToActive.cs` |
@@ -942,18 +1206,25 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodb.update-table-delete-of-an-absent-gsi-rejected` | `4df2823` | ported | `DynamoDb/UpdateTableDeleteOfAnAbsentGsiRejected.cs` |
 | `dynamodb.update-table-duplicate-and-bulk-gsi-delete-rejected` | `4df2823` | ported | `DynamoDb/UpdateTableDuplicateAndBulkGsiDeleteRejected.cs` |
 | `dynamodb.update-table-exceeds-limit-rejected` | `4df2823` | ported | `DynamoDb/UpdateTableExceedsLimitRejected.cs` |
+| `dynamodb.update-table-gsi-add-drops-unused-attribute-definition-in-the-response` | `abd0811` | **new** |  |
+| `dynamodb.update-table-gsi-add-duplicate-attribute-name-in-attribute-definitions-rejected` | `abd0811` | **new** |  |
 | `dynamodb.update-table-gsi-attribute-definitions-track-live-keys` | `4df2823` | ported | `DynamoDb/UpdateTableGsiAttributeDefinitionsTrackLiveKeys.cs` |
 | `dynamodb.update-table-gsi-delete-targeting-lsi-name-rejected` | `4df2823` | ported | `DynamoDb/UpdateTableGsiDeleteTargetingLsiNameRejected.cs` |
+| `dynamodb.update-table-gsi-update-absent-index-or-table-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-table-gsi-update-shape-validation-precedes-table-lookup-rejected` | `abd0811` | **new** |  |
 | `dynamodb.update-table-on-a-missing-table-is-resource-not-found` | `4df2823` | ported | `DynamoDb/UpdateTableOnAMissingTableIsResourceNotFound.cs` |
 | `dynamodb.update-table-rejected-while-a-prior-throughput-change-is-still-applying` | `4df2823` | ported | `DynamoDb/UpdateTableRejectedWhileAPriorThroughputChangeIsStillApplying.cs` |
 | `dynamodb.update-table-rejects-a-duplicate-index-name` | `4df2823` | ported | `DynamoDb/UpdateTableRejectsADuplicateIndexName.cs` |
 | `dynamodb.update-table-sets-and-clears-the-on-demand-read-ceiling` | `4df2823` | ported | `DynamoDb/UpdateTableSetsAndClearsTheOnDemandReadCeiling.cs` |
-| `dynamodb.update-table-sse-nonexistent-cmk-rejected` | `4df2823` | not ported | KMS keys |
-| `dynamodb.update-table-sse-switches-owned-managed-customer-key` | `4df2823` | not ported | KMS keys |
+| `dynamodb.update-table-six-gsi-deletes-of-absent-indexes-limit-exceeded-rejected` | `abd0811` | **new** |  |
+| `dynamodb.update-table-sse-nonexistent-cmk-rejected` | `abd0811` | not ported | KMS keys |
+| `dynamodb.update-table-sse-switches-owned-managed-customer-key` | `abd0811` | not ported | KMS keys |
 | `dynamodb.update-table-throughput-on-on-demand-table-and-zero-capacity-rejected` | `4df2823` | ported | `DynamoDb/UpdateTableThroughputOnOnDemandTableAndZeroCapacityRejected.cs` |
 | `dynamodb.update-table-vector-index-requires-pay-per-request` | `4df2823` | ported | `DynamoDb/UpdateTableVectorIndexRequiresPayPerRequest.cs` |
+| `dynamodb.update-through-bracket-index-on-non-list-rejected` | `abd0811` | **new** |  |
 | `dynamodb.update-ttl-attribute-name-exceeding-max-length-rejected` | `4df2823` | ported | `DynamoDb/UpdateTtlAttributeNameExceedingMaxLengthRejected.cs` |
 | `dynamodb.update-ttl-invalid-attribute` | `4df2823` | ported | `DynamoDb/UpdateTtlInvalidAttribute.cs` |
+| `dynamodb.validation-before-table-lookup-deleteitem-and-getitem-rejected` | `abd0811` | **new** |  |
 | `dynamodb.validation-messages-are-customer-intelligible` | `4df2823` | ported | `DynamoDb/ValidationMessagesAreCustomerIntelligible.cs` |
 | `dynamodb.validation-messages-name-the-concept-without-implementation-leakage` | `4df2823` | ported | `DynamoDb/ValidationMessagesNameTheConceptWithoutImplementationLeakage.cs` |
 | `dynamodb.vector-capacity-sized-by-dimension-count-not-number-width` | `4df2823` | ported | `DynamoDb/VectorCapacitySizedByDimensionCountNotNumberWidth.cs` |
@@ -992,6 +1263,12 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `dynamodbstreams.old-image-view-omits-new-image` | `4df2823` | ported | `DynamoDbStreams/OldImageViewOmitsNewImage.cs` |
 | `dynamodbstreams.shard-record-order-matches-write-order` | `4df2823` | ported | `DynamoDbStreams/ShardRecordOrderMatchesWriteOrder.cs` |
 | `dynamodbstreams.stream-record-creation-time-tracks-the-live-clock` | `4df2823` | ported | `DynamoDbStreams/StreamRecordCreationTimeTracksTheLiveClock.cs` |
+
+## behavioral/dynamodb__dynamodbstreams
+
+| Check | Last changed | Status | Port or reason |
+|---|---|---|---|
+| `dynamodb__dynamodbstreams.failed-conditional-write-leaves-no-stream-record-while-a-later-success-does` | `abd0811` | **new** |  |
 
 ## behavioral/eventbridgev2
 
@@ -1066,8 +1343,9 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.bus-policy-role-statement-admits-put-events-but-account-statement-leaves-bare-role-denied` | `4df2823` | not ported | IAM role and identity-policy enforcement |
 | `events.bus-target-without-role-arn-rejected-in-both-regions-and-the-rule-keeps-its-targets` | `4df2823` | ported | `Events/BusTargetWithoutRoleArnRejectedInBothRegionsAndTheRuleKeepsItsTargets.cs` |
 | `events.cancel-replay-in-flight-reaches-cancelled-and-stays-terminal` | `4df2823` | ported | `Events/CancelReplayInFlightReachesCancelledAndStaysTerminal.cs` |
-| `events.cmk-encrypted-bus-delivers-put-events-to-sqs-target` | `4df2823` | not ported | KMS keys |
-| `events.cmk-without-events-grant-rejected-on-create-and-update` | `4df2823` | not ported | KMS keys |
+| `events.cancel-replay-on-a-name-never-created-is-rejected` | `abd0811` | **new** |  |
+| `events.cmk-encrypted-bus-delivers-put-events-to-sqs-target` | `abd0811` | not ported | KMS keys |
+| `events.cmk-without-events-grant-rejected-on-create-and-update` | `abd0811` | not ported | KMS keys |
 | `events.concurrent-activate-event-source-conflict-detected` | `4df2823` | ported | `Events/ConcurrentActivateEventSourceConflictDetected.cs` |
 | `events.concurrent-put-events-unique-event-ids` | `4df2823` | ported | `Events/ConcurrentPutEventsUniqueEventIds.cs` |
 | `events.concurrent-update-endpoint-conflict-detected` | `4df2823` | ported | `Events/ConcurrentUpdateEndpointConflictDetected.cs` |
@@ -1076,6 +1354,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.create-api-destination-invalid-endpoint-pattern-rejected` | `4df2823` | ported | `Events/CreateApiDestinationInvalidEndpointPatternRejected.cs` |
 | `events.create-api-destination-requires-existing-connection` | `4df2823` | ported | `Events/CreateApiDestinationRequiresExistingConnection.cs` |
 | `events.create-archive-and-describe` | `4df2823` | ported | `Events/CreateArchiveAndDescribe.cs` |
+| `events.create-archive-anything-but-ignore-case-list-with-a-number-rejected-and-no-archive-created` | `abd0811` | **new** |  |
 | `events.create-archive-duplicate-fails` | `4df2823` | ported | `Events/CreateArchiveDuplicateFails.cs` |
 | `events.create-archive-nonexistent-bus-fails` | `4df2823` | ported | `Events/CreateArchiveNonexistentBusFails.cs` |
 | `events.create-connection-missing-auth-parameters-rejected` | `4df2823` | ported | `Events/CreateConnectionMissingAuthParametersRejected.cs` |
@@ -1090,12 +1369,14 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.custom-bus-put-events-routes-each-batch-entry-by-its-detail-content` | `4df2823` | ported | `Events/CustomBusPutEventsRoutesEachBatchEntryByItsDetailContent.cs` |
 | `events.custom-bus-rule-calls-without-event-bus-name-not-found` | `4df2823` | ported | `Events/CustomBusRuleCallsWithoutEventBusNameNotFound.cs` |
 | `events.deactivate-event-source-nonexistent-not-found` | `4df2823` | ported | `Events/DeactivateEventSourceNonexistentNotFound.cs` |
+| `events.deauthorize-connection-on-a-name-never-created-is-rejected` | `abd0811` | **new** |  |
 | `events.deauthorize-connection-state-transition` | `4df2823` | ported | `Events/DeauthorizeConnectionStateTransition.cs` |
 | `events.default-event-bus-listed` | `4df2823` | ported | `Events/DefaultEventBusListed.cs` |
 | `events.delete-archive-not-blocked-by-in-flight-replay-and-start-replay-on-it-refused` | `4df2823` | ported | `Events/DeleteArchiveNotBlockedByInFlightReplayAndStartReplayOnItRefused.cs` |
 | `events.delete-archive-removes-it` | `4df2823` | ported | `Events/DeleteArchiveRemovesIt.cs` |
 | `events.delete-connection-eventually-not-found` | `4df2823` | ported | `Events/DeleteConnectionEventuallyNotFound.cs` |
 | `events.delete-connection-in-use-by-api-destination-allowed` | `4df2823` | ported | `Events/DeleteConnectionInUseByApiDestinationAllowed.cs` |
+| `events.delete-connection-on-a-name-never-created-is-rejected` | `abd0811` | **new** |  |
 | `events.delete-default-event-bus-protected` | `4df2823` | ported | `Events/DeleteDefaultEventBusProtected.cs` |
 | `events.delete-endpoint-nonexistent-not-found` | `4df2823` | ported | `Events/DeleteEndpointNonexistentNotFound.cs` |
 | `events.delete-event-bus-blocked-while-a-rule-remains-and-succeeds-once-removed` | `4df2823` | ported | `Events/DeleteEventBusBlockedWhileARuleRemainsAndSucceedsOnceRemoved.cs` |
@@ -1118,7 +1399,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.describe-nonexistent-rule-fails` | `4df2823` | ported | `Events/DescribeNonexistentRuleFails.cs` |
 | `events.describe-partner-event-source-nonexistent-not-found` | `4df2823` | ported | `Events/DescribePartnerEventSourceNonexistentNotFound.cs` |
 | `events.describe-replay-nonexistent-not-found` | `4df2823` | ported | `Events/DescribeReplayNonexistentNotFound.cs` |
-| `events.disabled-bus-key-stops-delivery-dead-letters-encrypted-events-until-reenabled` | `4df2823` | not ported | KMS keys |
+| `events.disabled-bus-key-stops-delivery-dead-letters-encrypted-events-until-reenabled` | `abd0811` | not ported | KMS keys |
 | `events.disabled-rule-with-a-dead-letter-configured-target-drops-the-event-instead-of-dead-lettering-it` | `4df2823` | known gap: EventBridgeUngrantedTargets | `Events/DisabledRuleWithADeadLetterConfiguredTargetDropsTheEventInsteadOfDeadLetteringIt.cs` |
 | `events.e2e-bus-rule-archive-replay-redelivers-event` | `4df2823` | ported | `Events/E2eBusRuleArchiveReplayRedeliversEvent.cs` |
 | `events.e2e-partner-event-source-activation-to-ingestion-flow` | `4df2823` | ported | `Events/E2EPartnerEventSourceActivationToIngestionFlow.cs` |
@@ -1128,6 +1409,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.endpoint-lifecycle-create-active-delete-404` | `4df2823` | ported | `Events/EndpointLifecycleCreateActiveDelete404.cs` |
 | `events.endpoint-routing-config-round-trip` | `4df2823` | ported | `Events/EndpointRoutingConfigRoundTrip.cs` |
 | `events.event-bus-dead-letter-config-rejects-non-sqs-arns-and-keeps-prior-config` | `4df2823` | ported | `Events/EventBusDeadLetterConfigRejectsNonSqsArnsAndKeepsPriorConfig.cs` |
+| `events.event-bus-prefix-listing-and-describe-track-create-and-delete-while-default-survives` | `abd0811` | **new** |  |
 | `events.event-bus-tag-limit-counts-tags-already-on-the-bus-and-overwrites-do-not-count` | `4df2823` | ported | `Events/EventBusTagLimitCountsTagsAlreadyOnTheBusAndOverwritesDoNotCount.cs` |
 | `events.event-pattern-over-2048-characters-rejected-counting-whitespace-and-the-rule-keeps-its-pattern` | `4df2823` | ported | `Events/EventPatternOver2048CharactersRejectedCountingWhitespaceAndTheRuleKeepsItsPattern.cs` |
 | `events.events-archive-replay-filter-arn-naming-a-rule-on-another-bus-rejected` | `4df2823` | ported | `Events/EventsArchiveReplayFilterArnNamingARuleOnAnotherBusRejected.cs` |
@@ -1145,7 +1427,9 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.lambda-target-is-invoked-asynchronously-and-its-on-success-destination-records-the-envelope` | `4df2823` | not ported | Lambda targets |
 | `events.list-archives-filters-by-prefix-and-source` | `4df2823` | ported | `Events/ListArchivesFiltersByPrefixAndSource.cs` |
 | `events.list-connections-filters-are-mutually-exclusive` | `4df2823` | ported | `Events/ListConnectionsFiltersAreMutuallyExclusive.cs` |
+| `events.list-connections-paginates-with-limit-and-next-token` | `abd0811` | **new** |  |
 | `events.list-event-buses-includes-default-and-custom` | `4df2823` | ported | `Events/ListEventBusesIncludesDefaultAndCustom.cs` |
+| `events.list-event-buses-limit-above-the-documented-maximum-rejected` | `abd0811` | **new** |  |
 | `events.list-event-buses-paginates-with-limit-and-next-token` | `4df2823` | ported | `Events/ListEventBusesPaginatesWithLimitAndNextToken.cs` |
 | `events.list-partner-event-source-accounts-unknown-source-not-found` | `4df2823` | ported | `Events/ListPartnerEventSourceAccountsUnknownSourceNotFound.cs` |
 | `events.list-partner-event-sources-disabled-account-denied` | `4df2823` | ported | `Events/ListPartnerEventSourcesDisabledAccountDenied.cs` |
@@ -1165,6 +1449,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.put-events-detail-that-is-json-but-not-an-object-rejected` | `4df2823` | ported | `Events/PutEventsDetailThatIsJsonButNotAnObjectRejected.cs` |
 | `events.put-events-endpoint-id-delivers-to-primary-and-replicates-to-secondary` | `4df2823` | ported | `Events/PutEventsEndpointIdDeliversToPrimaryAndReplicatesToSecondary.cs` |
 | `events.put-events-endpoint-id-with-unrelated-event-bus-name-rejected` | `4df2823` | ported | `Events/PutEventsEndpointIdWithUnrelatedEventBusNameRejected.cs` |
+| `events.put-events-entries-over-ten-rejected-whole-and-exactly-ten-delivers` | `abd0811` | **new** |  |
 | `events.put-events-malformed-detail-entry-fails` | `4df2823` | ported | `Events/PutEventsMalformedDetailEntryFails.cs` |
 | `events.put-events-missing-source-entry-fails` | `4df2823` | ported | `Events/PutEventsMissingSourceEntryFails.cs` |
 | `events.put-events-nonexistent-bus-silently-dropped` | `4df2823` | ported | `Events/PutEventsNonexistentBusSilentlyDropped.cs` |
@@ -1179,13 +1464,16 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.put-events-unmatched-entry-not-delivered` | `4df2823` | ported | `Events/PutEventsUnmatchedEntryNotDelivered.cs` |
 | `events.put-events-valid-returns-event-id` | `4df2823` | ported | `Events/PutEventsValidReturnsEventId.cs` |
 | `events.put-partner-events-non-partner-account-denied` | `4df2823` | ported | `Events/PutPartnerEventsNonPartnerAccountDenied.cs` |
+| `events.put-permission-malformed-principal-action-and-statement-id-rejected` | `abd0811` | **new** |  |
 | `events.put-permission-same-statement-id-replaces-and-remove-all-clears-policy` | `4df2823` | ported | `Events/PutPermissionSameStatementIdReplacesAndRemoveAllClearsPolicy.cs` |
 | `events.put-remove-permission-roundtrip` | `4df2823` | ported | `Events/PutRemovePermissionRoundtrip.cs` |
+| `events.put-rule-anything-but-ignore-case-list-with-a-number-rejected-and-no-rule-created` | `abd0811` | **new** |  |
 | `events.put-rule-default-state-enabled` | `4df2823` | ported | `Events/PutRuleDefaultStateEnabled.cs` |
 | `events.put-rule-invalid-pattern-fails` | `4df2823` | ported | `Events/PutRuleInvalidPatternFails.cs` |
 | `events.put-rule-invalid-schedule-expression-rejected` | `4df2823` | ported | `Events/PutRuleInvalidScheduleExpressionRejected.cs` |
 | `events.put-rule-new-pattern-stops-old-matches-and-keeps-targets` | `4df2823` | ported | `Events/PutRuleNewPatternStopsOldMatchesAndKeepsTargets.cs` |
 | `events.put-rule-nonexistent-bus-fails` | `4df2823` | ported | `Events/PutRuleNonexistentBusFails.cs` |
+| `events.put-rule-refuses-a-numeric-operand-no-double-represents-and-keeps-the-stored-pattern` | `abd0811` | **new** |  |
 | `events.put-rule-schedule-expression-grammar-rejection` | `4df2823` | ported | `Events/PutRuleScheduleExpressionGrammarRejection.cs` |
 | `events.put-rule-update-replaces-omitted-fields-and-ignores-tags` | `4df2823` | ported | `Events/PutRuleUpdateReplacesOmittedFieldsAndIgnoresTags.cs` |
 | `events.put-rule-without-pattern-or-schedule-rejected` | `4df2823` | ported | `Events/PutRuleWithoutPatternOrScheduleRejected.cs` |
@@ -1205,6 +1493,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.queue-policy-deny-and-missing-allow-both-dead-letter-as-no-resource-without-retries` | `4df2823` | known gap: EventBridgeUngrantedTargets | `Events/QueuePolicyDenyAndMissingAllowBothDeadLetterAsNoResourceWithoutRetries.cs` |
 | `events.recreated-event-bus-inherits-no-tags-policy-or-description` | `4df2823` | ported | `Events/RecreatedEventBusInheritsNoTagsPolicyOrDescription.cs` |
 | `events.remove-permission-nonexistent-fails` | `4df2823` | ported | `Events/RemovePermissionNonexistentFails.cs` |
+| `events.remove-targets-leaves-exactly-the-untouched-target-before-emptying-and-deleting-rule` | `abd0811` | **new** |  |
 | `events.remove-targets-removes-them` | `4df2823` | ported | `Events/RemoveTargetsRemovesThem.cs` |
 | `events.remove-targets-unknown-id-is-lenient` | `4df2823` | ported | `Events/RemoveTargetsUnknownIdIsLenient.cs` |
 | `events.replay-completion-populates-timestamps-and-list-state-filter-discriminates` | `4df2823` | ported | `Events/ReplayCompletionPopulatesTimestampsAndListStateFilterDiscriminates.cs` |
@@ -1214,7 +1503,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.rule-scoped-to-event-bus-isolation` | `4df2823` | ported | `Events/RuleScopedToEventBusIsolation.cs` |
 | `events.schedule-rule-on-custom-bus-rejected` | `4df2823` | ported | `Events/ScheduleRuleOnCustomBusRejected.cs` |
 | `events.schedule-rule-on-default-bus-accepted` | `4df2823` | ported | `Events/ScheduleRuleOnDefaultBusAccepted.cs` |
-| `events.sns-target-on-a-kms-encrypted-topic-dead-letters-as-no-permissions-until-the-key-policy-grants-events` | `4df2823` | not ported | KMS keys |
+| `events.sns-target-on-a-kms-encrypted-topic-dead-letters-as-no-permissions-until-the-key-policy-grants-events` | `abd0811` | not ported | KMS keys |
 | `events.sns-target-publishes-the-compact-envelope-and-a-plain-text-template-keeps-its-quotes` | `4df2823` | ported | `Events/SnsTargetPublishesTheCompactEnvelopeAndAPlainTextTemplateKeepsItsQuotes.cs` |
 | `events.sns-target-without-topic-policy-dead-letters-as-access-denied-until-the-policy-grants-publish` | `4df2823` | known gap: EventBridgeUngrantedTargets | `Events/SnsTargetWithoutTopicPolicyDeadLettersAsAccessDeniedUntilThePolicyGrantsPublish.cs` |
 | `events.sqs-target-encrypted-with-a-key-events-cannot-use-dead-letters-until-the-key-policy-grants-it` | `4df2823` | not ported | KMS keys |
@@ -1230,6 +1519,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.test-event-pattern-anything-but-nested-suffix-equals-ignore-case-and-wildcard-forms` | `4df2823` | ported | `Events/TestEventPatternAnythingButNestedSuffixEqualsIgnoreCaseAndWildcardForms.cs` |
 | `events.test-event-pattern-anything-but-over-array-valued-field-admits-any-escaping-element` | `4df2823` | ported | `Events/TestEventPatternAnythingButOverArrayValuedFieldAdmitsAnyEscapingElement.cs` |
 | `events.test-event-pattern-cidr-matcher-boundaries` | `4df2823` | ported | `Events/TestEventPatternCidrMatcherBoundaries.cs` |
+| `events.test-event-pattern-cidr-operand-masks-its-host-bits` | `abd0811` | **new** |  |
 | `events.test-event-pattern-envelope-required-fields-and-parseable-time` | `4df2823` | ported | `Events/TestEventPatternEnvelopeRequiredFieldsAndParseableTime.cs` |
 | `events.test-event-pattern-exact-value-case-and-type-sensitivity` | `4df2823` | ported | `Events/TestEventPatternExactValueCaseAndTypeSensitivity.cs` |
 | `events.test-event-pattern-exists-and-null-vs-empty-string` | `4df2823` | ported | `Events/TestEventPatternExistsAndNullVsEmptyString.cs` |
@@ -1242,12 +1532,15 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events.test-event-pattern-multiple-filters-in-one-list-are-or-joined` | `4df2823` | ported | `Events/TestEventPatternMultipleFiltersInOneListAreOrJoined.cs` |
 | `events.test-event-pattern-numeric-range-boundaries` | `4df2823` | ported | `Events/TestEventPatternNumericRangeBoundaries.cs` |
 | `events.test-event-pattern-numeric-rejects-non-numeric-json-values-and-degenerate-ranges` | `4df2823` | ported | `Events/TestEventPatternNumericRejectsNonNumericJsonValuesAndDegenerateRanges.cs` |
+| `events.test-event-pattern-numeric-skips-an-event-number-no-double-represents` | `abd0811` | **new** |  |
 | `events.test-event-pattern-or-and-semantics-across-keys-and-arrays` | `4df2823` | ported | `Events/TestEventPatternOrAndSemanticsAcrossKeysAndArrays.cs` |
 | `events.test-event-pattern-string-content-filters` | `4df2823` | ported | `Events/TestEventPatternStringContentFilters.cs` |
 | `events.twelve-rules-matching-one-event-each-deliver-their-own-copy-and-a-near-miss-rule-none` | `4df2823` | ported | `Events/TwelveRulesMatchingOneEventEachDeliverTheirOwnCopyAndANearMissRuleNone.cs` |
 | `events.update-archive-event-pattern-governs-what-is-archived-afterwards` | `4df2823` | ported | `Events/UpdateArchiveEventPatternGovernsWhatIsArchivedAfterwards.cs` |
 | `events.update-archive-pattern-is-mirrored-into-its-managed-rule-and-delete-removes-it` | `4df2823` | ported | `Events/UpdateArchivePatternIsMirroredIntoItsManagedRuleAndDeleteRemovesIt.cs` |
+| `events.update-archive-round-trips-fields-and-rejects-bad-pattern-and-unknown-name` | `abd0811` | **new** |  |
 | `events.update-connection-authorization-type` | `4df2823` | ported | `Events/UpdateConnectionAuthorizationType.cs` |
+| `events.update-connection-malformed-kms-key-identifier-rejected` | `abd0811` | **new** |  |
 | `events.update-endpoint-changes-routing-config` | `4df2823` | ported | `Events/UpdateEndpointChangesRoutingConfig.cs` |
 | `events.update-endpoint-nonexistent-not-found` | `4df2823` | ported | `Events/UpdateEndpointNonexistentNotFound.cs` |
 | `events.update-event-bus-partial-update-agrees-across-every-read-surface` | `4df2823` | ported | `Events/UpdateEventBusPartialUpdateAgreesAcrossEveryReadSurface.cs` |
@@ -1305,6 +1598,9 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events__sqs.events-delivery-and-failure-object-in-quoted-template-string-dead-letters-as-invalid-json` | `4df2823` | ported | `EventsSqs/EventsDeliveryAndFailureObjectInQuotedTemplateStringDeadLettersAsInvalidJson.cs` |
 | `events__sqs.events-delivery-and-failure-static-input-and-input-path-replace-the-event` | `4df2823` | ported | `EventsSqs/EventsDeliveryAndFailureStaticInputAndInputPathReplaceTheEvent.cs` |
 | `events__sqs.events-delivery-and-failure-unquoted-plain-text-template-rejected` | `4df2823` | ported | `EventsSqs/EventsDeliveryAndFailureUnquotedPlainTextTemplateRejected.cs` |
+| `events__sqs.events-pattern-anything-but-list-forms-deliver-only-events-escaping-every-operand` | `abd0811` | **new** |  |
+| `events__sqs.events-pattern-dotted-keys-deliver-the-nested-path-they-spell` | `abd0811` | **new** |  |
+| `events__sqs.events-pattern-empty-string-operands-deliver-strings-only` | `abd0811` | **new** |  |
 | `events__sqs.events-pattern-language-anything-but-excludes-values-and-never-matches-absence` | `4df2823` | ported | `EventsSqs/EventsPatternLanguageAnythingButExcludesValuesAndNeverMatchesAbsence.cs` |
 | `events__sqs.events-pattern-language-array-field-matches-if-any-element-matches` | `4df2823` | ported | `EventsSqs/EventsPatternLanguageArrayFieldMatchesIfAnyElementMatches.cs` |
 | `events__sqs.events-pattern-language-cidr-matches-addresses-inside-the-block-only` | `4df2823` | ported | `EventsSqs/EventsPatternLanguageCidrMatchesAddressesInsideTheBlockOnly.cs` |
@@ -1322,6 +1618,9 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `events__sqs.events-pattern-language-two-keys-in-one-object-are-an-and` | `4df2823` | ported | `EventsSqs/EventsPatternLanguageTwoKeysInOneObjectAreAnAnd.cs` |
 | `events__sqs.events-pattern-language-wildcard-star-spans-any-run-including-slashes` | `4df2823` | ported | `EventsSqs/EventsPatternLanguageWildcardStarSpansAnyRunIncludingSlashes.cs` |
 | `events__sqs.events-pattern-language-wrong-type-field-does-not-match-and-does-not-error` | `4df2823` | ported | `EventsSqs/EventsPatternLanguageWrongTypeFieldDoesNotMatchAndDoesNotError.cs` |
+| `events__sqs.events-pattern-wildcard-escapes-deliver-only-the-literal-star-and-backslash` | `abd0811` | **new** |  |
+| `events__sqs.events-put-rule-invalid-wildcard-escape-rejected-and-the-live-rule-keeps-matching` | `abd0811` | **new** |  |
+| `events__sqs.events-put-rule-numeric-cidr-operand-rejected-and-the-live-rule-keeps-matching` | `abd0811` | **new** |  |
 | `events__sqs.events-rate-schedule-fires-repeatedly-with-the-configured-period` | `4df2823` | ported | `EventsSqs/EventsRateScheduleFiresRepeatedlyWithTheConfiguredPeriod.cs` |
 | `events__sqs.events-replay-redelivers-only-the-archived-events-inside-the-window` | `4df2823` | ported | `EventsSqs/EventsReplayRedeliversOnlyTheArchivedEventsInsideTheWindow.cs` |
 | `events__sqs.events-test-event-pattern-verdicts-agree-with-real-delivery` | `4df2823` | ported | `EventsSqs/EventsTestEventPatternVerdictsAgreeWithRealDelivery.cs` |
@@ -1368,6 +1667,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.cross-region-sqs-subscription-delivers-with-the-topic-region-envelope` | `4df2823` | ported | `Sns/CrossRegionSqsSubscriptionDeliversWithTheTopicRegionEnvelope.cs` |
 | `sns.custom-attribute-type-labels-and-string-array-survive-both-delivery-modes` | `4df2823` | ported | `Sns/CustomAttributeTypeLabelsAndStringArraySurviveBothDeliveryModes.cs` |
 | `sns.delete-endpoint-nonexistent-idempotent` | `4df2823` | ported | `Sns/DeleteEndpointNonexistentIdempotent.cs` |
+| `sns.delete-platform-application-forecloses-new-endpoints` | `abd0811` | **new** |  |
 | `sns.delete-platform-application-nonexistent-idempotent` | `4df2823` | ported | `Sns/DeletePlatformApplicationNonexistentIdempotent.cs` |
 | `sns.delete-topic-cascades-subscriptions` | `4df2823` | ported | `Sns/DeleteTopicCascadesSubscriptions.cs` |
 | `sns.delete-topic-then-recreate-starts-fresh` | `4df2823` | ported | `Sns/DeleteTopicThenRecreateStartsFresh.cs` |
@@ -1384,7 +1684,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.e2e-topic-fanout-filter-teardown-flow` | `4df2823` | ported | `Sns/E2eTopicFanoutFilterTeardownFlow.cs` |
 | `sns.email-subscription-confirmation-state-attributes` | `4df2823` | ported | `Sns/EmailSubscriptionConfirmationStateAttributes.cs` |
 | `sns.empty-vs-absent-message-attribute-rejected` | `4df2823` | ported | `Sns/EmptyVsAbsentMessageAttributeRejected.cs` |
-| `sns.encrypted-topic-whose-key-policy-withholds-usage-refuses-publish` | `4df2823` | not ported | KMS keys |
+| `sns.encrypted-topic-whose-key-policy-withholds-usage-refuses-publish` | `abd0811` | not ported | KMS keys |
 | `sns.feedback-role-without-logs-permission-still-delivers-and-writes-no-log-record` | `4df2823` | not ported | CloudWatch Logs delivery-status logging (IAM, Logs) |
 | `sns.fifo-archive-replay-redelivers-archived-messages-to-a-new-subscription` | `4df2823` | ported | `Sns/FifoArchiveReplayRedeliversArchivedMessagesToANewSubscription.cs` |
 | `sns.fifo-concurrent-duplicate-publish-dedup` | `4df2823` | ported | `Sns/FifoConcurrentDuplicatePublishDedup.cs` |
@@ -1431,6 +1731,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.firehose-subscription-writes-each-notification-envelope-into-the-stream-bucket` | `4df2823` | not ported | Firehose subscriptions (Firehose, S3, IAM) |
 | `sns.get-endpoint-attributes-not-found` | `4df2823` | ported | `Sns/GetEndpointAttributesNotFound.cs` |
 | `sns.get-sms-attributes-unknown-name-rejected` | `4df2823` | ported | `Sns/GetSmsAttributesUnknownNameRejected.cs` |
+| `sns.get-subscription-attributes-malformed-id-rejected` | `abd0811` | **new** |  |
 | `sns.get-topic-attributes-malformed-arn-rejected` | `4df2823` | ported | `Sns/GetTopicAttributesMalformedArnRejected.cs` |
 | `sns.https-endpoint-failing-with-500-is-retried-then-dead-lettered` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
 | `sns.https-raw-message-delivery-posts-the-bare-body-with-the-rawdelivery-header` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
@@ -1441,8 +1742,11 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.lambda-subscription-invocation-carries-the-sns-records-envelope` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
 | `sns.lambda-subscription-the-function-refuses-to-sns-dead-letters-into-the-subscription-dlq` | `4df2823` | not ported | HTTP/S or Lambda endpoints, which these checks build from Lambda functions and IAM roles |
 | `sns.list-endpoints-by-nonexistent-application-fails` | `4df2823` | ported | `Sns/ListEndpointsByNonexistentApplicationFails.cs` |
+| `sns.list-endpoints-by-platform-application-tracks-create-and-delete` | `abd0811` | **new** |  |
 | `sns.list-platform-applications-invalid-next-token-rejected` | `4df2823` | ported | `Sns/ListPlatformApplicationsInvalidNextTokenRejected.cs` |
 | `sns.list-sms-sandbox-phone-numbers-max-results-over-limit-rejected` | `4df2823` | ported | `Sns/ListSmsSandboxPhoneNumbersMaxResultsOverLimitRejected.cs` |
+| `sns.list-subscriptions-by-topic-invalid-next-token-rejected` | `abd0811` | **new** |  |
+| `sns.list-subscriptions-by-topic-malformed-arn-rejected` | `abd0811` | **new** |  |
 | `sns.list-subscriptions-by-topic-pagination-exactness` | `4df2823` | ported | `Sns/ListSubscriptionsByTopicPaginationExactness.cs` |
 | `sns.list-subscriptions-by-topic-reflects-state` | `4df2823` | ported | `Sns/ListSubscriptionsByTopicReflectsState.cs` |
 | `sns.list-subscriptions-pages-every-subscription-exactly-once` | `4df2823` | ported | `Sns/ListSubscriptionsPagesEverySubscriptionExactlyOnce.cs` |
@@ -1496,7 +1800,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.publish-size-limit-counts-message-attributes` | `4df2823` | ported | `Sns/PublishSizeLimitCountsMessageAttributes.cs` |
 | `sns.publish-still-delivers-to-siblings-when-a-subscribed-queue-is-deleted` | `4df2823` | ported | `Sns/PublishStillDeliversToSiblingsWhenASubscribedQueueIsDeleted.cs` |
 | `sns.publish-to-deleted-topic-not-found` | `4df2823` | ported | `Sns/PublishToDeletedTopicNotFound.cs` |
-| `sns.publish-to-topic-whose-key-is-pending-deletion-fails-kms-invalid-state` | `4df2823` | not ported | KMS keys |
+| `sns.publish-to-topic-whose-key-is-pending-deletion-fails-kms-invalid-state` | `abd0811` | not ported | KMS keys |
 | `sns.publish-unicode-body-preserved` | `4df2823` | ported | `Sns/PublishUnicodeBodyPreserved.cs` |
 | `sns.publish-with-a-reserved-attribute-name-prefix-rejected` | `4df2823` | ported | `Sns/PublishWithAReservedAttributeNamePrefixRejected.cs` |
 | `sns.publish-without-target-fails` | `4df2823` | ported | `Sns/PublishWithoutTargetFails.cs` |
@@ -1509,6 +1813,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.raw-message-delivery-flag-is-case-insensitive-and-reads-back-lowercase` | `4df2823` | ported | `Sns/RawMessageDeliveryFlagIsCaseInsensitiveAndReadsBackLowercase.cs` |
 | `sns.raw-message-delivery-strips-the-envelope-for-only-that-subscription` | `4df2823` | ported | `Sns/RawMessageDeliveryStripsTheEnvelopeForOnlyThatSubscription.cs` |
 | `sns.recreated-queue-with-the-same-name-resumes-delivery-on-the-old-subscription` | `4df2823` | ported | `Sns/RecreatedQueueWithTheSameNameResumesDeliveryOnTheOldSubscription.cs` |
+| `sns.remove-permission-nonexistent-topic-fails` | `abd0811` | **new** |  |
 | `sns.remove-permission-unknown-label-is-idempotent` | `4df2823` | ported | `Sns/RemovePermissionUnknownLabelIsIdempotent.cs` |
 | `sns.replay-policy-on-a-topic-without-an-archive-policy-rejected` | `4df2823` | ported | `Sns/ReplayPolicyOnATopicWithoutAnArchivePolicyRejected.cs` |
 | `sns.resubscribe-after-unsubscribe-mints-a-new-arn` | `4df2823` | ported | `Sns/ResubscribeAfterUnsubscribeMintsANewArn.cs` |
@@ -1586,6 +1891,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sns.unsubscribe-removes-subscription` | `4df2823` | ported | `Sns/UnsubscribeRemovesSubscription.cs` |
 | `sns.unsubscribe-stops-delivery` | `4df2823` | ported | `Sns/UnsubscribeStopsDelivery.cs` |
 | `sns.unsubscribe-stops-delivery-and-attribute-lookup-is-rejected` | `4df2823` | ported | `Sns/UnsubscribeStopsDeliveryAndAttributeLookupIsRejected.cs` |
+| `sns.untag-resource-nonexistent-topic-fails` | `abd0811` | **new** |  |
 | `sns.verify-sms-sandbox-wrong-otp-rejected` | `4df2823` | ported | `Sns/VerifySmsSandboxWrongOtpRejected.cs` |
 
 ## behavioral/sns__sqs
@@ -1593,9 +1899,11 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | Check | Last changed | Status | Port or reason |
 |---|---|---|---|
 | `sns__sqs.a-message-filtered-out-at-publish-time-is-never-redelivered-when-the-policy-is-relaxed` | `4df2823` | ported | `SnsSqs/AMessageFilteredOutAtPublishTimeIsNeverRedeliveredWhenThePolicyIsRelaxed.cs` |
+| `sns__sqs.fifo-missing-dedup-id-rejected-until-content-based-dedup-enabled` | `abd0811` | **new** |  |
 | `sns__sqs.fifo-topic-subscription-filter-policy-withholds-non-matching-messages` | `4df2823` | ported | `SnsSqs/FifoTopicSubscriptionFilterPolicyWithholdsNonMatchingMessages.cs` |
 | `sns__sqs.message-attribute-name-outside-the-allowed-charset-rejected` | `4df2823` | ported | `SnsSqs/MessageAttributeNameOutsideTheAllowedCharsetRejected.cs` |
 | `sns__sqs.platform-application-event-endpoint-created-notifies-configured-topic` | `4df2823` | ported | `SnsSqs/PlatformApplicationEventEndpointCreatedNotifiesConfiguredTopic.cs` |
+| `sns__sqs.publish-batch-fifo-entry-missing-dedup-id-rejects-the-whole-batch` | `abd0811` | **new** |  |
 | `sns__sqs.queue-maximum-message-size-does-not-bound-sns-delivery` | `4df2823` | ported | `SnsSqs/QueueMaximumMessageSizeDoesNotBoundSnsDelivery.cs` |
 | `sns__sqs.sns-filter-policy-message-body-scope-suppresses-non-matching` | `4df2823` | ported | `SnsSqs/SnsFilterPolicyMessageBodyScopeSuppressesNonMatching.cs` |
 | `sns__sqs.sns-filter-policy-scope-is-orthogonal-and-message-body-matches-nested-keys` | `4df2823` | ported | `SnsSqs/SnsFilterPolicyScopeIsOrthogonalAndMessageBodyMatchesNestedKeys.cs` |
@@ -1610,9 +1918,14 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | Check | Last changed | Status | Port or reason |
 |---|---|---|---|
 | `sqs.add-permission-invalid-action-rejected` | `4df2823` | ported | `Sqs/AddPermissionInvalidActionRejected.cs` |
+| `sqs.add-permission-more-than-seven-actions-in-a-statement-rejected` | `abd0811` | **new** |  |
+| `sqs.add-permission-nonexistent-queue-rejected` | `abd0811` | **new** |  |
 | `sqs.add-permission-over-limit-rejected` | `4df2823` | ported | `Sqs/AddPermissionOverLimitRejected.cs` |
+| `sqs.add-permission-reusing-an-existing-label-rejected` | `abd0811` | **new** |  |
+| `sqs.add-permission-wildcard-action-normalizes-to-sqs-star` | `abd0811` | **new** |  |
 | `sqs.add-remove-permission` | `4df2823` | ported | `Sqs/AddRemovePermission.cs` |
 | `sqs.add-remove-permission-updates-policy` | `4df2823` | ported | `Sqs/AddRemovePermissionUpdatesPolicy.cs` |
+| `sqs.alias-aws-sqs-resolves-to-an-aws-managed-key-that-encrypts-transparently` | `abd0811` | **new** |  |
 | `sqs.approx-count-tracks` | `4df2823` | ported | `Sqs/ApproxCountTracks.cs` |
 | `sqs.approximate-counters-converge-through-receive-release-and-delete` | `4df2823` | ported | `Sqs/ApproximateCountersConvergeThroughReceiveReleaseAndDelete.cs` |
 | `sqs.approximate-receive-count-increments` | `4df2823` | ported | `Sqs/ApproximateReceiveCountIncrements.cs` |
@@ -1620,6 +1933,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.batch-actions-authorize-under-their-singular-action` | `4df2823` | not ported | IAM roles, users and identity policies |
 | `sqs.batch-entry-id-character-and-length-rules-rejected` | `4df2823` | ported | `Sqs/BatchEntryIdCharacterAndLengthRulesRejected.cs` |
 | `sqs.batch-entry-over-queue-max-message-size-fails-alone` | `4df2823` | ported | `Sqs/BatchEntryOverQueueMaxMessageSizeFailsAlone.cs` |
+| `sqs.batch-message-operations-on-a-deleted-queue-rejected` | `abd0811` | **new** |  |
 | `sqs.batch-partial-failure-envelope-fields` | `4df2823` | ported | `Sqs/BatchPartialFailureEnvelopeFields.cs` |
 | `sqs.batch-request-validation-rejected` | `4df2823` | ported | `Sqs/BatchRequestValidationRejected.cs` |
 | `sqs.batch-send-partial-failure` | `4df2823` | ported | `Sqs/BatchSendPartialFailure.cs` |
@@ -1640,7 +1954,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.change-message-visibility-zero-makes-immediately-visible` | `4df2823` | ported | `Sqs/ChangeMessageVisibilityZeroMakesImmediatelyVisible.cs` |
 | `sqs.change-visibility-on-expired-handle-rejected` | `4df2823` | ported | `Sqs/ChangeVisibilityOnExpiredHandleRejected.cs` |
 | `sqs.changevis0-reexposes` | `4df2823` | ported | `Sqs/Changevis0Reexposes.cs` |
-| `sqs.clearing-kms-master-key-id-does-not-restore-sse-sqs` | `4df2823` | not ported | KMS keys |
+| `sqs.clearing-kms-master-key-id-does-not-restore-sse-sqs` | `abd0811` | not ported | KMS keys |
 | `sqs.cli-output-text-mode` | `4df2823` | ported | `Sqs/CliOutputTextMode.cs` |
 | `sqs.cli-query-jmespath-filter` | `4df2823` | ported | `Sqs/CliQueryJmespathFilter.cs` |
 | `sqs.cli-script-sqs-fanout` | `4df2823` | ported | `Sqs/CliScriptSqsFanout.cs` |
@@ -1665,6 +1979,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.create-queue-existing-name-different-tags-rejected` | `4df2823` | ported | `Sqs/CreateQueueExistingNameDifferentTagsRejected.cs` |
 | `sqs.create-queue-invalid-attribute-creates-nothing-rejected` | `4df2823` | ported | `Sqs/CreateQueueInvalidAttributeCreatesNothingRejected.cs` |
 | `sqs.create-queue-name-conflict-different-attributes-rejected` | `4df2823` | ported | `Sqs/CreateQueueNameConflictDifferentAttributesRejected.cs` |
+| `sqs.create-queue-with-a-read-only-attribute-rejected` | `abd0811` | **new** |  |
+| `sqs.custom-type-message-attribute-value-errors-use-different-type-names` | `abd0811` | **new** |  |
 | `sqs.dead-letter-queue-redrive-after-max-receive-count` | `4df2823` | ported | `Sqs/DeadLetterQueueRedriveAfterMaxReceiveCount.cs` |
 | `sqs.dead-letter-wiring-to-another-region-rejected` | `4df2823` | ported | `Sqs/DeadLetterWiringToAnotherRegionRejected.cs` |
 | `sqs.dead-lettered-message-keeps-its-identity-and-names-its-source-queue` | `4df2823` | ported | `Sqs/DeadLetteredMessageKeepsItsIdentityAndNamesItsSourceQueue.cs` |
@@ -1710,6 +2026,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.fifo-dead-letter-queue-move-sets-dedup-id-to-original-message-id` | `4df2823` | ported | `Sqs/FifoDeadLetterQueueMoveSetsDedupIdToOriginalMessageId.cs` |
 | `sqs.fifo-dedup` | `4df2823` | ported | `Sqs/FifoDedup.cs` |
 | `sqs.fifo-dedup-id-reusable-after-dedup-window-elapses` | `4df2823` | ported | `Sqs/FifoDedupIdReusableAfterDedupWindowElapses.cs` |
+| `sqs.fifo-dedup-replay-pins-original-payload-then-fresh-id-advances` | `abd0811` | **new** |  |
 | `sqs.fifo-dedup-scope-message-group-allows-same-dedup-id-in-different-groups` | `4df2823` | ported | `Sqs/FifoDedupScopeMessageGroupAllowsSameDedupIdInDifferentGroups.cs` |
 | `sqs.fifo-dedup-survives-consumer-delete` | `4df2823` | ported | `Sqs/FifoDedupSurvivesConsumerDelete.cs` |
 | `sqs.fifo-exactly-once-multiple-sends` | `4df2823` | ported | `Sqs/FifoExactlyOnceMultipleSends.cs` |
@@ -1718,6 +2035,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.fifo-group-isolation` | `4df2823` | ported | `Sqs/FifoGroupIsolation.cs` |
 | `sqs.fifo-group-less-send-rejected-without-consuming-its-deduplication-id` | `4df2823` | ported | `Sqs/FifoGroupLessSendRejectedWithoutConsumingItsDeduplicationId.cs` |
 | `sqs.fifo-group-natural-visibility-expiry-keeps-group-held-and-redelivers-same-head` | `4df2823` | ported | `Sqs/FifoGroupNaturalVisibilityExpiryKeepsGroupHeldAndRedeliversSameHead.cs` |
+| `sqs.fifo-message-attribute-digest-sensitivity-across-types` | `abd0811` | **new** |  |
 | `sqs.fifo-message-group-held-by-one-concurrent-receiver-at-a-time` | `4df2823` | ported | `Sqs/FifoMessageGroupHeldByOneConcurrentReceiverAtATime.cs` |
 | `sqs.fifo-missing-group-id` | `4df2823` | ported | `Sqs/FifoMissingGroupId.cs` |
 | `sqs.fifo-missing-message-group-id-rejected` | `4df2823` | ported | `Sqs/FifoMissingMessageGroupIdRejected.cs` |
@@ -1735,13 +2053,15 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.fifo-twenty-group-head-of-line-isolation-at-volume` | `4df2823` | ported | `Sqs/FifoTwentyGroupHeadOfLineIsolationAtVolume.cs` |
 | `sqs.get-queue-attributes-invalid-attribute-name` | `4df2823` | ported | `Sqs/GetQueueAttributesInvalidAttributeName.cs` |
 | `sqs.get-queue-attributes-invalid-attribute-name-rejected` | `4df2823` | ported | `Sqs/GetQueueAttributesInvalidAttributeNameRejected.cs` |
+| `sqs.get-queue-attributes-returns-each-attribute-create-queue-set` | `abd0811` | **new** |  |
 | `sqs.get-queue-url-does-not-format-validate-the-name` | `4df2823` | ported | `Sqs/GetQueueUrlDoesNotFormatValidateTheName.cs` |
 | `sqs.get-queue-url-with-the-owner-account-id-resolves-the-queue-and-a-missing-name-rejected` | `4df2823` | ported | `Sqs/GetQueueUrlWithTheOwnerAccountIdResolvesTheQueueAndAMissingNameRejected.cs` |
 | `sqs.identity-policy-requesttag-condition-gates-create-queue` | `4df2823` | not ported | IAM roles, users and identity policies |
 | `sqs.identity-policy-resourcetag-condition-gates-send-message` | `4df2823` | not ported | IAM roles, users and identity policies |
 | `sqs.immutable-queue-arn-mutation-rejected` | `4df2823` | ported | `Sqs/ImmutableQueueArnMutationRejected.cs` |
-| `sqs.kms-data-key-reuse-period-bounds-rejected` | `4df2823` | not ported | KMS keys |
-| `sqs.kms-key-permission-gates-send-message` | `4df2823` | not ported | KMS keys |
+| `sqs.kms-data-key-reuse-period-bounds-rejected` | `abd0811` | not ported | KMS keys |
+| `sqs.kms-key-permission-gates-send-message` | `abd0811` | not ported | KMS keys |
+| `sqs.list-dead-letter-source-queues-on-a-deleted-queue-rejected` | `abd0811` | **new** |  |
 | `sqs.list-dead-letter-source-queues-paginates` | `4df2823` | ported | `Sqs/ListDeadLetterSourceQueuesPaginates.cs` |
 | `sqs.list-dead-letter-source-queues-reflects-redrive-policy` | `4df2823` | ported | `Sqs/ListDeadLetterSourceQueuesReflectsRedrivePolicy.cs` |
 | `sqs.list-message-move-tasks-max-results-out-of-range-rejected` | `4df2823` | ported | `Sqs/ListMessageMoveTasksMaxResultsOutOfRangeRejected.cs` |
@@ -1794,9 +2114,11 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.overly-permissive-delete-queue-without-permission-denied` | `4df2823` | not ported | IAM roles, users and identity policies |
 | `sqs.overly-permissive-send-without-permission-denied` | `4df2823` | not ported | IAM roles, users and identity policies |
 | `sqs.per-message-delay-seconds-overrides-queue-delay-both-directions` | `4df2823` | ported | `Sqs/PerMessageDelaySecondsOverridesQueueDelayBothDirections.cs` |
+| `sqs.permission-operations-on-a-deleted-queue-rejected` | `abd0811` | **new** |  |
 | `sqs.purge-empties` | `4df2823` | ported | `Sqs/PurgeEmpties.cs` |
 | `sqs.purge-queue-discards-in-flight-messages` | `4df2823` | ported | `Sqs/PurgeQueueDiscardsInFlightMessages.cs` |
 | `sqs.purge-queue-in-progress-rejected` | `4df2823` | known gap: Validation | `Sqs/PurgeQueueInProgressRejected.cs` |
+| `sqs.purge-queue-on-a-deleted-queue-rejected` | `abd0811` | **new** |  |
 | `sqs.purge-queue-removes-all-messages` | `4df2823` | ported | `Sqs/PurgeQueueRemovesAllMessages.cs` |
 | `sqs.purge-queue-resets-the-fifo-dedup-cache` | `4df2823` | ported | `Sqs/PurgeQueueResetsTheFifoDedupCache.cs` |
 | `sqs.query-and-json-protocol-clients-share-one-queue` | `4df2823` | ported | `Sqs/QueryAndJsonProtocolClientsShareOneQueue.cs` |
@@ -1840,6 +2162,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.receive-hides` | `4df2823` | ported | `Sqs/ReceiveHides.cs` |
 | `sqs.receive-max-messages` | `4df2823` | ported | `Sqs/ReceiveMaxMessages.cs` |
 | `sqs.receive-message-attribute-name-wildcard-selects-by-name-prefix` | `4df2823` | ported | `Sqs/ReceiveMessageAttributeNameWildcardSelectsByNamePrefix.cs` |
+| `sqs.receive-message-attribute-names-star-all-dot-star-select-the-same-set` | `abd0811` | **new** |  |
+| `sqs.receive-message-attribute-names-wrong-json-type-rejected` | `abd0811` | **new** |  |
 | `sqs.receive-message-attribute-selectivity` | `4df2823` | ported | `Sqs/ReceiveMessageAttributeSelectivity.cs` |
 | `sqs.receive-message-respects-max-number-of-messages-cap` | `4df2823` | ported | `Sqs/ReceiveMessageRespectsMaxNumberOfMessagesCap.cs` |
 | `sqs.receive-message-visibility-timeout-override-per-call` | `4df2823` | ported | `Sqs/ReceiveMessageVisibilityTimeoutOverridePerCall.cs` |
@@ -1865,6 +2189,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.send-message-batch-delay-seconds-applies-to-each-entry-alone` | `4df2823` | ported | `Sqs/SendMessageBatchDelaySecondsAppliesToEachEntryAlone.cs` |
 | `sqs.send-message-batch-duplicate-ids-rejected-atomically` | `4df2823` | ported | `Sqs/SendMessageBatchDuplicateIdsRejectedAtomically.cs` |
 | `sqs.send-message-batch-partial-failure` | `4df2823` | ported | `Sqs/SendMessageBatchPartialFailure.cs` |
+| `sqs.send-message-batch-reserved-attribute-name-prefix-fails-alone` | `abd0811` | **new** |  |
 | `sqs.send-message-batch-too-many-entries-rejected` | `4df2823` | ported | `Sqs/SendMessageBatchTooManyEntriesRejected.cs` |
 | `sqs.send-message-invalid-body-character-rejected` | `4df2823` | ported | `Sqs/SendMessageInvalidBodyCharacterRejected.cs` |
 | `sqs.send-message-malformed-awstraceheader-accepted-then-dropped` | `4df2823` | ported | `Sqs/SendMessageMalformedAwstraceheaderAcceptedThenDropped.cs` |
@@ -1880,6 +2205,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.set-queue-attributes-readonly-attribute-rejected` | `4df2823` | ported | `Sqs/SetQueueAttributesReadonlyAttributeRejected.cs` |
 | `sqs.set-queue-attributes-roundtrip` | `4df2823` | ported | `Sqs/SetQueueAttributesRoundtrip.cs` |
 | `sqs.short-poll-returns-immediately` | `4df2823` | ported | `Sqs/ShortPollReturnsImmediately.cs` |
+| `sqs.single-message-operations-on-a-deleted-queue-rejected` | `abd0811` | **new** |  |
 | `sqs.sqsbatch-delete-duplicate-receipt-handle-deleted-once` | `4df2823` | ported | `Sqs/SqsbatchDeleteDuplicateReceiptHandleDeletedOnce.cs` |
 | `sqs.sqsbatch-delete-full-width-one-bogus-handle-rejected` | `4df2823` | ported | `Sqs/SqsbatchDeleteFullWidthOneBogusHandleRejected.cs` |
 | `sqs.sqsbatch-fifo-send-one-invalid-entry-rejects-whole-batch` | `4df2823` | ported | `Sqs/SqsbatchFifoSendOneInvalidEntryRejectsWholeBatch.cs` |
@@ -1910,11 +2236,14 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `sqs.tag-queue-over-fifty-tags-rejected` | `4df2823` | ported | `Sqs/TagQueueOverFiftyTagsRejected.cs` |
 | `sqs.tag-queue-roundtrip` | `4df2823` | ported | `Sqs/TagQueueRoundtrip.cs` |
 | `sqs.tag-queue-system-prefix-and-length-boundaries-rejected` | `4df2823` | ported | `Sqs/TagQueueSystemPrefixAndLengthBoundariesRejected.cs` |
+| `sqs.untag-queue-after-retagging-a-present-key-removes-the-key` | `abd0811` | **new** |  |
+| `sqs.untag-queue-of-fresh-keys-restores-the-tags-listed-before` | `abd0811` | **new** |  |
 | `sqs.visibility-extension-capped-at-twelve-hours-from-receive-rejected` | `4df2823` | ported | `Sqs/VisibilityExtensionCappedAtTwelveHoursFromReceiveRejected.cs` |
 | `sqs.visibility-heartbeat-hides-a-message-from-concurrent-pollers` | `4df2823` | ported | `Sqs/VisibilityHeartbeatHidesAMessageFromConcurrentPollers.cs` |
 | `sqs.visibility-timeout-natural-expiry` | `4df2823` | ported | `Sqs/VisibilityTimeoutNaturalExpiry.cs` |
 | `sqs.visibility-timeout-out-of-range-rejected` | `4df2823` | ported | `Sqs/VisibilityTimeoutOutOfRangeRejected.cs` |
 | `sqs.visibility-timeout-shorten-and-receive-override` | `4df2823` | ported | `Sqs/VisibilityTimeoutShortenAndReceiveOverride.cs` |
+| `sqs.wildcard-attribute-filter-subset-digest-contrasts-full-digest` | `abd0811` | **new** |  |
 
 ## behavioral/s3
 
@@ -1925,6 +2254,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.abort-multipart-nosuchupload-after-complete` | `4df2823` | ported | `S3/AbortMultipartNosuchuploadAfterComplete.cs` |
 | `s3.acl-disabled-bucket-rejects-put-object-acl` | `4df2823` | ported | `S3/AclDisabledBucketRejectsPutObjectAcl.cs` |
 | `s3.annotation-name-validation-rejected` | `4df2823` | ported | `S3/AnnotationNameValidationRejected.cs` |
+| `s3.annotation-object-if-match-requires-the-current-etag` | `abd0811` | **new** |  |
+| `s3.annotation-stays-scoped-to-its-version-across-get-list-delete` | `abd0811` | **new** |  |
 | `s3.bucket-abac-invalid-status-rejected` | `4df2823` | ported | `S3/BucketAbacInvalidStatusRejected.cs` |
 | `s3.bucket-abac-roundtrip` | `4df2823` | ported | `S3/BucketAbacRoundtrip.cs` |
 | `s3.bucket-accelerate-configuration-roundtrip` | `4df2823` | ported | `S3/BucketAccelerateConfigurationRoundtrip.cs` |
@@ -1958,6 +2289,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.bucket-metadata-table-configuration-lifecycle` | `4df2823` | ported | `S3/BucketMetadataTableConfigurationLifecycle.cs` |
 | `s3.bucket-metadata-table-update-roundtrip` | `4df2823` | ported | `S3/BucketMetadataTableUpdateRoundtrip.cs` |
 | `s3.bucket-metadata-table-updates-refused-while-journal-creating` | `4df2823` | ported | `S3/BucketMetadataTableUpdatesRefusedWhileJournalCreating.cs` |
+| `s3.bucket-metadata-table-v1-surface-closed` | `abd0811` | **new** |  |
 | `s3.bucket-metrics-configuration-delete-reflected-in-list-then-get-rejected` | `4df2823` | ported | `S3/BucketMetricsConfigurationDeleteReflectedInListThenGetRejected.cs` |
 | `s3.bucket-metrics-configuration-filter-prefix-and-tag-combo` | `4df2823` | ported | `S3/BucketMetricsConfigurationFilterPrefixAndTagCombo.cs` |
 | `s3.bucket-metrics-configuration-multi-filter-listing` | `4df2823` | ported | `S3/BucketMetricsConfigurationMultiFilterListing.cs` |
@@ -1965,6 +2297,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.bucket-ownership-controls-lifecycle` | `4df2823` | ported | `S3/BucketOwnershipControlsLifecycle.cs` |
 | `s3.bucket-ownership-controls-roundtrip` | `4df2823` | ported | `S3/BucketOwnershipControlsRoundtrip.cs` |
 | `s3.bucket-policy-deny-enforcement` | `4df2823` | ported | `S3/BucketPolicyDenyEnforcement.cs` |
+| `s3.bucket-policy-over-twenty-kb-rejected` | `abd0811` | **new** |  |
 | `s3.bucket-policy-roundtrip` | `4df2823` | ported | `S3/BucketPolicyRoundtrip.cs` |
 | `s3.bucket-policy-status-reflects-policy` | `4df2823` | ported | `S3/BucketPolicyStatusReflectsPolicy.cs` |
 | `s3.bucket-replication-config-lifecycle` | `4df2823` | ported | `S3/BucketReplicationConfigLifecycle.cs` |
@@ -1973,8 +2306,11 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.bucket-replication-lifecycle` | `4df2823` | ported | `S3/BucketReplicationLifecycle.cs` |
 | `s3.bucket-replication-requires-versioning-rejected` | `4df2823` | ported | `S3/BucketReplicationRequiresVersioningRejected.cs` |
 | `s3.bucket-replication-roundtrip` | `4df2823` | ported | `S3/BucketReplicationRoundtrip.cs` |
+| `s3.bucket-request-payment-invalid-payer-rejected` | `abd0811` | **new** |  |
+| `s3.bucket-request-payment-not-found-after-delete` | `abd0811` | **new** |  |
 | `s3.bucket-request-payment-roundtrip` | `4df2823` | ported | `S3/BucketRequestPaymentRoundtrip.cs` |
 | `s3.bucket-subresource-deletes-leave-bucket-and-objects-intact` | `4df2823` | ported | `S3/BucketSubresourceDeletesLeaveBucketAndObjectsIntact.cs` |
+| `s3.bucket-tagging-over-fifty-rejected` | `abd0811` | **new** |  |
 | `s3.bucket-tagging-roundtrip` | `4df2823` | ported | `S3/BucketTaggingRoundtrip.cs` |
 | `s3.bucket-website-config-lifecycle` | `4df2823` | ported | `S3/BucketWebsiteConfigLifecycle.cs` |
 | `s3.bucket-website-configuration-lifecycle` | `4df2823` | ported | `S3/BucketWebsiteConfigurationLifecycle.cs` |
@@ -2007,11 +2343,12 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.copy-object-and-ranged-get-return-exact-source-bytes-then-batch-delete-removes-both` | `4df2823` | ported | `S3/CopyObjectAndRangedGetReturnExactSourceBytesThenBatchDeleteRemovesBoth.cs` |
 | `s3.copy-object-annotation-exclude-directive-skips-default-copies` | `4df2823` | ported | `S3/CopyObjectAnnotationExcludeDirectiveSkipsDefaultCopies.cs` |
 | `s3.copy-object-cross-bucket` | `4df2823` | ported | `S3/CopyObjectCrossBucket.cs` |
+| `s3.copy-object-defaults-to-the-composite-sources-sha256-as-a-full-object-digest` | `abd0811` | **new** |  |
 | `s3.copy-object-from-specific-version-source` | `4df2823` | ported | `S3/CopyObjectFromSpecificVersionSource.cs` |
 | `s3.copy-object-glacier-not-in-active-tier-error` | `4df2823` | ported | `S3/CopyObjectGlacierNotInActiveTierError.cs` |
 | `s3.copy-object-glacier-source-error` | `4df2823` | ported | `S3/CopyObjectGlacierSourceError.cs` |
 | `s3.copy-object-if-match-on-the-destination-refuses-a-stale-etag` | `4df2823` | ported | `S3/CopyObjectIfMatchOnTheDestinationRefusesAStaleEtag.cs` |
-| `s3.copy-object-into-directory-bucket-rejects-source-tags-and-destination-ssec` | `4df2823` | ported | `S3/CopyObjectIntoDirectoryBucketRejectsSourceTagsAndDestinationSsec.cs` |
+| `s3.copy-object-into-directory-bucket-rejects-source-tags-and-destination-ssec` | `abd0811` | **stale**: ported at `4df2823` | `S3/CopyObjectIntoDirectoryBucketRejectsSourceTagsAndDestinationSsec.cs` |
 | `s3.copy-object-metadata-copy` | `4df2823` | ported | `S3/CopyObjectMetadataCopy.cs` |
 | `s3.copy-object-metadata-replace` | `4df2823` | ported | `S3/CopyObjectMetadataReplace.cs` |
 | `s3.copy-object-missing-source-permission-denied` | `4df2823` | ported | `S3/CopyObjectMissingSourcePermissionDenied.cs` |
@@ -2020,24 +2357,44 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.copy-object-source-if-match-mismatch-rejected` | `4df2823` | ported | `S3/CopyObjectSourceIfMatchMismatchRejected.cs` |
 | `s3.copy-object-to-itself-no-change-rejected` | `4df2823` | ported | `S3/CopyObjectToItselfNoChangeRejected.cs` |
 | `s3.copy-object-under-if-none-match-policy` | `4df2823` | ported | `S3/CopyObjectUnderIfNoneMatchPolicy.cs` |
+| `s3.copy-object-unrecognized-checksum-algorithm-rejected` | `abd0811` | **new** |  |
+| `s3.cors-browser-form-post-upload-with-origin-stores-the-bytes-and-grants-the-rule` | `abd0811` | **new** |  |
 | `s3.cors-configuration-roundtrip` | `4df2823` | ported | `S3/CorsConfigurationRoundtrip.cs` |
 | `s3.cors-delete` | `4df2823` | ported | `S3/CorsDelete.cs` |
+| `s3.cors-expose-headers-names-only-the-listed-metadata-header` | `abd0811` | **new** |  |
+| `s3.cors-first-matching-rule-governs-presigned-get` | `abd0811` | **new** |  |
+| `s3.cors-max-age-absent-from-the-rule-is-not-invented-on-the-preflight` | `abd0811` | **new** |  |
 | `s3.cors-preflight-allowed-origin-returns-rule-headers` | `4df2823` | ported | `S3/CorsPreflightAllowedOriginReturnsRuleHeaders.cs` |
 | `s3.cors-preflight-disallowed-method-rejected-allowed-method-passes` | `4df2823` | ported | `S3/CorsPreflightDisallowedMethodRejectedAllowedMethodPasses.cs` |
 | `s3.cors-preflight-disallowed-origin-rejected-allowed-origin-passes` | `4df2823` | ported | `S3/CorsPreflightDisallowedOriginRejectedAllowedOriginPasses.cs` |
+| `s3.cors-preflight-for-presigned-put-with-unlisted-request-header-rejected` | `abd0811` | **new** |  |
 | `s3.cors-preflight-on-bucket-without-cors-configuration-rejected` | `4df2823` | ported | `S3/CorsPreflightOnBucketWithoutCorsConfigurationRejected.cs` |
+| `s3.cors-preflight-on-presigned-put-url-answers-rule-headers` | `abd0811` | **new** |  |
 | `s3.cors-preflight-refused-after-delete-bucket-cors` | `4df2823` | ported | `S3/CorsPreflightRefusedAfterDeleteBucketCors.cs` |
+| `s3.cors-preflight-subdomain-scheme-mismatch-rejected-without-cors-headers` | `abd0811` | **new** |  |
+| `s3.cors-preflight-without-a-request-method-header-rejected` | `abd0811` | **new** |  |
+| `s3.cors-presigned-delete-with-origin-removes-the-object-and-grants-the-rule` | `abd0811` | **new** |  |
+| `s3.cors-presigned-get-from-the-allowed-origin-without-its-port-rejected` | `abd0811` | **new** |  |
+| `s3.cors-presigned-get-from-unlisted-origin-rejected-without-cors-headers` | `abd0811` | **new** |  |
+| `s3.cors-presigned-get-of-missing-key-rejected-with-cors-headers` | `abd0811` | **new** |  |
+| `s3.cors-presigned-get-under-wildcard-origin-rule-answers-star-without-credentials` | `abd0811` | **new** |  |
+| `s3.cors-presigned-get-with-tampered-signature-rejected-with-cors-headers` | `abd0811` | **new** |  |
+| `s3.cors-presigned-get-without-origin-on-configured-bucket-has-no-cors-headers` | `abd0811` | **new** |  |
+| `s3.cors-presigned-head-carries-the-rule-headers-on-a-hit-and-on-a-miss` | `abd0811` | **new** |  |
 | `s3.cors-presigned-put-and-get-with-origin-carry-allow-origin` | `4df2823` | ported | `S3/CorsPresignedPutAndGetWithOriginCarryAllowOrigin.cs` |
+| `s3.cors-presigned-put-from-origin-whose-rule-omits-put-rejected-without-cors-headers` | `abd0811` | **new** |  |
+| `s3.cors-presigned-put-under-subdomain-wildcard-rule-echoes-the-origin` | `abd0811` | **new** |  |
 | `s3.cors-presigned-with-origin-without-cors-config-no-cors-headers` | `4df2823` | ported | `S3/CorsPresignedWithOriginWithoutCorsConfigNoCorsHeaders.cs` |
+| `s3.crc32-multipart-default-composite-vs-full-object-checksum` | `abd0811` | **new** |  |
 | `s3.create-bucket-invalid-name-rejected` | `4df2823` | ported | `S3/CreateBucketInvalidNameRejected.cs` |
 | `s3.create-bucket-invalid-name-variants-rejected` | `4df2823` | ported | `S3/CreateBucketInvalidNameVariantsRejected.cs` |
 | `s3.create-bucket-metadata-table-configuration-name-conflict-rejected` | `4df2823` | ported | `S3/CreateBucketMetadataTableConfigurationNameConflictRejected.cs` |
-| `s3.create-bucket-reserved-prefix-or-suffix-rejected` | `4df2823` | ported | `S3/CreateBucketReservedPrefixOrSuffixRejected.cs` |
-| `s3.create-session-express-zone` | `4df2823` | ported | `S3/CreateSessionExpressZone.cs` |
-| `s3.create-session-no-such-bucket` | `4df2823` | ported | `S3/CreateSessionNoSuchBucket.cs` |
+| `s3.create-bucket-reserved-prefix-or-suffix-rejected` | `abd0811` | **stale**: ported at `4df2823` | `S3/CreateBucketReservedPrefixOrSuffixRejected.cs` |
+| `s3.create-session-express-zone` | `abd0811` | **stale**: ported at `4df2823` | `S3/CreateSessionExpressZone.cs` |
+| `s3.create-session-no-such-bucket` | `abd0811` | **stale**: ported at `4df2823` | `S3/CreateSessionNoSuchBucket.cs` |
 | `s3.create-session-nosuchbucket` | `4df2823` | ported | `S3/CreateSessionNosuchbucketGeneralPurposeBucket.cs` |
-| `s3.create-session-roundtrip` | `4df2823` | ported | `S3/CreateSessionRoundtrip.cs` |
-| `s3.create-session-token-ttl` | `4df2823` | ported | `S3/CreateSessionTokenTtl.cs` |
+| `s3.create-session-roundtrip` | `abd0811` | **stale**: ported at `4df2823` | `S3/CreateSessionRoundtrip.cs` |
+| `s3.create-session-token-ttl` | `abd0811` | **stale**: ported at `4df2823` | `S3/CreateSessionTokenTtl.cs` |
 | `s3.deep-s3-immutability-compliance-lock-extends-and-overwrites-but-weakening-rejected` | `4df2823` | ported | `S3/DeepS3ImmutabilityComplianceLockExtendsAndOverwritesButWeakeningRejected.cs` |
 | `s3.deep-s3-immutability-composite-sha256-checksum-reports-parts` | `4df2823` | ported | `S3/DeepS3ImmutabilityCompositeSha256ChecksumReportsParts.cs` |
 | `s3.deep-s3-immutability-copy-metadata-directive-replace-drops-unrestated` | `4df2823` | ported | `S3/DeepS3ImmutabilityCopyMetadataDirectiveReplaceDropsUnrestated.cs` |
@@ -2065,6 +2422,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.deep-s3-storage-class-restore-zero-days-rejected` | `4df2823` | ported | `S3/DeepS3StorageClassRestoreZeroDaysRejected.cs` |
 | `s3.deep-s3-storage-class-versioned-expiration-rule-targets-current-version` | `4df2823` | ported | `S3/DeepS3StorageClassVersionedExpirationRuleTargetsCurrentVersion.cs` |
 | `s3.delete-bucket-holding-only-a-delete-marker-rejected-bucket-not-empty` | `4df2823` | ported | `S3/DeleteBucketHoldingOnlyADeleteMarkerRejectedBucketNotEmpty.cs` |
+| `s3.delete-bucket-policy-denied-leaves-the-policy-a-twin-role-deletes-it` | `abd0811` | **new** |  |
 | `s3.delete-bucket-with-metadata-table-configuration-blocked` | `4df2823` | ported | `S3/DeleteBucketWithMetadataTableConfigurationBlocked.cs` |
 | `s3.delete-nonempty-bucket-rejected-across-20-bucket-fanout` | `4df2823` | ported | `S3/DeleteNonemptyBucketRejectedAcross20BucketFanout.cs` |
 | `s3.delete-object-annotation-error-paths` | `4df2823` | ported | `S3/DeleteObjectAnnotationErrorPaths.cs` |
@@ -2085,9 +2443,9 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.deploy-s3-bucket-default-encryption-applied` | `4df2823` | not ported | CloudFormation stacks |
 | `s3.deploy-s3-bucket-public-access-block-enforced-rejected` | `4df2823` | not ported | CloudFormation stacks |
 | `s3.deploy-s3-bucket-versioning-behavior` | `4df2823` | not ported | CloudFormation stacks |
-| `s3.directory-bucket-multipart-complete-etag-is-not-an-md5-composite` | `4df2823` | ported | `S3/DirectoryBucketMultipartCompleteEtagIsNotAnMd5Composite.cs` |
-| `s3.directory-bucket-rejects-object-tagging-versioning-notification-and-replication` | `4df2823` | ported | `S3/DirectoryBucketRejectsObjectTaggingVersioningNotificationAndReplication.cs` |
-| `s3.directory-buckets-listing` | `4df2823` | ported | `S3/DirectoryBucketsListing.cs` |
+| `s3.directory-bucket-multipart-complete-etag-is-not-an-md5-composite` | `abd0811` | **stale**: ported at `4df2823` | `S3/DirectoryBucketMultipartCompleteEtagIsNotAnMd5Composite.cs` |
+| `s3.directory-bucket-rejects-object-tagging-versioning-notification-and-replication` | `abd0811` | **stale**: ported at `4df2823` | `S3/DirectoryBucketRejectsObjectTaggingVersioningNotificationAndReplication.cs` |
+| `s3.directory-buckets-listing` | `abd0811` | **stale**: ported at `4df2823` | `S3/DirectoryBucketsListing.cs` |
 | `s3.e2e-log-rotation-pattern` | `4df2823` | ported | `S3/E2eLogRotationPattern.cs` |
 | `s3.e2e-website-deployment` | `4df2823` | ported | `S3/E2eWebsiteDeployment.cs` |
 | `s3.empty-and-odd-sized-objects-under-unicode-keys-round-trip-with-md5-etags` | `4df2823` | ported | `S3/EmptyAndOddSizedObjectsUnderUnicodeKeysRoundTripWithMd5Etags.cs` |
@@ -2106,8 +2464,12 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.get-object-acl-no-such-key` | `4df2823` | ported | `S3/GetObjectAclNoSuchKey.cs` |
 | `s3.get-object-annotation-nosuchannotation` | `4df2823` | ported | `S3/GetObjectAnnotationNosuchannotation.cs` |
 | `s3.get-object-attributes-invalid-attribute-name-rejected` | `4df2823` | ported | `S3/GetObjectAttributesInvalidAttributeNameRejected.cs` |
+| `s3.get-object-attributes-multipart-etag-is-part-md5-composite` | `abd0811` | **new** |  |
 | `s3.get-object-attributes-no-such-key` | `4df2823` | ported | `S3/GetObjectAttributesNoSuchKey.cs` |
 | `s3.get-object-attributes-nosuchkey` | `4df2823` | ported | `S3/GetObjectAttributesNosuchkeyCompact.cs` |
+| `s3.get-object-attributes-object-parts-max-parts-pagination-returns-each-part-once` | `abd0811` | **new** |  |
+| `s3.get-object-attributes-object-parts-omits-parts-without-an-additional-checksum` | `abd0811` | **new** |  |
+| `s3.get-object-attributes-on-a-permanently-deleted-version-rejected` | `abd0811` | **new** |  |
 | `s3.get-object-attributes-size-etag` | `4df2823` | ported | `S3/GetObjectAttributesSizeEtag.cs` |
 | `s3.get-object-invalid-object-state-glacier` | `4df2823` | ported | `S3/GetObjectInvalidObjectStateGlacier.cs` |
 | `s3.get-object-invalid-state-archived` | `4df2823` | ported | `S3/GetObjectInvalidStateArchived.cs` |
@@ -2115,6 +2477,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.get-object-part-number-reads-single-part` | `4df2823` | ported | `S3/GetObjectPartNumberReadsSinglePart.cs` |
 | `s3.get-object-torrent` | `4df2823` | ported | `S3/GetObjectTorrent.cs` |
 | `s3.get-object-torrent-unsupported-rejected` | `4df2823` | ported | `S3/GetObjectTorrentUnsupportedRejected.cs` |
+| `s3.gzip-object-etag-and-copy-metadata-directive-content-encoding` | `abd0811` | **new** |  |
 | `s3.head-object-metadata` | `4df2823` | ported | `S3/HeadObjectMetadata.cs` |
 | `s3.head-object-on-delete-marker-rejected` | `4df2823` | ported | `S3/HeadObjectOnDeleteMarkerRejected.cs` |
 | `s3.identity-policy-s3-prefix-condition-scopes-listbucket-and-getobject-to-a-home-prefix` | `4df2823` | not ported | IAM roles and role assumption |
@@ -2122,16 +2485,19 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.if-match-success` | `4df2823` | ported | `S3/IfMatchSuccess.cs` |
 | `s3.if-modified-since` | `4df2823` | ported | `S3/IfModifiedSince.cs` |
 | `s3.if-none-match` | `4df2823` | ported | `S3/IfNoneMatch.cs` |
+| `s3.last-modified-whole-second-precision-agrees-and-advances` | `abd0811` | **new** |  |
 | `s3.lifecycle-abort-incomplete-multipart` | `4df2823` | ported | `S3/LifecycleAbortIncompleteMultipart.cs` |
 | `s3.lifecycle-abort-incomplete-multipart-invalid-days-rejected` | `4df2823` | ported | `S3/LifecycleAbortIncompleteMultipartInvalidDaysRejected.cs` |
 | `s3.lifecycle-expiration-ttl` | `4df2823` | ported | `S3/LifecycleExpirationTtl.cs` |
 | `s3.lifecycle-rule-delete` | `4df2823` | ported | `S3/LifecycleRuleDelete.cs` |
 | `s3.lifecycle-rule-roundtrip` | `4df2823` | ported | `S3/LifecycleRuleRoundtrip.cs` |
 | `s3.lifecycle-transition-server-side` | `4df2823` | ported | `S3/LifecycleTransitionServerSide.cs` |
-| `s3.list-directory-buckets-isolation` | `4df2823` | ported | `S3/ListDirectoryBucketsIsolation.cs` |
-| `s3.list-directory-buckets-rejects-regular-bucket-ops` | `4df2823` | ported | `S3/ListDirectoryBucketsRejectsRegularBucketOps.cs` |
+| `s3.list-directory-buckets-isolation` | `abd0811` | **stale**: ported at `4df2823` | `S3/ListDirectoryBucketsIsolation.cs` |
+| `s3.list-directory-buckets-rejects-regular-bucket-ops` | `abd0811` | **stale**: ported at `4df2823` | `S3/ListDirectoryBucketsRejectsRegularBucketOps.cs` |
 | `s3.list-multipart-uploads-paginates-and-groups-common-prefixes` | `4df2823` | ported | `S3/ListMultipartUploadsPaginatesAndGroupsCommonPrefixes.cs` |
 | `s3.list-object-annotations-invalid-prefix` | `4df2823` | ported | `S3/ListObjectAnnotationsInvalidPrefix.cs` |
+| `s3.list-object-annotations-max-annotation-results-over-one-thousand-rejected` | `abd0811` | **new** |  |
+| `s3.list-object-annotations-max-annotation-results-pagination-returns-each-once` | `abd0811` | **new** |  |
 | `s3.list-object-versions` | `4df2823` | ported | `S3/ListObjectVersions.cs` |
 | `s3.list-object-versions-pages-one-key-written-more-than-one-thousand-times` | `4df2823` | ported | `S3/ListObjectVersionsPagesOneKeyWrittenMoreThanOneThousandTimes.cs` |
 | `s3.list-object-versions-pagination-markers` | `4df2823` | ported | `S3/ListObjectVersionsPaginationMarkers.cs` |
@@ -2153,6 +2519,8 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.metadata-table-server-managed-updates` | `4df2823` | ported | `S3/MetadataTableServerManagedUpdates.cs` |
 | `s3.multipart-abort` | `4df2823` | ported | `S3/MultipartAbort.cs` |
 | `s3.multipart-abort-no-such-upload-rejected` | `4df2823` | ported | `S3/MultipartAbortNoSuchUploadRejected.cs` |
+| `s3.multipart-complete-checksum-type-mismatched-from-create-rejected` | `abd0811` | **new** |  |
+| `s3.multipart-complete-full-object-against-default-composite-upload-rejected` | `abd0811` | **new** |  |
 | `s3.multipart-complete-invalid-part-etag-rejected` | `4df2823` | ported | `S3/MultipartCompleteInvalidPartEtagRejected.cs` |
 | `s3.multipart-complete-out-of-order-rejected` | `4df2823` | ported | `S3/MultipartCompleteOutOfOrderRejected.cs` |
 | `s3.multipart-complete-part-ordering-enforced` | `4df2823` | ported | `S3/MultipartCompletePartOrderingEnforced.cs` |
@@ -2171,6 +2539,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.multipart-upload-with-sparse-part-numbers-uploaded-in-reverse-round-trips` | `4df2823` | ported | `S3/MultipartUploadWithSparsePartNumbersUploadedInReverseRoundTrips.cs` |
 | `s3.notification-fifo-destination-rejected` | `4df2823` | ported | `S3/NotificationFifoDestinationRejected.cs` |
 | `s3.notification-filter-non-matching-key-not-delivered` | `4df2823` | ported | `S3/NotificationFilterNonMatchingKeyNotDelivered.cs` |
+| `s3.notification-filter-rules-round-trip-special-characters-then-are-replaced-whole` | `abd0811` | **new** |  |
 | `s3.notification-invalid-destination-rejected` | `4df2823` | ported | `S3/NotificationInvalidDestinationRejected.cs` |
 | `s3.notification-sqs-test-event-format` | `4df2823` | ported | `S3/NotificationSqsTestEventFormat.cs` |
 | `s3.notification-to-sqs` | `4df2823` | ported | `S3/NotificationToSqs.cs` |
@@ -2180,12 +2549,15 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.object-annotation-crud-lifecycle` | `4df2823` | ported | `S3/ObjectAnnotationCrudLifecycle.cs` |
 | `s3.object-annotation-full-crud-lifecycle` | `4df2823` | ported | `S3/ObjectAnnotationFullCrudLifecycle.cs` |
 | `s3.object-annotation-name-too-long-rejected` | `4df2823` | ported | `S3/ObjectAnnotationNameTooLongRejected.cs` |
+| `s3.object-annotation-nonexistent-version-rejected` | `abd0811` | **new** |  |
 | `s3.object-annotation-not-found-errors` | `4df2823` | ported | `S3/ObjectAnnotationNotFoundErrors.cs` |
 | `s3.object-annotation-reserved-prefix-rejected` | `4df2823` | ported | `S3/ObjectAnnotationReservedPrefixRejected.cs` |
 | `s3.object-annotation-roundtrip` | `4df2823` | ported | `S3/ObjectAnnotationRoundtrip.cs` |
 | `s3.object-annotation-validation-errors-rejected` | `4df2823` | ported | `S3/ObjectAnnotationValidationErrorsRejected.cs` |
 | `s3.object-attributes-reflects-state` | `4df2823` | ported | `S3/ObjectAttributesReflectsState.cs` |
 | `s3.object-attributes-returns-metadata` | `4df2823` | ported | `S3/ObjectAttributesReturnsMetadata.cs` |
+| `s3.object-inline-tagging-count-limit-boundary` | `abd0811` | **new** |  |
+| `s3.object-inline-tagging-value-length-limit-boundary` | `abd0811` | **new** |  |
 | `s3.object-key-1024-bytes-boundary-rejected` | `4df2823` | ported | `S3/ObjectKey1024BytesBoundaryRejected.cs` |
 | `s3.object-legal-hold-blocks-delete` | `4df2823` | ported | `S3/ObjectLegalHoldBlocksDelete.cs` |
 | `s3.object-legal-hold-lifecycle` | `4df2823` | ported | `S3/ObjectLegalHoldLifecycle.cs` |
@@ -2257,24 +2629,31 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.public-access-block-blocks-public-acl` | `4df2823` | ported | `S3/PublicAccessBlockBlocksPublicAcl.cs` |
 | `s3.public-access-block-rejects-public-policy` | `4df2823` | ported | `S3/PublicAccessBlockRejectsPublicPolicy.cs` |
 | `s3.public-access-block-state-machine` | `4df2823` | ported | `S3/PublicAccessBlockStateMachine.cs` |
+| `s3.put-bucket-accelerate-configuration-directory-bucket-rejected` | `abd0811` | **new** |  |
+| `s3.put-bucket-accelerate-configuration-dotted-bucket-name-rejected` | `abd0811` | **new** |  |
+| `s3.put-bucket-cors-over-100-rules-rejected` | `abd0811` | **new** |  |
+| `s3.put-bucket-encryption-denied-default-unchanged-twin-role-applies-kms` | `abd0811` | **new** |  |
+| `s3.put-bucket-logging-nonexistent-target-bucket-rejected` | `abd0811` | **new** |  |
 | `s3.put-bucket-metrics-configuration-invalid-id-rejected` | `4df2823` | ported | `S3/PutBucketMetricsConfigurationInvalidIdRejected.cs` |
 | `s3.put-get-roundtrip-binary` | `4df2823` | ported | `S3/PutGetRoundtripBinary.cs` |
+| `s3.put-object-acl-canned-and-policy-together-rejected` | `abd0811` | **new** |  |
 | `s3.put-object-acl-no-such-key` | `4df2823` | ported | `S3/PutObjectAclNoSuchKey.cs` |
 | `s3.put-object-annotation-limits` | `4df2823` | ported | `S3/PutObjectAnnotationLimits.cs` |
-| `s3.put-object-append-conditional-offset-contention` | `4df2823` | ported | `S3/PutObjectAppendConditionalOffsetContention.cs` |
-| `s3.put-object-append-write-offset-rejected` | `4df2823` | ported | `S3/PutObjectAppendWriteOffsetRejected.cs` |
+| `s3.put-object-append-conditional-offset-contention` | `abd0811` | **stale**: ported at `4df2823` | `S3/PutObjectAppendConditionalOffsetContention.cs` |
+| `s3.put-object-append-write-offset-rejected` | `abd0811` | **stale**: ported at `4df2823` | `S3/PutObjectAppendWriteOffsetRejected.cs` |
 | `s3.put-object-bad-content-md5-rejected` | `4df2823` | ported | `S3/PutObjectBadContentMd5Rejected.cs` |
 | `s3.put-object-conditional-write-optimistic-lock` | `4df2823` | ported | `S3/PutObjectConditionalWriteOptimisticLock.cs` |
 | `s3.put-object-encryption-type-mismatch` | `4df2823` | ported | `S3/PutObjectEncryptionTypeMismatch.cs` |
-| `s3.put-object-encryption-type-mismatch-rejected` | `4df2823` | ported | `S3/PutObjectEncryptionTypeMismatchRejected.cs` |
+| `s3.put-object-encryption-type-mismatch-rejected` | `abd0811` | **stale**: ported at `4df2823` | `S3/PutObjectEncryptionTypeMismatchRejected.cs` |
 | `s3.put-object-if-match-conditional` | `4df2823` | ported | `S3/PutObjectIfMatchConditional.cs` |
 | `s3.put-object-if-match-matches-an-etag-restored-by-rewriting-identical-bytes` | `4df2823` | ported | `S3/PutObjectIfMatchMatchesAnEtagRestoredByRewritingIdenticalBytes.cs` |
 | `s3.put-object-if-match-refuses-a-composite-etag-replaced-by-another-multipart-upload` | `4df2823` | ported | `S3/PutObjectIfMatchRefusesACompositeEtagReplacedByAnotherMultipartUpload.cs` |
 | `s3.put-object-if-match-takes-a-multipart-etag-and-refuses-it-once-stale` | `4df2823` | ported | `S3/PutObjectIfMatchTakesAMultipartEtagAndRefusesItOnceStale.cs` |
 | `s3.put-object-if-none-match-precondition` | `4df2823` | ported | `S3/PutObjectIfNoneMatchPrecondition.cs` |
 | `s3.put-object-invalid-request-rejected` | `4df2823` | ported | `S3/PutObjectInvalidRequestRejected.cs` |
-| `s3.put-object-invalid-write-offset` | `4df2823` | ported | `S3/PutObjectInvalidWriteOffset.cs` |
-| `s3.put-object-invalid-write-offset-rejected` | `4df2823` | ported | `S3/PutObjectInvalidWriteOffsetRejected.cs` |
+| `s3.put-object-invalid-write-offset` | `abd0811` | **stale**: ported at `4df2823` | `S3/PutObjectInvalidWriteOffset.cs` |
+| `s3.put-object-invalid-write-offset-rejected` | `abd0811` | **stale**: ported at `4df2823` | `S3/PutObjectInvalidWriteOffsetRejected.cs` |
+| `s3.put-object-metadata-exceeding-two-kib-rejected` | `abd0811` | **new** |  |
 | `s3.put-object-policy-requires-if-none-match-header` | `4df2823` | ported | `S3/PutObjectPolicyRequiresIfNoneMatchHeader.cs` |
 | `s3.put-object-sha1-checksum-round-trip-and-bad-digest-rejected` | `4df2823` | ported | `S3/PutObjectSha1ChecksumRoundTripAndBadDigestRejected.cs` |
 | `s3.put-object-sse-kms-encryption-context-round-trips-then-malformed-rejected` | `4df2823` | not ported | KMS keys |
@@ -2283,14 +2662,14 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.range-read-open-end` | `4df2823` | ported | `S3/RangeReadOpenEnd.cs` |
 | `s3.range-read-suffix` | `4df2823` | ported | `S3/RangeReadSuffix.cs` |
 | `s3.range-read-unsatisfiable-rejected` | `4df2823` | ported | `S3/RangeReadUnsatisfiableRejected.cs` |
-| `s3.rename-object-concurrent-idempotency` | `4df2823` | ported | `S3/RenameObjectConcurrentIdempotency.cs` |
-| `s3.rename-object-destination-exists-rejected` | `4df2823` | ported | `S3/RenameObjectDestinationExistsRejected.cs` |
-| `s3.rename-object-idempotency-mismatch` | `4df2823` | ported | `S3/RenameObjectIdempotencyMismatch.cs` |
-| `s3.rename-object-idempotency-token` | `4df2823` | ported | `S3/RenameObjectIdempotencyToken.cs` |
-| `s3.rename-object-idempotency-token-mismatch` | `4df2823` | ported | `S3/RenameObjectIdempotencyTokenMismatch.cs` |
-| `s3.rename-object-lifecycle` | `4df2823` | ported | `S3/RenameObjectLifecycle.cs` |
-| `s3.rename-object-source-if-none-match-precondition-rejected` | `4df2823` | ported | `S3/RenameObjectSourceIfNoneMatchPreconditionRejected.cs` |
-| `s3.rename-object-state-transition` | `4df2823` | ported | `S3/RenameObjectStateTransition.cs` |
+| `s3.rename-object-concurrent-idempotency` | `abd0811` | **stale**: ported at `4df2823` | `S3/RenameObjectConcurrentIdempotency.cs` |
+| `s3.rename-object-destination-exists-rejected` | `abd0811` | **stale**: ported at `4df2823` | `S3/RenameObjectDestinationExistsRejected.cs` |
+| `s3.rename-object-idempotency-mismatch` | `abd0811` | **stale**: ported at `4df2823` | `S3/RenameObjectIdempotencyMismatch.cs` |
+| `s3.rename-object-idempotency-token` | `abd0811` | **stale**: ported at `4df2823` | `S3/RenameObjectIdempotencyToken.cs` |
+| `s3.rename-object-idempotency-token-mismatch` | `abd0811` | **stale**: ported at `4df2823` | `S3/RenameObjectIdempotencyTokenMismatch.cs` |
+| `s3.rename-object-lifecycle` | `abd0811` | **stale**: ported at `4df2823` | `S3/RenameObjectLifecycle.cs` |
+| `s3.rename-object-source-if-none-match-precondition-rejected` | `abd0811` | **stale**: ported at `4df2823` | `S3/RenameObjectSourceIfNoneMatchPreconditionRejected.cs` |
+| `s3.rename-object-state-transition` | `abd0811` | **stale**: ported at `4df2823` | `S3/RenameObjectStateTransition.cs` |
 | `s3.replication-covers-the-eligible-prefix-only-and-withholds-the-delete-marker` | `4df2823` | ported | `S3/ReplicationCoversTheEligiblePrefixOnlyAndWithholdsTheDeleteMarker.cs` |
 | `s3.replication-server-side-execution` | `4df2823` | ported | `S3/ReplicationServerSideExecution.cs` |
 | `s3.requester-pays-enforcement` | `4df2823` | ported | `S3/RequesterPaysEnforcement.cs` |
@@ -2317,7 +2696,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.s3-delete-object-with-a-stale-if-match-etag-is-refused-and-the-object-survives` | `4df2823` | ported | `S3/S3DeleteObjectWithAStaleIfMatchEtagIsRefusedAndTheObjectSurvives.cs` |
 | `s3.s3-delete-objects-batch` | `4df2823` | ported | `S3/S3DeleteObjectsBatch.cs` |
 | `s3.s3-delete-objects-reports-every-requested-key-version-pair-exactly-once` | `4df2823` | ported | `S3/S3DeleteObjectsReportsEveryRequestedKeyVersionPairExactlyOnce.cs` |
-| `s3.s3-express-append-produces-the-exact-concatenation-of-three-offset-writes` | `4df2823` | ported | `S3/S3ExpressAppendProducesTheExactConcatenationOfThreeOffsetWrites.cs` |
+| `s3.s3-express-append-produces-the-exact-concatenation-of-three-offset-writes` | `abd0811` | **stale**: ported at `4df2823` | `S3/S3ExpressAppendProducesTheExactConcatenationOfThreeOffsetWrites.cs` |
 | `s3.s3-full-object-crc64nvme-over-multipart-equals-the-whole-object-checksum` | `4df2823` | ported | `S3/S3FullObjectCrc64nvmeOverMultipartEqualsTheWholeObjectChecksum.cs` |
 | `s3.s3-if-none-match-star-put-is-atomic-across-a-delete-marker` | `4df2823` | ported | `S3/S3IfNoneMatchStarPutIsAtomicAcrossADeleteMarker.cs` |
 | `s3.s3-lcp-rejects-inverted-or-equal-object-size-range` | `4df2823` | ported | `S3/S3LcpRejectsInvertedOrEqualObjectSizeRange.cs` |
@@ -2365,14 +2744,14 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.s3unicode-list-objects-with-an-unsupported-encoding-type-is-rejected` | `4df2823` | ported | `S3/S3unicodeListObjectsWithAnUnsupportedEncodingTypeIsRejected.cs` |
 | `s3.s3unicode-object-tag-value-with-an-astral-emoji-rejected` | `4df2823` | ported | `S3/S3unicodeObjectTagValueWithAnAstralEmojiRejected.cs` |
 | `s3.s3unicode-rfc3986-reserved-chars-in-a-key-are-literal` | `4df2823` | ported | `S3/S3unicodeRfc3986ReservedCharsInAKeyAreLiteral.cs` |
-| `s3.s3x-s3express-session-and-listing-cross-bucket-token-denied` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingCrossBucketTokenDenied.cs` |
-| `s3.s3x-s3express-session-and-listing-expired-token-denied` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingExpiredTokenDenied.cs` |
-| `s3.s3x-s3express-session-and-listing-inflight-mpu-prefix-listed` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingInflightMpuPrefixListed.cs` |
-| `s3.s3x-s3express-session-and-listing-non-slash-delimiter-rejected` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingNonSlashDelimiterRejected.cs` |
-| `s3.s3x-s3express-session-and-listing-readonly-session-put-denied` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingReadonlySessionPutDenied.cs` |
-| `s3.s3x-s3express-session-and-listing-readwrite-session-round-trip` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingReadwriteSessionRoundTrip.cs` |
-| `s3.s3x-s3express-session-and-listing-start-after-rejected` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingStartAfterRejected.cs` |
-| `s3.s3x-s3express-session-and-listing-unterminated-prefix-rejected` | `4df2823` | ported | `S3/S3xS3expressSessionAndListingUnterminatedPrefixRejected.cs` |
+| `s3.s3x-s3express-session-and-listing-cross-bucket-token-denied` | `abd0811` | **stale**: ported at `4df2823` | `S3/S3xS3expressSessionAndListingCrossBucketTokenDenied.cs` |
+| `s3.s3x-s3express-session-and-listing-expired-token-denied` | `abd0811` | **stale**: ported at `4df2823` | `S3/S3xS3expressSessionAndListingExpiredTokenDenied.cs` |
+| `s3.s3x-s3express-session-and-listing-inflight-mpu-prefix-listed` | `abd0811` | **stale**: ported at `4df2823` | `S3/S3xS3expressSessionAndListingInflightMpuPrefixListed.cs` |
+| `s3.s3x-s3express-session-and-listing-non-slash-delimiter-rejected` | `abd0811` | **stale**: ported at `4df2823` | `S3/S3xS3expressSessionAndListingNonSlashDelimiterRejected.cs` |
+| `s3.s3x-s3express-session-and-listing-readonly-session-put-denied` | `abd0811` | **stale**: ported at `4df2823` | `S3/S3xS3expressSessionAndListingReadonlySessionPutDenied.cs` |
+| `s3.s3x-s3express-session-and-listing-readwrite-session-round-trip` | `abd0811` | **stale**: ported at `4df2823` | `S3/S3xS3expressSessionAndListingReadwriteSessionRoundTrip.cs` |
+| `s3.s3x-s3express-session-and-listing-start-after-rejected` | `abd0811` | **stale**: ported at `4df2823` | `S3/S3xS3expressSessionAndListingStartAfterRejected.cs` |
+| `s3.s3x-s3express-session-and-listing-unterminated-prefix-rejected` | `abd0811` | **stale**: ported at `4df2823` | `S3/S3xS3expressSessionAndListingUnterminatedPrefixRejected.cs` |
 | `s3.secure-transport-policy-plain-http-denied` | `4df2823` | known gap: SecureTransport | `S3/SecureTransportPolicyPlainHttpDenied.cs` |
 | `s3.select-object-content-permission-denied` | `4df2823` | not ported | IAM roles, users and identity policies |
 | `s3.sigv4skew-cross-region-credential-scope-rejected` | `4df2823` | ported | `S3/Sigv4skewCrossRegionCredentialScopeRejected.cs` |
@@ -2383,6 +2762,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.sigv4skew-presigned-get-refusal-names-its-expiry-window` | `4df2823` | ported | `S3/Sigv4skewPresignedGetRefusalNamesItsExpiryWindow.cs` |
 | `s3.sigv4skew-presigned-put-after-expiry-writes-no-object-rejected` | `4df2823` | ported | `S3/Sigv4skewPresignedPutAfterExpiryWritesNoObjectRejected.cs` |
 | `s3.sigv4skew-window-enforced-in-derived-second-region-rejected` | `4df2823` | ported | `S3/Sigv4skewWindowEnforcedInDerivedSecondRegionRejected.cs` |
+| `s3.single-put-object-of-thirty-two-mib-round-trips-exactly` | `abd0811` | **new** |  |
 | `s3.sse-c-wrong-customer-key-rejected` | `4df2823` | ported | `S3/SseCWrongCustomerKeyRejected.cs` |
 | `s3.sse-kms` | `4df2823` | not ported | KMS keys |
 | `s3.sse-s3-default` | `4df2823` | ported | `S3/SseS3Default.cs` |
@@ -2390,16 +2770,23 @@ the port). The *Last changed* column is the last upstream commit to change the c
 | `s3.ssec-head-object-requires-the-matching-customer-key` | `4df2823` | ported | `S3/SsecHeadObjectRequiresTheMatchingCustomerKey.cs` |
 | `s3.storage-class-reduced-redundancy` | `4df2823` | ported | `S3/StorageClassReducedRedundancy.cs` |
 | `s3.storage-class-standard` | `4df2823` | ported | `S3/StorageClassStandard.cs` |
-| `s3.update-object-encryption-error-paths` | `4df2823` | not ported | KMS keys |
-| `s3.update-object-encryption-error-preconditions` | `4df2823` | not ported | KMS keys |
+| `s3.update-object-encryption-deleted-version-rejected` | `abd0811` | **new** |  |
+| `s3.update-object-encryption-error-paths` | `abd0811` | not ported | KMS keys |
+| `s3.update-object-encryption-error-preconditions` | `abd0811` | not ported | KMS keys |
 | `s3.update-object-encryption-errors` | `4df2823` | not ported | KMS keys |
+| `s3.update-object-encryption-rekeys-sse-kms-object-to-a-different-customer-managed-key` | `abd0811` | **new** |  |
+| `s3.update-object-encryption-version-scoped-other-versions-untouched` | `abd0811` | **new** |  |
 | `s3.upload-part-copy-source-if-match-takes-a-composite-etag-and-refuses-it-once-stale` | `4df2823` | ported | `S3/UploadPartCopySourceIfMatchTakesACompositeEtagAndRefusesItOnceStale.cs` |
+| `s3.upload-part-copy-source-key-with-plus-space-and-multibyte-pins-etags` | `abd0811` | **new** |  |
 | `s3.upload-part-of-twenty-mib-completes-and-reads-back-exactly` | `4df2823` | ported | `S3/UploadPartOfTwentyMibCompletesAndReadsBackExactly.cs` |
 | `s3.versioning-delete-marker` | `4df2823` | ported | `S3/VersioningDeleteMarker.cs` |
 | `s3.versioning-enable` | `4df2823` | ported | `S3/VersioningEnable.cs` |
 | `s3.versioning-get-specific-version` | `4df2823` | ported | `S3/VersioningGetSpecificVersion.cs` |
 | `s3.versioning-produces-version-ids` | `4df2823` | ported | `S3/VersioningProducesVersionIds.cs` |
 | `s3.versioning-suspended-null-version` | `4df2823` | ported | `S3/VersioningSuspendedNullVersion.cs` |
+| `s3.virtual-hosted-and-path-style-clients-agree-on-an-objects-full-lifecycle` | `abd0811` | **new** |  |
+| `s3.virtual-hosted-and-path-style-clients-refuse-a-nonexistent-bucket-identically` | `abd0811` | **new** |  |
+| `s3.virtual-hosted-and-path-style-putobject-if-match-preconditions-agree` | `abd0811` | **new** |  |
 | `s3.website-endpoint-serves-index-and-error-documents-and-refuses-writes` | `4df2823` | ported | `S3/WebsiteEndpointServesIndexAndErrorDocumentsAndRefusesWrites.cs` |
 
 ## behavioral/s3__sqs
@@ -2408,11 +2795,13 @@ the port). The *Last changed* column is the last upstream commit to change the c
 |---|---|---|---|
 | `s3__sqs.a-denied-put-creates-no-object-and-emits-no-notification` | `4df2823` | ported | `S3Sqs/ADeniedPutCreatesNoObjectAndEmitsNoNotification.cs` |
 | `s3__sqs.an-aborted-multipart-upload-emits-no-object-created-notification` | `4df2823` | ported | `S3Sqs/AnAbortedMultipartUploadEmitsNoObjectCreatedNotification.cs` |
+| `s3__sqs.bucket-notification-configurations-over-hundred-rejected` | `abd0811` | **new** |  |
 | `s3__sqs.deploy-s3-3-drift-versioning-suspended-out-of-band` | `4df2823` | not ported | CloudFormation stacks |
 | `s3__sqs.deploy-s3-3-notification-nonexistent-queue-rollback-rejected` | `4df2823` | not ported | CloudFormation stacks |
 | `s3__sqs.deploy-s3-3-notification-queue-without-policy-rollback-rejected` | `4df2823` | not ported | CloudFormation stacks |
 | `s3__sqs.inline-tagging-and-canned-acl-on-write-withhold-tagging-and-acl-events` | `4df2823` | ported | `S3Sqs/InlineTaggingAndCannedAclOnWriteWithholdTaggingAndAclEvents.cs` |
 | `s3__sqs.notification-destination-validation-rejects-unresolvable-queue` | `4df2823` | ported | `S3Sqs/NotificationDestinationValidationRejectsUnresolvableQueue.cs` |
+| `s3__sqs.notification-prefix-filter-url-decodes-before-key-matching` | `abd0811` | **new** |  |
 | `s3__sqs.object-acl-put-event-reaches-only-its-queue` | `4df2823` | ported | `S3Sqs/ObjectAclPutEventReachesOnlyItsQueue.cs` |
 | `s3__sqs.object-created-copy-event-reaches-only-its-queue` | `4df2823` | ported | `S3Sqs/ObjectCreatedCopyEventReachesOnlyItsQueue.cs` |
 | `s3__sqs.object-tagging-delete-event-reaches-only-its-queue` | `4df2823` | ported | `S3Sqs/ObjectTaggingDeleteEventReachesOnlyItsQueue.cs` |
@@ -2427,6 +2816,7 @@ the port). The *Last changed* column is the last upstream commit to change the c
 
 | Check | Last changed | Status | Port or reason |
 |---|---|---|---|
+| `s3__sns__sqs.notification-config-queue-and-topic-filters-roundtrip-and-delivery` | `abd0811` | **new** |  |
 | `s3__sns__sqs.s3-notification-without-topic-policy-rejected` | `4df2823` | ported | `S3SnsSqs/S3NotificationWithoutTopicPolicyRejected.cs` |
 | `s3__sns__sqs.s3-object-created-notifies-sns` | `4df2823` | ported | `S3SnsSqs/S3ObjectCreatedNotifiesSns.cs` |
 
