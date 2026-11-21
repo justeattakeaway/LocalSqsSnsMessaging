@@ -8,6 +8,7 @@ namespace InMemoryAws
 {
     using global::System;
     using global::System.Net.Http;
+    using global::System.Runtime.CompilerServices;
     using global::Amazon.Runtime;
     using global::InMemoryAws.Http;
 
@@ -155,6 +156,11 @@ namespace InMemoryAws
     /// </summary>
     internal static partial class InMemoryAwsSdkExtensions
     {
+        // The factory of every client the Create...Client() methods make for a cloud, in any region: one per cloud,
+        // collected with it (its handlers hold nothing that needs disposing).
+        private static readonly ConditionalWeakTable<InMemoryAwsCloud, InMemoryAwsSdkHttpClientFactory> SharedFactories =
+            new ConditionalWeakTable<InMemoryAwsCloud, InMemoryAwsSdkHttpClientFactory>();
+
         /// <summary>
         /// Creates an AWS SDK <see cref="global::Amazon.Runtime.HttpClientFactory"/> that sends the requests of the
         /// services <paramref name="cloud"/> serves to it, for registering where the application under test takes
@@ -175,8 +181,8 @@ namespace InMemoryAws
 
         /// <summary>
         /// Points <paramref name="config"/> at <paramref name="cloud"/>: the service's endpoint in
-        /// <paramref name="region"/> (the cloud's current region when <see langword="null"/>), a factory that sends
-        /// to the cloud, and no retries; then hands it to <paramref name="configure"/>.
+        /// <paramref name="region"/> (the cloud's current region when <see langword="null"/>), the cloud's shared
+        /// factory, and no retries; then hands it to <paramref name="configure"/>.
         /// </summary>
         private static TConfig ConfigureForCloud<TConfig>(
             InMemoryAwsCloud cloud, TConfig config, AwsServiceType serviceType, string region, Action<TConfig> configure)
@@ -193,7 +199,7 @@ namespace InMemoryAws
             config.ServiceURL = serviceUrl.AbsoluteUri;
             config.AuthenticationRegion = region ?? cloud.CurrentRegion;
             config.MaxErrorRetry = 0;
-            config.HttpClientFactory = new InMemoryAwsSdkHttpClientFactory(cloud);
+            config.HttpClientFactory = SharedFactories.GetValue(cloud, c => new InMemoryAwsSdkHttpClientFactory(c));
             if (configure != null)
             {
                 configure(config);

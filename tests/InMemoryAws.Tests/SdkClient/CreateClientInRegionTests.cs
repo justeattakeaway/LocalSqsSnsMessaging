@@ -1,6 +1,7 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Amazon.EventBridge.Model;
+using Amazon.Runtime;
 using Amazon.S3.Model;
 using Amazon.SimpleNotificationService.Model;
 using Amazon.SQS.Model;
@@ -171,4 +172,21 @@ public sealed class CreateClientInRegionTests
         sqs.Config.Timeout.ShouldBe(TimeSpan.FromSeconds(7));
         (await sqs.CreateQueueAsync("orders")).QueueUrl.ShouldContain(Region);
     }
+
+    [Test]
+    public void AClouds_ClientsShareOneHttpClientFactory()
+    {
+        var cloud = new InMemoryAwsCloud();
+        using var sqs = cloud.CreateSqsClient();
+        using var sns = cloud.CreateSnsClient(Region);
+        using var other = new InMemoryAwsCloud().CreateSqsClient();
+
+        var factory = FactoryOf(sqs.Config);
+
+        factory.ShouldNotBeNull();
+        FactoryOf(sns.Config).ShouldBeSameAs(factory);
+        FactoryOf(other.Config).ShouldNotBeSameAs(factory);
+    }
+
+    private static HttpClientFactory FactoryOf(IClientConfig config) => ((ClientConfig)config).HttpClientFactory;
 }
