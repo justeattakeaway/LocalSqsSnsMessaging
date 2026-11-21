@@ -458,7 +458,17 @@ internal sealed partial class InternalDynamoDbClient
                 }
 
                 var after = new Dictionary<string, DynamoValue>(before, StringComparer.Ordinal);
-                var changed = update.Update.Apply(after);
+                IReadOnlyList<DocumentPath> changed;
+                try
+                {
+                    changed = update.Update.Apply(after);
+                }
+                catch (DynamoDbException refusal) when (refusal.ErrorCode == "ValidationException" && IsStoredItemRefusal(refusal.Message))
+                {
+                    // What only the stored item makes wrong fails this statement alone: its own
+                    // reason in a transaction, never the item, even with ALL_OLD.
+                    return new PlannedWrite { Table = table, Key = key, Before = before, Error = refusal, ReasonCode = "ValidationError" };
+                }
                 foreach (var path in changed)
                 {
                     if (table.KeySchema.IsKeyAttribute(path.AttributeName))

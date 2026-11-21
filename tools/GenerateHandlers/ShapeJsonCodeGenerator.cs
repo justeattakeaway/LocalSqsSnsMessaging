@@ -393,7 +393,7 @@ internal sealed class ShapeJsonCodeGenerator
                 code.AppendLine("        return list;");
                 break;
             case "map":
-                code.AppendLine("        AwsJsonReader.ExpectObject(element, \"map\");");
+                code.AppendLine("        AwsJsonReader.ExpectMap(element);");
                 code.AppendLine($"        var map = new {type}(StringComparer.Ordinal);");
                 code.AppendLine("        foreach (var property in element.EnumerateObject())");
                 code.AppendLine("        {");

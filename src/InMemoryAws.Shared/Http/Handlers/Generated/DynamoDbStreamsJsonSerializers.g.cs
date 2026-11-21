@@ -13,7 +13,7 @@ internal static partial class DynamoDbStreamsJsonSerializers
 {
     internal static Dictionary<string, InMemoryAws.DynamoDb.DynamoValue> Read_AttributeMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, InMemoryAws.DynamoDb.DynamoValue>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {

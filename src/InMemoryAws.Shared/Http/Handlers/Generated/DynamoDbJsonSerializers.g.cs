@@ -125,7 +125,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, InMemoryAws.DynamoDb.DynamoValue> Read_AttributeMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, InMemoryAws.DynamoDb.DynamoValue>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -170,7 +170,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, global::InMemoryAws.DynamoDb.Model.AttributeValueUpdate> Read_AttributeUpdates(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, global::InMemoryAws.DynamoDb.Model.AttributeValueUpdate>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -1033,7 +1033,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, global::InMemoryAws.DynamoDb.Model.KeysAndAttributes> Read_BatchGetRequestMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, global::InMemoryAws.DynamoDb.Model.KeysAndAttributes>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -1056,7 +1056,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, List<Dictionary<string, InMemoryAws.DynamoDb.DynamoValue>>> Read_BatchGetResponseMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, List<Dictionary<string, InMemoryAws.DynamoDb.DynamoValue>>>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -1332,7 +1332,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, List<global::InMemoryAws.DynamoDb.Model.WriteRequest>> Read_BatchWriteItemRequestMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, List<global::InMemoryAws.DynamoDb.Model.WriteRequest>>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -5032,7 +5032,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, global::InMemoryAws.DynamoDb.Model.ExpectedAttributeValue> Read_ExpectedAttributeMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, global::InMemoryAws.DynamoDb.Model.ExpectedAttributeValue>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -5538,7 +5538,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, string> Read_ExpressionAttributeNameMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -5561,7 +5561,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, InMemoryAws.DynamoDb.DynamoValue> Read_ExpressionAttributeValueMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, InMemoryAws.DynamoDb.DynamoValue>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -5625,7 +5625,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, global::InMemoryAws.DynamoDb.Model.Condition> Read_FilterConditionMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, global::InMemoryAws.DynamoDb.Model.Condition>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -7332,7 +7332,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, InMemoryAws.DynamoDb.DynamoValue> Read_ItemCollectionKeyAttributeMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, InMemoryAws.DynamoDb.DynamoValue>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -7418,7 +7418,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, List<global::InMemoryAws.DynamoDb.Model.ItemCollectionMetrics>> Read_ItemCollectionMetricsPerTable(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, List<global::InMemoryAws.DynamoDb.Model.ItemCollectionMetrics>>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -7540,7 +7540,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, InMemoryAws.DynamoDb.DynamoValue> Read_Key(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, InMemoryAws.DynamoDb.DynamoValue>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -7563,7 +7563,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, global::InMemoryAws.DynamoDb.Model.Condition> Read_KeyConditions(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, global::InMemoryAws.DynamoDb.Model.Condition>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -9670,7 +9670,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, InMemoryAws.DynamoDb.DynamoValue> Read_PutItemInputAttributeMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, InMemoryAws.DynamoDb.DynamoValue>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -12261,7 +12261,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, global::InMemoryAws.DynamoDb.Model.BulkOperationBytes> Read_SecondaryIndexesBulkBytesMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, global::InMemoryAws.DynamoDb.Model.BulkOperationBytes>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -12284,7 +12284,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, global::InMemoryAws.DynamoDb.Model.Capacity> Read_SecondaryIndexesCapacityMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, global::InMemoryAws.DynamoDb.Model.Capacity>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -15442,7 +15442,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, global::InMemoryAws.DynamoDb.Model.BulkOperationVectorBytes> Read_VectorIndexesBulkVectorBytesMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, global::InMemoryAws.DynamoDb.Model.BulkOperationVectorBytes>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -15465,7 +15465,7 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static Dictionary<string, global::InMemoryAws.DynamoDb.Model.VectorCapacity> Read_VectorIndexesCapacityMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, global::InMemoryAws.DynamoDb.Model.VectorCapacity>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
