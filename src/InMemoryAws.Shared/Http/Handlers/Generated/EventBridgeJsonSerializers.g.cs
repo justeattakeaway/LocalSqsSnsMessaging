@@ -497,7 +497,7 @@ internal static class EventBridgeJsonSerializers
             }
 
             // EventBuses
-            if (root.TryGetProperty("EventBuses", out var EventBusesElem) && EventBusesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("EventBuses", out var EventBusesElem) && Serialization.AwsJsonMemberTypes.IsList(EventBusesElem))
             {
                 request.EventBuses = new List<EndpointEventBus>();
                 foreach (var item in EventBusesElem.EnumerateArray())
@@ -647,7 +647,7 @@ internal static class EventBridgeJsonSerializers
             }
 
             // Tags
-            if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Tags", out var TagsElem) && Serialization.AwsJsonMemberTypes.IsList(TagsElem))
             {
                 request.Tags = new List<Tag>();
                 foreach (var item in TagsElem.EnumerateArray())
@@ -3292,7 +3292,7 @@ internal static class EventBridgeJsonSerializers
             var request = new PutEventsRequest();
 
             // Entries
-            if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Entries", out var EntriesElem) && Serialization.AwsJsonMemberTypes.IsList(EntriesElem))
             {
                 request.Entries = new List<PutEventsRequestEntry>();
                 foreach (var item in EntriesElem.EnumerateArray())
@@ -3376,7 +3376,7 @@ internal static class EventBridgeJsonSerializers
             var request = new PutPartnerEventsRequest();
 
             // Entries
-            if (root.TryGetProperty("Entries", out var EntriesElem) && EntriesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Entries", out var EntriesElem) && Serialization.AwsJsonMemberTypes.IsList(EntriesElem))
             {
                 request.Entries = new List<PutPartnerEventsRequestEntry>();
                 foreach (var item in EntriesElem.EnumerateArray())
@@ -3534,7 +3534,7 @@ internal static class EventBridgeJsonSerializers
                 request.RoleArn = RoleArnElem.GetString();
 
             // Tags
-            if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Tags", out var TagsElem) && Serialization.AwsJsonMemberTypes.IsList(TagsElem))
             {
                 request.Tags = new List<Tag>();
                 foreach (var item in TagsElem.EnumerateArray())
@@ -3591,7 +3591,7 @@ internal static class EventBridgeJsonSerializers
                 request.EventBusName = EventBusNameElem.GetString();
 
             // Targets
-            if (root.TryGetProperty("Targets", out var TargetsElem) && TargetsElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Targets", out var TargetsElem) && Serialization.AwsJsonMemberTypes.IsList(TargetsElem))
             {
                 request.Targets = new List<Target>();
                 foreach (var item in TargetsElem.EnumerateArray())
@@ -3982,12 +3982,12 @@ internal static class EventBridgeJsonSerializers
                 request.EventBusName = EventBusNameElem.GetString();
 
             // Ids
-            if (root.TryGetProperty("Ids", out var IdsElem) && IdsElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Ids", out var IdsElem) && Serialization.AwsJsonMemberTypes.IsList(IdsElem))
             {
                 request.Ids = new List<string>();
                 foreach (var item in IdsElem.EnumerateArray())
                 {
-                    request.Ids.Add(item.GetString()!);
+                    request.Ids.Add(Serialization.AwsJsonMemberTypes.ReadListString(item));
                 }
             }
 
@@ -4128,7 +4128,7 @@ internal static class EventBridgeJsonSerializers
                 request.ResourceARN = ResourceARNElem.GetString();
 
             // Tags
-            if (root.TryGetProperty("Tags", out var TagsElem) && TagsElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("Tags", out var TagsElem) && Serialization.AwsJsonMemberTypes.IsList(TagsElem))
             {
                 request.Tags = new List<Tag>();
                 foreach (var item in TagsElem.EnumerateArray())
@@ -4211,12 +4211,12 @@ internal static class EventBridgeJsonSerializers
                 request.ResourceARN = ResourceARNElem.GetString();
 
             // TagKeys
-            if (root.TryGetProperty("TagKeys", out var TagKeysElem) && TagKeysElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("TagKeys", out var TagKeysElem) && Serialization.AwsJsonMemberTypes.IsList(TagKeysElem))
             {
                 request.TagKeys = new List<string>();
                 foreach (var item in TagKeysElem.EnumerateArray())
                 {
-                    request.TagKeys.Add(item.GetString()!);
+                    request.TagKeys.Add(Serialization.AwsJsonMemberTypes.ReadListString(item));
                 }
             }
 
@@ -4649,7 +4649,7 @@ internal static class EventBridgeJsonSerializers
             }
 
             // EventBuses
-            if (root.TryGetProperty("EventBuses", out var EventBusesElem) && EventBusesElem.ValueKind == JsonValueKind.Array)
+            if (root.TryGetProperty("EventBuses", out var EventBusesElem) && Serialization.AwsJsonMemberTypes.IsList(EventBusesElem))
             {
                 request.EventBuses = new List<EndpointEventBus>();
                 foreach (var item in EventBusesElem.EnumerateArray())

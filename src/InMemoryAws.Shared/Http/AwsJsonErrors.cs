@@ -59,7 +59,8 @@ internal static class AwsJsonErrors
             writer.WriteString("__type", $"{(IsServiceFrameworkError(code) ? ServiceFrameworkNamespace : errorNamespace)}#{code}");
             if (message.Length > 0)
             {
-                writer.WriteString("message", message);
+                // The service framework names a SerializationException's member "Message".
+                writer.WriteString(code == "SerializationException" ? "Message" : "message", message);
             }
 
             writer.WriteEndObject();

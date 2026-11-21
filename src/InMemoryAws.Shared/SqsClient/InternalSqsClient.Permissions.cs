@@ -20,6 +20,14 @@ internal sealed partial class InternalSqsClient
         }
         Authorize(queue, SqsActionName.AddPermission);
 
+        // A statement's action count is checked before its action names.
+        if (request.Actions is { Count: > SqsQueueValidation.MaxPermissionActions } tooMany)
+        {
+            // The trailing space is part of the message SQS returns.
+            throw SqsRequestValidation.Error("OverLimit",
+                $"{tooMany.Count} Actions were found, maximum allowed is {SqsQueueValidation.MaxPermissionActions}. ");
+        }
+
         SqsQueueValidation.ValidatePermissionActions(request.Actions);
 
         var policy = ResourcePolicy.ParseOrEmpty(ResourcePolicyKind.Queue, queue.Attributes?.GetValueOrDefault(InternalQueueAttributeName.Policy), queue.Arn);
