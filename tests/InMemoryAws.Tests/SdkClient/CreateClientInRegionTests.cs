@@ -119,6 +119,20 @@ public sealed class CreateClientInRegionTests
     }
 
     [Test]
+    public async Task AnS3ClientInEuWest1CreatesBucketsThere()
+    {
+        // The .NET SDK sends eu-west-1 as the legacy "EU" location constraint, which S3 takes there.
+        var cloud = new InMemoryAwsCloud();
+        using var s3 = cloud.CreateS3Client(Region);
+
+        await s3.PutBucketAsync("orders");
+        await s3.PutBucketAsync(new PutBucketRequest { BucketName = "invoices", BucketRegionName = Region });
+
+        (await s3.GetBucketLocationAsync("orders")).Location.Value.ShouldBe(Region);
+        (await s3.GetBucketLocationAsync("invoices")).Location.Value.ShouldBe(Region);
+    }
+
+    [Test]
     public async Task NoRegionIsTheCloudsCurrentRegion()
     {
         var cloud = new InMemoryAwsCloud { CurrentRegion = "ap-southeast-2" };

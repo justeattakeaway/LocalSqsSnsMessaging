@@ -7,8 +7,8 @@ internal sealed partial class InternalS3Client
 {
     /// <summary>
     /// Creates a bucket in the request's region. Outside <c>us-east-1</c> the request must name that
-    /// region as its <c>LocationConstraint</c>; <c>us-east-1</c> takes no constraint, or any other
-    /// region's. Bucket names are global: a name another account holds is <c>BucketAlreadyExists</c>,
+    /// region as its <c>LocationConstraint</c> (<c>eu-west-1</c> also takes <c>EU</c>, its legacy name,
+    /// which the .NET SDK sends for it); <c>us-east-1</c> takes no constraint, or any other region's. Bucket names are global: a name another account holds is <c>BucketAlreadyExists</c>,
     /// and one this account holds is <c>BucketAlreadyOwnedByYou</c>, except in <c>us-east-1</c>,
     /// which answers success.
     /// </summary>
@@ -41,7 +41,7 @@ internal sealed partial class InternalS3Client
         {
             throw S3Errors.IllegalLocationConstraint(null);
         }
-        else if (!string.Equals(constraint, Region, StringComparison.Ordinal))
+        else if (!string.Equals(constraint, Region, StringComparison.Ordinal) && !(constraint == "EU" && Region == "eu-west-1"))
         {
             throw S3Errors.IllegalLocationConstraint(constraint);
         }
