@@ -169,6 +169,13 @@ internal sealed class KeyCondition
                 {
                     DynamoValueRules.ParseNumber(operand.N, enveloped: false);
                 }
+
+                // An equality names a key value, which can't be empty, as GetItem's key can't.
+                if (comparison.Operator == KeyOperator.Equal
+                    && ((operand.Type == DynamoType.S && operand.S.Length == 0) || (operand.Type == DynamoType.B && operand.B.Length == 0)))
+                {
+                    throw DynamoDbErrors.Validation($"One or more parameter values are not valid. The AttributeValue for a key attribute cannot contain an empty {(operand.Type == DynamoType.S ? "string" : "binary")} value. Key: {comparison.Attribute}");
+                }
             }
 
             if (atHash >= 0)

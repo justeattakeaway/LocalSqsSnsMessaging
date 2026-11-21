@@ -427,7 +427,9 @@ internal sealed partial class InternalDynamoDbClient
         var order = plan.Index is null ? table : plan.Index.KeySchema.KeyOf(canonical);
         if (table is null || order is null)
         {
-            throw DynamoDbErrors.Validation("The provided starting key is invalid: The provided key element does not match the schema");
+            // A key element of another type than the schema declares is no key of that schema
+            // either: the same sentence as a missing or extra attribute, with nothing appended.
+            throw DynamoDbErrors.Validation("The provided starting key is invalid");
         }
 
         return new ResumePoint(order, table);

@@ -500,6 +500,9 @@ internal sealed class ExpressionParser
     private static DynamoDbException Overlap(string member, string one, string two) =>
         ExpressionErrors.Invalid(member, $"Two document paths overlap with each other; must remove or rewrite one of these paths; path one: {one}, path two: {two}");
 
+    /// <summary>The words the expression grammar reads as operators, never as an attribute name.</summary>
+    private static readonly string[] GrammarKeywords = ["AND", "OR", "NOT", "BETWEEN", "IN"];
+
     private bool AtEnd => _at >= _tokens.Count;
 
     private ExpressionToken? Peek(int offset = 0) => _at + offset < _tokens.Count ? _tokens[_at + offset] : null;
@@ -645,7 +648,10 @@ internal sealed class ExpressionParser
 
     private string PathName()
     {
-        if (Peek() is { Kind: TokenKind.Word } word && word.Text[0] is >= '0' and <= '9')
+        // A name can't start with a digit, nor be one of the grammar's own keywords: `a = :v AND
+        // AND b = :v` fails at the second AND, not as a reserved attribute name.
+        if (Peek() is { Kind: TokenKind.Word } word
+            && (word.Text[0] is >= '0' and <= '9' || GrammarKeywords.Contains(word.Text, StringComparer.OrdinalIgnoreCase)))
         {
             throw SyntaxError();
         }
