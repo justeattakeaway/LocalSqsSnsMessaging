@@ -398,13 +398,13 @@ internal sealed partial class InternalDynamoDbClient
             CheckSearchCondition(index, condition);
 
             var lowerIsCloser = index.LowerIsCloser;
-            var scored = new List<(DynamoKey Key, Dictionary<string, DynamoValue> Item, float Score)>();
+            var scored = new List<(DynamoKey Key, Dictionary<string, DynamoValue> Item, float[] Vector, float Score)>();
             foreach (var (key, vector) in index.ReadVectors())
             {
                 var item = table.Get(key)!;
                 if (condition is null || condition.Evaluate(item))
                 {
-                    scored.Add((key, item, index.Score(query, vector)));
+                    scored.Add((key, item, vector, index.Score(query, vector)));
                 }
             }
 
@@ -416,10 +416,16 @@ internal sealed partial class InternalDynamoDbClient
 
             var results = new List<SearchResultItem>(nearest.Count);
             var bytes = 4.0 * index.Dimensions;
-            foreach (var (_, item, score) in nearest)
+            foreach (var (_, item, vector, score) in nearest)
             {
-                // The index's entry, without the vector unless the projection asks for it.
+                // The index's entry, without the vector unless the projection asks for it. The
+                // index keeps the vector as 32-bit floats, so that is the vector it hands back.
                 var entry = index.Entry(table.KeySchema, item);
+                if (entry.ContainsKey(index.VectorAttribute))
+                {
+                    entry[index.VectorAttribute] = DynamoValue.FromList([.. vector.Select(f => DynamoValue.FromNumberText(Float32Text(f)))]);
+                }
+
                 var returned = projection is null
                     ? entry.Where(e => !string.Equals(e.Key, index.VectorAttribute, StringComparison.Ordinal)).ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal)
                     : ItemProjection.Apply(entry, projection);
@@ -436,6 +442,16 @@ internal sealed partial class InternalDynamoDbClient
                     : null,
             });
         }
+    }
+
+    /// <summary>
+    /// A 32-bit float as the index renders it: the shortest text that reads back as the same float,
+    /// a whole number with <c>.0</c> (16777217 is held, and answered, as <c>16777216.0</c>).
+    /// </summary>
+    private static string Float32Text(float value)
+    {
+        var text = value.ToString("R", CultureInfo.InvariantCulture);
+        return text.IndexOfAny(['.', 'E', 'e']) < 0 ? text + ".0" : text;
     }
 
     /// <summary>The query vector as 32-bit floats; every element must be a number one can hold.</summary>

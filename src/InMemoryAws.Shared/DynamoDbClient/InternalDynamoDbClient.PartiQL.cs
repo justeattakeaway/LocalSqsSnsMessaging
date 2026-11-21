@@ -119,10 +119,16 @@ internal sealed partial class InternalDynamoDbClient
                 throw DynamoDbErrors.Validation("ORDER BY is supported only on a key attribute of the source");
             }
 
-            // An IN on the partition key keys the partition as well as an equality does.
-            if (index is null && partition is null && (select.Where is null || !KeysPartition(select.Where, table.KeySchema.Partition.Name)))
+            // The source's partition key must be keyed by a top-level condition, on a table or an
+            // index alike; an IN on it keys the partition as well as an equality does.
+            if (select.Where is null)
             {
-                throw DynamoDbErrors.Validation("ORDER BY is supported only for a statement whose WHERE clause states an equality on the table's partition key");
+                throw DynamoDbErrors.Validation("Must have WHERE clause in the statement when using ORDER BY clause.");
+            }
+
+            if (partition is null && !KeysPartition(select.Where, (index?.KeySchema ?? table.KeySchema).Partition.Name))
+            {
+                throw DynamoDbErrors.Validation("Must have at least one non-optional hash key condition in WHERE clause when using ORDER BY clause.");
             }
         }
 
