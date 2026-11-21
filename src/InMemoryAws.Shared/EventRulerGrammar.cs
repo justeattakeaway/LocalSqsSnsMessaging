@@ -72,12 +72,14 @@ internal sealed class EventRulerGrammar
     private readonly PolicyTokenReader _reader;
     private readonly string _json;
     private readonly bool _orAsFieldName;
+    private readonly bool _ruleWording;
     private readonly EventRulerRules _result = new();
 
-    private EventRulerGrammar(string json, bool orAsFieldName)
+    private EventRulerGrammar(string json, bool orAsFieldName, bool ruleWording)
     {
         _json = json;
         _orAsFieldName = orAsFieldName;
+        _ruleWording = ruleWording;
         _reader = new PolicyTokenReader(json);
     }
 
@@ -90,9 +92,14 @@ internal sealed class EventRulerGrammar
     /// Whether <c>$or</c> is an ordinary field name rather than the or-relationship keyword, as Event
     /// Ruler reads it when a pattern's <c>$or</c> is not a valid or-relationship.
     /// </param>
-    public static EventRulerRules Compile(string json, bool orAsFieldName = false)
+    /// <param name="ruleWording">
+    /// Whether to word refusals as PutRule does: it names an <c>anything-but</c>
+    /// <c>equals-ignore-case</c> list <c>anything-but/ignore-case</c>, where CreateArchive and
+    /// UpdateArchive say <c>anything-but/equals-ignore-case</c>.
+    /// </param>
+    public static EventRulerRules Compile(string json, bool orAsFieldName = false, bool ruleWording = false)
     {
-        var grammar = new EventRulerGrammar(json, orAsFieldName);
+        var grammar = new EventRulerGrammar(json, orAsFieldName, ruleWording);
         if (grammar._reader.Next() != PolicyToken.StartObject)
         {
             throw grammar.Refuse("Filter is not an object");
@@ -438,7 +445,9 @@ internal sealed class EventRulerGrammar
         {
             var reason = kind switch
             {
-                AnythingButKind.EqualsIgnoreCase => "Inside anything-but/equals-ignore-case list, number|start|null|boolean is not supported.",
+                AnythingButKind.EqualsIgnoreCase => _ruleWording
+                    ? "Inside anything-but/ignore-case list, number|start|null|boolean is not supported."
+                    : "Inside anything-but/equals-ignore-case list, number|start|null|boolean is not supported.",
                 AnythingButKind.Wildcard => "wildcard match pattern must be a string",
                 _ => "prefix/suffix match pattern must be a string"
             };
@@ -644,11 +653,7 @@ internal sealed class EventRulerGrammar
         return octets.Length == 4 && octets.All(o => o.Length > 0 && o.All(c => c is >= '0' and <= '9'));
     }
 
-    private static bool IsComparableNumber(string number)
-    {
-        var value = ParseNumber(number);
-        return !double.IsNaN(value) && !double.IsInfinity(value);
-    }
+    private static bool IsComparableNumber(string number) => EventRulerNumber.IsComparable(number);
 
     private static double ParseNumber(string number) =>
         double.TryParse(number, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : double.NaN;

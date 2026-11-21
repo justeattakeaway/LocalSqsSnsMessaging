@@ -141,6 +141,9 @@ internal sealed partial class InternalEventBridgeClient
         return Task.FromResult(response.SetCommonProperties());
     }
 
+    /// <summary>The API model's pattern for a connection's <c>KmsKeyIdentifier</c>, anchors and all.</summary>
+    private const string KmsKeyIdentifierPattern = @"^[a-zA-Z0-9_\-/:]*$";
+
     /// <summary>
     /// Changes a connection's description, KMS key, or authorization. New credentials need their
     /// <c>AuthorizationType</c>; they authorize the connection again, as creating it did.
@@ -150,6 +153,7 @@ internal sealed partial class InternalEventBridgeClient
         ArgumentNullException.ThrowIfNull(request);
         var violations = new List<string>();
         CheckEnum(violations, request.AuthorizationType, "authorizationType", ConnectionAuthorizationTypes, required: false);
+        CheckPatternIfSet(violations, request.KmsKeyIdentifier, "kmsKeyIdentifier", KmsKeyIdentifierPattern, maxLength: 2048, minLength: 0);
         ThrowIfViolations(violations);
 
         var connection = GetConnection(request.Name, "update");
@@ -312,7 +316,10 @@ internal sealed partial class InternalEventBridgeClient
             .Where(c => string.IsNullOrEmpty(request.ConnectionState) || c.ConnectionState == request.ConnectionState)
             .OrderBy(c => c.Name, StringComparer.Ordinal)
             .ToList();
-        var page = EventBridgePage.Take(connections, request.Limit, request.NextToken, out var nextToken);
+        // ListConnections words its refusal of a token it never issued with a reason, unlike ListRules.
+        var page = EventBridgePage.Take(
+            connections, request.Limit, request.NextToken, out var nextToken,
+            "Parameter NextToken is not valid. Reason: The request is malformed.");
 
         _cloud.RecordOperation(AwsServiceName.EventBridge, "ListConnections");
         return Task.FromResult(new ListConnectionsResponse { Connections = page, NextToken = nextToken }.SetCommonProperties());

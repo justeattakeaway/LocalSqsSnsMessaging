@@ -19,6 +19,13 @@ internal sealed partial class InternalEventBridgeClient
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // The API model's constraints on the members present, checked before anything else.
+        var violations = new List<string>();
+        CheckPatternIfSet(violations, request.Action, "action", "events:[a-zA-Z]+", maxLength: 64);
+        CheckPatternIfSet(violations, request.Principal, "principal", @"(\d{12}|\*)", maxLength: 12);
+        CheckPatternIfSet(violations, request.StatementId, "statementId", "[a-zA-Z0-9-_]+", maxLength: 64);
+        ThrowIfViolations(violations);
+
         if (request.Policy is not null)
         {
             if (request.Action is not null || request.Principal is not null || request.StatementId is not null || request.Condition is not null)
