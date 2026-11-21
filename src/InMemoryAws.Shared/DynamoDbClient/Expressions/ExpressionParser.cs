@@ -801,6 +801,7 @@ internal sealed class ExpressionParser
         }
 
         var right = Operand();
+        CheckDistinct(token.Text, left, right);
         if (token.Operator is not (CompareOperator.Equal or CompareOperator.NotEqual))
         {
             CheckOrderable(token.Text, left);
@@ -819,7 +820,7 @@ internal sealed class ExpressionParser
         }
     }
 
-    /// <summary>Refuses a function whose first operand is the same path as another of its operands.</summary>
+    /// <summary>Refuses a comparison or function whose first operand is the same path as another of its operands.</summary>
     private void CheckDistinct(string function, Operand first, Operand other)
     {
         if (first is PathOperand { Path: var path } && other is PathOperand { Path: var otherPath } && path.Equals(otherPath))
