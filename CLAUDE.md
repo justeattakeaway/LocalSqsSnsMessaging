@@ -61,7 +61,7 @@ dotnet run --project tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj --configur
 - Always rebuild after code changes: `dotnet build tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj --configuration Release`
 
 ### Verification Tests (Floci)
-`tests/InMemoryAws.Tests.Verification` runs the shared test classes against a [Floci](https://github.com/floci/floci) container started through Aspire (needs Docker):
+`tests/InMemoryAws.Tests.Verification` runs the shared test classes against a [Floci](https://github.com/floci/floci) container (needs Docker), which the Aspire AppHost `tests/InMemoryAws.Tests.Verification.AppHost` defines and the tests start in their process (`DistributedApplicationTestingBuilder`). Since Aspire 17 the orchestrator and dashboard come from the Aspire CLI bundle, not NuGet: building the AppHost finds the `aspire` CLI on `PATH`, or else fetches the matching bundle through `dnx` into `~/.aspire`. Keep the tests out of the AppHost project: an AppHost's `dotnet run` hands over to `aspire run`.
 ```bash
 cd tests/InMemoryAws.Tests.Verification
 dotnet run -c Release -- --timeout 2m --no-progress --log-level Warning

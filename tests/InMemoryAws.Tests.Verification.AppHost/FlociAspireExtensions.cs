@@ -1,4 +1,4 @@
-namespace InMemoryAws.Tests.Verification;
+namespace InMemoryAws.Tests.Verification.AppHost;
 
 public static class FlociAspireExtensions
 {
