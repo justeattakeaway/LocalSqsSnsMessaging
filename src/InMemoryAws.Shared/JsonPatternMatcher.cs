@@ -285,8 +285,9 @@ internal static class JsonPatternMatcher
 
     private static bool MatchNumeric(JsonArray spec, JsonNode? value)
     {
-        // spec is a flat list: [op, number, op, number, ...]
-        if (!TryGetDouble(value, out var actual) || spec.Count < 2)
+        // spec is a flat list: [op, number, op, number, ...]. A number no double holds exactly is
+        // never compared (EventRulerNumber).
+        if (!TryGetDouble(value, out var actual) || spec.Count < 2 || !EventRulerNumber.IsComparable(value!.ToJsonString()))
         {
             return false;
         }

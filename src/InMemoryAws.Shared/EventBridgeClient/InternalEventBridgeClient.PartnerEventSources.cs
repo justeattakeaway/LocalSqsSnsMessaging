@@ -128,6 +128,15 @@ internal sealed partial class InternalEventBridgeClient
         ThrowIfViolations(violations);
     }
 
+    /// <summary>Like <see cref="CheckPattern"/>, for an optional member: nothing to check when it is absent.</summary>
+    private static void CheckPatternIfSet(List<string> violations, string? value, string member, string pattern, int maxLength, int minLength = 1)
+    {
+        if (value is not null)
+        {
+            CheckPattern(violations, value, member, pattern, maxLength, minLength);
+        }
+    }
+
     /// <summary>A string member's length and pattern constraints, worded as EventBridge's request validation words them.</summary>
     private static void CheckPattern(List<string> violations, string? value, string member, string pattern, int maxLength, int minLength = 1)
     {
