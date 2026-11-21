@@ -801,6 +801,7 @@ internal sealed class ExpressionParser
         }
 
         var right = Operand();
+        CheckDistinct(token.Text, left, right);
         if (token.Operator is not (CompareOperator.Equal or CompareOperator.NotEqual))
         {
             CheckOrderable(token.Text, left);
@@ -889,6 +890,7 @@ internal sealed class ExpressionParser
                     }
                 }
 
+                CheckDistinct("attribute_type", new PathOperand(path), wanted);
                 node = new AttributeTypeCondition(path, wanted);
                 break;
             }
