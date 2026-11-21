@@ -378,7 +378,8 @@ internal static class SqsRequestValidation
 
         if (isBinary ? value.BinaryValue is not { Length: > 0 } : string.IsNullOrEmpty(value.StringValue))
         {
-            return InvalidParameterValue($"Message (user) attribute '{name}' must contain a non-empty value of type '{field}'.");
+            // A custom type is named whole here, though the wrong-field message above names only its base type.
+            return InvalidParameterValue($"Message (user) attribute '{name}' must contain a non-empty value of type '{(dot < 0 ? field : dataType)}'.");
         }
 
         if (baseType == "Number")
