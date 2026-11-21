@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_put_object_append_conditional_offset_contention.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -23,7 +23,7 @@ public sealed class PutObjectAppendConditionalOffsetContention
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
         var baseName = new string(FidelityContext.UniqueName("sim2exp").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray())[..19];
-        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, s3, baseName, S3Fidelity.AvailabilityZoneIds(ctx));
+        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, baseName, S3Fidelity.AvailabilityZoneIds(ctx));
         const string key = "append-object";
         var initial = S3Fidelity.Repeat('A', 4096);
         await s3.PutObjectAsync(new PutObjectRequest { BucketName = bucket, Key = key, InputStream = new MemoryStream(initial) });

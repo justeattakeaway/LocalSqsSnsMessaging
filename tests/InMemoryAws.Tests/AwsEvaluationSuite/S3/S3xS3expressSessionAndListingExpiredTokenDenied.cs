@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_s3x_s3express_session_and_listing_expired_token_denied.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using System.Globalization;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -32,7 +32,7 @@ public sealed class S3xS3expressSessionAndListingExpiredTokenDenied
         // timing:real-time — ttl: 300 s https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateSession.html
         await using var ctx = new FidelityContext(FidelityContext.RealTimeBudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var bucket = await S3Fidelity.DirectoryBucket(ctx, s3, "sim2real-s3x-exp-");
+        var bucket = await S3Fidelity.DirectoryBucket(ctx, ctx.S3Control, "sim2real-s3x-exp-");
         const string key = "exp/object.txt";
         await s3.PutObjectAsync(new PutObjectRequest { BucketName = bucket, Key = key, ContentBody = "live-object" });
         var (session, headers) = await S3Fidelity.WithHeaders(s3, () => S3Fidelity.CreateSession(s3, bucket, "ReadWrite"));

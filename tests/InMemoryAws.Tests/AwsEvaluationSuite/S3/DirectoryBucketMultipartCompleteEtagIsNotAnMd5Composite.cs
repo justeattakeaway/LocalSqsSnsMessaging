@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_directory_bucket_multipart_complete_etag_is_not_an_md5_composite.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using System.Security.Cryptography;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -30,8 +30,8 @@ public sealed class DirectoryBucketMultipartCompleteEtagIsNotAnMd5Composite
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var (directory, _) = await S3Fidelity.CreateDirectoryBucket(ctx, s3, FidelityContext.UniqueName("sim2real-s3x-mpu-etag-"), S3Fidelity.ExpressZoneIds[ctx.Region]);
-        var twin = await S3Fidelity.GeneralPurposeBucket(ctx, s3, "sim2real-s3x-mpu-etag-gp-", Check);
+        var (directory, _) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, FidelityContext.UniqueName("sim2real-s3x-mpu-etag-"), S3Fidelity.ExpressZoneIds[ctx.Region]);
+        var twin = await S3Fidelity.GeneralPurposeBucket(ctx, ctx.S3Control, "sim2real-s3x-mpu-etag-gp-", Check);
         var part1 = new byte[Part1Length];
         for (var i = 0; i < part1.Length; i++)
         {

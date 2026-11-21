@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_rename_object_idempotency_token_mismatch.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -23,7 +23,7 @@ public sealed class RenameObjectIdempotencyTokenMismatch
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
         var baseName = FidelityContext.UniqueName("sim2real")[..20].Trim('-');
-        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, s3, baseName, S3Fidelity.AvailabilityZoneIds(ctx));
+        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, baseName, S3Fidelity.AvailabilityZoneIds(ctx));
         const string srcKey = "src-object.txt";
         const string dstKey = "dst-object.txt";
         await s3.PutObjectAsync(new PutObjectRequest { BucketName = bucket, Key = srcKey, ContentBody = "payload-v1" });

@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_s3x_s3express_session_and_listing_readwrite_session_round_trip.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,7 +21,7 @@ public sealed class S3xS3expressSessionAndListingReadwriteSessionRoundTrip
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var bucket = await S3Fidelity.DirectoryBucket(ctx, s3, "sim2real-s3x-rw-");
+        var bucket = await S3Fidelity.DirectoryBucket(ctx, ctx.S3Control, "sim2real-s3x-rw-");
         var session = await S3Fidelity.CreateSession(s3, bucket, "ReadWrite");
         var creds = session.Credentials;
         Ensure(!string.IsNullOrEmpty(creds.AccessKeyId) && !string.IsNullOrEmpty(creds.SessionToken), "CreateSession returned no token");

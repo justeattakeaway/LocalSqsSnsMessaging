@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_directory_bucket_rejects_object_tagging_versioning_notification_and_replication.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -64,7 +64,7 @@ public sealed class DirectoryBucketRejectsObjectTaggingVersioningNotificationAnd
             .Select(t => (t.Key, t.Value)).Order().ToList();
         Ensure(twinTags.SequenceEqual([("k", "v")]), $"the general-purpose twin's tag did not land: {Py.Repr(twinTags.Select(t => new[] { t.Key, t.Value }).ToList())}");
 
-        result = await Error(() => s3.PutBucketVersioningAsync(new PutBucketVersioningRequest
+        result = await Error(() => ctx.S3Control.PutBucketVersioningAsync(new PutBucketVersioningRequest
         {
             BucketName = directory,
             VersioningConfig = new S3BucketVersioningConfig { Status = VersionStatus.Enabled },
@@ -72,21 +72,21 @@ public sealed class DirectoryBucketRejectsObjectTaggingVersioningNotificationAnd
         Ensure(
             result == ("InvalidArgument", "VersioningConfiguration is not valid, expected CreateBucketConfiguration"),
             $"PutBucketVersioning on a directory bucket returned {result}");
-        await s3.PutBucketVersioningAsync(new PutBucketVersioningRequest
+        await ctx.S3Control.PutBucketVersioningAsync(new PutBucketVersioningRequest
         {
             BucketName = twin,
             VersioningConfig = new S3BucketVersioningConfig { Status = VersionStatus.Enabled },
         });
         Ensure(
-            (await s3.GetBucketVersioningAsync(twin)).VersioningConfig?.Status == VersionStatus.Enabled,
+            (await ctx.S3Control.GetBucketVersioningAsync(twin)).VersioningConfig?.Status == VersionStatus.Enabled,
             "the general-purpose twin's PutBucketVersioning did not take effect");
 
-        result = await Error(() => s3.PutBucketNotificationAsync(new PutBucketNotificationRequest { BucketName = directory }));
+        result = await Error(() => ctx.S3Control.PutBucketNotificationAsync(new PutBucketNotificationRequest { BucketName = directory }));
         Ensure(
             result == ("InvalidArgument", "NotificationConfiguration is not valid, expected CreateBucketConfiguration"),
             $"PutBucketNotificationConfiguration on a directory bucket returned {result}");
-        await s3.PutBucketNotificationAsync(new PutBucketNotificationRequest { BucketName = twin });
-        var twinNotification = await s3.GetBucketNotificationAsync(twin);
+        await ctx.S3Control.PutBucketNotificationAsync(new PutBucketNotificationRequest { BucketName = twin });
+        var twinNotification = await ctx.S3Control.GetBucketNotificationAsync(twin);
         var configured = new List<string>();
         if (twinNotification.LambdaFunctionConfigurations is { Count: > 0 })
         {
@@ -107,7 +107,7 @@ public sealed class DirectoryBucketRejectsObjectTaggingVersioningNotificationAnd
             configured.Count == 0,
             $"the general-purpose twin's empty notification configuration read back {Py.Repr(configured)}");
 
-        result = await Error(() => s3.PutBucketReplicationAsync(new PutBucketReplicationRequest
+        result = await Error(() => ctx.S3Control.PutBucketReplicationAsync(new PutBucketReplicationRequest
         {
             BucketName = directory,
             Configuration = new ReplicationConfiguration
@@ -145,7 +145,7 @@ public sealed class DirectoryBucketRejectsObjectTaggingVersioningNotificationAnd
         foreach (var az in azs)
         {
             var name = $"{baseName}--{az}--x-s3";
-            last = await FidelityContext.CaptureError(() => s3.PutBucketAsync(new PutBucketRequest
+            last = await FidelityContext.CaptureError(() => ctx.S3Control.PutBucketAsync(new PutBucketRequest
             {
                 BucketName = name,
                 UseClientRegion = false,
@@ -184,8 +184,8 @@ public sealed class DirectoryBucketRejectsObjectTaggingVersioningNotificationAnd
 
     private static async Task<string> GeneralPurposeBucket(FidelityContext ctx, AmazonS3Client s3, string prefix)
     {
-        var name = await S3Fidelity.CreateBucket(ctx, prefix, s3);
-        await s3.PutBucketTaggingAsync(new PutBucketTaggingRequest { BucketName = name, TagSet = [new Tag { Key = "sim2real", Value = Check }] });
+        var name = await S3Fidelity.CreateBucket(ctx, prefix, ctx.S3Control);
+        await ctx.S3Control.PutBucketTaggingAsync(new PutBucketTaggingRequest { BucketName = name, TagSet = [new Tag { Key = "sim2real", Value = Check }] });
         return name;
     }
 

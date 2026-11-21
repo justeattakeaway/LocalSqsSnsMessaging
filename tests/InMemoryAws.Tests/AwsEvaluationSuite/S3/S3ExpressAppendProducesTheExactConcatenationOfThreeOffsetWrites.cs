@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_s3_express_append_produces_the_exact_concatenation_of_three_offset_writes.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -38,7 +38,7 @@ public sealed class S3ExpressAppendProducesTheExactConcatenationOfThreeOffsetWri
         foreach (var zoneId in zoneIds)
         {
             var candidate = $"{FidelityContext.UniqueName("sim2real-behav-dir-")}--{zoneId}--x-s3";
-            var refusal = await FidelityContext.CaptureError(() => S3Fidelity.CreateDirectoryBucketRaw(s3, candidate, zoneId));
+            var refusal = await FidelityContext.CaptureError(() => S3Fidelity.CreateDirectoryBucketRaw(ctx.S3Control, candidate, zoneId));
             if (refusal is null)
             {
                 bucket = candidate;
