@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_rename_object_concurrent_idempotency.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -23,7 +23,7 @@ public sealed class RenameObjectConcurrentIdempotency
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
         var baseName = new string(FidelityContext.UniqueName("sim2exp").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray())[..19];
-        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, s3, baseName, S3Fidelity.AvailabilityZoneIds(ctx));
+        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, baseName, S3Fidelity.AvailabilityZoneIds(ctx));
         const string srcKey = "rename-src";
         const string dstKey = "rename-dst";
         var payload = "payload-for-idempotent-rename"u8.ToArray();

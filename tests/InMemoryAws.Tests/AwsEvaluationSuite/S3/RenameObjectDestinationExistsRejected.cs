@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_rename_object_destination_exists_rejected.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +22,7 @@ public sealed class RenameObjectDestinationExistsRejected
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, s3, FidelityContext.UniqueName("sim2real-db-"), S3Fidelity.AvailabilityZoneIds(ctx));
+        var (bucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, FidelityContext.UniqueName("sim2real-db-"), S3Fidelity.AvailabilityZoneIds(ctx));
         const string sourceKey = "source-for-clash.txt";
         const string destKey = "existing-destination.txt";
         var sourceBody = "source content"u8.ToArray();

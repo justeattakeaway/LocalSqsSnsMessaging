@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_copy_object_into_directory_bucket_rejects_source_tags_and_destination_ssec.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using System.Security.Cryptography;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -25,8 +25,8 @@ public sealed class CopyObjectIntoDirectoryBucketRejectsSourceTagsAndDestination
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var (directory, _) = await S3Fidelity.CreateDirectoryBucket(ctx, s3, FidelityContext.UniqueName("sim2real-s3x-copy-"), S3Fidelity.ExpressZoneIds[ctx.Region]);
-        var source = await S3Fidelity.GeneralPurposeBucket(ctx, s3, "sim2real-s3x-copy-src-", Check);
+        var (directory, _) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, FidelityContext.UniqueName("sim2real-s3x-copy-"), S3Fidelity.ExpressZoneIds[ctx.Region]);
+        var source = await S3Fidelity.GeneralPurposeBucket(ctx, ctx.S3Control, "sim2real-s3x-copy-src-", Check);
         await s3.PutObjectAsync(new PutObjectRequest
         {
             BucketName = source,
