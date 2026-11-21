@@ -58,7 +58,6 @@ public sealed class MultipleSimultaneousConstraintViolationsRejected
     /// on scalar members (UpdateItem) and on list elements (CreateTable's GSI/LSI names).
     /// </summary>
     [Test]
-    [KnownFidelityGap(FidelityGap.DynamoDbDetail, "Several constraint violations are listed in the model's member order (and the ReturnValues enum set in model order), not in AWS's own fixed order")]
     [DisplayName("dynamodb.multiple-simultaneous-constraint-violations-rejected")]
     [Timeout(FidelityContext.HangTimeoutMilliseconds)]
     public async Task Run(CancellationToken cancellationToken)

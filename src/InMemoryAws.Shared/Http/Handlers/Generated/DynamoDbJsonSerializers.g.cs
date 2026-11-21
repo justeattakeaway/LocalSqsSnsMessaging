@@ -15593,6 +15593,18 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_AttributeDefinition(global::InMemoryAws.DynamoDb.Model.AttributeDefinition value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "attributeType" : path + "." + "attributeType");
+            if (value.AttributeType is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.AttributeType is not null)
+            {
+                if (!string.Equals(value.AttributeType, "S", StringComparison.Ordinal) && !string.Equals(value.AttributeType, "N", StringComparison.Ordinal) && !string.Equals(value.AttributeType, "B", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.AttributeType, memberPath, "Member must satisfy enum value set: [S, N, B]"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "attributeName" : path + "." + "attributeName");
             if (value.AttributeName is null)
             {
@@ -15604,18 +15616,6 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.AttributeName, memberPath, "Member must have length greater than or equal to 1"));
                 if (value.AttributeName.Length > 255)
                     violations.Add(AwsValidation.Clause(value.AttributeName, memberPath, "Member must have length less than or equal to 255"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "attributeType" : path + "." + "attributeType");
-            if (value.AttributeType is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.AttributeType is not null)
-            {
-                if (!string.Equals(value.AttributeType, "S", StringComparison.Ordinal) && !string.Equals(value.AttributeType, "N", StringComparison.Ordinal) && !string.Equals(value.AttributeType, "B", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.AttributeType, memberPath, "Member must satisfy enum value set: [S, N, B]"));
             }
         }
     }
@@ -15635,6 +15635,17 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_AutoScalingPolicyUpdate(global::InMemoryAws.DynamoDb.Model.AutoScalingPolicyUpdate value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "targetTrackingScalingPolicyConfiguration" : path + "." + "targetTrackingScalingPolicyConfiguration");
+            if (value.TargetTrackingScalingPolicyConfiguration is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TargetTrackingScalingPolicyConfiguration is not null)
+            {
+                Validate_AutoScalingTargetTrackingScalingPolicyConfigurationUpdate(value.TargetTrackingScalingPolicyConfiguration, memberPath, violations);
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "policyName" : path + "." + "policyName");
             if (value.PolicyName is not null)
             {
@@ -15646,35 +15657,15 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.PolicyName, memberPath, "Member must satisfy regular expression pattern: \\p{Print}+"));
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "targetTrackingScalingPolicyConfiguration" : path + "." + "targetTrackingScalingPolicyConfiguration");
-            if (value.TargetTrackingScalingPolicyConfiguration is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TargetTrackingScalingPolicyConfiguration is not null)
-            {
-                Validate_AutoScalingTargetTrackingScalingPolicyConfigurationUpdate(value.TargetTrackingScalingPolicyConfiguration, memberPath, violations);
-            }
-        }
     }
 
     internal static void Validate_AutoScalingSettingsUpdate(global::InMemoryAws.DynamoDb.Model.AutoScalingSettingsUpdate value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "minimumUnits" : path + "." + "minimumUnits");
-            if (value.MinimumUnits is not null)
+            var memberPath = (path.Length == 0 ? "scalingPolicyUpdate" : path + "." + "scalingPolicyUpdate");
+            if (value.ScalingPolicyUpdate is not null)
             {
-                if (value.MinimumUnits.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.MinimumUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "maximumUnits" : path + "." + "maximumUnits");
-            if (value.MaximumUnits is not null)
-            {
-                if (value.MaximumUnits.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.MaximumUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
+                Validate_AutoScalingPolicyUpdate(value.ScalingPolicyUpdate, memberPath, violations);
             }
         }
         {
@@ -15690,10 +15681,19 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "scalingPolicyUpdate" : path + "." + "scalingPolicyUpdate");
-            if (value.ScalingPolicyUpdate is not null)
+            var memberPath = (path.Length == 0 ? "minimumUnits" : path + "." + "minimumUnits");
+            if (value.MinimumUnits is not null)
             {
-                Validate_AutoScalingPolicyUpdate(value.ScalingPolicyUpdate, memberPath, violations);
+                if (value.MinimumUnits.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.MinimumUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "maximumUnits" : path + "." + "maximumUnits");
+            if (value.MaximumUnits is not null)
+            {
+                if (value.MaximumUnits.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.MaximumUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
             }
         }
     }
@@ -15712,6 +15712,14 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_BatchExecuteStatementInput(global::InMemoryAws.DynamoDb.Model.BatchExecuteStatementRequest value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "returnConsumedCapacity" : path + "." + "returnConsumedCapacity");
+            if (value.ReturnConsumedCapacity is not null)
+            {
+                if (!string.Equals(value.ReturnConsumedCapacity, "INDEXES", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "TOTAL", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnConsumedCapacity, memberPath, "Member must satisfy enum value set: [INDEXES, TOTAL, NONE]"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "statements" : path + "." + "statements");
             if (value.Statements is null)
             {
@@ -15727,14 +15735,6 @@ internal static partial class DynamoDbJsonSerializers
                 {
                     Validate_BatchStatementRequest(value.Statements[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
                 }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "returnConsumedCapacity" : path + "." + "returnConsumedCapacity");
-            if (value.ReturnConsumedCapacity is not null)
-            {
-                if (!string.Equals(value.ReturnConsumedCapacity, "INDEXES", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "TOTAL", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnConsumedCapacity, memberPath, "Member must satisfy enum value set: [INDEXES, TOTAL, NONE]"));
             }
         }
     }
@@ -15780,6 +15780,14 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_BatchStatementRequest(global::InMemoryAws.DynamoDb.Model.BatchStatementRequest value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
+            if (value.ReturnValuesOnConditionCheckFailure is not null)
+            {
+                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "statement" : path + "." + "statement");
             if (value.Statement is null)
             {
@@ -15799,14 +15807,6 @@ internal static partial class DynamoDbJsonSerializers
             {
                 if (value.Parameters.Count < 1)
                     violations.Add(AwsValidation.Clause(JavaRendering.List(value.Parameters, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Member must have length greater than or equal to 1"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
-            if (value.ReturnValuesOnConditionCheckFailure is not null)
-            {
-                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
             }
         }
     }
@@ -15905,6 +15905,35 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_ConditionCheck(global::InMemoryAws.DynamoDb.Model.ConditionCheck value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "conditionExpression" : path + "." + "conditionExpression");
+            if (value.ConditionExpression is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
+            if (value.ReturnValuesOnConditionCheckFailure is not null)
+            {
+                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
+            {
+                foreach (var entry0 in value.ExpressionAttributeNames)
+                {
+                    if (entry0.Value.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
             if (value.Key is null)
             {
@@ -15936,53 +15965,10 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "conditionExpression" : path + "." + "conditionExpression");
-            if (value.ConditionExpression is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
-            {
-                foreach (var entry0 in value.ExpressionAttributeNames)
-                {
-                    if (entry0.Value.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
-            if (value.ReturnValuesOnConditionCheckFailure is not null)
-            {
-                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
-            }
-        }
     }
 
     internal static void Validate_CreateBackupInput(global::InMemoryAws.DynamoDb.Model.CreateBackupRequest value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableName is not null)
-            {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "backupName" : path + "." + "backupName");
             if (value.BackupName is null)
@@ -15999,10 +15985,38 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.BackupName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TableName is not null)
+            {
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
     }
 
     internal static void Validate_CreateGlobalSecondaryIndexAction(global::InMemoryAws.DynamoDb.Model.CreateGlobalSecondaryIndexAction value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "warmThroughput" : path + "." + "warmThroughput");
+            if (value.WarmThroughput is not null)
+            {
+                Validate_WarmThroughput(value.WarmThroughput, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
+            if (value.OnDemandThroughput is not null)
+            {
+                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
             if (value.IndexName is null)
@@ -16051,20 +16065,6 @@ internal static partial class DynamoDbJsonSerializers
             if (value.ProvisionedThroughput is not null)
             {
                 Validate_ProvisionedThroughput(value.ProvisionedThroughput, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
-            if (value.OnDemandThroughput is not null)
-            {
-                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "warmThroughput" : path + "." + "warmThroughput");
-            if (value.WarmThroughput is not null)
-            {
-                Validate_WarmThroughput(value.WarmThroughput, memberPath, violations);
             }
         }
     }
@@ -16128,20 +16128,6 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_CreateReplicationGroupMemberAction(global::InMemoryAws.DynamoDb.Model.CreateReplicationGroupMemberAction value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "regionName" : path + "." + "regionName");
-            if (value.RegionName is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "provisionedThroughputOverride" : path + "." + "provisionedThroughputOverride");
-            if (value.ProvisionedThroughputOverride is not null)
-            {
-                Validate_ProvisionedThroughputOverride(value.ProvisionedThroughputOverride, memberPath, violations);
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "onDemandThroughputOverride" : path + "." + "onDemandThroughputOverride");
             if (value.OnDemandThroughputOverride is not null)
             {
@@ -16160,18 +16146,91 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "provisionedThroughputOverride" : path + "." + "provisionedThroughputOverride");
+            if (value.ProvisionedThroughputOverride is not null)
+            {
+                Validate_ProvisionedThroughputOverride(value.ProvisionedThroughputOverride, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "regionName" : path + "." + "regionName");
+            if (value.RegionName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+        }
     }
 
     internal static void Validate_CreateTableInput(global::InMemoryAws.DynamoDb.Model.CreateTableRequest value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "attributeDefinitions" : path + "." + "attributeDefinitions");
-            if (value.AttributeDefinitions is not null)
+            var memberPath = (path.Length == 0 ? "globalSecondaryIndexes" : path + "." + "globalSecondaryIndexes");
+            if (value.GlobalSecondaryIndexes is not null)
             {
-                for (var i0 = 0; i0 < value.AttributeDefinitions.Count; i0++)
+                for (var i0 = 0; i0 < value.GlobalSecondaryIndexes.Count; i0++)
                 {
-                    Validate_AttributeDefinition(value.AttributeDefinitions[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                    Validate_GlobalSecondaryIndex(value.GlobalSecondaryIndexes[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
                 }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "globalTableSettingsReplicationMode" : path + "." + "globalTableSettingsReplicationMode");
+            if (value.GlobalTableSettingsReplicationMode is not null)
+            {
+                if (!string.Equals(value.GlobalTableSettingsReplicationMode, "ENABLED", StringComparison.Ordinal) && !string.Equals(value.GlobalTableSettingsReplicationMode, "DISABLED", StringComparison.Ordinal) && !string.Equals(value.GlobalTableSettingsReplicationMode, "ENABLED_WITH_OVERRIDES", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.GlobalTableSettingsReplicationMode, memberPath, "Member must satisfy enum value set: [ENABLED, DISABLED, ENABLED_WITH_OVERRIDES]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "billingMode" : path + "." + "billingMode");
+            if (value.BillingMode is not null)
+            {
+                if (!string.Equals(value.BillingMode, "PROVISIONED", StringComparison.Ordinal) && !string.Equals(value.BillingMode, "PAY_PER_REQUEST", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.BillingMode, memberPath, "Member must satisfy enum value set: [PROVISIONED, PAY_PER_REQUEST]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "globalTableSourceArn" : path + "." + "globalTableSourceArn");
+            if (value.GlobalTableSourceArn is not null)
+            {
+                if (value.GlobalTableSourceArn.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.GlobalTableSourceArn, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.GlobalTableSourceArn.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.GlobalTableSourceArn, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "sSESpecification" : path + "." + "sSESpecification");
+            if (value.SSESpecification is not null)
+            {
+                Validate_SSESpecification(value.SSESpecification, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
+            if (value.OnDemandThroughput is not null)
+            {
+                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "keySchema" : path + "." + "keySchema");
+            if (value.KeySchema is not null)
+            {
+                if (value.KeySchema.Count < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.KeySchema, item => item.ToString()), memberPath, "Member must have length greater than or equal to 1"));
+                for (var i0 = 0; i0 < value.KeySchema.Count; i0++)
+                {
+                    Validate_KeySchemaElement(value.KeySchema[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "provisionedThroughput" : path + "." + "provisionedThroughput");
+            if (value.ProvisionedThroughput is not null)
+            {
+                Validate_ProvisionedThroughput(value.ProvisionedThroughput, memberPath, violations);
             }
         }
         {
@@ -16189,14 +16248,46 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "keySchema" : path + "." + "keySchema");
-            if (value.KeySchema is not null)
+            var memberPath = (path.Length == 0 ? "tags" : path + "." + "tags");
+            if (value.Tags is not null)
             {
-                if (value.KeySchema.Count < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.KeySchema, item => item.ToString()), memberPath, "Member must have length greater than or equal to 1"));
-                for (var i0 = 0; i0 < value.KeySchema.Count; i0++)
+                for (var i0 = 0; i0 < value.Tags.Count; i0++)
                 {
-                    Validate_KeySchemaElement(value.KeySchema[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                    Validate_Tag(value.Tags[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "vectorIndexes" : path + "." + "vectorIndexes");
+            if (value.VectorIndexes is not null)
+            {
+                for (var i0 = 0; i0 < value.VectorIndexes.Count; i0++)
+                {
+                    Validate_VectorIndex(value.VectorIndexes[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "streamSpecification" : path + "." + "streamSpecification");
+            if (value.StreamSpecification is not null)
+            {
+                Validate_StreamSpecification(value.StreamSpecification, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "warmThroughput" : path + "." + "warmThroughput");
+            if (value.WarmThroughput is not null)
+            {
+                Validate_WarmThroughput(value.WarmThroughput, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "attributeDefinitions" : path + "." + "attributeDefinitions");
+            if (value.AttributeDefinitions is not null)
+            {
+                for (var i0 = 0; i0 < value.AttributeDefinitions.Count; i0++)
+                {
+                    Validate_AttributeDefinition(value.AttributeDefinitions[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
                 }
             }
         }
@@ -16210,101 +16301,22 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "globalSecondaryIndexes" : path + "." + "globalSecondaryIndexes");
-            if (value.GlobalSecondaryIndexes is not null)
-            {
-                for (var i0 = 0; i0 < value.GlobalSecondaryIndexes.Count; i0++)
-                {
-                    Validate_GlobalSecondaryIndex(value.GlobalSecondaryIndexes[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "billingMode" : path + "." + "billingMode");
-            if (value.BillingMode is not null)
-            {
-                if (!string.Equals(value.BillingMode, "PROVISIONED", StringComparison.Ordinal) && !string.Equals(value.BillingMode, "PAY_PER_REQUEST", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.BillingMode, memberPath, "Member must satisfy enum value set: [PROVISIONED, PAY_PER_REQUEST]"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "provisionedThroughput" : path + "." + "provisionedThroughput");
-            if (value.ProvisionedThroughput is not null)
-            {
-                Validate_ProvisionedThroughput(value.ProvisionedThroughput, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "streamSpecification" : path + "." + "streamSpecification");
-            if (value.StreamSpecification is not null)
-            {
-                Validate_StreamSpecification(value.StreamSpecification, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "sSESpecification" : path + "." + "sSESpecification");
-            if (value.SSESpecification is not null)
-            {
-                Validate_SSESpecification(value.SSESpecification, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "tags" : path + "." + "tags");
-            if (value.Tags is not null)
-            {
-                for (var i0 = 0; i0 < value.Tags.Count; i0++)
-                {
-                    Validate_Tag(value.Tags[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "warmThroughput" : path + "." + "warmThroughput");
-            if (value.WarmThroughput is not null)
-            {
-                Validate_WarmThroughput(value.WarmThroughput, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
-            if (value.OnDemandThroughput is not null)
-            {
-                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "globalTableSourceArn" : path + "." + "globalTableSourceArn");
-            if (value.GlobalTableSourceArn is not null)
-            {
-                if (value.GlobalTableSourceArn.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.GlobalTableSourceArn, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.GlobalTableSourceArn.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.GlobalTableSourceArn, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "globalTableSettingsReplicationMode" : path + "." + "globalTableSettingsReplicationMode");
-            if (value.GlobalTableSettingsReplicationMode is not null)
-            {
-                if (!string.Equals(value.GlobalTableSettingsReplicationMode, "ENABLED", StringComparison.Ordinal) && !string.Equals(value.GlobalTableSettingsReplicationMode, "DISABLED", StringComparison.Ordinal) && !string.Equals(value.GlobalTableSettingsReplicationMode, "ENABLED_WITH_OVERRIDES", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.GlobalTableSettingsReplicationMode, memberPath, "Member must satisfy enum value set: [ENABLED, DISABLED, ENABLED_WITH_OVERRIDES]"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "vectorIndexes" : path + "." + "vectorIndexes");
-            if (value.VectorIndexes is not null)
-            {
-                for (var i0 = 0; i0 < value.VectorIndexes.Count; i0++)
-                {
-                    Validate_VectorIndex(value.VectorIndexes[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
-                }
-            }
-        }
     }
 
     internal static void Validate_CreateVectorIndexAction(global::InMemoryAws.DynamoDb.Model.CreateVectorIndexAction value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "distanceFunction" : path + "." + "distanceFunction");
+            if (value.DistanceFunction is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.DistanceFunction is not null)
+            {
+                if (!string.Equals(value.DistanceFunction, "COSINE", StringComparison.Ordinal) && !string.Equals(value.DistanceFunction, "DOT_PRODUCT", StringComparison.Ordinal) && !string.Equals(value.DistanceFunction, "EUCLIDEAN", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.DistanceFunction, memberPath, "Member must satisfy enum value set: [COSINE, DOT_PRODUCT, EUCLIDEAN]"));
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
             if (value.IndexName is null)
@@ -16319,6 +16331,17 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length less than or equal to 255"));
                 if (!Pattern2.IsMatch(value.IndexName))
                     violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "projection" : path + "." + "projection");
+            if (value.Projection is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.Projection is not null)
+            {
+                Validate_Projection(value.Projection, memberPath, violations);
             }
         }
         {
@@ -16345,17 +16368,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "projection" : path + "." + "projection");
-            if (value.Projection is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.Projection is not null)
-            {
-                Validate_Projection(value.Projection, memberPath, violations);
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "dimensions" : path + "." + "dimensions");
             if (value.Dimensions is null)
             {
@@ -16367,34 +16379,10 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Dimensions.Value), memberPath, "Member must have value greater than or equal to 1"));
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "distanceFunction" : path + "." + "distanceFunction");
-            if (value.DistanceFunction is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.DistanceFunction is not null)
-            {
-                if (!string.Equals(value.DistanceFunction, "COSINE", StringComparison.Ordinal) && !string.Equals(value.DistanceFunction, "DOT_PRODUCT", StringComparison.Ordinal) && !string.Equals(value.DistanceFunction, "EUCLIDEAN", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.DistanceFunction, memberPath, "Member must satisfy enum value set: [COSINE, DOT_PRODUCT, EUCLIDEAN]"));
-            }
-        }
     }
 
     internal static void Validate_CsvOptions(global::InMemoryAws.DynamoDb.Model.CsvOptions value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "delimiter" : path + "." + "delimiter");
-            if (value.Delimiter is not null)
-            {
-                if (value.Delimiter.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.Delimiter, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.Delimiter.Length > 1)
-                    violations.Add(AwsValidation.Clause(value.Delimiter, memberPath, "Member must have length less than or equal to 1"));
-                if (!Pattern3.IsMatch(value.Delimiter))
-                    violations.Add(AwsValidation.Clause(value.Delimiter, memberPath, "Member must satisfy regular expression pattern: [,;:|\\t ]"));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "headerList" : path + "." + "headerList");
             if (value.HeaderList is not null)
@@ -16411,15 +16399,49 @@ internal static partial class DynamoDbJsonSerializers
                         violations.Add(AwsValidation.Clause(item0, elementPath0, "Member must have length greater than or equal to 1"));
                     if (item0.Length > 65536)
                         violations.Add(AwsValidation.Clause(item0, elementPath0, "Member must have length less than or equal to 65536"));
-                    if (!Pattern4.IsMatch(item0))
+                    if (!Pattern3.IsMatch(item0))
                         violations.Add(AwsValidation.Clause(item0, elementPath0, "Member must satisfy regular expression pattern: [\\x20-\\x21\\x23-\\x2B\\x2D-\\x7E]*"));
                 }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "delimiter" : path + "." + "delimiter");
+            if (value.Delimiter is not null)
+            {
+                if (value.Delimiter.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.Delimiter, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.Delimiter.Length > 1)
+                    violations.Add(AwsValidation.Clause(value.Delimiter, memberPath, "Member must have length less than or equal to 1"));
+                if (!Pattern4.IsMatch(value.Delimiter))
+                    violations.Add(AwsValidation.Clause(value.Delimiter, memberPath, "Member must satisfy regular expression pattern: [,;:|\\t ]"));
             }
         }
     }
 
     internal static void Validate_Delete(global::InMemoryAws.DynamoDb.Model.Delete value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
+            if (value.ReturnValuesOnConditionCheckFailure is not null)
+            {
+                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
+            {
+                foreach (var entry0 in value.ExpressionAttributeNames)
+                {
+                    if (entry0.Value.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
             if (value.Key is null)
@@ -16450,28 +16472,6 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
                 if (value.TableName.Length > 1024)
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
-            {
-                foreach (var entry0 in value.ExpressionAttributeNames)
-                {
-                    if (entry0.Value.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
-            if (value.ReturnValuesOnConditionCheckFailure is not null)
-            {
-                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
             }
         }
     }
@@ -16528,32 +16528,30 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_DeleteItemInput(global::InMemoryAws.DynamoDb.Model.DeleteItemRequest value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
+            var memberPath = (path.Length == 0 ? "returnValues" : path + "." + "returnValues");
+            if (value.ReturnValues is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableName is not null)
-            {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
+                if (!string.Equals(value.ReturnValues, "ALL_NEW", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "NONE", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_NEW", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValues, memberPath, "Member must satisfy enum value set: [ALL_NEW, UPDATED_OLD, ALL_OLD, NONE, UPDATED_NEW]"));
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
-            if (value.Key is null)
+            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
+            if (value.ReturnValuesOnConditionCheckFailure is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
+                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
             }
-            if (value.Key is not null)
+        }
+        {
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
             {
-                foreach (var key0 in value.Key.Keys)
+                foreach (var entry0 in value.ExpressionAttributeNames)
                 {
-                    if (key0.Length > 65535)
+                    if (entry0.Value.Length > 65535)
                     {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.Key, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
                         break;
                     }
                 }
@@ -16578,14 +16576,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "returnValues" : path + "." + "returnValues");
-            if (value.ReturnValues is not null)
-            {
-                if (!string.Equals(value.ReturnValues, "NONE", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "ALL_NEW", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_NEW", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValues, memberPath, "Member must satisfy enum value set: [NONE, ALL_OLD, UPDATED_OLD, ALL_NEW, UPDATED_NEW]"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "returnConsumedCapacity" : path + "." + "returnConsumedCapacity");
             if (value.ReturnConsumedCapacity is not null)
             {
@@ -16602,25 +16592,35 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
+            var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
+            if (value.Key is null)
             {
-                foreach (var entry0 in value.ExpressionAttributeNames)
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.Key is not null)
+            {
+                foreach (var key0 in value.Key.Keys)
                 {
-                    if (entry0.Value.Length > 65535)
+                    if (key0.Length > 65535)
                     {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.Key, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
                         break;
                     }
                 }
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
-            if (value.ReturnValuesOnConditionCheckFailure is not null)
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
             {
-                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TableName is not null)
+            {
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
     }
@@ -16672,6 +16672,16 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_DeleteResourcePolicyInput(global::InMemoryAws.DynamoDb.Model.DeleteResourcePolicyRequest value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "expectedRevisionId" : path + "." + "expectedRevisionId");
+            if (value.ExpectedRevisionId is not null)
+            {
+                if (value.ExpectedRevisionId.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.ExpectedRevisionId, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.ExpectedRevisionId.Length > 255)
+                    violations.Add(AwsValidation.Clause(value.ExpectedRevisionId, memberPath, "Member must have length less than or equal to 255"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "resourceArn" : path + "." + "resourceArn");
             if (value.ResourceArn is null)
             {
@@ -16683,16 +16693,6 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.ResourceArn, memberPath, "Member must have length greater than or equal to 1"));
                 if (value.ResourceArn.Length > 1283)
                     violations.Add(AwsValidation.Clause(value.ResourceArn, memberPath, "Member must have length less than or equal to 1283"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "expectedRevisionId" : path + "." + "expectedRevisionId");
-            if (value.ExpectedRevisionId is not null)
-            {
-                if (value.ExpectedRevisionId.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.ExpectedRevisionId, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.ExpectedRevisionId.Length > 255)
-                    violations.Add(AwsValidation.Clause(value.ExpectedRevisionId, memberPath, "Member must have length less than or equal to 255"));
             }
         }
     }
@@ -16792,6 +16792,18 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_DescribeContributorInsightsInput(global::InMemoryAws.DynamoDb.Model.DescribeContributorInsightsRequest value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
+            if (value.IndexName is not null)
+            {
+                if (value.IndexName.Length < 3)
+                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length greater than or equal to 3"));
+                if (value.IndexName.Length > 255)
+                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length less than or equal to 255"));
+                if (!Pattern2.IsMatch(value.IndexName))
+                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
             if (value.TableName is null)
             {
@@ -16803,18 +16815,6 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
                 if (value.TableName.Length > 1024)
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
-            if (value.IndexName is not null)
-            {
-                if (value.IndexName.Length < 3)
-                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length greater than or equal to 3"));
-                if (value.IndexName.Length > 255)
-                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length less than or equal to 255"));
-                if (!Pattern2.IsMatch(value.IndexName))
-                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
             }
         }
     }
@@ -17013,6 +17013,24 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_ExecuteStatementInput(global::InMemoryAws.DynamoDb.Model.ExecuteStatementRequest value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
+            if (value.ReturnValuesOnConditionCheckFailure is not null)
+            {
+                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "nextToken" : path + "." + "nextToken");
+            if (value.NextToken is not null)
+            {
+                if (value.NextToken.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.NextToken, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.NextToken.Length > 32768)
+                    violations.Add(AwsValidation.Clause(value.NextToken, memberPath, "Member must have length less than or equal to 32768"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "statement" : path + "." + "statement");
             if (value.Statement is null)
             {
@@ -17027,21 +17045,11 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "parameters" : path + "." + "parameters");
-            if (value.Parameters is not null)
+            var memberPath = (path.Length == 0 ? "limit" : path + "." + "limit");
+            if (value.Limit is not null)
             {
-                if (value.Parameters.Count < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.Parameters, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Member must have length greater than or equal to 1"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "nextToken" : path + "." + "nextToken");
-            if (value.NextToken is not null)
-            {
-                if (value.NextToken.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.NextToken, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.NextToken.Length > 32768)
-                    violations.Add(AwsValidation.Clause(value.NextToken, memberPath, "Member must have length less than or equal to 32768"));
+                if (value.Limit.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Limit.Value), memberPath, "Member must have value greater than or equal to 1"));
             }
         }
         {
@@ -17053,25 +17061,27 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "limit" : path + "." + "limit");
-            if (value.Limit is not null)
+            var memberPath = (path.Length == 0 ? "parameters" : path + "." + "parameters");
+            if (value.Parameters is not null)
             {
-                if (value.Limit.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Limit.Value), memberPath, "Member must have value greater than or equal to 1"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
-            if (value.ReturnValuesOnConditionCheckFailure is not null)
-            {
-                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+                if (value.Parameters.Count < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.Parameters, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Member must have length greater than or equal to 1"));
             }
         }
     }
 
     internal static void Validate_ExecuteTransactionInput(global::InMemoryAws.DynamoDb.Model.ExecuteTransactionRequest value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "clientRequestToken" : path + "." + "clientRequestToken");
+            if (value.ClientRequestToken is not null)
+            {
+                if (value.ClientRequestToken.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.ClientRequestToken, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.ClientRequestToken.Length > 36)
+                    violations.Add(AwsValidation.Clause(value.ClientRequestToken, memberPath, "Member must have length less than or equal to 36"));
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "transactStatements" : path + "." + "transactStatements");
             if (value.TransactStatements is null)
@@ -17088,16 +17098,6 @@ internal static partial class DynamoDbJsonSerializers
                 {
                     Validate_ParameterizedStatement(value.TransactStatements[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
                 }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "clientRequestToken" : path + "." + "clientRequestToken");
-            if (value.ClientRequestToken is not null)
-            {
-                if (value.ClientRequestToken.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.ClientRequestToken, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.ClientRequestToken.Length > 36)
-                    violations.Add(AwsValidation.Clause(value.ClientRequestToken, memberPath, "Member must have length less than or equal to 36"));
             }
         }
         {
@@ -17125,17 +17125,10 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_ExportTableToPointInTimeInput(global::InMemoryAws.DynamoDb.Model.ExportTableToPointInTimeRequest value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "tableArn" : path + "." + "tableArn");
-            if (value.TableArn is null)
+            var memberPath = (path.Length == 0 ? "filterSpecification" : path + "." + "filterSpecification");
+            if (value.FilterSpecification is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableArn is not null)
-            {
-                if (value.TableArn.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableArn.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length less than or equal to 1024"));
+                Validate_FilterSpecification(value.FilterSpecification, memberPath, violations);
             }
         }
         {
@@ -17147,24 +17140,33 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "s3Bucket" : path + "." + "s3Bucket");
-            if (value.S3Bucket is null)
+            var memberPath = (path.Length == 0 ? "exportType" : path + "." + "exportType");
+            if (value.ExportType is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
+                if (!string.Equals(value.ExportType, "FULL_EXPORT", StringComparison.Ordinal) && !string.Equals(value.ExportType, "INCREMENTAL_EXPORT", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ExportType, memberPath, "Member must satisfy enum value set: [FULL_EXPORT, INCREMENTAL_EXPORT]"));
             }
-            if (value.S3Bucket is not null)
+        }
+        {
+            var memberPath = (path.Length == 0 ? "s3SseAlgorithm" : path + "." + "s3SseAlgorithm");
+            if (value.S3SseAlgorithm is not null)
             {
-                if (value.S3Bucket.Length > 255)
-                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must have length less than or equal to 255"));
-                if (!Pattern6.IsMatch(value.S3Bucket))
-                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must satisfy regular expression pattern: ^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$"));
+                if (!string.Equals(value.S3SseAlgorithm, "AES256", StringComparison.Ordinal) && !string.Equals(value.S3SseAlgorithm, "KMS", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.S3SseAlgorithm, memberPath, "Member must satisfy enum value set: [AES256, KMS]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "incrementalExportSpecification" : path + "." + "incrementalExportSpecification");
+            if (value.IncrementalExportSpecification is not null)
+            {
+                Validate_IncrementalExportSpecification(value.IncrementalExportSpecification, memberPath, violations);
             }
         }
         {
             var memberPath = (path.Length == 0 ? "s3BucketOwner" : path + "." + "s3BucketOwner");
             if (value.S3BucketOwner is not null)
             {
-                if (!Pattern7.IsMatch(value.S3BucketOwner))
+                if (!Pattern6.IsMatch(value.S3BucketOwner))
                     violations.Add(AwsValidation.Clause(value.S3BucketOwner, memberPath, "Member must satisfy regular expression pattern: [0-9]{12}"));
             }
         }
@@ -17177,11 +17179,17 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "s3SseAlgorithm" : path + "." + "s3SseAlgorithm");
-            if (value.S3SseAlgorithm is not null)
+            var memberPath = (path.Length == 0 ? "s3Bucket" : path + "." + "s3Bucket");
+            if (value.S3Bucket is null)
             {
-                if (!string.Equals(value.S3SseAlgorithm, "AES256", StringComparison.Ordinal) && !string.Equals(value.S3SseAlgorithm, "KMS", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.S3SseAlgorithm, memberPath, "Member must satisfy enum value set: [AES256, KMS]"));
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.S3Bucket is not null)
+            {
+                if (value.S3Bucket.Length > 255)
+                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must have length less than or equal to 255"));
+                if (!Pattern7.IsMatch(value.S3Bucket))
+                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must satisfy regular expression pattern: ^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$"));
             }
         }
         {
@@ -17203,25 +17211,17 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "exportType" : path + "." + "exportType");
-            if (value.ExportType is not null)
+            var memberPath = (path.Length == 0 ? "tableArn" : path + "." + "tableArn");
+            if (value.TableArn is null)
             {
-                if (!string.Equals(value.ExportType, "FULL_EXPORT", StringComparison.Ordinal) && !string.Equals(value.ExportType, "INCREMENTAL_EXPORT", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ExportType, memberPath, "Member must satisfy enum value set: [FULL_EXPORT, INCREMENTAL_EXPORT]"));
+                violations.Add(AwsValidation.Missing(memberPath));
             }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "incrementalExportSpecification" : path + "." + "incrementalExportSpecification");
-            if (value.IncrementalExportSpecification is not null)
+            if (value.TableArn is not null)
             {
-                Validate_IncrementalExportSpecification(value.IncrementalExportSpecification, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "filterSpecification" : path + "." + "filterSpecification");
-            if (value.FilterSpecification is not null)
-            {
-                Validate_FilterSpecification(value.FilterSpecification, memberPath, violations);
+                if (value.TableArn.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableArn.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
     }
@@ -17247,38 +17247,6 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_Get(global::InMemoryAws.DynamoDb.Model.Get value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
-            if (value.Key is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.Key is not null)
-            {
-                foreach (var key0 in value.Key.Keys)
-                {
-                    if (key0.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.Key, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableName is not null)
-            {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
             if (value.ExpressionAttributeNames is not null)
             {
@@ -17292,10 +17260,24 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
-    }
-
-    internal static void Validate_GetItemInput(global::InMemoryAws.DynamoDb.Model.GetItemRequest value, string path, List<string> violations)
-    {
+        {
+            var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
+            if (value.Key is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.Key is not null)
+            {
+                foreach (var key0 in value.Key.Keys)
+                {
+                    if (key0.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.Key, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
             if (value.TableName is null)
@@ -17310,19 +17292,19 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
+    }
+
+    internal static void Validate_GetItemInput(global::InMemoryAws.DynamoDb.Model.GetItemRequest value, string path, List<string> violations)
+    {
         {
-            var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
-            if (value.Key is null)
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.Key is not null)
-            {
-                foreach (var key0 in value.Key.Keys)
+                foreach (var entry0 in value.ExpressionAttributeNames)
                 {
-                    if (key0.Length > 65535)
+                    if (entry0.Value.Length > 65535)
                     {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.Key, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
                         break;
                     }
                 }
@@ -17352,17 +17334,35 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
+            var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
+            if (value.Key is null)
             {
-                foreach (var entry0 in value.ExpressionAttributeNames)
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.Key is not null)
+            {
+                foreach (var key0 in value.Key.Keys)
                 {
-                    if (entry0.Value.Length > 65535)
+                    if (key0.Length > 65535)
                     {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.Key, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
                         break;
                     }
                 }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TableName is not null)
+            {
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
     }
@@ -17387,6 +17387,20 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static void Validate_GlobalSecondaryIndex(global::InMemoryAws.DynamoDb.Model.GlobalSecondaryIndex value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "warmThroughput" : path + "." + "warmThroughput");
+            if (value.WarmThroughput is not null)
+            {
+                Validate_WarmThroughput(value.WarmThroughput, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
+            if (value.OnDemandThroughput is not null)
+            {
+                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
             if (value.IndexName is null)
@@ -17437,24 +17451,17 @@ internal static partial class DynamoDbJsonSerializers
                 Validate_ProvisionedThroughput(value.ProvisionedThroughput, memberPath, violations);
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
-            if (value.OnDemandThroughput is not null)
-            {
-                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "warmThroughput" : path + "." + "warmThroughput");
-            if (value.WarmThroughput is not null)
-            {
-                Validate_WarmThroughput(value.WarmThroughput, memberPath, violations);
-            }
-        }
     }
 
     internal static void Validate_GlobalSecondaryIndexAutoScalingUpdate(global::InMemoryAws.DynamoDb.Model.GlobalSecondaryIndexAutoScalingUpdate value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "provisionedWriteCapacityAutoScalingUpdate" : path + "." + "provisionedWriteCapacityAutoScalingUpdate");
+            if (value.ProvisionedWriteCapacityAutoScalingUpdate is not null)
+            {
+                Validate_AutoScalingSettingsUpdate(value.ProvisionedWriteCapacityAutoScalingUpdate, memberPath, violations);
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
             if (value.IndexName is not null)
@@ -17465,13 +17472,6 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length less than or equal to 255"));
                 if (!Pattern2.IsMatch(value.IndexName))
                     violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "provisionedWriteCapacityAutoScalingUpdate" : path + "." + "provisionedWriteCapacityAutoScalingUpdate");
-            if (value.ProvisionedWriteCapacityAutoScalingUpdate is not null)
-            {
-                Validate_AutoScalingSettingsUpdate(value.ProvisionedWriteCapacityAutoScalingUpdate, memberPath, violations);
             }
         }
     }
@@ -17504,6 +17504,14 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_GlobalTableGlobalSecondaryIndexSettingsUpdate(global::InMemoryAws.DynamoDb.Model.GlobalTableGlobalSecondaryIndexSettingsUpdate value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "provisionedWriteCapacityUnits" : path + "." + "provisionedWriteCapacityUnits");
+            if (value.ProvisionedWriteCapacityUnits is not null)
+            {
+                if (value.ProvisionedWriteCapacityUnits.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.ProvisionedWriteCapacityUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
             if (value.IndexName is null)
             {
@@ -17517,14 +17525,6 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length less than or equal to 255"));
                 if (!Pattern2.IsMatch(value.IndexName))
                     violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "provisionedWriteCapacityUnits" : path + "." + "provisionedWriteCapacityUnits");
-            if (value.ProvisionedWriteCapacityUnits is not null)
-            {
-                if (value.ProvisionedWriteCapacityUnits.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.ProvisionedWriteCapacityUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
             }
         }
         {
@@ -17557,11 +17557,37 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_ImportTableInput(global::InMemoryAws.DynamoDb.Model.ImportTableRequest value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "tableCreationParameters" : path + "." + "tableCreationParameters");
+            if (value.TableCreationParameters is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TableCreationParameters is not null)
+            {
+                Validate_TableCreationParameters(value.TableCreationParameters, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "inputCompressionType" : path + "." + "inputCompressionType");
+            if (value.InputCompressionType is not null)
+            {
+                if (!string.Equals(value.InputCompressionType, "GZIP", StringComparison.Ordinal) && !string.Equals(value.InputCompressionType, "ZSTD", StringComparison.Ordinal) && !string.Equals(value.InputCompressionType, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.InputCompressionType, memberPath, "Member must satisfy enum value set: [GZIP, ZSTD, NONE]"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "clientToken" : path + "." + "clientToken");
             if (value.ClientToken is not null)
             {
                 if (!Pattern5.IsMatch(value.ClientToken))
                     violations.Add(AwsValidation.Clause(value.ClientToken, memberPath, "Member must satisfy regular expression pattern: ^[^\\$]+$"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "inputFormatOptions" : path + "." + "inputFormatOptions");
+            if (value.InputFormatOptions is not null)
+            {
+                Validate_InputFormatOptions(value.InputFormatOptions, memberPath, violations);
             }
         }
         {
@@ -17585,32 +17611,6 @@ internal static partial class DynamoDbJsonSerializers
             {
                 if (!string.Equals(value.InputFormat, "DYNAMODB_JSON", StringComparison.Ordinal) && !string.Equals(value.InputFormat, "ION", StringComparison.Ordinal) && !string.Equals(value.InputFormat, "CSV", StringComparison.Ordinal))
                     violations.Add(AwsValidation.Clause(value.InputFormat, memberPath, "Member must satisfy enum value set: [DYNAMODB_JSON, ION, CSV]"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "inputFormatOptions" : path + "." + "inputFormatOptions");
-            if (value.InputFormatOptions is not null)
-            {
-                Validate_InputFormatOptions(value.InputFormatOptions, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "inputCompressionType" : path + "." + "inputCompressionType");
-            if (value.InputCompressionType is not null)
-            {
-                if (!string.Equals(value.InputCompressionType, "GZIP", StringComparison.Ordinal) && !string.Equals(value.InputCompressionType, "ZSTD", StringComparison.Ordinal) && !string.Equals(value.InputCompressionType, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.InputCompressionType, memberPath, "Member must satisfy enum value set: [GZIP, ZSTD, NONE]"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "tableCreationParameters" : path + "." + "tableCreationParameters");
-            if (value.TableCreationParameters is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableCreationParameters is not null)
-            {
-                Validate_TableCreationParameters(value.TableCreationParameters, memberPath, violations);
             }
         }
     }
@@ -17641,33 +17641,19 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_InputS3Configuration(global::InMemoryAws.DynamoDb.Model.InputS3Configuration value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "inputCompressionType" : path + "." + "inputCompressionType");
+            if (value.InputCompressionType is not null)
+            {
+                if (!string.Equals(value.InputCompressionType, "GZIP", StringComparison.Ordinal) && !string.Equals(value.InputCompressionType, "ZSTD", StringComparison.Ordinal) && !string.Equals(value.InputCompressionType, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.InputCompressionType, memberPath, "Member must satisfy enum value set: [GZIP, ZSTD, NONE]"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "s3BucketOwner" : path + "." + "s3BucketOwner");
             if (value.S3BucketOwner is not null)
             {
-                if (!Pattern7.IsMatch(value.S3BucketOwner))
+                if (!Pattern6.IsMatch(value.S3BucketOwner))
                     violations.Add(AwsValidation.Clause(value.S3BucketOwner, memberPath, "Member must satisfy regular expression pattern: [0-9]{12}"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "s3Bucket" : path + "." + "s3Bucket");
-            if (value.S3Bucket is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.S3Bucket is not null)
-            {
-                if (value.S3Bucket.Length > 255)
-                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must have length less than or equal to 255"));
-                if (!Pattern6.IsMatch(value.S3Bucket))
-                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must satisfy regular expression pattern: ^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "s3KeyPrefix" : path + "." + "s3KeyPrefix");
-            if (value.S3KeyPrefix is not null)
-            {
-                if (value.S3KeyPrefix.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.S3KeyPrefix, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
         {
@@ -17683,11 +17669,25 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "inputCompressionType" : path + "." + "inputCompressionType");
-            if (value.InputCompressionType is not null)
+            var memberPath = (path.Length == 0 ? "s3KeyPrefix" : path + "." + "s3KeyPrefix");
+            if (value.S3KeyPrefix is not null)
             {
-                if (!string.Equals(value.InputCompressionType, "GZIP", StringComparison.Ordinal) && !string.Equals(value.InputCompressionType, "ZSTD", StringComparison.Ordinal) && !string.Equals(value.InputCompressionType, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.InputCompressionType, memberPath, "Member must satisfy enum value set: [GZIP, ZSTD, NONE]"));
+                if (value.S3KeyPrefix.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.S3KeyPrefix, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "s3Bucket" : path + "." + "s3Bucket");
+            if (value.S3Bucket is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.S3Bucket is not null)
+            {
+                if (value.S3Bucket.Length > 255)
+                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must have length less than or equal to 255"));
+                if (!Pattern7.IsMatch(value.S3Bucket))
+                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must satisfy regular expression pattern: ^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$"));
             }
         }
     }
@@ -17725,6 +17725,20 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_KeysAndAttributes(global::InMemoryAws.DynamoDb.Model.KeysAndAttributes value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
+            {
+                foreach (var entry0 in value.ExpressionAttributeNames)
+                {
+                    if (entry0.Value.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "keys" : path + "." + "keys");
             if (value.Keys is null)
             {
@@ -17753,38 +17767,10 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
-            {
-                foreach (var entry0 in value.ExpressionAttributeNames)
-                {
-                    if (entry0.Value.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-            }
-        }
     }
 
     internal static void Validate_KinesisStreamingDestinationInput(global::InMemoryAws.DynamoDb.Model.KinesisStreamingDestinationInput value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableName is not null)
-            {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "streamArn" : path + "." + "streamArn");
             if (value.StreamArn is null)
@@ -17806,12 +17792,12 @@ internal static partial class DynamoDbJsonSerializers
                 Validate_EnableKinesisStreamingConfiguration(value.EnableKinesisStreamingConfiguration, memberPath, violations);
             }
         }
-    }
-
-    internal static void Validate_ListBackupsInput(global::InMemoryAws.DynamoDb.Model.ListBackupsRequest value, string path, List<string> violations)
-    {
         {
             var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
             if (value.TableName is not null)
             {
                 if (value.TableName.Length < 1)
@@ -17820,6 +17806,10 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
+    }
+
+    internal static void Validate_ListBackupsInput(global::InMemoryAws.DynamoDb.Model.ListBackupsRequest value, string path, List<string> violations)
+    {
         {
             var memberPath = (path.Length == 0 ? "limit" : path + "." + "limit");
             if (value.Limit is not null)
@@ -17838,6 +17828,16 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.ExclusiveStartBackupArn, memberPath, "Member must have length greater than or equal to 37"));
                 if (value.ExclusiveStartBackupArn.Length > 1024)
                     violations.Add(AwsValidation.Clause(value.ExclusiveStartBackupArn, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is not null)
+            {
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
         {
@@ -17879,6 +17879,14 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_ListContributorInsightsInput(global::InMemoryAws.DynamoDb.Model.ListContributorInsightsRequest value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "maxResults" : path + "." + "maxResults");
+            if (value.MaxResults is not null)
+            {
+                if (value.MaxResults.Value > 100)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.MaxResults.Value), memberPath, "Member must have value less than or equal to 100"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
             if (value.TableName is not null)
             {
@@ -17888,28 +17896,10 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "maxResults" : path + "." + "maxResults");
-            if (value.MaxResults is not null)
-            {
-                if (value.MaxResults.Value > 100)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.MaxResults.Value), memberPath, "Member must have value less than or equal to 100"));
-            }
-        }
     }
 
     internal static void Validate_ListExportsInput(global::InMemoryAws.DynamoDb.Model.ListExportsRequest value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "tableArn" : path + "." + "tableArn");
-            if (value.TableArn is not null)
-            {
-                if (value.TableArn.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableArn.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "maxResults" : path + "." + "maxResults");
             if (value.MaxResults is not null)
@@ -17920,10 +17910,28 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(JavaRendering.Number(value.MaxResults.Value), memberPath, "Member must have value less than or equal to 25"));
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "tableArn" : path + "." + "tableArn");
+            if (value.TableArn is not null)
+            {
+                if (value.TableArn.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableArn.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
     }
 
     internal static void Validate_ListGlobalTablesInput(global::InMemoryAws.DynamoDb.Model.ListGlobalTablesRequest value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "limit" : path + "." + "limit");
+            if (value.Limit is not null)
+            {
+                if (value.Limit.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Limit.Value), memberPath, "Member must have value greater than or equal to 1"));
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "exclusiveStartGlobalTableName" : path + "." + "exclusiveStartGlobalTableName");
             if (value.ExclusiveStartGlobalTableName is not null)
@@ -17936,26 +17944,20 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.ExclusiveStartGlobalTableName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "limit" : path + "." + "limit");
-            if (value.Limit is not null)
-            {
-                if (value.Limit.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Limit.Value), memberPath, "Member must have value greater than or equal to 1"));
-            }
-        }
     }
 
     internal static void Validate_ListImportsInput(global::InMemoryAws.DynamoDb.Model.ListImportsRequest value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "tableArn" : path + "." + "tableArn");
-            if (value.TableArn is not null)
+            var memberPath = (path.Length == 0 ? "nextToken" : path + "." + "nextToken");
+            if (value.NextToken is not null)
             {
-                if (value.TableArn.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableArn.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length less than or equal to 1024"));
+                if (value.NextToken.Length < 112)
+                    violations.Add(AwsValidation.Clause(value.NextToken, memberPath, "Member must have length greater than or equal to 112"));
+                if (value.NextToken.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.NextToken, memberPath, "Member must have length less than or equal to 1024"));
+                if (!Pattern8.IsMatch(value.NextToken))
+                    violations.Add(AwsValidation.Clause(value.NextToken, memberPath, "Member must satisfy regular expression pattern: ([0-9a-f]{16})+"));
             }
         }
         {
@@ -17969,15 +17971,13 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "nextToken" : path + "." + "nextToken");
-            if (value.NextToken is not null)
+            var memberPath = (path.Length == 0 ? "tableArn" : path + "." + "tableArn");
+            if (value.TableArn is not null)
             {
-                if (value.NextToken.Length < 112)
-                    violations.Add(AwsValidation.Clause(value.NextToken, memberPath, "Member must have length greater than or equal to 112"));
-                if (value.NextToken.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.NextToken, memberPath, "Member must have length less than or equal to 1024"));
-                if (!Pattern8.IsMatch(value.NextToken))
-                    violations.Add(AwsValidation.Clause(value.NextToken, memberPath, "Member must satisfy regular expression pattern: ([0-9a-f]{16})+"));
+                if (value.TableArn.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableArn.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableArn, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
     }
@@ -18084,47 +18084,11 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_OutputS3Configuration(global::InMemoryAws.DynamoDb.Model.OutputS3Configuration value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "s3BucketOwner" : path + "." + "s3BucketOwner");
-            if (value.S3BucketOwner is not null)
-            {
-                if (!Pattern7.IsMatch(value.S3BucketOwner))
-                    violations.Add(AwsValidation.Clause(value.S3BucketOwner, memberPath, "Member must satisfy regular expression pattern: [0-9]{12}"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "s3Bucket" : path + "." + "s3Bucket");
-            if (value.S3Bucket is not null)
-            {
-                if (value.S3Bucket.Length > 255)
-                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must have length less than or equal to 255"));
-                if (!Pattern6.IsMatch(value.S3Bucket))
-                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must satisfy regular expression pattern: ^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "s3KeyPrefix" : path + "." + "s3KeyPrefix");
-            if (value.S3KeyPrefix is not null)
-            {
-                if (value.S3KeyPrefix.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.S3KeyPrefix, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "s3SseAlgorithm" : path + "." + "s3SseAlgorithm");
             if (value.S3SseAlgorithm is not null)
             {
                 if (!string.Equals(value.S3SseAlgorithm, "AES256", StringComparison.Ordinal) && !string.Equals(value.S3SseAlgorithm, "KMS", StringComparison.Ordinal))
                     violations.Add(AwsValidation.Clause(value.S3SseAlgorithm, memberPath, "Member must satisfy enum value set: [AES256, KMS]"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "s3SseKmsKeyId" : path + "." + "s3SseKmsKeyId");
-            if (value.S3SseKmsKeyId is not null)
-            {
-                if (value.S3SseKmsKeyId.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.S3SseKmsKeyId, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.S3SseKmsKeyId.Length > 2048)
-                    violations.Add(AwsValidation.Clause(value.S3SseKmsKeyId, memberPath, "Member must have length less than or equal to 2048"));
             }
         }
         {
@@ -18144,10 +18108,54 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "s3BucketOwner" : path + "." + "s3BucketOwner");
+            if (value.S3BucketOwner is not null)
+            {
+                if (!Pattern6.IsMatch(value.S3BucketOwner))
+                    violations.Add(AwsValidation.Clause(value.S3BucketOwner, memberPath, "Member must satisfy regular expression pattern: [0-9]{12}"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "s3KeyPrefix" : path + "." + "s3KeyPrefix");
+            if (value.S3KeyPrefix is not null)
+            {
+                if (value.S3KeyPrefix.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.S3KeyPrefix, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "s3Bucket" : path + "." + "s3Bucket");
+            if (value.S3Bucket is not null)
+            {
+                if (value.S3Bucket.Length > 255)
+                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must have length less than or equal to 255"));
+                if (!Pattern7.IsMatch(value.S3Bucket))
+                    violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must satisfy regular expression pattern: ^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "s3SseKmsKeyId" : path + "." + "s3SseKmsKeyId");
+            if (value.S3SseKmsKeyId is not null)
+            {
+                if (value.S3SseKmsKeyId.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.S3SseKmsKeyId, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.S3SseKmsKeyId.Length > 2048)
+                    violations.Add(AwsValidation.Clause(value.S3SseKmsKeyId, memberPath, "Member must have length less than or equal to 2048"));
+            }
+        }
     }
 
     internal static void Validate_ParameterizedStatement(global::InMemoryAws.DynamoDb.Model.ParameterizedStatement value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
+            if (value.ReturnValuesOnConditionCheckFailure is not null)
+            {
+                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "statement" : path + "." + "statement");
             if (value.Statement is null)
@@ -18170,25 +18178,10 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(JavaRendering.List(value.Parameters, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Member must have length greater than or equal to 1"));
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
-            if (value.ReturnValuesOnConditionCheckFailure is not null)
-            {
-                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
-            }
-        }
     }
 
     internal static void Validate_PointInTimeRecoverySpecification(global::InMemoryAws.DynamoDb.Model.PointInTimeRecoverySpecification value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "pointInTimeRecoveryEnabled" : path + "." + "pointInTimeRecoveryEnabled");
-            if (value.PointInTimeRecoveryEnabled is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "recoveryPeriodInDays" : path + "." + "recoveryPeriodInDays");
             if (value.RecoveryPeriodInDays is not null)
@@ -18199,18 +18192,17 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(JavaRendering.Number(value.RecoveryPeriodInDays.Value), memberPath, "Member must have value less than or equal to 35"));
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "pointInTimeRecoveryEnabled" : path + "." + "pointInTimeRecoveryEnabled");
+            if (value.PointInTimeRecoveryEnabled is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+        }
     }
 
     internal static void Validate_Projection(global::InMemoryAws.DynamoDb.Model.Projection value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "projectionType" : path + "." + "projectionType");
-            if (value.ProjectionType is not null)
-            {
-                if (!string.Equals(value.ProjectionType, "ALL", StringComparison.Ordinal) && !string.Equals(value.ProjectionType, "KEYS_ONLY", StringComparison.Ordinal) && !string.Equals(value.ProjectionType, "INCLUDE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ProjectionType, memberPath, "Member must satisfy enum value set: [ALL, KEYS_ONLY, INCLUDE]"));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "nonKeyAttributes" : path + "." + "nonKeyAttributes");
             if (value.NonKeyAttributes is not null)
@@ -18230,22 +18222,18 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "projectionType" : path + "." + "projectionType");
+            if (value.ProjectionType is not null)
+            {
+                if (!string.Equals(value.ProjectionType, "ALL", StringComparison.Ordinal) && !string.Equals(value.ProjectionType, "KEYS_ONLY", StringComparison.Ordinal) && !string.Equals(value.ProjectionType, "INCLUDE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ProjectionType, memberPath, "Member must satisfy enum value set: [ALL, KEYS_ONLY, INCLUDE]"));
+            }
+        }
     }
 
     internal static void Validate_ProvisionedThroughput(global::InMemoryAws.DynamoDb.Model.ProvisionedThroughput value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "readCapacityUnits" : path + "." + "readCapacityUnits");
-            if (value.ReadCapacityUnits is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.ReadCapacityUnits is not null)
-            {
-                if (value.ReadCapacityUnits.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.ReadCapacityUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "writeCapacityUnits" : path + "." + "writeCapacityUnits");
             if (value.WriteCapacityUnits is null)
@@ -18256,6 +18244,18 @@ internal static partial class DynamoDbJsonSerializers
             {
                 if (value.WriteCapacityUnits.Value < 1)
                     violations.Add(AwsValidation.Clause(JavaRendering.Number(value.WriteCapacityUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "readCapacityUnits" : path + "." + "readCapacityUnits");
+            if (value.ReadCapacityUnits is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.ReadCapacityUnits is not null)
+            {
+                if (value.ReadCapacityUnits.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.ReadCapacityUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
             }
         }
     }
@@ -18293,17 +18293,11 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
+            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
+            if (value.ReturnValuesOnConditionCheckFailure is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableName is not null)
-            {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
+                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
             }
         }
         {
@@ -18321,18 +18315,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
-            if (value.ReturnValuesOnConditionCheckFailure is not null)
-            {
-                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
-            }
-        }
-    }
-
-    internal static void Validate_PutItemInput(global::InMemoryAws.DynamoDb.Model.PutItemRequest value, string path, List<string> violations)
-    {
-        {
             var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
             if (value.TableName is null)
             {
@@ -18344,6 +18326,18 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
                 if (value.TableName.Length > 1024)
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
+    }
+
+    internal static void Validate_PutItemInput(global::InMemoryAws.DynamoDb.Model.PutItemRequest value, string path, List<string> violations)
+    {
+        {
+            var memberPath = (path.Length == 0 ? "returnValues" : path + "." + "returnValues");
+            if (value.ReturnValues is not null)
+            {
+                if (!string.Equals(value.ReturnValues, "ALL_NEW", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "NONE", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_NEW", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValues, memberPath, "Member must satisfy enum value set: [ALL_NEW, UPDATED_OLD, ALL_OLD, NONE, UPDATED_NEW]"));
             }
         }
         {
@@ -18359,6 +18353,28 @@ internal static partial class DynamoDbJsonSerializers
                     if (key0.Length > 65535)
                     {
                         violations.Add(AwsValidation.Clause(JavaRendering.Map(value.Item, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
+            if (value.ReturnValuesOnConditionCheckFailure is not null)
+            {
+                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
+            {
+                foreach (var entry0 in value.ExpressionAttributeNames)
+                {
+                    if (entry0.Value.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
                         break;
                     }
                 }
@@ -18383,14 +18399,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "returnValues" : path + "." + "returnValues");
-            if (value.ReturnValues is not null)
-            {
-                if (!string.Equals(value.ReturnValues, "NONE", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "ALL_NEW", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_NEW", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValues, memberPath, "Member must satisfy enum value set: [NONE, ALL_OLD, UPDATED_OLD, ALL_NEW, UPDATED_NEW]"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "returnConsumedCapacity" : path + "." + "returnConsumedCapacity");
             if (value.ReturnConsumedCapacity is not null)
             {
@@ -18407,25 +18415,17 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
             {
-                foreach (var entry0 in value.ExpressionAttributeNames)
-                {
-                    if (entry0.Value.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
+                violations.Add(AwsValidation.Missing(memberPath));
             }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
-            if (value.ReturnValuesOnConditionCheckFailure is not null)
+            if (value.TableName is not null)
             {
-                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
     }
@@ -18455,6 +18455,16 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_PutResourcePolicyInput(global::InMemoryAws.DynamoDb.Model.PutResourcePolicyRequest value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "expectedRevisionId" : path + "." + "expectedRevisionId");
+            if (value.ExpectedRevisionId is not null)
+            {
+                if (value.ExpectedRevisionId.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.ExpectedRevisionId, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.ExpectedRevisionId.Length > 255)
+                    violations.Add(AwsValidation.Clause(value.ExpectedRevisionId, memberPath, "Member must have length less than or equal to 255"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "resourceArn" : path + "." + "resourceArn");
             if (value.ResourceArn is null)
             {
@@ -18475,32 +18485,30 @@ internal static partial class DynamoDbJsonSerializers
                 violations.Add(AwsValidation.Missing(memberPath));
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "expectedRevisionId" : path + "." + "expectedRevisionId");
-            if (value.ExpectedRevisionId is not null)
-            {
-                if (value.ExpectedRevisionId.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.ExpectedRevisionId, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.ExpectedRevisionId.Length > 255)
-                    violations.Add(AwsValidation.Clause(value.ExpectedRevisionId, memberPath, "Member must have length less than or equal to 255"));
-            }
-        }
     }
 
     internal static void Validate_QueryInput(global::InMemoryAws.DynamoDb.Model.QueryRequest value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
+            var memberPath = (path.Length == 0 ? "select" : path + "." + "select");
+            if (value.Select is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
+                if (!string.Equals(value.Select, "ALL_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "ALL_PROJECTED_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "SPECIFIC_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "COUNT", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.Select, memberPath, "Member must satisfy enum value set: [ALL_ATTRIBUTES, ALL_PROJECTED_ATTRIBUTES, SPECIFIC_ATTRIBUTES, COUNT]"));
             }
-            if (value.TableName is not null)
+        }
+        {
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
             {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
+                foreach (var entry0 in value.ExpressionAttributeNames)
+                {
+                    if (entry0.Value.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
             }
         }
         {
@@ -18516,11 +18524,57 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "select" : path + "." + "select");
-            if (value.Select is not null)
+            var memberPath = (path.Length == 0 ? "exclusiveStartKey" : path + "." + "exclusiveStartKey");
+            if (value.ExclusiveStartKey is not null)
             {
-                if (!string.Equals(value.Select, "ALL_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "ALL_PROJECTED_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "SPECIFIC_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "COUNT", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.Select, memberPath, "Member must satisfy enum value set: [ALL_ATTRIBUTES, ALL_PROJECTED_ATTRIBUTES, SPECIFIC_ATTRIBUTES, COUNT]"));
+                foreach (var key0 in value.ExclusiveStartKey.Keys)
+                {
+                    if (key0.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExclusiveStartKey, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "queryFilter" : path + "." + "queryFilter");
+            if (value.QueryFilter is not null)
+            {
+                foreach (var key0 in value.QueryFilter.Keys)
+                {
+                    if (key0.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.QueryFilter, item => item.ToString()), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+                foreach (var entry0 in value.QueryFilter)
+                {
+                    Validate_Condition(entry0.Value, memberPath + "." + entry0.Key + ".member", violations);
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "returnConsumedCapacity" : path + "." + "returnConsumedCapacity");
+            if (value.ReturnConsumedCapacity is not null)
+            {
+                if (!string.Equals(value.ReturnConsumedCapacity, "INDEXES", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "TOTAL", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnConsumedCapacity, memberPath, "Member must satisfy enum value set: [INDEXES, TOTAL, NONE]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TableName is not null)
+            {
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
         {
@@ -18564,60 +18618,6 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "queryFilter" : path + "." + "queryFilter");
-            if (value.QueryFilter is not null)
-            {
-                foreach (var key0 in value.QueryFilter.Keys)
-                {
-                    if (key0.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.QueryFilter, item => item.ToString()), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-                foreach (var entry0 in value.QueryFilter)
-                {
-                    Validate_Condition(entry0.Value, memberPath + "." + entry0.Key + ".member", violations);
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "exclusiveStartKey" : path + "." + "exclusiveStartKey");
-            if (value.ExclusiveStartKey is not null)
-            {
-                foreach (var key0 in value.ExclusiveStartKey.Keys)
-                {
-                    if (key0.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExclusiveStartKey, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "returnConsumedCapacity" : path + "." + "returnConsumedCapacity");
-            if (value.ReturnConsumedCapacity is not null)
-            {
-                if (!string.Equals(value.ReturnConsumedCapacity, "INDEXES", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "TOTAL", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnConsumedCapacity, memberPath, "Member must satisfy enum value set: [INDEXES, TOTAL, NONE]"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
-            {
-                foreach (var entry0 in value.ExpressionAttributeNames)
-                {
-                    if (entry0.Value.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-            }
-        }
     }
 
     internal static void Validate_Replica(global::InMemoryAws.DynamoDb.Model.Replica value, string path, List<string> violations)
@@ -18627,13 +18627,6 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_ReplicaAutoScalingUpdate(global::InMemoryAws.DynamoDb.Model.ReplicaAutoScalingUpdate value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "regionName" : path + "." + "regionName");
-            if (value.RegionName is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "replicaGlobalSecondaryIndexUpdates" : path + "." + "replicaGlobalSecondaryIndexUpdates");
             if (value.ReplicaGlobalSecondaryIndexUpdates is not null)
             {
@@ -18641,6 +18634,13 @@ internal static partial class DynamoDbJsonSerializers
                 {
                     Validate_ReplicaGlobalSecondaryIndexAutoScalingUpdate(value.ReplicaGlobalSecondaryIndexUpdates[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
                 }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "regionName" : path + "." + "regionName");
+            if (value.RegionName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
             }
         }
         {
@@ -18655,6 +18655,20 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_ReplicaGlobalSecondaryIndex(global::InMemoryAws.DynamoDb.Model.ReplicaGlobalSecondaryIndex value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "onDemandThroughputOverride" : path + "." + "onDemandThroughputOverride");
+            if (value.OnDemandThroughputOverride is not null)
+            {
+                Validate_OnDemandThroughputOverride(value.OnDemandThroughputOverride, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "provisionedThroughputOverride" : path + "." + "provisionedThroughputOverride");
+            if (value.ProvisionedThroughputOverride is not null)
+            {
+                Validate_ProvisionedThroughputOverride(value.ProvisionedThroughputOverride, memberPath, violations);
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
             if (value.IndexName is null)
             {
@@ -18668,20 +18682,6 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length less than or equal to 255"));
                 if (!Pattern2.IsMatch(value.IndexName))
                     violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "provisionedThroughputOverride" : path + "." + "provisionedThroughputOverride");
-            if (value.ProvisionedThroughputOverride is not null)
-            {
-                Validate_ProvisionedThroughputOverride(value.ProvisionedThroughputOverride, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "onDemandThroughputOverride" : path + "." + "onDemandThroughputOverride");
-            if (value.OnDemandThroughputOverride is not null)
-            {
-                Validate_OnDemandThroughputOverride(value.OnDemandThroughputOverride, memberPath, violations);
             }
         }
     }
@@ -18712,6 +18712,14 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_ReplicaGlobalSecondaryIndexSettingsUpdate(global::InMemoryAws.DynamoDb.Model.ReplicaGlobalSecondaryIndexSettingsUpdate value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "provisionedReadCapacityUnits" : path + "." + "provisionedReadCapacityUnits");
+            if (value.ProvisionedReadCapacityUnits is not null)
+            {
+                if (value.ProvisionedReadCapacityUnits.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.ProvisionedReadCapacityUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
             if (value.IndexName is null)
             {
@@ -18728,14 +18736,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "provisionedReadCapacityUnits" : path + "." + "provisionedReadCapacityUnits");
-            if (value.ProvisionedReadCapacityUnits is not null)
-            {
-                if (value.ProvisionedReadCapacityUnits.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.ProvisionedReadCapacityUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "provisionedReadCapacityAutoScalingSettingsUpdate" : path + "." + "provisionedReadCapacityAutoScalingSettingsUpdate");
             if (value.ProvisionedReadCapacityAutoScalingSettingsUpdate is not null)
             {
@@ -18746,21 +18746,6 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static void Validate_ReplicaSettingsUpdate(global::InMemoryAws.DynamoDb.Model.ReplicaSettingsUpdate value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "regionName" : path + "." + "regionName");
-            if (value.RegionName is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "replicaProvisionedReadCapacityUnits" : path + "." + "replicaProvisionedReadCapacityUnits");
-            if (value.ReplicaProvisionedReadCapacityUnits is not null)
-            {
-                if (value.ReplicaProvisionedReadCapacityUnits.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.ReplicaProvisionedReadCapacityUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "replicaProvisionedReadCapacityAutoScalingSettingsUpdate" : path + "." + "replicaProvisionedReadCapacityAutoScalingSettingsUpdate");
             if (value.ReplicaProvisionedReadCapacityAutoScalingSettingsUpdate is not null)
@@ -18780,6 +18765,21 @@ internal static partial class DynamoDbJsonSerializers
                 {
                     Validate_ReplicaGlobalSecondaryIndexSettingsUpdate(value.ReplicaGlobalSecondaryIndexSettingsUpdate[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
                 }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "regionName" : path + "." + "regionName");
+            if (value.RegionName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "replicaProvisionedReadCapacityUnits" : path + "." + "replicaProvisionedReadCapacityUnits");
+            if (value.ReplicaProvisionedReadCapacityUnits is not null)
+            {
+                if (value.ReplicaProvisionedReadCapacityUnits.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.ReplicaProvisionedReadCapacityUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
             }
         }
     }
@@ -18837,19 +18837,10 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_RestoreTableFromBackupInput(global::InMemoryAws.DynamoDb.Model.RestoreTableFromBackupRequest value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "targetTableName" : path + "." + "targetTableName");
-            if (value.TargetTableName is null)
+            var memberPath = (path.Length == 0 ? "onDemandThroughputOverride" : path + "." + "onDemandThroughputOverride");
+            if (value.OnDemandThroughputOverride is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TargetTableName is not null)
-            {
-                if (value.TargetTableName.Length < 3)
-                    violations.Add(AwsValidation.Clause(value.TargetTableName, memberPath, "Member must have length greater than or equal to 3"));
-                if (value.TargetTableName.Length > 255)
-                    violations.Add(AwsValidation.Clause(value.TargetTableName, memberPath, "Member must have length less than or equal to 255"));
-                if (!Pattern2.IsMatch(value.TargetTableName))
-                    violations.Add(AwsValidation.Clause(value.TargetTableName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
+                Validate_OnDemandThroughput(value.OnDemandThroughputOverride, memberPath, violations);
             }
         }
         {
@@ -18875,13 +18866,43 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "globalSecondaryIndexOverride" : path + "." + "globalSecondaryIndexOverride");
-            if (value.GlobalSecondaryIndexOverride is not null)
+            var memberPath = (path.Length == 0 ? "provisionedThroughputOverride" : path + "." + "provisionedThroughputOverride");
+            if (value.ProvisionedThroughputOverride is not null)
             {
-                for (var i0 = 0; i0 < value.GlobalSecondaryIndexOverride.Count; i0++)
+                Validate_ProvisionedThroughput(value.ProvisionedThroughputOverride, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "vectorIndexOverride" : path + "." + "vectorIndexOverride");
+            if (value.VectorIndexOverride is not null)
+            {
+                for (var i0 = 0; i0 < value.VectorIndexOverride.Count; i0++)
                 {
-                    Validate_GlobalSecondaryIndex(value.GlobalSecondaryIndexOverride[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                    Validate_VectorIndex(value.VectorIndexOverride[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
                 }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "sSESpecificationOverride" : path + "." + "sSESpecificationOverride");
+            if (value.SSESpecificationOverride is not null)
+            {
+                Validate_SSESpecification(value.SSESpecificationOverride, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "targetTableName" : path + "." + "targetTableName");
+            if (value.TargetTableName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TargetTableName is not null)
+            {
+                if (value.TargetTableName.Length < 3)
+                    violations.Add(AwsValidation.Clause(value.TargetTableName, memberPath, "Member must have length greater than or equal to 3"));
+                if (value.TargetTableName.Length > 255)
+                    violations.Add(AwsValidation.Clause(value.TargetTableName, memberPath, "Member must have length less than or equal to 255"));
+                if (!Pattern2.IsMatch(value.TargetTableName))
+                    violations.Add(AwsValidation.Clause(value.TargetTableName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
             }
         }
         {
@@ -18895,33 +18916,12 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "provisionedThroughputOverride" : path + "." + "provisionedThroughputOverride");
-            if (value.ProvisionedThroughputOverride is not null)
+            var memberPath = (path.Length == 0 ? "globalSecondaryIndexOverride" : path + "." + "globalSecondaryIndexOverride");
+            if (value.GlobalSecondaryIndexOverride is not null)
             {
-                Validate_ProvisionedThroughput(value.ProvisionedThroughputOverride, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "onDemandThroughputOverride" : path + "." + "onDemandThroughputOverride");
-            if (value.OnDemandThroughputOverride is not null)
-            {
-                Validate_OnDemandThroughput(value.OnDemandThroughputOverride, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "sSESpecificationOverride" : path + "." + "sSESpecificationOverride");
-            if (value.SSESpecificationOverride is not null)
-            {
-                Validate_SSESpecification(value.SSESpecificationOverride, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "vectorIndexOverride" : path + "." + "vectorIndexOverride");
-            if (value.VectorIndexOverride is not null)
-            {
-                for (var i0 = 0; i0 < value.VectorIndexOverride.Count; i0++)
+                for (var i0 = 0; i0 < value.GlobalSecondaryIndexOverride.Count; i0++)
                 {
-                    Validate_VectorIndex(value.VectorIndexOverride[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                    Validate_GlobalSecondaryIndex(value.GlobalSecondaryIndexOverride[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
                 }
             }
         }
@@ -18929,6 +18929,13 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static void Validate_RestoreTableToPointInTimeInput(global::InMemoryAws.DynamoDb.Model.RestoreTableToPointInTimeRequest value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "onDemandThroughputOverride" : path + "." + "onDemandThroughputOverride");
+            if (value.OnDemandThroughputOverride is not null)
+            {
+                Validate_OnDemandThroughput(value.OnDemandThroughputOverride, memberPath, violations);
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "sourceTableArn" : path + "." + "sourceTableArn");
             if (value.SourceTableArn is not null)
@@ -18952,6 +18959,38 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
+            var memberPath = (path.Length == 0 ? "billingModeOverride" : path + "." + "billingModeOverride");
+            if (value.BillingModeOverride is not null)
+            {
+                if (!string.Equals(value.BillingModeOverride, "PROVISIONED", StringComparison.Ordinal) && !string.Equals(value.BillingModeOverride, "PAY_PER_REQUEST", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.BillingModeOverride, memberPath, "Member must satisfy enum value set: [PROVISIONED, PAY_PER_REQUEST]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "provisionedThroughputOverride" : path + "." + "provisionedThroughputOverride");
+            if (value.ProvisionedThroughputOverride is not null)
+            {
+                Validate_ProvisionedThroughput(value.ProvisionedThroughputOverride, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "vectorIndexOverride" : path + "." + "vectorIndexOverride");
+            if (value.VectorIndexOverride is not null)
+            {
+                for (var i0 = 0; i0 < value.VectorIndexOverride.Count; i0++)
+                {
+                    Validate_VectorIndex(value.VectorIndexOverride[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "sSESpecificationOverride" : path + "." + "sSESpecificationOverride");
+            if (value.SSESpecificationOverride is not null)
+            {
+                Validate_SSESpecification(value.SSESpecificationOverride, memberPath, violations);
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "targetTableName" : path + "." + "targetTableName");
             if (value.TargetTableName is null)
             {
@@ -18968,11 +19007,13 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "billingModeOverride" : path + "." + "billingModeOverride");
-            if (value.BillingModeOverride is not null)
+            var memberPath = (path.Length == 0 ? "localSecondaryIndexOverride" : path + "." + "localSecondaryIndexOverride");
+            if (value.LocalSecondaryIndexOverride is not null)
             {
-                if (!string.Equals(value.BillingModeOverride, "PROVISIONED", StringComparison.Ordinal) && !string.Equals(value.BillingModeOverride, "PAY_PER_REQUEST", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.BillingModeOverride, memberPath, "Member must satisfy enum value set: [PROVISIONED, PAY_PER_REQUEST]"));
+                for (var i0 = 0; i0 < value.LocalSecondaryIndexOverride.Count; i0++)
+                {
+                    Validate_LocalSecondaryIndex(value.LocalSecondaryIndexOverride[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                }
             }
         }
         {
@@ -18985,47 +19026,6 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "localSecondaryIndexOverride" : path + "." + "localSecondaryIndexOverride");
-            if (value.LocalSecondaryIndexOverride is not null)
-            {
-                for (var i0 = 0; i0 < value.LocalSecondaryIndexOverride.Count; i0++)
-                {
-                    Validate_LocalSecondaryIndex(value.LocalSecondaryIndexOverride[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "provisionedThroughputOverride" : path + "." + "provisionedThroughputOverride");
-            if (value.ProvisionedThroughputOverride is not null)
-            {
-                Validate_ProvisionedThroughput(value.ProvisionedThroughputOverride, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "onDemandThroughputOverride" : path + "." + "onDemandThroughputOverride");
-            if (value.OnDemandThroughputOverride is not null)
-            {
-                Validate_OnDemandThroughput(value.OnDemandThroughputOverride, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "sSESpecificationOverride" : path + "." + "sSESpecificationOverride");
-            if (value.SSESpecificationOverride is not null)
-            {
-                Validate_SSESpecification(value.SSESpecificationOverride, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "vectorIndexOverride" : path + "." + "vectorIndexOverride");
-            if (value.VectorIndexOverride is not null)
-            {
-                for (var i0 = 0; i0 < value.VectorIndexOverride.Count; i0++)
-                {
-                    Validate_VectorIndex(value.VectorIndexOverride[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
-                }
-            }
-        }
     }
 
     internal static void Validate_S3BucketSource(global::InMemoryAws.DynamoDb.Model.S3BucketSource value, string path, List<string> violations)
@@ -19034,8 +19034,16 @@ internal static partial class DynamoDbJsonSerializers
             var memberPath = (path.Length == 0 ? "s3BucketOwner" : path + "." + "s3BucketOwner");
             if (value.S3BucketOwner is not null)
             {
-                if (!Pattern7.IsMatch(value.S3BucketOwner))
+                if (!Pattern6.IsMatch(value.S3BucketOwner))
                     violations.Add(AwsValidation.Clause(value.S3BucketOwner, memberPath, "Member must satisfy regular expression pattern: [0-9]{12}"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "s3KeyPrefix" : path + "." + "s3KeyPrefix");
+            if (value.S3KeyPrefix is not null)
+            {
+                if (value.S3KeyPrefix.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.S3KeyPrefix, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
         {
@@ -19048,16 +19056,8 @@ internal static partial class DynamoDbJsonSerializers
             {
                 if (value.S3Bucket.Length > 255)
                     violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must have length less than or equal to 255"));
-                if (!Pattern6.IsMatch(value.S3Bucket))
+                if (!Pattern7.IsMatch(value.S3Bucket))
                     violations.Add(AwsValidation.Clause(value.S3Bucket, memberPath, "Member must satisfy regular expression pattern: ^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "s3KeyPrefix" : path + "." + "s3KeyPrefix");
-            if (value.S3KeyPrefix is not null)
-            {
-                if (value.S3KeyPrefix.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.S3KeyPrefix, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
     }
@@ -19077,6 +19077,72 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_ScanInput(global::InMemoryAws.DynamoDb.Model.ScanRequest value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "select" : path + "." + "select");
+            if (value.Select is not null)
+            {
+                if (!string.Equals(value.Select, "ALL_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "ALL_PROJECTED_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "SPECIFIC_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "COUNT", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.Select, memberPath, "Member must satisfy enum value set: [ALL_ATTRIBUTES, ALL_PROJECTED_ATTRIBUTES, SPECIFIC_ATTRIBUTES, COUNT]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
+            {
+                foreach (var entry0 in value.ExpressionAttributeNames)
+                {
+                    if (entry0.Value.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
+            if (value.IndexName is not null)
+            {
+                if (value.IndexName.Length < 3)
+                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length greater than or equal to 3"));
+                if (value.IndexName.Length > 255)
+                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length less than or equal to 255"));
+                if (!Pattern2.IsMatch(value.IndexName))
+                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "exclusiveStartKey" : path + "." + "exclusiveStartKey");
+            if (value.ExclusiveStartKey is not null)
+            {
+                foreach (var key0 in value.ExclusiveStartKey.Keys)
+                {
+                    if (key0.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExclusiveStartKey, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "totalSegments" : path + "." + "totalSegments");
+            if (value.TotalSegments is not null)
+            {
+                if (value.TotalSegments.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.TotalSegments.Value), memberPath, "Member must have value greater than or equal to 1"));
+                if (value.TotalSegments.Value > 1000000)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.TotalSegments.Value), memberPath, "Member must have value less than or equal to 1000000"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "returnConsumedCapacity" : path + "." + "returnConsumedCapacity");
+            if (value.ReturnConsumedCapacity is not null)
+            {
+                if (!string.Equals(value.ReturnConsumedCapacity, "INDEXES", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "TOTAL", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnConsumedCapacity, memberPath, "Member must satisfy enum value set: [INDEXES, TOTAL, NONE]"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
             if (value.TableName is null)
             {
@@ -19091,15 +19157,31 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
-            if (value.IndexName is not null)
+            var memberPath = (path.Length == 0 ? "scanFilter" : path + "." + "scanFilter");
+            if (value.ScanFilter is not null)
             {
-                if (value.IndexName.Length < 3)
-                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length greater than or equal to 3"));
-                if (value.IndexName.Length > 255)
-                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length less than or equal to 255"));
-                if (!Pattern2.IsMatch(value.IndexName))
-                    violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
+                foreach (var key0 in value.ScanFilter.Keys)
+                {
+                    if (key0.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ScanFilter, item => item.ToString()), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+                foreach (var entry0 in value.ScanFilter)
+                {
+                    Validate_Condition(entry0.Value, memberPath + "." + entry0.Key + ".member", violations);
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "segment" : path + "." + "segment");
+            if (value.Segment is not null)
+            {
+                if (value.Segment.Value < 0)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Segment.Value), memberPath, "Member must have value greater than or equal to 0"));
+                if (value.Segment.Value > 999999)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Segment.Value), memberPath, "Member must have value less than or equal to 999999"));
             }
         }
         {
@@ -19123,88 +19205,6 @@ internal static partial class DynamoDbJsonSerializers
             {
                 if (value.Limit.Value < 1)
                     violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Limit.Value), memberPath, "Member must have value greater than or equal to 1"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "select" : path + "." + "select");
-            if (value.Select is not null)
-            {
-                if (!string.Equals(value.Select, "ALL_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "ALL_PROJECTED_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "SPECIFIC_ATTRIBUTES", StringComparison.Ordinal) && !string.Equals(value.Select, "COUNT", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.Select, memberPath, "Member must satisfy enum value set: [ALL_ATTRIBUTES, ALL_PROJECTED_ATTRIBUTES, SPECIFIC_ATTRIBUTES, COUNT]"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "scanFilter" : path + "." + "scanFilter");
-            if (value.ScanFilter is not null)
-            {
-                foreach (var key0 in value.ScanFilter.Keys)
-                {
-                    if (key0.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ScanFilter, item => item.ToString()), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-                foreach (var entry0 in value.ScanFilter)
-                {
-                    Validate_Condition(entry0.Value, memberPath + "." + entry0.Key + ".member", violations);
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "exclusiveStartKey" : path + "." + "exclusiveStartKey");
-            if (value.ExclusiveStartKey is not null)
-            {
-                foreach (var key0 in value.ExclusiveStartKey.Keys)
-                {
-                    if (key0.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExclusiveStartKey, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "returnConsumedCapacity" : path + "." + "returnConsumedCapacity");
-            if (value.ReturnConsumedCapacity is not null)
-            {
-                if (!string.Equals(value.ReturnConsumedCapacity, "INDEXES", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "TOTAL", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnConsumedCapacity, memberPath, "Member must satisfy enum value set: [INDEXES, TOTAL, NONE]"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "totalSegments" : path + "." + "totalSegments");
-            if (value.TotalSegments is not null)
-            {
-                if (value.TotalSegments.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.TotalSegments.Value), memberPath, "Member must have value greater than or equal to 1"));
-                if (value.TotalSegments.Value > 1000000)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.TotalSegments.Value), memberPath, "Member must have value less than or equal to 1000000"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "segment" : path + "." + "segment");
-            if (value.Segment is not null)
-            {
-                if (value.Segment.Value < 0)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Segment.Value), memberPath, "Member must have value greater than or equal to 0"));
-                if (value.Segment.Value > 999999)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Segment.Value), memberPath, "Member must have value less than or equal to 999999"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
-            {
-                foreach (var entry0 in value.ExpressionAttributeNames)
-                {
-                    if (entry0.Value.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
             }
         }
     }
@@ -19240,17 +19240,29 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_SearchVectorsInput(global::InMemoryAws.DynamoDb.Model.SearchVectorsRequest value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
+            var memberPath = (path.Length == 0 ? "topK" : path + "." + "topK");
+            if (value.TopK is null)
             {
                 violations.Add(AwsValidation.Missing(memberPath));
             }
-            if (value.TableName is not null)
+            if (value.TopK is not null)
             {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
+                if (value.TopK.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.TopK.Value), memberPath, "Member must have value greater than or equal to 1"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
+            {
+                foreach (var entry0 in value.ExpressionAttributeNames)
+                {
+                    if (entry0.Value.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
             }
         }
         {
@@ -19278,20 +19290,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
-            {
-                foreach (var entry0 in value.ExpressionAttributeNames)
-                {
-                    if (entry0.Value.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "searchVector" : path + "." + "searchVector");
             if (value.SearchVector is null)
             {
@@ -19306,21 +19304,42 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "topK" : path + "." + "topK");
-            if (value.TopK is null)
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
             {
                 violations.Add(AwsValidation.Missing(memberPath));
             }
-            if (value.TopK is not null)
+            if (value.TableName is not null)
             {
-                if (value.TopK.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.TopK.Value), memberPath, "Member must have value greater than or equal to 1"));
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
     }
 
     internal static void Validate_StartBulkPutItemsInput(global::InMemoryAws.DynamoDb.Model.StartBulkPutItemsRequest value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "outputS3Configuration" : path + "." + "outputS3Configuration");
+            if (value.OutputS3Configuration is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.OutputS3Configuration is not null)
+            {
+                Validate_OutputS3Configuration(value.OutputS3Configuration, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "performanceTier" : path + "." + "performanceTier");
+            if (value.PerformanceTier is not null)
+            {
+                if (!string.Equals(value.PerformanceTier, "STANDARD", StringComparison.Ordinal) && !string.Equals(value.PerformanceTier, "ACCELERATED", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.PerformanceTier, memberPath, "Member must satisfy enum value set: [STANDARD, ACCELERATED]"));
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "clientToken" : path + "." + "clientToken");
             if (value.ClientToken is not null)
@@ -19341,14 +19360,11 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "outputS3Configuration" : path + "." + "outputS3Configuration");
-            if (value.OutputS3Configuration is null)
+            var memberPath = (path.Length == 0 ? "maxWriteRequestUnits" : path + "." + "maxWriteRequestUnits");
+            if (value.MaxWriteRequestUnits is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.OutputS3Configuration is not null)
-            {
-                Validate_OutputS3Configuration(value.OutputS3Configuration, memberPath, violations);
+                if (value.MaxWriteRequestUnits.Value < 1024)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.MaxWriteRequestUnits.Value), memberPath, "Member must have value greater than or equal to 1024"));
             }
         }
         {
@@ -19365,33 +19381,10 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "maxWriteRequestUnits" : path + "." + "maxWriteRequestUnits");
-            if (value.MaxWriteRequestUnits is not null)
-            {
-                if (value.MaxWriteRequestUnits.Value < 1024)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.MaxWriteRequestUnits.Value), memberPath, "Member must have value greater than or equal to 1024"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "performanceTier" : path + "." + "performanceTier");
-            if (value.PerformanceTier is not null)
-            {
-                if (!string.Equals(value.PerformanceTier, "STANDARD", StringComparison.Ordinal) && !string.Equals(value.PerformanceTier, "ACCELERATED", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.PerformanceTier, memberPath, "Member must satisfy enum value set: [STANDARD, ACCELERATED]"));
-            }
-        }
     }
 
     internal static void Validate_StreamSpecification(global::InMemoryAws.DynamoDb.Model.StreamSpecification value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "streamEnabled" : path + "." + "streamEnabled");
-            if (value.StreamEnabled is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "streamViewType" : path + "." + "streamViewType");
             if (value.StreamViewType is not null)
@@ -19400,24 +19393,47 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.StreamViewType, memberPath, "Member must satisfy enum value set: [NEW_IMAGE, OLD_IMAGE, NEW_AND_OLD_IMAGES, KEYS_ONLY]"));
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "streamEnabled" : path + "." + "streamEnabled");
+            if (value.StreamEnabled is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+        }
     }
 
     internal static void Validate_TableCreationParameters(global::InMemoryAws.DynamoDb.Model.TableCreationParameters value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
+            var memberPath = (path.Length == 0 ? "globalSecondaryIndexes" : path + "." + "globalSecondaryIndexes");
+            if (value.GlobalSecondaryIndexes is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
+                for (var i0 = 0; i0 < value.GlobalSecondaryIndexes.Count; i0++)
+                {
+                    Validate_GlobalSecondaryIndex(value.GlobalSecondaryIndexes[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                }
             }
-            if (value.TableName is not null)
+        }
+        {
+            var memberPath = (path.Length == 0 ? "billingMode" : path + "." + "billingMode");
+            if (value.BillingMode is not null)
             {
-                if (value.TableName.Length < 3)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 3"));
-                if (value.TableName.Length > 255)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 255"));
-                if (!Pattern2.IsMatch(value.TableName))
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
+                if (!string.Equals(value.BillingMode, "PROVISIONED", StringComparison.Ordinal) && !string.Equals(value.BillingMode, "PAY_PER_REQUEST", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.BillingMode, memberPath, "Member must satisfy enum value set: [PROVISIONED, PAY_PER_REQUEST]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
+            if (value.OnDemandThroughput is not null)
+            {
+                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "sSESpecification" : path + "." + "sSESpecification");
+            if (value.SSESpecification is not null)
+            {
+                Validate_SSESpecification(value.SSESpecification, memberPath, violations);
             }
         }
         {
@@ -19451,14 +19467,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "billingMode" : path + "." + "billingMode");
-            if (value.BillingMode is not null)
-            {
-                if (!string.Equals(value.BillingMode, "PROVISIONED", StringComparison.Ordinal) && !string.Equals(value.BillingMode, "PAY_PER_REQUEST", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.BillingMode, memberPath, "Member must satisfy enum value set: [PROVISIONED, PAY_PER_REQUEST]"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "provisionedThroughput" : path + "." + "provisionedThroughput");
             if (value.ProvisionedThroughput is not null)
             {
@@ -19466,27 +19474,19 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
-            if (value.OnDemandThroughput is not null)
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
             {
-                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
+                violations.Add(AwsValidation.Missing(memberPath));
             }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "sSESpecification" : path + "." + "sSESpecification");
-            if (value.SSESpecification is not null)
+            if (value.TableName is not null)
             {
-                Validate_SSESpecification(value.SSESpecification, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "globalSecondaryIndexes" : path + "." + "globalSecondaryIndexes");
-            if (value.GlobalSecondaryIndexes is not null)
-            {
-                for (var i0 = 0; i0 < value.GlobalSecondaryIndexes.Count; i0++)
-                {
-                    Validate_GlobalSecondaryIndex(value.GlobalSecondaryIndexes[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
-                }
+                if (value.TableName.Length < 3)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 3"));
+                if (value.TableName.Length > 255)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 255"));
+                if (!Pattern2.IsMatch(value.TableName))
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
             }
         }
         {
@@ -19504,20 +19504,6 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_Tag(global::InMemoryAws.DynamoDb.Model.Tag value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
-            if (value.Key is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.Key is not null)
-            {
-                if (value.Key.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.Key, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.Key.Length > 128)
-                    violations.Add(AwsValidation.Clause(value.Key, memberPath, "Member must have length less than or equal to 128"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "value" : path + "." + "value");
             if (value.Value is null)
             {
@@ -19529,6 +19515,20 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.Value, memberPath, "Member must have length greater than or equal to 0"));
                 if (value.Value.Length > 256)
                     violations.Add(AwsValidation.Clause(value.Value, memberPath, "Member must have length less than or equal to 256"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
+            if (value.Key is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.Key is not null)
+            {
+                if (value.Key.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.Key, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.Key.Length > 128)
+                    violations.Add(AwsValidation.Clause(value.Key, memberPath, "Member must have length less than or equal to 128"));
             }
         }
     }
@@ -19568,13 +19568,6 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_TimeToLiveSpecification(global::InMemoryAws.DynamoDb.Model.TimeToLiveSpecification value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "enabled" : path + "." + "enabled");
-            if (value.Enabled is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "attributeName" : path + "." + "attributeName");
             if (value.AttributeName is null)
             {
@@ -19586,6 +19579,13 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.AttributeName, memberPath, "Member must have length greater than or equal to 1"));
                 if (value.AttributeName.Length > 255)
                     violations.Add(AwsValidation.Clause(value.AttributeName, memberPath, "Member must have length less than or equal to 255"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "enabled" : path + "." + "enabled");
+            if (value.Enabled is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
             }
         }
     }
@@ -19638,17 +19638,17 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_TransactWriteItem(global::InMemoryAws.DynamoDb.Model.TransactWriteItem value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "update" : path + "." + "update");
+            if (value.Update is not null)
+            {
+                Validate_Update(value.Update, memberPath, violations);
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "conditionCheck" : path + "." + "conditionCheck");
             if (value.ConditionCheck is not null)
             {
                 Validate_ConditionCheck(value.ConditionCheck, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "put" : path + "." + "put");
-            if (value.Put is not null)
-            {
-                Validate_Put(value.Put, memberPath, violations);
             }
         }
         {
@@ -19659,10 +19659,10 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "update" : path + "." + "update");
-            if (value.Update is not null)
+            var memberPath = (path.Length == 0 ? "put" : path + "." + "put");
+            if (value.Put is not null)
             {
-                Validate_Update(value.Update, memberPath, violations);
+                Validate_Put(value.Put, memberPath, violations);
             }
         }
     }
@@ -19688,6 +19688,16 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
+            var memberPath = (path.Length == 0 ? "clientRequestToken" : path + "." + "clientRequestToken");
+            if (value.ClientRequestToken is not null)
+            {
+                if (value.ClientRequestToken.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.ClientRequestToken, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.ClientRequestToken.Length > 36)
+                    violations.Add(AwsValidation.Clause(value.ClientRequestToken, memberPath, "Member must have length less than or equal to 36"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "returnConsumedCapacity" : path + "." + "returnConsumedCapacity");
             if (value.ReturnConsumedCapacity is not null)
             {
@@ -19703,34 +19713,10 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.ReturnItemCollectionMetrics, memberPath, "Member must satisfy enum value set: [SIZE, NONE]"));
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "clientRequestToken" : path + "." + "clientRequestToken");
-            if (value.ClientRequestToken is not null)
-            {
-                if (value.ClientRequestToken.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.ClientRequestToken, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.ClientRequestToken.Length > 36)
-                    violations.Add(AwsValidation.Clause(value.ClientRequestToken, memberPath, "Member must have length less than or equal to 36"));
-            }
-        }
     }
 
     internal static void Validate_UntagResourceInput(global::InMemoryAws.DynamoDb.Model.UntagResourceRequest value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "resourceArn" : path + "." + "resourceArn");
-            if (value.ResourceArn is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.ResourceArn is not null)
-            {
-                if (value.ResourceArn.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.ResourceArn, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.ResourceArn.Length > 1283)
-                    violations.Add(AwsValidation.Clause(value.ResourceArn, memberPath, "Member must have length less than or equal to 1283"));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "tagKeys" : path + "." + "tagKeys");
             if (value.TagKeys is null)
@@ -19750,10 +19736,53 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "resourceArn" : path + "." + "resourceArn");
+            if (value.ResourceArn is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.ResourceArn is not null)
+            {
+                if (value.ResourceArn.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.ResourceArn, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.ResourceArn.Length > 1283)
+                    violations.Add(AwsValidation.Clause(value.ResourceArn, memberPath, "Member must have length less than or equal to 1283"));
+            }
+        }
     }
 
     internal static void Validate_Update(global::InMemoryAws.DynamoDb.Model.Update value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
+            if (value.ReturnValuesOnConditionCheckFailure is not null)
+            {
+                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
+            {
+                foreach (var entry0 in value.ExpressionAttributeNames)
+                {
+                    if (entry0.Value.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "updateExpression" : path + "." + "updateExpression");
+            if (value.UpdateExpression is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
             if (value.Key is null)
@@ -19773,13 +19802,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "updateExpression" : path + "." + "updateExpression");
-            if (value.UpdateExpression is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
             if (value.TableName is null)
             {
@@ -19791,48 +19813,12 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
                 if (value.TableName.Length > 1024)
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
-            {
-                foreach (var entry0 in value.ExpressionAttributeNames)
-                {
-                    if (entry0.Value.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
-            if (value.ReturnValuesOnConditionCheckFailure is not null)
-            {
-                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
             }
         }
     }
 
     internal static void Validate_UpdateContinuousBackupsInput(global::InMemoryAws.DynamoDb.Model.UpdateContinuousBackupsRequest value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableName is not null)
-            {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "pointInTimeRecoverySpecification" : path + "." + "pointInTimeRecoverySpecification");
             if (value.PointInTimeRecoverySpecification is null)
@@ -19844,10 +19830,6 @@ internal static partial class DynamoDbJsonSerializers
                 Validate_PointInTimeRecoverySpecification(value.PointInTimeRecoverySpecification, memberPath, violations);
             }
         }
-    }
-
-    internal static void Validate_UpdateContributorInsightsInput(global::InMemoryAws.DynamoDb.Model.UpdateContributorInsightsRequest value, string path, List<string> violations)
-    {
         {
             var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
             if (value.TableName is null)
@@ -19860,6 +19842,22 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
                 if (value.TableName.Length > 1024)
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
+    }
+
+    internal static void Validate_UpdateContributorInsightsInput(global::InMemoryAws.DynamoDb.Model.UpdateContributorInsightsRequest value, string path, List<string> violations)
+    {
+        {
+            var memberPath = (path.Length == 0 ? "contributorInsightsAction" : path + "." + "contributorInsightsAction");
+            if (value.ContributorInsightsAction is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.ContributorInsightsAction is not null)
+            {
+                if (!string.Equals(value.ContributorInsightsAction, "ENABLE", StringComparison.Ordinal) && !string.Equals(value.ContributorInsightsAction, "DISABLE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ContributorInsightsAction, memberPath, "Member must satisfy enum value set: [ENABLE, DISABLE]"));
             }
         }
         {
@@ -19875,18 +19873,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "contributorInsightsAction" : path + "." + "contributorInsightsAction");
-            if (value.ContributorInsightsAction is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.ContributorInsightsAction is not null)
-            {
-                if (!string.Equals(value.ContributorInsightsAction, "ENABLE", StringComparison.Ordinal) && !string.Equals(value.ContributorInsightsAction, "DISABLE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ContributorInsightsAction, memberPath, "Member must satisfy enum value set: [ENABLE, DISABLE]"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "contributorInsightsMode" : path + "." + "contributorInsightsMode");
             if (value.ContributorInsightsMode is not null)
             {
@@ -19894,10 +19880,38 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.ContributorInsightsMode, memberPath, "Member must satisfy enum value set: [ACCESSED_AND_THROTTLED_KEYS, THROTTLED_KEYS]"));
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TableName is not null)
+            {
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
     }
 
     internal static void Validate_UpdateGlobalSecondaryIndexAction(global::InMemoryAws.DynamoDb.Model.UpdateGlobalSecondaryIndexAction value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "warmThroughput" : path + "." + "warmThroughput");
+            if (value.WarmThroughput is not null)
+            {
+                Validate_WarmThroughput(value.WarmThroughput, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
+            if (value.OnDemandThroughput is not null)
+            {
+                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
             if (value.IndexName is null)
@@ -19919,20 +19933,6 @@ internal static partial class DynamoDbJsonSerializers
             if (value.ProvisionedThroughput is not null)
             {
                 Validate_ProvisionedThroughput(value.ProvisionedThroughput, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
-            if (value.OnDemandThroughput is not null)
-            {
-                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "warmThroughput" : path + "." + "warmThroughput");
-            if (value.WarmThroughput is not null)
-            {
-                Validate_WarmThroughput(value.WarmThroughput, memberPath, violations);
             }
         }
     }
@@ -19990,19 +19990,33 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "globalTableBillingMode" : path + "." + "globalTableBillingMode");
-            if (value.GlobalTableBillingMode is not null)
-            {
-                if (!string.Equals(value.GlobalTableBillingMode, "PROVISIONED", StringComparison.Ordinal) && !string.Equals(value.GlobalTableBillingMode, "PAY_PER_REQUEST", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.GlobalTableBillingMode, memberPath, "Member must satisfy enum value set: [PROVISIONED, PAY_PER_REQUEST]"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "globalTableProvisionedWriteCapacityUnits" : path + "." + "globalTableProvisionedWriteCapacityUnits");
             if (value.GlobalTableProvisionedWriteCapacityUnits is not null)
             {
                 if (value.GlobalTableProvisionedWriteCapacityUnits.Value < 1)
                     violations.Add(AwsValidation.Clause(JavaRendering.Number(value.GlobalTableProvisionedWriteCapacityUnits.Value), memberPath, "Member must have value greater than or equal to 1"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "replicaSettingsUpdate" : path + "." + "replicaSettingsUpdate");
+            if (value.ReplicaSettingsUpdate is not null)
+            {
+                if (value.ReplicaSettingsUpdate.Count < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.ReplicaSettingsUpdate, item => item.ToString()), memberPath, "Member must have length greater than or equal to 1"));
+                if (value.ReplicaSettingsUpdate.Count > 50)
+                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.ReplicaSettingsUpdate, item => item.ToString()), memberPath, "Member must have length less than or equal to 50"));
+                for (var i0 = 0; i0 < value.ReplicaSettingsUpdate.Count; i0++)
+                {
+                    Validate_ReplicaSettingsUpdate(value.ReplicaSettingsUpdate[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "globalTableBillingMode" : path + "." + "globalTableBillingMode");
+            if (value.GlobalTableBillingMode is not null)
+            {
+                if (!string.Equals(value.GlobalTableBillingMode, "PROVISIONED", StringComparison.Ordinal) && !string.Equals(value.GlobalTableBillingMode, "PAY_PER_REQUEST", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.GlobalTableBillingMode, memberPath, "Member must satisfy enum value set: [PROVISIONED, PAY_PER_REQUEST]"));
             }
         }
         {
@@ -20026,71 +20040,21 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "replicaSettingsUpdate" : path + "." + "replicaSettingsUpdate");
-            if (value.ReplicaSettingsUpdate is not null)
-            {
-                if (value.ReplicaSettingsUpdate.Count < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.ReplicaSettingsUpdate, item => item.ToString()), memberPath, "Member must have length greater than or equal to 1"));
-                if (value.ReplicaSettingsUpdate.Count > 50)
-                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.ReplicaSettingsUpdate, item => item.ToString()), memberPath, "Member must have length less than or equal to 50"));
-                for (var i0 = 0; i0 < value.ReplicaSettingsUpdate.Count; i0++)
-                {
-                    Validate_ReplicaSettingsUpdate(value.ReplicaSettingsUpdate[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
-                }
-            }
-        }
     }
 
     internal static void Validate_UpdateItemInput(global::InMemoryAws.DynamoDb.Model.UpdateItemRequest value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
+            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
+            if (value.ExpressionAttributeNames is not null)
             {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableName is not null)
-            {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
-            if (value.Key is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.Key is not null)
-            {
-                foreach (var key0 in value.Key.Keys)
+                foreach (var entry0 in value.ExpressionAttributeNames)
                 {
-                    if (key0.Length > 65535)
+                    if (entry0.Value.Length > 65535)
                     {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.Key, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
                         break;
                     }
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "attributeUpdates" : path + "." + "attributeUpdates");
-            if (value.AttributeUpdates is not null)
-            {
-                foreach (var key0 in value.AttributeUpdates.Keys)
-                {
-                    if (key0.Length > 65535)
-                    {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.AttributeUpdates, item => item.ToString()), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
-                        break;
-                    }
-                }
-                foreach (var entry0 in value.AttributeUpdates)
-                {
-                    Validate_AttributeValueUpdate(entry0.Value, memberPath + "." + entry0.Key + ".member", violations);
                 }
             }
         }
@@ -20113,19 +20077,59 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "returnValues" : path + "." + "returnValues");
-            if (value.ReturnValues is not null)
-            {
-                if (!string.Equals(value.ReturnValues, "NONE", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "ALL_NEW", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_NEW", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValues, memberPath, "Member must satisfy enum value set: [NONE, ALL_OLD, UPDATED_OLD, ALL_NEW, UPDATED_NEW]"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "returnConsumedCapacity" : path + "." + "returnConsumedCapacity");
             if (value.ReturnConsumedCapacity is not null)
             {
                 if (!string.Equals(value.ReturnConsumedCapacity, "INDEXES", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "TOTAL", StringComparison.Ordinal) && !string.Equals(value.ReturnConsumedCapacity, "NONE", StringComparison.Ordinal))
                     violations.Add(AwsValidation.Clause(value.ReturnConsumedCapacity, memberPath, "Member must satisfy enum value set: [INDEXES, TOTAL, NONE]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TableName is not null)
+            {
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "returnValues" : path + "." + "returnValues");
+            if (value.ReturnValues is not null)
+            {
+                if (!string.Equals(value.ReturnValues, "ALL_NEW", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "NONE", StringComparison.Ordinal) && !string.Equals(value.ReturnValues, "UPDATED_NEW", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValues, memberPath, "Member must satisfy enum value set: [ALL_NEW, UPDATED_OLD, ALL_OLD, NONE, UPDATED_NEW]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
+            if (value.ReturnValuesOnConditionCheckFailure is not null)
+            {
+                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "attributeUpdates" : path + "." + "attributeUpdates");
+            if (value.AttributeUpdates is not null)
+            {
+                foreach (var key0 in value.AttributeUpdates.Keys)
+                {
+                    if (key0.Length > 65535)
+                    {
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.AttributeUpdates, item => item.ToString()), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        break;
+                    }
+                }
+                foreach (var entry0 in value.AttributeUpdates)
+                {
+                    Validate_AttributeValueUpdate(entry0.Value, memberPath + "." + entry0.Key + ".member", violations);
+                }
             }
         }
         {
@@ -20137,25 +20141,21 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "expressionAttributeNames" : path + "." + "expressionAttributeNames");
-            if (value.ExpressionAttributeNames is not null)
+            var memberPath = (path.Length == 0 ? "key" : path + "." + "key");
+            if (value.Key is null)
             {
-                foreach (var entry0 in value.ExpressionAttributeNames)
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.Key is not null)
+            {
+                foreach (var key0 in value.Key.Keys)
                 {
-                    if (entry0.Value.Length > 65535)
+                    if (key0.Length > 65535)
                     {
-                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.ExpressionAttributeNames, item => item), memberPath, "Map value must satisfy constraint: [Member must have length less than or equal to 65535]"));
+                        violations.Add(AwsValidation.Clause(JavaRendering.Map(value.Key, item => InMemoryAws.DynamoDb.DynamoValueJson.Render(item)), memberPath, "Map keys must satisfy constraint: [Member must have length less than or equal to 65535]"));
                         break;
                     }
                 }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "returnValuesOnConditionCheckFailure" : path + "." + "returnValuesOnConditionCheckFailure");
-            if (value.ReturnValuesOnConditionCheckFailure is not null)
-            {
-                if (!string.Equals(value.ReturnValuesOnConditionCheckFailure, "ALL_OLD", StringComparison.Ordinal) && !string.Equals(value.ReturnValuesOnConditionCheckFailure, "NONE", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.ReturnValuesOnConditionCheckFailure, memberPath, "Member must satisfy enum value set: [ALL_OLD, NONE]"));
             }
         }
     }
@@ -20174,20 +20174,6 @@ internal static partial class DynamoDbJsonSerializers
 
     internal static void Validate_UpdateKinesisStreamingDestinationInput(global::InMemoryAws.DynamoDb.Model.UpdateKinesisStreamingDestinationRequest value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableName is not null)
-            {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "streamArn" : path + "." + "streamArn");
             if (value.StreamArn is null)
@@ -20209,24 +20195,24 @@ internal static partial class DynamoDbJsonSerializers
                 Validate_UpdateKinesisStreamingConfiguration(value.UpdateKinesisStreamingConfiguration, memberPath, violations);
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TableName is not null)
+            {
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
+            }
+        }
     }
 
     internal static void Validate_UpdateReplicationGroupMemberAction(global::InMemoryAws.DynamoDb.Model.UpdateReplicationGroupMemberAction value, string path, List<string> violations)
     {
-        {
-            var memberPath = (path.Length == 0 ? "regionName" : path + "." + "regionName");
-            if (value.RegionName is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "provisionedThroughputOverride" : path + "." + "provisionedThroughputOverride");
-            if (value.ProvisionedThroughputOverride is not null)
-            {
-                Validate_ProvisionedThroughputOverride(value.ProvisionedThroughputOverride, memberPath, violations);
-            }
-        }
         {
             var memberPath = (path.Length == 0 ? "onDemandThroughputOverride" : path + "." + "onDemandThroughputOverride");
             if (value.OnDemandThroughputOverride is not null)
@@ -20246,18 +20232,93 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
+        {
+            var memberPath = (path.Length == 0 ? "provisionedThroughputOverride" : path + "." + "provisionedThroughputOverride");
+            if (value.ProvisionedThroughputOverride is not null)
+            {
+                Validate_ProvisionedThroughputOverride(value.ProvisionedThroughputOverride, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "regionName" : path + "." + "regionName");
+            if (value.RegionName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+        }
     }
 
     internal static void Validate_UpdateTableInput(global::InMemoryAws.DynamoDb.Model.UpdateTableRequest value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "attributeDefinitions" : path + "." + "attributeDefinitions");
-            if (value.AttributeDefinitions is not null)
+            var memberPath = (path.Length == 0 ? "globalTableSettingsReplicationMode" : path + "." + "globalTableSettingsReplicationMode");
+            if (value.GlobalTableSettingsReplicationMode is not null)
             {
-                for (var i0 = 0; i0 < value.AttributeDefinitions.Count; i0++)
+                if (!string.Equals(value.GlobalTableSettingsReplicationMode, "ENABLED", StringComparison.Ordinal) && !string.Equals(value.GlobalTableSettingsReplicationMode, "DISABLED", StringComparison.Ordinal) && !string.Equals(value.GlobalTableSettingsReplicationMode, "ENABLED_WITH_OVERRIDES", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.GlobalTableSettingsReplicationMode, memberPath, "Member must satisfy enum value set: [ENABLED, DISABLED, ENABLED_WITH_OVERRIDES]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "replicaUpdates" : path + "." + "replicaUpdates");
+            if (value.ReplicaUpdates is not null)
+            {
+                if (value.ReplicaUpdates.Count < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.ReplicaUpdates, item => item.ToString()), memberPath, "Member must have length greater than or equal to 1"));
+                for (var i0 = 0; i0 < value.ReplicaUpdates.Count; i0++)
                 {
-                    Validate_AttributeDefinition(value.AttributeDefinitions[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                    Validate_ReplicationGroupUpdate(value.ReplicaUpdates[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
                 }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "billingMode" : path + "." + "billingMode");
+            if (value.BillingMode is not null)
+            {
+                if (!string.Equals(value.BillingMode, "PROVISIONED", StringComparison.Ordinal) && !string.Equals(value.BillingMode, "PAY_PER_REQUEST", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.BillingMode, memberPath, "Member must satisfy enum value set: [PROVISIONED, PAY_PER_REQUEST]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "sSESpecification" : path + "." + "sSESpecification");
+            if (value.SSESpecification is not null)
+            {
+                Validate_SSESpecification(value.SSESpecification, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
+            if (value.OnDemandThroughput is not null)
+            {
+                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "globalTableWitnessUpdates" : path + "." + "globalTableWitnessUpdates");
+            if (value.GlobalTableWitnessUpdates is not null)
+            {
+                if (value.GlobalTableWitnessUpdates.Count < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.GlobalTableWitnessUpdates, item => item.ToString()), memberPath, "Member must have length greater than or equal to 1"));
+                if (value.GlobalTableWitnessUpdates.Count > 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.GlobalTableWitnessUpdates, item => item.ToString()), memberPath, "Member must have length less than or equal to 1"));
+                for (var i0 = 0; i0 < value.GlobalTableWitnessUpdates.Count; i0++)
+                {
+                    Validate_GlobalTableWitnessGroupUpdate(value.GlobalTableWitnessUpdates[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                }
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "multiRegionConsistency" : path + "." + "multiRegionConsistency");
+            if (value.MultiRegionConsistency is not null)
+            {
+                if (!string.Equals(value.MultiRegionConsistency, "EVENTUAL", StringComparison.Ordinal) && !string.Equals(value.MultiRegionConsistency, "STRONG", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.MultiRegionConsistency, memberPath, "Member must satisfy enum value set: [EVENTUAL, STRONG]"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "provisionedThroughput" : path + "." + "provisionedThroughput");
+            if (value.ProvisionedThroughput is not null)
+            {
+                Validate_ProvisionedThroughput(value.ProvisionedThroughput, memberPath, violations);
             }
         }
         {
@@ -20272,21 +20333,6 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
                 if (value.TableName.Length > 1024)
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "billingMode" : path + "." + "billingMode");
-            if (value.BillingMode is not null)
-            {
-                if (!string.Equals(value.BillingMode, "PROVISIONED", StringComparison.Ordinal) && !string.Equals(value.BillingMode, "PAY_PER_REQUEST", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.BillingMode, memberPath, "Member must satisfy enum value set: [PROVISIONED, PAY_PER_REQUEST]"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "provisionedThroughput" : path + "." + "provisionedThroughput");
-            if (value.ProvisionedThroughput is not null)
-            {
-                Validate_ProvisionedThroughput(value.ProvisionedThroughput, memberPath, violations);
             }
         }
         {
@@ -20307,54 +20353,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "sSESpecification" : path + "." + "sSESpecification");
-            if (value.SSESpecification is not null)
-            {
-                Validate_SSESpecification(value.SSESpecification, memberPath, violations);
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "replicaUpdates" : path + "." + "replicaUpdates");
-            if (value.ReplicaUpdates is not null)
-            {
-                if (value.ReplicaUpdates.Count < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.ReplicaUpdates, item => item.ToString()), memberPath, "Member must have length greater than or equal to 1"));
-                for (var i0 = 0; i0 < value.ReplicaUpdates.Count; i0++)
-                {
-                    Validate_ReplicationGroupUpdate(value.ReplicaUpdates[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "multiRegionConsistency" : path + "." + "multiRegionConsistency");
-            if (value.MultiRegionConsistency is not null)
-            {
-                if (!string.Equals(value.MultiRegionConsistency, "EVENTUAL", StringComparison.Ordinal) && !string.Equals(value.MultiRegionConsistency, "STRONG", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.MultiRegionConsistency, memberPath, "Member must satisfy enum value set: [EVENTUAL, STRONG]"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "globalTableWitnessUpdates" : path + "." + "globalTableWitnessUpdates");
-            if (value.GlobalTableWitnessUpdates is not null)
-            {
-                if (value.GlobalTableWitnessUpdates.Count < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.GlobalTableWitnessUpdates, item => item.ToString()), memberPath, "Member must have length greater than or equal to 1"));
-                if (value.GlobalTableWitnessUpdates.Count > 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.List(value.GlobalTableWitnessUpdates, item => item.ToString()), memberPath, "Member must have length less than or equal to 1"));
-                for (var i0 = 0; i0 < value.GlobalTableWitnessUpdates.Count; i0++)
-                {
-                    Validate_GlobalTableWitnessGroupUpdate(value.GlobalTableWitnessUpdates[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
-                }
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "onDemandThroughput" : path + "." + "onDemandThroughput");
-            if (value.OnDemandThroughput is not null)
-            {
-                Validate_OnDemandThroughput(value.OnDemandThroughput, memberPath, violations);
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "warmThroughput" : path + "." + "warmThroughput");
             if (value.WarmThroughput is not null)
             {
@@ -20362,11 +20360,13 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "globalTableSettingsReplicationMode" : path + "." + "globalTableSettingsReplicationMode");
-            if (value.GlobalTableSettingsReplicationMode is not null)
+            var memberPath = (path.Length == 0 ? "attributeDefinitions" : path + "." + "attributeDefinitions");
+            if (value.AttributeDefinitions is not null)
             {
-                if (!string.Equals(value.GlobalTableSettingsReplicationMode, "ENABLED", StringComparison.Ordinal) && !string.Equals(value.GlobalTableSettingsReplicationMode, "DISABLED", StringComparison.Ordinal) && !string.Equals(value.GlobalTableSettingsReplicationMode, "ENABLED_WITH_OVERRIDES", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.GlobalTableSettingsReplicationMode, memberPath, "Member must satisfy enum value set: [ENABLED, DISABLED, ENABLED_WITH_OVERRIDES]"));
+                for (var i0 = 0; i0 < value.AttributeDefinitions.Count; i0++)
+                {
+                    Validate_AttributeDefinition(value.AttributeDefinitions[i0], memberPath + "." + (i0 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ".member", violations);
+                }
             }
         }
         {
@@ -20396,27 +20396,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
-            if (value.TableName is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.TableName is not null)
-            {
-                if (value.TableName.Length < 1)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
-                if (value.TableName.Length > 1024)
-                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "provisionedWriteCapacityAutoScalingUpdate" : path + "." + "provisionedWriteCapacityAutoScalingUpdate");
-            if (value.ProvisionedWriteCapacityAutoScalingUpdate is not null)
-            {
-                Validate_AutoScalingSettingsUpdate(value.ProvisionedWriteCapacityAutoScalingUpdate, memberPath, violations);
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "replicaUpdates" : path + "." + "replicaUpdates");
             if (value.ReplicaUpdates is not null)
             {
@@ -20428,10 +20407,13 @@ internal static partial class DynamoDbJsonSerializers
                 }
             }
         }
-    }
-
-    internal static void Validate_UpdateTimeToLiveInput(global::InMemoryAws.DynamoDb.Model.UpdateTimeToLiveRequest value, string path, List<string> violations)
-    {
+        {
+            var memberPath = (path.Length == 0 ? "provisionedWriteCapacityAutoScalingUpdate" : path + "." + "provisionedWriteCapacityAutoScalingUpdate");
+            if (value.ProvisionedWriteCapacityAutoScalingUpdate is not null)
+            {
+                Validate_AutoScalingSettingsUpdate(value.ProvisionedWriteCapacityAutoScalingUpdate, memberPath, violations);
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
             if (value.TableName is null)
@@ -20446,6 +20428,10 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
+    }
+
+    internal static void Validate_UpdateTimeToLiveInput(global::InMemoryAws.DynamoDb.Model.UpdateTimeToLiveRequest value, string path, List<string> violations)
+    {
         {
             var memberPath = (path.Length == 0 ? "timeToLiveSpecification" : path + "." + "timeToLiveSpecification");
             if (value.TimeToLiveSpecification is null)
@@ -20455,6 +20441,20 @@ internal static partial class DynamoDbJsonSerializers
             if (value.TimeToLiveSpecification is not null)
             {
                 Validate_TimeToLiveSpecification(value.TimeToLiveSpecification, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
+            if (value.TableName is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.TableName is not null)
+            {
+                if (value.TableName.Length < 1)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length greater than or equal to 1"));
+                if (value.TableName.Length > 1024)
+                    violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 1024"));
             }
         }
     }
@@ -20480,6 +20480,18 @@ internal static partial class DynamoDbJsonSerializers
     internal static void Validate_VectorIndex(global::InMemoryAws.DynamoDb.Model.VectorIndex value, string path, List<string> violations)
     {
         {
+            var memberPath = (path.Length == 0 ? "distanceFunction" : path + "." + "distanceFunction");
+            if (value.DistanceFunction is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.DistanceFunction is not null)
+            {
+                if (!string.Equals(value.DistanceFunction, "COSINE", StringComparison.Ordinal) && !string.Equals(value.DistanceFunction, "DOT_PRODUCT", StringComparison.Ordinal) && !string.Equals(value.DistanceFunction, "EUCLIDEAN", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.DistanceFunction, memberPath, "Member must satisfy enum value set: [COSINE, DOT_PRODUCT, EUCLIDEAN]"));
+            }
+        }
+        {
             var memberPath = (path.Length == 0 ? "indexName" : path + "." + "indexName");
             if (value.IndexName is null)
             {
@@ -20493,6 +20505,17 @@ internal static partial class DynamoDbJsonSerializers
                     violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must have length less than or equal to 255"));
                 if (!Pattern2.IsMatch(value.IndexName))
                     violations.Add(AwsValidation.Clause(value.IndexName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "projection" : path + "." + "projection");
+            if (value.Projection is null)
+            {
+                violations.Add(AwsValidation.Missing(memberPath));
+            }
+            if (value.Projection is not null)
+            {
+                Validate_Projection(value.Projection, memberPath, violations);
             }
         }
         {
@@ -20519,17 +20542,6 @@ internal static partial class DynamoDbJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "projection" : path + "." + "projection");
-            if (value.Projection is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.Projection is not null)
-            {
-                Validate_Projection(value.Projection, memberPath, violations);
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "dimensions" : path + "." + "dimensions");
             if (value.Dimensions is null)
             {
@@ -20539,18 +20551,6 @@ internal static partial class DynamoDbJsonSerializers
             {
                 if (value.Dimensions.Value < 1)
                     violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Dimensions.Value), memberPath, "Member must have value greater than or equal to 1"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "distanceFunction" : path + "." + "distanceFunction");
-            if (value.DistanceFunction is null)
-            {
-                violations.Add(AwsValidation.Missing(memberPath));
-            }
-            if (value.DistanceFunction is not null)
-            {
-                if (!string.Equals(value.DistanceFunction, "COSINE", StringComparison.Ordinal) && !string.Equals(value.DistanceFunction, "DOT_PRODUCT", StringComparison.Ordinal) && !string.Equals(value.DistanceFunction, "EUCLIDEAN", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.DistanceFunction, memberPath, "Member must satisfy enum value set: [COSINE, DOT_PRODUCT, EUCLIDEAN]"));
             }
         }
     }
@@ -20602,15 +20602,15 @@ internal static partial class DynamoDbJsonSerializers
     private static System.Text.RegularExpressions.Regex? _pattern2;
     private static System.Text.RegularExpressions.Regex Pattern2 => _pattern2 ??= new("^(?:[a-zA-Z0-9_.-]+)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern3;
-    private static System.Text.RegularExpressions.Regex Pattern3 => _pattern3 ??= new("^(?:[,;:|\\t ])\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern3 => _pattern3 ??= new("^(?:[\\x20-\\x21\\x23-\\x2B\\x2D-\\x7E]*)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern4;
-    private static System.Text.RegularExpressions.Regex Pattern4 => _pattern4 ??= new("^(?:[\\x20-\\x21\\x23-\\x2B\\x2D-\\x7E]*)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern4 => _pattern4 ??= new("^(?:[,;:|\\t ])\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern5;
     private static System.Text.RegularExpressions.Regex Pattern5 => _pattern5 ??= new("^(?:^[^\\$]+$)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern6;
-    private static System.Text.RegularExpressions.Regex Pattern6 => _pattern6 ??= new("^(?:^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern6 => _pattern6 ??= new("^(?:[0-9]{12})\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern7;
-    private static System.Text.RegularExpressions.Regex Pattern7 => _pattern7 ??= new("^(?:[0-9]{12})\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static System.Text.RegularExpressions.Regex Pattern7 => _pattern7 ??= new("^(?:^[a-z0-9A-Z]+[\\.\\-\\w]*[a-z0-9A-Z]+$)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static System.Text.RegularExpressions.Regex? _pattern8;
     private static System.Text.RegularExpressions.Regex Pattern8 => _pattern8 ??= new("^(?:([0-9a-f]{16})+)\\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 }

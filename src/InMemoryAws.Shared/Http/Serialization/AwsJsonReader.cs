@@ -42,10 +42,23 @@ internal static class AwsJsonReader
         }
     }
 
-    public static string ReadString(JsonElement element) =>
-        element.ValueKind == JsonValueKind.String
-            ? element.GetString()!
-            : throw new InternalSerializationException("Unexpected value type in payload: expected a string");
+    /// <summary>
+    /// A string member. Any other JSON value is refused as DynamoDB's Jackson-based reader words it,
+    /// naming the token it found; an array gets no message at all.
+    /// </summary>
+    public static string ReadString(JsonElement element) => element.ValueKind switch
+    {
+        JsonValueKind.String => element.GetString()!,
+        JsonValueKind.Number => throw new InternalSerializationException(
+            IsInteger(element) ? "NUMBER_VALUE cannot be converted to String" : "DECIMAL_VALUE cannot be converted to String"),
+        JsonValueKind.True => throw new InternalSerializationException("TRUE_VALUE cannot be converted to String"),
+        JsonValueKind.False => throw new InternalSerializationException("FALSE_VALUE cannot be converted to String"),
+        JsonValueKind.Object => throw new InternalSerializationException("Start of structure or map found where not expected"),
+        _ => throw new InternalSerializationException(string.Empty),
+    };
+
+    /// <summary>A number written without a fraction or exponent: Jackson's <c>VALUE_NUMBER_INT</c>.</summary>
+    private static bool IsInteger(JsonElement element) => element.GetRawText().IndexOfAny(['.', 'e', 'E']) < 0;
 
     public static int ReadInt32(JsonElement element) =>
         element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var value)
