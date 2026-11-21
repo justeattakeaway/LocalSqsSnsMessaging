@@ -1,3 +1,4 @@
+using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,12 +22,7 @@ public sealed class AspireFixture : IAsyncInitializer, IAsyncDisposable
             return;
         }
 
-#pragma warning disable CA1849
-        // ReSharper disable once MethodHasAsyncOverload
-        _builder = DistributedApplicationTestingBuilder.Create();
-#pragma warning restore CA1849
-
-        _builder.AddFloci();
+        _builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.InMemoryAws_Tests_Verification_AppHost>();
 
         // Disable aspire host logs as they will populate a random test output
         _builder.Services.Add(ServiceDescriptor.Singleton<ILoggerFactory>(NullLoggerFactory.Instance));

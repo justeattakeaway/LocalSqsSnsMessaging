@@ -21,6 +21,7 @@
   <Project Path="src/InMemoryAws/InMemoryAws.csproj" />
   <Project Path="tests/InMemoryAws.Tests.AwsSdkV3/InMemoryAws.Tests.AwsSdkV3.csproj" />
   <Project Path="tests/InMemoryAws.Tests.NetFramework/InMemoryAws.Tests.NetFramework.csproj" />
+  <Project Path="tests/InMemoryAws.Tests.Verification.AppHost/InMemoryAws.Tests.Verification.AppHost.csproj" />
   <Project Path="tests/InMemoryAws.Tests.Verification/InMemoryAws.Tests.Verification.csproj" />
   <Project Path="tests/InMemoryAws.Tests.Server/InMemoryAws.Tests.Server.csproj" />
   <Project Path="tests/InMemoryAws.Tests/InMemoryAws.Tests.csproj" />
