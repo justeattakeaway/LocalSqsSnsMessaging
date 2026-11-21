@@ -2,13 +2,13 @@
   <ItemGroup>
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="17.0.0" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="17.0.0" />
-    <PackageVersion Include="AWSSDK.Core" Version="4.1.1" />
-    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="4.1.0.1" />
-    <PackageVersion Include="AWSSDK.DynamoDBStreams" Version="4.1.1" />
-    <PackageVersion Include="AWSSDK.EventBridge" Version="4.1.0.1" />
-    <PackageVersion Include="AWSSDK.S3" Version="4.1.1" />
-    <PackageVersion Include="AWSSDK.SQS" Version="4.1.0.1" />
-    <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.1.0.1" />
+    <PackageVersion Include="AWSSDK.Core" Version="4.1.1.2" />
+    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="4.1.0.3" />
+    <PackageVersion Include="AWSSDK.DynamoDBStreams" Version="4.1.1.1" />
+    <PackageVersion Include="AWSSDK.EventBridge" Version="4.1.0.2" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.1.2" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.1.0.2" />
+    <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.1.0.2" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="OpenTelemetry" Version="1.21.0" />
     <PackageVersion Include="Meziantou.Polyfill" Version="1.0.173" />
