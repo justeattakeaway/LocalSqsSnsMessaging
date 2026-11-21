@@ -174,10 +174,12 @@ namespace InMemoryAws
         }
 
         /// <summary>
-        /// Points <paramref name="config"/> at <paramref name="cloud"/>: the service's endpoint in the cloud's
-        /// current region, a factory that sends to the cloud, and no retries.
+        /// Points <paramref name="config"/> at <paramref name="cloud"/>: the service's endpoint in
+        /// <paramref name="region"/> (the cloud's current region when <see langword="null"/>), a factory that sends
+        /// to the cloud, and no retries; then hands it to <paramref name="configure"/>.
         /// </summary>
-        private static TConfig ConfigureForCloud<TConfig>(InMemoryAwsCloud cloud, TConfig config, AwsServiceType serviceType)
+        private static TConfig ConfigureForCloud<TConfig>(
+            InMemoryAwsCloud cloud, TConfig config, AwsServiceType serviceType, string region, Action<TConfig> configure)
             where TConfig : ClientConfig
         {
             if (cloud == null)
@@ -185,10 +187,18 @@ namespace InMemoryAws
                 throw new ArgumentNullException(nameof(cloud));
             }
 
-            config.ServiceURL = AwsServiceEndpoints.GetServiceUrl(cloud, serviceType).AbsoluteUri;
-            config.AuthenticationRegion = cloud.CurrentRegion;
+            var serviceUrl = region == null
+                ? AwsServiceEndpoints.GetServiceUrl(cloud, serviceType)
+                : AwsServiceEndpoints.GetServiceUrl(region, serviceType);
+            config.ServiceURL = serviceUrl.AbsoluteUri;
+            config.AuthenticationRegion = region ?? cloud.CurrentRegion;
             config.MaxErrorRetry = 0;
             config.HttpClientFactory = new InMemoryAwsSdkHttpClientFactory(cloud);
+            if (configure != null)
+            {
+                configure(config);
+            }
+
             return config;
         }
     }

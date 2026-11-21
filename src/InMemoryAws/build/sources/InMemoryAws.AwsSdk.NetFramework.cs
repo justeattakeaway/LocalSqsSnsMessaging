@@ -23,12 +23,14 @@ namespace InMemoryAws
     internal static partial class InMemoryAwsSdkExtensions
     {
         /// <summary>
-        /// Points <paramref name="config"/> at <paramref name="cloud"/>: the service's endpoint in the cloud's
-        /// current region, and no retries. On .NET Framework the AWS SDK sends requests with HttpWebRequest, so it
-        /// has no HttpClientFactory; a client built with this config has its pipeline's HTTP handler replaced
-        /// (<see cref="InMemoryAwsPipelineCustomizer"/>) to send its requests to the cloud.
+        /// Points <paramref name="config"/> at <paramref name="cloud"/>: the service's endpoint in
+        /// <paramref name="region"/> (the cloud's current region when <see langword="null"/>), and no retries; then
+        /// hands it to <paramref name="configure"/>. On .NET Framework the AWS SDK sends requests with
+        /// HttpWebRequest, so it has no HttpClientFactory; a client built with this config has its pipeline's HTTP
+        /// handler replaced (<see cref="InMemoryAwsPipelineCustomizer"/>) to send its requests to the cloud.
         /// </summary>
-        private static TConfig ConfigureForCloud<TConfig>(InMemoryAwsCloud cloud, TConfig config, AwsServiceType serviceType)
+        private static TConfig ConfigureForCloud<TConfig>(
+            InMemoryAwsCloud cloud, TConfig config, AwsServiceType serviceType, string region, Action<TConfig> configure)
             where TConfig : ClientConfig
         {
             if (cloud == null)
@@ -36,10 +38,18 @@ namespace InMemoryAws
                 throw new ArgumentNullException(nameof(cloud));
             }
 
-            config.ServiceURL = AwsServiceEndpoints.GetServiceUrl(cloud, serviceType).AbsoluteUri;
-            config.AuthenticationRegion = cloud.CurrentRegion;
+            var serviceUrl = region == null
+                ? AwsServiceEndpoints.GetServiceUrl(cloud, serviceType)
+                : AwsServiceEndpoints.GetServiceUrl(region, serviceType);
+            config.ServiceURL = serviceUrl.AbsoluteUri;
+            config.AuthenticationRegion = region ?? cloud.CurrentRegion;
             config.MaxErrorRetry = 0;
             InMemoryAwsPipelineCustomizer.Route(config, new InMemoryAwsHttpMessageHandler(cloud, serviceType));
+            if (configure != null)
+            {
+                configure(config);
+            }
+
             return config;
         }
     }

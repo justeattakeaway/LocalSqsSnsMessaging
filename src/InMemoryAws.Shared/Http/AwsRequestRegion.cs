@@ -130,7 +130,7 @@ internal static class AwsRequestRegion
     }
 
     /// <summary>A plausible region name: lowercase letters and digits in hyphen-separated parts, e.g. <c>eu-west-2</c>.</summary>
-    private static bool IsRegionName(string value)
+    internal static bool IsRegionName(string value)
     {
         if (value.Length is < 4 or > 32 || value[0] == '-' || value[^1] == '-')
         {

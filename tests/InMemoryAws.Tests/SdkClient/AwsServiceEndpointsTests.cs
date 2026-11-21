@@ -59,6 +59,26 @@ public sealed class AwsServiceEndpointsTests
     public void AnUnknownServiceTypeIsRefused()
     {
         Should.Throw<ArgumentOutOfRangeException>(() => AwsServiceEndpoints.GetServiceName((AwsServiceType)42));
-        Should.Throw<ArgumentNullException>(() => AwsServiceEndpoints.GetServiceUrl(null!, AwsServiceType.Sqs));
+        Should.Throw<ArgumentNullException>(() => AwsServiceEndpoints.GetServiceUrl((InMemoryAwsCloud)null!, AwsServiceType.Sqs));
+        Should.Throw<ArgumentNullException>(() => AwsServiceEndpoints.GetServiceUrl((string)null!, AwsServiceType.Sqs));
+    }
+
+    [Test]
+    public void TheServiceUrlForARegionIsTheServicesEndpointThere()
+    {
+        AwsServiceEndpoints.GetServiceUrl("ap-southeast-2", AwsServiceType.Sns).ShouldBe(new Uri("https://sns.ap-southeast-2.amazonaws.com"));
+        AwsServiceEndpoints.GetServiceUrl("us-gov-west-1", AwsServiceType.S3).ShouldBe(new Uri("https://s3.us-gov-west-1.amazonaws.com"));
+    }
+
+    [Test]
+    [Arguments("EU-WEST-1")]
+    [Arguments("eu-west-1.")]
+    [Arguments("-eu-west-1")]
+    [Arguments("local")]
+    [Arguments("")]
+    public void AServiceUrlForSomethingThatIsNotARegionNameIsRefused(string region)
+    {
+        // The cloud reads a request's region from its host only when it looks like a region name.
+        Should.Throw<ArgumentException>(() => AwsServiceEndpoints.GetServiceUrl(region, AwsServiceType.Sqs)).ParamName.ShouldBe("region");
     }
 }

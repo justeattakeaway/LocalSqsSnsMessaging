@@ -55,6 +55,22 @@ public sealed class BringYourOwnSdkTests
         error.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
     }
 
+    [Test]
+    public async Task AClientCanBeInAnotherRegion()
+    {
+        var cloud = new InMemoryAwsCloud();
+        using var sqs = cloud.CreateSqsClient("eu-west-1", config => config.Timeout = TimeSpan.FromSeconds(7));
+        using var sns = cloud.CreateSnsClient("eu-west-1");
+        using var usEast1 = cloud.CreateSqsClient();
+
+        var queueUrl = (await sqs.CreateQueueAsync("orders")).QueueUrl;
+
+        queueUrl.ShouldBe("https://sqs.eu-west-1.amazonaws.com/000000000000/orders");
+        (await sns.CreateTopicAsync("orders")).TopicArn.ShouldBe("arn:aws:sns:eu-west-1:000000000000:orders");
+        sqs.Config.Timeout.ShouldBe(TimeSpan.FromSeconds(7));
+        await Should.ThrowAsync<QueueDoesNotExistException>(() => usEast1.GetQueueUrlAsync("orders"));
+    }
+
 #if NETFRAMEWORK
     [Test]
     public void TheSynchronousApiWorks()
