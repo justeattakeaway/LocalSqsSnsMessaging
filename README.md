@@ -20,6 +20,7 @@ It comes in two flavours that share the same in-memory cloud (`InMemoryAwsCloud`
 > - Change `using LocalSqsSnsMessaging;` to `using InMemoryAws;` (and the same for the sub-namespaces).
 > - Rename `InMemoryAwsBus` to `InMemoryAwsCloud`. Its members are unchanged; only parameters that were named `bus` are now named `cloud`.
 > - `InMemoryAwsHttpClientFactory` is now `InMemoryAwsSdkHttpClientFactory`, and `CreateAwsHttpClientFactory()` is `CreateAwsSdkHttpClientFactory()`, to make clear they are the AWS SDK's `Amazon.Runtime.HttpClientFactory`, not .NET's `IHttpClientFactory`. Like the `Create...Client()` methods, they are compiled into your project, so they are `internal` to it.
+> - Resources are now regional (see [Regions](#regions)). The `Create...Client()` methods use the cloud's `CurrentRegion` (`us-east-1` unless you set it); to have a client in another region, pass it: `cloud.CreateSqsClient("eu-west-1")`. If your application's clients are configured for a region (say, `RegionEndpoint.EUWest1`) and your test wires them to the cloud, create the test's own clients in that region too, or set `CurrentRegion` to it, or they won't see the same queues and topics.
 > - The server's container image is now `ghcr.io/justeattakeaway/inmemory-aws`, and its release binaries are named `inmemory-aws-<rid>`.
 
 ### What's emulated
@@ -73,7 +74,14 @@ dotnet add package AWSSDK.SQS
 | `AWSSDK.DynamoDBStreams` (AWS SDK v4) | `CreateDynamoDbStreamsClient()` |
 | `AWSSDK.S3` | `CreateS3Client()` |
 
-The files are added by the package's MSBuild targets (`build/InMemoryAws.targets`), whichever way the SDK is referenced: directly, transitively, through `packages.config` or as a plain assembly reference. They need C# 7.3 or later, and are `internal` to your project. Your IDE sees them like any other file; they aren't copied into your source tree.
+Each `Create...Client()` also takes a region, and a callback for the rest of the client's config (see [Regions](#regions)):
+
+```csharp
+using var sqs = cloud.CreateSqsClient("eu-west-1");
+using var s3 = cloud.CreateS3Client("eu-west-2", config => config.Timeout = TimeSpan.FromSeconds(5));
+```
+
+The files are added by the package's MSBuild targets (`build/InMemoryAws.targets`), whichever way the SDK is referenced: directly, transitively, through `packages.config` or as a plain assembly reference. NuGet imports the targets (through `buildTransitive/`) into every project that gets `InMemoryAws`, whether it references the package itself or gets it through a project reference, such as a test project that references a shared test library; each of those projects that references the AWS SDK compiles its own copy. They need C# 7.3 or later, and are `internal` to your project. Your IDE sees them like any other file; they aren't copied into your source tree.
 
 Set `InMemoryAwsSdkSources` to `false` in a project to leave them out:
 
@@ -83,7 +91,7 @@ Set `InMemoryAwsSdkSources` to `false` in a project to leave them out:
 </PropertyGroup>
 ```
 
-You need this when two projects that both reference `InMemoryAws` share internals (one has `InternalsVisibleTo` the other), so the two copies of `CreateSqsClient()` don't clash: opt one of them out.
+You need this in a project that can see the internals of another project with its own copy (the other has `InternalsVisibleTo` it): it sees both copies, and calls such as `CreateSqsClient()` are ambiguous (`CS0121`). Opt out the project that sees the other's internals; it then calls the other project's copy (see [Troubleshooting](#troubleshooting-the-build-integration)).
 
 > [!NOTE]
 > **.NET Framework** works too (tested on 4.8), with AWS SDK v3 or v4. The AWS SDK sends requests with `HttpWebRequest` there, not `HttpClient`, so it has no `HttpClientFactory`; instead each client `Create...Client()` makes has the HTTP handler in its request pipeline replaced with one that sends to the cloud. `CreateAwsSdkHttpClientFactory()`, which needs the SDK's `HttpClientFactory`, isn't available on .NET Framework.
@@ -114,7 +122,26 @@ sealed class InMemoryAwsHttpClientFactory(InMemoryAwsCloud cloud) : HttpClientFa
 }
 ```
 
-The package's own versions, under `build/sources/` in the package, add a fallback for other services and reuse one handler per service.
+For a client in another region, use `AwsServiceEndpoints.GetServiceUrl("eu-west-1", AwsServiceType.Sqs)` as its `ServiceURL`. The package's own versions, under `build/sources/` in the package, add a fallback for other services and reuse one handler per service.
+
+### Troubleshooting the build integration
+
+**`'InMemoryAwsCloud' does not contain a definition for 'CreateSqsClient'` (`CS1061`).** `InMemoryAwsCloud` comes from the library, but `CreateSqsClient()` is compiled into each project that references `AWSSDK.SQS`, so the type can be there without the method. Check that the project:
+
+- references the AWS SDK package for that service, itself or through another reference: there's a `Create...Client()` only for the service packages the project references;
+- doesn't set `InMemoryAwsSdkSources` to `false`, itself or in a `Directory.Build.props`;
+- gets `InMemoryAws` with its build assets: a project that gets it through a project reference gets nothing if that project references it with `PrivateAssets="all"`, or excludes `buildTransitive` from it;
+- is a C# project: VB and F# projects get no sources (see [Without the build integration](#without-the-build-integration)).
+
+**`The call is ambiguous between ... InMemoryAwsSdkExtensions.CreateSqsClient(...)` (`CS0121`), or, where it names the type, a `CS0436` warning about `InMemoryAwsSdkHttpClientFactory`.** The project sees two copies: its own, and that of a project whose internals it can see (`InternalsVisibleTo`), such as a shared test library with `InternalsVisibleTo` to its test projects. Set `InMemoryAwsSdkSources` to `false` in the project that sees the other's internals; it then uses the other project's copy, with the `Create...Client()` methods for the services that project references.
+
+**Exposing the factory from a shared library.** `InMemoryAwsSdkHttpClientFactory` is `internal` to each project, like the rest of the copy, so a shared test library can't return it from a public member. Type the member as the AWS SDK's `Amazon.Runtime.HttpClientFactory`, which is all a client config needs:
+
+```csharp
+public Amazon.Runtime.HttpClientFactory CreateHttpClientFactory() => Cloud.CreateAwsSdkHttpClientFactory();
+```
+
+Making the copy `public` instead would put the shared library's copy next to the one each downstream project compiles, and every call would be ambiguous.
 
 ## Examples
 
@@ -193,14 +220,31 @@ All actions in this library that depend on delays or timeouts use the `TimeProvi
 
 ### Regions
 
-Queues, topics and event buses are regional, as on AWS. Each SDK request is served from the resources of the region it was signed for (or, unsigned, the region in its endpoint host, such as `sqs.eu-west-1.amazonaws.com`), and from the cloud's `CurrentRegion` (default `us-east-1`) when it names none. The clients from `CreateSqsClient()`, `CreateSnsClient()` and `CreateEventBridgeClient()`, and the raw clients, use `CurrentRegion`.
+Queues, topics, event buses and DynamoDB tables are regional, as on AWS, and each S3 bucket is in the region it was created in. Each SDK request is served from the resources of the region it was signed for (or, unsigned, the region in its endpoint host, such as `sqs.eu-west-1.amazonaws.com`), and from the cloud's `CurrentRegion` (default `us-east-1`) when it names none. The clients from `CreateSqsClient()` and the other `Create...Client()` methods, and the raw clients, use `CurrentRegion`.
 
 So same-named resources in two regions are separate, ARNs and queue URLs name the region a resource was created in, and a client in one region can't see another region's resources. Deliveries that address a resource by ARN go to the region the ARN names: an SNS topic can deliver to a queue in another region, and an EventBridge rule can forward to an event bus in another region.
 
-If your application's SDK clients are configured for a region other than `us-east-1` and you wire them to the cloud (for example with `CreateAwsSdkHttpClientFactory`), set `CurrentRegion` to match, so your test's own clients see the same resources:
+To create a client in another region, pass the region (a `RegionEndpoint`'s `SystemName`):
+
+```csharp
+var aws = new InMemoryAwsCloud();
+using var sqs = aws.CreateSqsClient("eu-west-1");
+
+var queueUrl = (await sqs.CreateQueueAsync("orders")).QueueUrl; // https://sqs.eu-west-1.amazonaws.com/000000000000/orders
+```
+
+The region must look like one (lowercase letters and digits in hyphen-separated parts, such as `eu-west-1`), or the method throws `ArgumentException`: the cloud would otherwise not recognise it and serve the client from `CurrentRegion`. `null` means `CurrentRegion`. The second parameter, `configure`, changes the rest of the client's config once it points at the cloud, for settings such as `Timeout` or `MaxErrorRetry` (0 by default); leave its endpoint and region alone. Outside `us-east-1`, S3 wants a new bucket's region as its location constraint, as on AWS; the SDK sends the client's region for you.
+
+If your application's SDK clients are configured for a region other than `us-east-1` and you wire them to the cloud (for example with `CreateAwsSdkHttpClientFactory`), so they are served that region's resources, create your test's own clients in the same region, or set `CurrentRegion` to match, so they see the same resources:
 
 ```csharp
 var aws = new InMemoryAwsCloud { CurrentRegion = "eu-west-1" };
+```
+
+An application's client factory that takes a region can honour it with the same methods:
+
+```csharp
+public IAmazonSQS GetSqsClient(RegionEndpoint region) => cloud.CreateSqsClient(region.SystemName);
 ```
 
 > Up to v1.0.x, `InMemoryAwsBus` served every request from `CurrentRegion`, whatever region its client was configured for. If your tests relied on that, set `CurrentRegion` to your application's region as above.
