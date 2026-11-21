@@ -468,7 +468,13 @@ internal sealed class UpdateProgram(string member, IReadOnlyList<UpdateAction> a
                     actions.Add(update.Value is null ? new RemoveAction(path) : new DeleteAction(path, update.Value));
                     break;
                 case "ADD":
-                    actions.Add(new AddAction(path, Required(name, update)));
+                    var added = Required(name, update);
+                    if (added.Type is not (DynamoType.N or DynamoType.NS or DynamoType.SS or DynamoType.BS or DynamoType.L))
+                    {
+                        throw DynamoDbErrors.ValidationClause($"One or more parameter values were invalid: ADD action is not supported for the type {added.Type}");
+                    }
+
+                    actions.Add(new AddAction(path, added));
                     break;
                 default:
                     throw DynamoDbErrors.Validation($"One or more parameter values were invalid: Unknown AttributeUpdates action: {update.Action} for attribute {name}");
