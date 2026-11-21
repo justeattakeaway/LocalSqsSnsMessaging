@@ -45,6 +45,18 @@ internal sealed class ShapeJsonCodeGenerator
     /// </summary>
     private static readonly HashSet<string> ServiceCheckedShapes = new(StringComparer.Ordinal) { "TableClass" };
 
+    /// <summary>
+    /// Enums whose value set AWS's validation lists in an order of its own, not the model's (most
+    /// follow the model), as measured against DynamoDB.
+    /// </summary>
+    private static readonly Dictionary<string, string[]> EnumSetOrder = new(StringComparer.Ordinal)
+    {
+        ["ReturnValue"] = ["ALL_NEW", "UPDATED_OLD", "ALL_OLD", "NONE", "UPDATED_NEW"],
+    };
+
+    private static IEnumerable<string> EnumValues(string shapeName, JsonElement values) =>
+        EnumSetOrder.TryGetValue(shapeName, out var ordered) ? ordered : values.EnumerateArray().Select(v => v.GetString()!);
+
     /// <summary>A shape served by a hand-written type.</summary>
     /// <param name="TypeName">The C# type.</param>
     /// <param name="Read">A method taking a <c>JsonElement</c> and returning the type.</param>
@@ -159,6 +171,41 @@ internal sealed class ShapeJsonCodeGenerator
         structure.TryGetProperty("members", out var members)
             ? members.EnumerateObject().Select(m => (m.Name, m.Value.GetProperty("shape").GetString()!))
             : [];
+
+    /// <summary>
+    /// The members in the order AWS's request validation reports them: the iteration order of a Java
+    /// <c>HashMap</c> keyed by their wire names (lowerCamel), filled in model order. A bucket is the
+    /// spread hash of the name masked by the table's size, the smallest power of two from 16 that
+    /// holds the members at a load factor of 0.75; members sharing a bucket keep their model order.
+    /// </summary>
+    private static IEnumerable<(string Name, string Shape)> InValidationOrder(IEnumerable<(string Name, string Shape)> members)
+    {
+        var list = members.ToList();
+        var capacity = 16;
+        while (list.Count > capacity * 3 / 4)
+        {
+            capacity *= 2;
+        }
+
+        return list
+            .Select((member, index) => (member, index, bucket: JavaHashMapBucket(LowerCamel(member.Name), capacity)))
+            .OrderBy(m => m.bucket)
+            .ThenBy(m => m.index)
+            .Select(m => m.member);
+    }
+
+    /// <summary>The bucket <c>java.util.HashMap</c> puts <paramref name="key"/> in: <c>(h ^ (h &gt;&gt;&gt; 16)) &amp; (capacity - 1)</c>.</summary>
+    private static int JavaHashMapBucket(string key, int capacity)
+    {
+        var hash = 0;
+        foreach (var c in key)
+        {
+            hash = unchecked((31 * hash) + c);
+        }
+
+        hash ^= (int)((uint)hash >> 16);
+        return hash & (capacity - 1);
+    }
 
     private static HashSet<string> Required(JsonElement structure) =>
         structure.TryGetProperty("required", out var required)
@@ -501,7 +548,7 @@ internal sealed class ShapeJsonCodeGenerator
         var required = Required(shape);
         code.AppendLine($"    internal static void Validate_{shapeName}(global::{_modelNamespace}.{className} value, string path, List<string> violations)");
         code.AppendLine("    {");
-        foreach (var (name, memberShape) in Members(shape))
+        foreach (var (name, memberShape) in InValidationOrder(Members(shape)))
         {
             var property = $"value.{PropertyName(className, name)}";
             var memberPath = $"{Literal(LowerCamel(name))}";
@@ -577,7 +624,7 @@ internal sealed class ShapeJsonCodeGenerator
                 // the client checks it.
                 if (shape.TryGetProperty("enum", out var values) && shapeName != "ConditionalOperator")
                 {
-                    var names = values.EnumerateArray().Select(v => v.GetString()!).ToList();
+                    var names = EnumValues(shapeName, values).ToList();
                     code.AppendLine($"{indent}if ({string.Join(" && ", names.Select(n => $"!string.Equals({value}, {Literal(n)}, StringComparison.Ordinal)"))})");
                     code.AppendLine($"{indent}    violations.Add(AwsValidation.Clause({value}, {pathVariable}, {Literal("Member must satisfy enum value set: [" + string.Join(", ", names) + "]")}));");
                 }
@@ -772,7 +819,7 @@ internal sealed class ShapeJsonCodeGenerator
 
         if (shape.TryGetProperty("enum", out var values))
         {
-            result.Add($"Member must satisfy enum value set: [{string.Join(", ", values.EnumerateArray().Select(v => v.GetString()))}]");
+            result.Add($"Member must satisfy enum value set: [{string.Join(", ", EnumValues(shapeName, values))}]");
         }
 
         return result;
