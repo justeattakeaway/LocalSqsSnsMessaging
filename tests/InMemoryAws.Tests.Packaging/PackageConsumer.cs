@@ -67,10 +67,12 @@ public sealed class PackageConsumer : IAsyncInitializer, IAsyncDisposable
     /// <summary>The files <c>build/InMemoryAws.targets</c> added to the compilation of the consumer project at <paramref name="project"/>.</summary>
     public async Task<IReadOnlyList<string>> SdkSourcesCompiledAsync(string project)
     {
-        // With a target named, -getItem reports the items once it has run, including those targets added.
-        var build = await RunAsync(project, "build", "--no-restore", "-t:Build", "-getItem:Compile");
+        // With a target named, -getItem reports the items once it has run, including those targets added. It goes
+        // to a file, as the console output can carry other messages besides (on Windows, after the JSON).
+        var result = Path.Combine(Workspace, project, "compile-items.json");
+        var build = await RunAsync(project, "build", "--no-restore", "-t:Build", "-getItem:Compile", "-getResultOutputFile:" + result);
         build.ShouldSucceed();
-        using var json = JsonDocument.Parse(build.Output[build.Output.IndexOf('{', StringComparison.Ordinal)..]);
+        using var json = JsonDocument.Parse(await File.ReadAllTextAsync(result));
         return json.RootElement.GetProperty("Items").GetProperty("Compile").EnumerateArray()
             .Select(item => item.GetProperty("FullPath").GetString()!)
             .Where(path => path.Replace('\\', '/').Contains("/build/sources/", StringComparison.Ordinal))
