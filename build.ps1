@@ -70,7 +70,8 @@ $dotnet = Join-Path "$env:DOTNET_INSTALL_DIR" "dotnet"
 function DotNetTest {
     param(
         [string] $Project,
-        [string] $Framework
+        [string] $Framework,
+        [string] $Timeout = "2m"
     )
 
     $testResultsDir = Join-Path $solutionPath "test-results"
@@ -90,7 +91,7 @@ function DotNetTest {
         "--coverage-output"; "coverage.cobertura.xml"
         "--coverage-settings"; (Join-Path $solutionPath "codecoverage.runsettings")
         "--results-directory"; $projectResultsDir
-        "--timeout"; "2m"
+        "--timeout"; $Timeout
     )
 
     try {
@@ -127,7 +128,8 @@ $awsSdkV3Tests = Join-Path $solutionPath "tests" "InMemoryAws.Tests.AwsSdkV3" "I
 $testProjects = @(
     @{ Project = (Join-Path $solutionPath "tests" "InMemoryAws.Tests" "InMemoryAws.Tests.csproj") },
     @{ Project = $awsSdkV3Tests; Framework = "net10.0" },
-    @{ Project = (Join-Path $solutionPath "tests" "InMemoryAws.Tests.Packaging" "InMemoryAws.Tests.Packaging.csproj") }
+    # Packs the library, then restores and builds projects against it: close to two minutes on a CI runner.
+    @{ Project = (Join-Path $solutionPath "tests" "InMemoryAws.Tests.Packaging" "InMemoryAws.Tests.Packaging.csproj"); Timeout = "10m" }
 )
 
 # .NET Framework test runs need Windows.
@@ -170,6 +172,7 @@ ForEach ($project in $packageProjects) {
 if ($SkipTests -eq $false) {
     Write-Host "Testing $($testProjects.Count) project(s)..." -ForegroundColor Green
     ForEach ($test in $testProjects) {
-        DotNetTest -Project $test.Project -Framework $test.Framework
+        $timeout = if ($test.Timeout) { $test.Timeout } else { "2m" }
+        DotNetTest -Project $test.Project -Framework $test.Framework -Timeout $timeout
     }
 }
