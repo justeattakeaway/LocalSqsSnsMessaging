@@ -1,0 +1,8 @@
+<Project>
+  <!--
+    NuGet imports buildTransitive/ in every project that gets InMemoryAws, directly or through a project or
+    package reference (and prefers it to build/ for direct references), so each such project that references
+    the AWS SDK gets its own internal copy of the AWS SDK glue. See build/InMemoryAws.targets.
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)../build/InMemoryAws.targets" />
+</Project>

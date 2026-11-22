@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- References InMemoryAws but no AWS SDK. -->
+  <ItemGroup>
+    <PackageReference Include="InMemoryAws" />
+  </ItemGroup>
+</Project>

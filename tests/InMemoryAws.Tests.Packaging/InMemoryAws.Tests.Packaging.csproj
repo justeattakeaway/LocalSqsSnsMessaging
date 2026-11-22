@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The InMemoryAws package as consumers get it: packs src/InMemoryAws into a feed of its own, then restores and
+      builds the projects under Consumers/ against it, outside the repository. Needs network access for any AWS SDK
+      package that isn't already in the NuGet global packages folder.
+    -->
+    <PropertyGroup>
+      <TargetFramework>net10.0</TargetFramework>
+      <OutputType>Exe</OutputType>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <Nullable>enable</Nullable>
+      <IsPackable>false</IsPackable>
+      <IsTestProject>true</IsTestProject>
+      <NoWarn>$(NoWarn);CA1051;CA2007;CA1707</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Compile Remove="Consumers\**" />
+      <None Remove="Consumers\**" />
+      <None Include="Consumers\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Shouldly" />
+    </ItemGroup>
+
+</Project>

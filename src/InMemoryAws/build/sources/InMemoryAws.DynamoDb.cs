@@ -6,6 +6,7 @@
 
 namespace InMemoryAws
 {
+    using global::System;
     using global::Amazon.Runtime;
     using global::Amazon.DynamoDBv2;
     using global::InMemoryAws.Http;
@@ -19,7 +20,27 @@ namespace InMemoryAws
         /// <returns>The client.</returns>
         public static AmazonDynamoDBClient CreateDynamoDbClient(this InMemoryAwsCloud cloud)
         {
-            return new AmazonDynamoDBClient(new AnonymousAWSCredentials(), ConfigureForCloud(cloud, new AmazonDynamoDBConfig(), AwsServiceType.DynamoDb));
+            return CreateDynamoDbClient(cloud, null, null);
+        }
+
+        /// <summary>
+        /// Creates a DynamoDB client that sends its requests to <paramref name="cloud"/>, in <paramref name="region"/>.
+        /// Its tables, streams and backups are that region's, and their ARNs name it.
+        /// </summary>
+        /// <param name="cloud">The cloud.</param>
+        /// <param name="region">
+        /// The client's region, such as <c>eu-west-1</c> (a <c>RegionEndpoint</c>'s <c>SystemName</c>), or
+        /// <see langword="null"/> for the cloud's <c>CurrentRegion</c>.
+        /// </param>
+        /// <param name="configure">
+        /// Changes the client's config once it points at the cloud, for settings such as <c>Timeout</c> or
+        /// <c>MaxErrorRetry</c> (0 by default); or <see langword="null"/>. Leave its endpoint and region alone: they come from <paramref name="region"/>.
+        /// </param>
+        /// <returns>The client.</returns>
+        /// <exception cref="ArgumentException"><paramref name="region"/> isn't a region name.</exception>
+        public static AmazonDynamoDBClient CreateDynamoDbClient(this InMemoryAwsCloud cloud, string region, Action<AmazonDynamoDBConfig> configure = null)
+        {
+            return new AmazonDynamoDBClient(new AnonymousAWSCredentials(), ConfigureForCloud(cloud, new AmazonDynamoDBConfig(), AwsServiceType.DynamoDb, region, configure));
         }
     }
 }

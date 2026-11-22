@@ -59,6 +59,34 @@ public static class AwsServiceEndpoints
     public static Uri GetServiceUrl(InMemoryAwsCloud cloud, AwsServiceType serviceType)
     {
         ArgumentNullException.ThrowIfNull(cloud);
-        return new Uri($"https://{GetServiceName(serviceType)}.{cloud.CurrentRegion}.amazonaws.com");
+
+        // Not checked as a region name: a request that names no region is served from CurrentRegion anyway.
+        return ServiceUrl(cloud.CurrentRegion, serviceType);
     }
+
+    /// <summary>
+    /// The URL an AWS SDK client for <paramref name="serviceType"/> in <paramref name="region"/> should use as
+    /// its <c>ServiceURL</c>, such as <c>https://sqs.eu-west-1.amazonaws.com</c>. The cloud serves an unsigned
+    /// request to it from that region's resources (a signed one, from the region it was signed for, so set the
+    /// client config's <c>AuthenticationRegion</c> to <paramref name="region"/> too).
+    /// </summary>
+    /// <param name="region">The region, such as <c>eu-west-1</c> (an AWS SDK <c>RegionEndpoint</c>'s <c>SystemName</c>).</param>
+    /// <param name="serviceType">The service.</param>
+    /// <returns>The service URL.</returns>
+    /// <exception cref="ArgumentException"><paramref name="region"/> isn't a region name: lowercase letters and digits in hyphen-separated parts.</exception>
+    public static Uri GetServiceUrl(string region, AwsServiceType serviceType)
+    {
+        ArgumentNullException.ThrowIfNull(region);
+        if (!AwsRequestRegion.IsRegionName(region))
+        {
+            // The cloud reads a request's region from its endpoint host only when it looks like one, and would
+            // otherwise serve it from CurrentRegion without a word.
+            throw new ArgumentException($"'{region}' is not an AWS region name, such as 'eu-west-1'.", nameof(region));
+        }
+
+        return ServiceUrl(region, serviceType);
+    }
+
+    private static Uri ServiceUrl(string region, AwsServiceType serviceType) =>
+        new($"https://{GetServiceName(serviceType)}.{region}.amazonaws.com");
 }

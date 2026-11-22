@@ -10,10 +10,14 @@
 
     <ItemGroup>
         <Compile Include="..\InMemoryAws.Shared\**\*.cs" Link="%(RecursiveDir)%(Filename)%(Extension)" />
-        <!-- The AWS SDK glue compiles in the consumer's project, against its AWS SDK (see build/InMemoryAws.targets). -->
-        <Compile Remove="build\**" />
+        <!--
+          The AWS SDK glue compiles in the consumer's project, against its AWS SDK (see build/InMemoryAws.targets).
+          buildTransitive/ imports those targets, so projects that get the package through a project reference get it too.
+        -->
+        <Compile Remove="build\**;buildTransitive\**" />
         <None Include="build\InMemoryAws.targets" Pack="true" PackagePath="build\" />
         <None Include="build\sources\*.cs" Pack="true" PackagePath="build\sources\" />
+        <None Include="buildTransitive\InMemoryAws.targets" Pack="true" PackagePath="buildTransitive\" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- A shared test library: the only project that references InMemoryAws. -->
+  <ItemGroup>
+    <PackageReference Include="InMemoryAws" />
+    <PackageReference Include="AWSSDK.SQS" />
+  </ItemGroup>
+</Project>

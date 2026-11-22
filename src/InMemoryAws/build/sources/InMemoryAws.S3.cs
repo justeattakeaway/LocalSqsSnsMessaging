@@ -6,6 +6,7 @@
 
 namespace InMemoryAws
 {
+    using global::System;
     using global::Amazon.Runtime;
     using global::Amazon.S3;
     using global::InMemoryAws.Http;
@@ -21,9 +22,28 @@ namespace InMemoryAws
         /// <returns>The client.</returns>
         public static AmazonS3Client CreateS3Client(this InMemoryAwsCloud cloud)
         {
-            var config = ConfigureForCloud(cloud, new AmazonS3Config(), AwsServiceType.S3);
-            config.ForcePathStyle = true;
-            return new AmazonS3Client(new AnonymousAWSCredentials(), config);
+            return CreateS3Client(cloud, null, null);
+        }
+
+        /// <summary>
+        /// Creates an S3 client that sends its requests to <paramref name="cloud"/>, in <paramref name="region"/>,
+        /// addressing buckets path-style. Outside <c>us-east-1</c>, S3 wants the region as a new bucket's
+        /// <c>BucketRegionName</c> (its location constraint), as on AWS.
+        /// </summary>
+        /// <param name="cloud">The cloud.</param>
+        /// <param name="region">
+        /// The client's region, such as <c>eu-west-1</c> (a <c>RegionEndpoint</c>'s <c>SystemName</c>), or
+        /// <see langword="null"/> for the cloud's <c>CurrentRegion</c>.
+        /// </param>
+        /// <param name="configure">
+        /// Changes the client's config once it points at the cloud, for settings such as <c>Timeout</c> or
+        /// <c>MaxErrorRetry</c> (0 by default); or <see langword="null"/>. Leave its endpoint and region alone: they come from <paramref name="region"/>.
+        /// </param>
+        /// <returns>The client.</returns>
+        /// <exception cref="ArgumentException"><paramref name="region"/> isn't a region name.</exception>
+        public static AmazonS3Client CreateS3Client(this InMemoryAwsCloud cloud, string region, Action<AmazonS3Config> configure = null)
+        {
+            return new AmazonS3Client(new AnonymousAWSCredentials(), ConfigureForCloud(cloud, new AmazonS3Config { ForcePathStyle = true }, AwsServiceType.S3, region, configure));
         }
     }
 }

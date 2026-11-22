@@ -6,6 +6,7 @@
 
 namespace InMemoryAws
 {
+    using global::System;
     using global::Amazon.Runtime;
     using global::Amazon.SQS;
     using global::InMemoryAws.Http;
@@ -19,7 +20,27 @@ namespace InMemoryAws
         /// <returns>The client.</returns>
         public static AmazonSQSClient CreateSqsClient(this InMemoryAwsCloud cloud)
         {
-            return new AmazonSQSClient(new AnonymousAWSCredentials(), ConfigureForCloud(cloud, new AmazonSQSConfig(), AwsServiceType.Sqs));
+            return CreateSqsClient(cloud, null, null);
+        }
+
+        /// <summary>
+        /// Creates an SQS client that sends its requests to <paramref name="cloud"/>, in <paramref name="region"/>.
+        /// Its queues are that region's, and their URLs and ARNs name it.
+        /// </summary>
+        /// <param name="cloud">The cloud.</param>
+        /// <param name="region">
+        /// The client's region, such as <c>eu-west-1</c> (a <c>RegionEndpoint</c>'s <c>SystemName</c>), or
+        /// <see langword="null"/> for the cloud's <c>CurrentRegion</c>.
+        /// </param>
+        /// <param name="configure">
+        /// Changes the client's config once it points at the cloud, for settings such as <c>Timeout</c> or
+        /// <c>MaxErrorRetry</c> (0 by default); or <see langword="null"/>. Leave its endpoint and region alone: they come from <paramref name="region"/>.
+        /// </param>
+        /// <returns>The client.</returns>
+        /// <exception cref="ArgumentException"><paramref name="region"/> isn't a region name.</exception>
+        public static AmazonSQSClient CreateSqsClient(this InMemoryAwsCloud cloud, string region, Action<AmazonSQSConfig> configure = null)
+        {
+            return new AmazonSQSClient(new AnonymousAWSCredentials(), ConfigureForCloud(cloud, new AmazonSQSConfig(), AwsServiceType.Sqs, region, configure));
         }
     }
 }
