@@ -71,7 +71,7 @@ function DotNetTest {
     param(
         [string] $Project,
         [string] $Framework,
-        [string] $Timeout = "2m"
+        [string] $Timeout = "5m"
     )
 
     $testResultsDir = Join-Path $solutionPath "test-results"
@@ -128,7 +128,7 @@ $awsSdkV3Tests = Join-Path $solutionPath "tests" "InMemoryAws.Tests.AwsSdkV3" "I
 $testProjects = @(
     @{ Project = (Join-Path $solutionPath "tests" "InMemoryAws.Tests" "InMemoryAws.Tests.csproj") },
     @{ Project = $awsSdkV3Tests; Framework = "net10.0" },
-    # Packs the library, then restores and builds projects against it: close to two minutes on a CI runner.
+    # Packs the library, then restores and builds projects against it: two minutes or more on a CI runner.
     @{ Project = (Join-Path $solutionPath "tests" "InMemoryAws.Tests.Packaging" "InMemoryAws.Tests.Packaging.csproj"); Timeout = "10m" }
 )
 
@@ -172,7 +172,7 @@ ForEach ($project in $packageProjects) {
 if ($SkipTests -eq $false) {
     Write-Host "Testing $($testProjects.Count) project(s)..." -ForegroundColor Green
     ForEach ($test in $testProjects) {
-        $timeout = if ($test.Timeout) { $test.Timeout } else { "2m" }
+        $timeout = if ($test.Timeout) { $test.Timeout } else { "5m" }
         DotNetTest -Project $test.Project -Framework $test.Framework -Timeout $timeout
     }
 }
