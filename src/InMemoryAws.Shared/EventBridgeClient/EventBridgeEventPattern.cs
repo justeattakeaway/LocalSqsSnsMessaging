@@ -36,7 +36,7 @@ internal static class EventBridgeEventPattern
                 $"Parameter EventPattern for rule {ruleName} exceeds limit of {MaxRulePatternLength}.");
         }
 
-        Validate(pattern, orFallback: true);
+        Validate(pattern, orFallback: true, ruleWording: true);
     }
 
     /// <summary>
@@ -48,7 +48,7 @@ internal static class EventBridgeEventPattern
     {
         if (!string.IsNullOrEmpty(pattern))
         {
-            Validate(pattern!, orFallback: true);
+            Validate(pattern!, orFallback: true, ruleWording: false);
         }
     }
 
@@ -56,20 +56,20 @@ internal static class EventBridgeEventPattern
     /// Validates the event pattern <c>TestEventPattern</c> was given, throwing
     /// <see cref="InternalInvalidEventPatternException"/> with EventBridge's message when it is malformed.
     /// </summary>
-    public static void ValidateTestPattern(string? pattern) => Validate(pattern ?? string.Empty, orFallback: false);
+    public static void ValidateTestPattern(string? pattern) => Validate(pattern ?? string.Empty, orFallback: false, ruleWording: false);
 
-    private static void Validate(string pattern, bool orFallback)
+    private static void Validate(string pattern, bool orFallback, bool ruleWording)
     {
         try
         {
             EventRulerJsonReader.Read(pattern, quoteSource: true);
             try
             {
-                EventRulerGrammar.Compile(pattern);
+                EventRulerGrammar.Compile(pattern, ruleWording: ruleWording);
             }
             catch (EventRulerPatternException ex) when (orFallback && ex.IsOrRelationship)
             {
-                EventRulerGrammar.Compile(pattern, orAsFieldName: true);
+                EventRulerGrammar.Compile(pattern, orAsFieldName: true, ruleWording: ruleWording);
             }
         }
         catch (EventRulerPatternException ex)

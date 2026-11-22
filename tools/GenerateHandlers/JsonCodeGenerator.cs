@@ -334,7 +334,8 @@ internal sealed class JsonCodeGenerator
                 var memberShape = shape.GetProperty("member").GetProperty("shape").GetString()!;
                 var memberType = _shapes.GetProperty(memberShape).GetProperty("type").GetString()!;
 
-                code.AppendLine($"        if (root.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem) && {jsonPropertyName}Elem.ValueKind == JsonValueKind.Array)");
+                // A list member that is not a list, or a string list entry that is not a string, is refused.
+                code.AppendLine($"        if (root.TryGetProperty(\"{jsonPropertyName}\", out var {jsonPropertyName}Elem) && Serialization.AwsJsonMemberTypes.IsList({jsonPropertyName}Elem))");
                 code.AppendLine("        {");
                 code.AppendLine($"            request.{csharpPropertyName} = new List<{GetCSharpType(memberShape, memberType)}>();");
                 code.AppendLine($"            foreach (var item in {jsonPropertyName}Elem.EnumerateArray())");
@@ -342,7 +343,7 @@ internal sealed class JsonCodeGenerator
 
                 if (memberType == "string")
                 {
-                    code.AppendLine($"                request.{csharpPropertyName}.Add(item.GetString()!);");
+                    code.AppendLine($"                request.{csharpPropertyName}.Add(Serialization.AwsJsonMemberTypes.ReadListString(item));");
                 }
                 else if (memberType == "structure")
                 {

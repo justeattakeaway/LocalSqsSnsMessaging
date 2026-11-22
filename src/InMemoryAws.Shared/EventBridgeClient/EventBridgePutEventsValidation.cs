@@ -103,10 +103,14 @@ internal static class EventBridgePutEventsValidation
         var time = entry.Time is { } t
             ? t.ToUniversalTime().ToString("ddd MMM dd HH:mm:ss 'UTC' yyyy", CultureInfo.InvariantCulture)
             : "null";
-        var resources = entry.Resources is { } r ? $"[{string.Join(", ", r)}]" : "null";
+        // An entry without Resources reads as an empty list, and EventBridge prints an absent one as null.
+        var resources = entry.Resources is { Count: > 0 } r ? $"[{string.Join(", ", r)}]" : "null";
+
+        // The model has no EventGroupId or KmsKeyIdentifier, and InternalMetadata is EventBridge's own.
         return $"PutEventsRequestEntry(time={time}, source={entry.Source ?? "null"}, resources={resources}, " +
-               $"detailType={entry.DetailType ?? "null"}, detail={entry.Detail ?? "null"}, " +
-               $"eventBusName={entry.EventBusName ?? "null"}, traceHeader={entry.TraceHeader ?? "null"})";
+               $"detailType={entry.DetailType ?? "null"}, eventGroupId=null, detail={entry.Detail ?? "null"}, " +
+               $"eventBusName={entry.EventBusName ?? "null"}, traceHeader={entry.TraceHeader ?? "null"}, " +
+               "kmsKeyIdentifier=null, internalMetadata=null)";
     }
 
     private static AwsServiceException RequestError(string message) =>

@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_list_directory_buckets_rejects_regular_bucket_ops.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -21,8 +21,8 @@ public sealed class ListDirectoryBucketsRejectsRegularBucketOps
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var bucket = await S3Fidelity.CreateBucket(ctx, "sim2real-behav-");
-        var (dirBucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, s3, FidelityContext.UniqueName("sim2real-dir-"), S3Fidelity.ExpressZoneIds[ctx.Region]);
+        var bucket = await S3Fidelity.CreateBucket(ctx, "sim2real-behav-", ctx.S3Control);
+        var (dirBucket, _) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, FidelityContext.UniqueName("sim2real-dir-"), S3Fidelity.ExpressZoneIds[ctx.Region]);
 
         var allBuckets = ((await s3.ListBucketsAsync(new ListBucketsRequest())).Buckets ?? []).Select(b => b.BucketName).ToHashSet();
         Ensure(allBuckets.Contains(bucket), $"sanity check failed: {bucket} missing from ListBuckets");
@@ -32,7 +32,7 @@ public sealed class ListDirectoryBucketsRejectsRegularBucketOps
         for (var i = 0; i < 50; i++)
         {
             // bounded pagination guard
-            var resp = await s3.ListDirectoryBucketsAsync(new ListDirectoryBucketsRequest { MaxDirectoryBuckets = 1000, ContinuationToken = token });
+            var resp = await ctx.S3Control.ListDirectoryBucketsAsync(new ListDirectoryBucketsRequest { MaxDirectoryBuckets = 1000, ContinuationToken = token });
             directoryBucketNames.UnionWith((resp.Buckets ?? []).Select(b => b.BucketName));
             token = resp.ContinuationToken;
             if (string.IsNullOrEmpty(token))

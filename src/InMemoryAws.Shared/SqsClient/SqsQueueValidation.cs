@@ -13,6 +13,7 @@ internal static class SqsQueueValidation
     public const int MaxQueueNameLength = 80;
     public const int MaxTagsPerQueue = 50;
     public const int MaxPolicyStatements = 20;
+    public const int MaxPermissionActions = 7;
     private const int MaxTagKeyLength = 128;
     private const int MaxTagValueLength = 256;
     private const int MaxRedriveAllowSourceArns = 10;

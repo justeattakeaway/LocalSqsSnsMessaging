@@ -83,16 +83,24 @@ internal static class S3NotificationRules
         }
     }
 
+    /// <summary>The most topic, queue and Lambda configurations a bucket's notification configuration holds.</summary>
+    private const int MaxConfigurations = 100;
+
     /// <summary>
-    /// Checks a configuration's shape as S3 does before it looks at any destination: every
-    /// configuration names a destination and at least one supported event, its filter has at most
-    /// one prefix and one suffix rule, ids are unique, ARNs are well formed (FIFO queues and topics
-    /// are refused), and no two configurations share an event type for keys both of their filters
-    /// admit. Fills in the ids S3 generates and normalizes filter rule names.
+    /// Checks a configuration's shape as S3 does before it looks at any destination: there are at
+    /// most 100 configurations, every configuration names a destination and at least one supported
+    /// event, its filter has at most one prefix and one suffix rule, ids are unique, ARNs are well
+    /// formed (FIFO queues and topics are refused), and no two configurations share an event type for
+    /// keys both of their filters admit. Fills in the ids S3 generates and normalizes filter rule names.
     /// </summary>
     public static void Validate(NotificationConfiguration configuration, string bucketRegion)
     {
         var entries = Entries(configuration).ToList();
+        if (entries.Count > MaxConfigurations)
+        {
+            throw S3Errors.InvalidRequest($"Too many configurations submitted. The maximum number of configurations is {MaxConfigurations}");
+        }
+
         var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var entry in entries)
         {
@@ -315,7 +323,7 @@ internal static class S3NotificationRules
     /// <summary>
     /// Whether a configuration delivers an event: one of its event types is the event's
     /// (<c>s3:</c> plus <paramref name="eventName"/>, e.g. <c>ObjectCreated:Put</c>) or a wildcard
-    /// over it, and the key passes its filter.
+    /// over it, and the key passes its filter, whose prefix and suffix are URL-decoded first.
     /// </summary>
     public static bool Matches(List<string>? events, NotificationConfigurationFilter? filter, string eventName, string key)
     {
@@ -325,8 +333,10 @@ internal static class S3NotificationRules
             return false;
         }
 
+        // A rule's value is kept as configured, but matched URL-decoded (%3D matches '=').
         var (prefix, suffix) = PrefixAndSuffix(filter);
-        return key.StartsWith(prefix, StringComparison.Ordinal) && key.EndsWith(suffix, StringComparison.Ordinal);
+        return key.StartsWith(Uri.UnescapeDataString(prefix), StringComparison.Ordinal)
+            && key.EndsWith(Uri.UnescapeDataString(suffix), StringComparison.Ordinal);
     }
 
     /// <summary>

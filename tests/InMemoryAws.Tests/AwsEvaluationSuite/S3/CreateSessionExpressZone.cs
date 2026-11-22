@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_create_session_express_zone.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -20,8 +20,7 @@ public sealed class CreateSessionExpressZone
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var (bucket, az) = await S3Fidelity.CreateDirectoryBucket(
-            ctx, s3, FidelityContext.UniqueName("sim2real-s3exp-").ToLowerInvariant().TrimEnd('-'), S3Fidelity.ExpressZoneIds[ctx.Region]);
+        var (bucket, az) = await S3Fidelity.CreateDirectoryBucket(ctx, ctx.S3Control, FidelityContext.UniqueName("sim2real-s3exp-").ToLowerInvariant().TrimEnd('-'), S3Fidelity.ExpressZoneIds[ctx.Region]);
         var resp = await S3Fidelity.CreateSession(s3, bucket);
         var creds = resp.Credentials;
         Ensure(!string.IsNullOrEmpty(creds.AccessKeyId), "missing AccessKeyId in session credentials");

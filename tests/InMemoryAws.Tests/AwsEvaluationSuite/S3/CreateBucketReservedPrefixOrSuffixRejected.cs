@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_create_bucket_reserved_prefix_or_suffix_rejected.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -30,9 +30,9 @@ public sealed class CreateBucketReservedPrefixOrSuffixRejected
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
         var baseName = FidelityContext.UniqueName("sim2real-behav-s3rsv-");
-        await s3.PutBucketAsync(BucketParams(ctx, baseName));
+        await ctx.S3Control.PutBucketAsync(BucketParams(ctx, baseName));
         ctx.OnCleanup(() => DeleteBucket(s3, baseName));
-        await s3.PutBucketTaggingAsync(new PutBucketTaggingRequest { BucketName = baseName, TagSet = [new Tag { Key = "sim2real", Value = Check }] });
+        await ctx.S3Control.PutBucketTaggingAsync(new PutBucketTaggingRequest { BucketName = baseName, TagSet = [new Tag { Key = "sim2real", Value = Check }] });
         await s3.HeadBucketAsync(new HeadBucketRequest { BucketName = baseName }); // independent read: the control bucket really exists
 
         // The xn-- prefix, and a leading or trailing hyphen, read as a structurally invalid name.
@@ -97,7 +97,7 @@ public sealed class CreateBucketReservedPrefixOrSuffixRejected
     {
         // Only does anything if the create below unexpectedly lands.
         ctx.OnCleanup(() => DeleteBucket(s3, name));
-        var error = await S3Fidelity.Error(() => s3.PutBucketAsync(BucketParams(ctx, name)), "expected a ClientError, but the call SUCCEEDED");
+        var error = await S3Fidelity.Error(() => ctx.S3Control.PutBucketAsync(BucketParams(ctx, name)), "expected a ClientError, but the call SUCCEEDED");
         Ensure(error.Code == wantCode, $"{reason}: expected {wantCode}, got {Py.Repr(error.Code)} ({Py.Repr(error.Message)})");
         Ensure(error.Message == wantMessage, $"{reason}: expected the exact message, got {Py.Repr(error.Message)}");
     }

@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_s3x_s3express_session_and_listing_inflight_mpu_prefix_listed.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -23,8 +23,8 @@ public sealed class S3xS3expressSessionAndListingInflightMpuPrefixListed
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var directory = await S3Fidelity.DirectoryBucket(ctx, s3, "sim2real-s3x-mpu-");
-        var twin = await S3Fidelity.GeneralPurposeBucket(ctx, s3, "sim2real-s3x-mpu-gp-", Check);
+        var directory = await S3Fidelity.DirectoryBucket(ctx, ctx.S3Control, "sim2real-s3x-mpu-");
+        var twin = await S3Fidelity.GeneralPurposeBucket(ctx, ctx.S3Control, "sim2real-s3x-mpu-gp-", Check);
         const string settled = "settled/a.txt";
         const string inflight = "inflight/big.bin";
         foreach (var bucket in new[] { directory, twin })

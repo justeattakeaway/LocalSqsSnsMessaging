@@ -1,5 +1,5 @@
 // Translated from behavioral/s3/check_create_session_roundtrip.py
-// (https://github.com/aws/aws-emulator-evaluation-suite, commit 4df2823).
+// (https://github.com/aws/aws-emulator-evaluation-suite, commit abd0811).
 using Amazon.S3;
 using Amazon.S3.Model;
 using static InMemoryAws.Tests.AwsEvaluationSuite.FidelityAssert;
@@ -22,7 +22,7 @@ public sealed class CreateSessionRoundtrip
     {
         await using var ctx = new FidelityContext(FidelityContext.BudgetMilliseconds, cancellationToken);
         var s3 = ctx.S3;
-        var name = await S3Fidelity.NewDirectoryBucket(ctx, s3);
+        var name = await S3Fidelity.NewDirectoryBucket(ctx, ctx.S3Control);
         var rw = await S3Fidelity.CreateSession(s3, name);
         var ro = await S3Fidelity.CreateSession(s3, name, "ReadOnly");
 

@@ -16,6 +16,7 @@ compared side by side:
 | [`behavioral/events__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/events__sqs) | `EventsSqs/<Name>.cs` | `events__sqs.<id>` |
 | [`behavioral/dynamodb/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/dynamodb) | `DynamoDb/<Name>.cs` | `dynamodb.<id>` |
 | [`behavioral/dynamodbstreams/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/dynamodbstreams) | `DynamoDbStreams/<Name>.cs` | `dynamodbstreams.<id>` |
+| [`behavioral/dynamodb__dynamodbstreams/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/dynamodb__dynamodbstreams) | `DynamoDbDynamoDbStreams/<Name>.cs` | `dynamodb__dynamodbstreams.<id>` |
 | [`behavioral/s3/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/s3) | `S3/<Name>.cs` | `s3.<id>` |
 | [`behavioral/s3__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/s3__sqs) | `S3Sqs/<Name>.cs` | `s3__sqs.<id>` |
 | [`behavioral/s3__sns__sqs/check_<name>.py`](https://github.com/aws/aws-emulator-evaluation-suite/tree/main/behavioral/s3__sns__sqs) | `S3SnsSqs/<Name>.cs` | `s3__sns__sqs.<id>` |
@@ -86,14 +87,14 @@ ports, and a weekly workflow (`evaluation-suite-drift`) runs `--ref main --check
 
 ## SQS scope
 
-The SQS ports cover SQS without the services around it: 271 of the 306 checks in `behavioral/sqs`.
-These 35 checks are not ported, because they need another service ([UPSTREAM.md](UPSTREAM.md)
+The SQS ports cover SQS without the services around it: 291 of the 327 checks in `behavioral/sqs`.
+These 36 checks are not ported, because they need another service ([UPSTREAM.md](UPSTREAM.md)
 gives each one's reason):
 
 - **IAM roles, users and identity policies** (16): a check that assumes a role or creates a user,
   and grades what that identity's policies, or a queue policy naming it, allow.
 - **CloudFormation stacks** (10).
-- **KMS keys** (7): customer-managed keys for SSE-KMS.
+- **KMS keys** (8): customer-managed keys for SSE-KMS, and the AWS-managed `alias/aws/sqs` key.
 - **CloudWatch alarms** (1).
 - **Lambda functions, with IAM roles** (1).
 
@@ -105,7 +106,7 @@ and its signature, FIFO ordering and deduplication, subscription dead-letter que
 deleted or misconfigured queues, topic and subscription attributes, tags, permissions and topic
 policies, validation, email subscriptions (which stay pending confirmation), and the bookkeeping
 of mobile push (platform applications and endpoints) and SMS (attributes, opt-outs, the sandbox):
-219 of the 257 checks in `behavioral/sns` and `behavioral/sns__sqs`. One is a known gap, kept
+228 of the 266 checks in `behavioral/sns` and `behavioral/sns__sqs`. One is a known gap, kept
 deliberately: platform credentials are never checked against a push service, so tests can use
 fake ones.
 
@@ -127,7 +128,7 @@ rules, event patterns and TestEventPattern, PutEvents and its validation and par
 targets to SQS (standard and FIFO), SNS and other event buses, Input, InputPath and
 InputTransformer, target dead-letter queues and retry policies, bus resource policies, tags,
 archives and replays, scheduled rules, listing and pagination, partner event sources, global
-endpoints, connections and API destinations, and error codes: 232 of the 300 checks in `behavioral/events`, `behavioral/events__sqs`, the
+endpoints, connections and API destinations, and error codes: 254 of the 322 checks in `behavioral/events`, `behavioral/events__sqs`, the
 `events__iam__*` directories and the `eventbridgev2*` directories.
 
 Partner event sources are ported (12 checks): only a registered SaaS partner can create one, and
@@ -201,8 +202,8 @@ The DynamoDB ports cover the whole of DynamoDB that needs no other service: tabl
 item reads and writes, condition, update, projection and filter expressions and the legacy
 parameters, Query and Scan, batches and transactions, PartiQL, consumed capacity, size and
 validation limits, tags, resource policies, backups and point-in-time restore, time to live,
-vector indexes and `SearchVectors`, global tables (replicas in other regions), DynamoDB Streams, the JSON wire protocol (`x-amz-crc32`, `__type`) and concurrency: 853 of the 902
-checks in `behavioral/dynamodb` and `behavioral/dynamodbstreams`. 842 pass and 11 are known gaps.
+vector indexes and `SearchVectors`, global tables (replicas in other regions), DynamoDB Streams, the JSON wire protocol (`x-amz-crc32`, `__type`) and concurrency: 1122 of the 1173
+checks in `behavioral/dynamodb`, `behavioral/dynamodbstreams` and `behavioral/dynamodb__dynamodbstreams`. 1105 pass and 17 are known gaps.
 
 `DynamoDbFidelity.cs` holds what the ports share:
 
@@ -227,10 +228,10 @@ The .NET SDK differs from boto3 in a few places the ports work around:
 - **Refused calls:** an error throws, so a check's assertion that a refused call returned no
   `Items` stays as a comment.
 
-The 10 checks that call STS only for the account id are ported with `ctx.Account`. These 49 checks
+The 10 checks that call STS only for the account id are ported with `ctx.Account`. These 51 checks
 are not ported, because they need another service:
 
-- **S3 (exports and imports)** (18).
+- **S3 (exports and imports)** (20).
 - **Kinesis streaming destinations** (8).
 - **CloudFormation stacks** (6).
 - **Application Auto Scaling** (6).
@@ -238,19 +239,25 @@ are not ported, because they need another service:
 - **IAM roles, role assumption and Lambda** (4).
 - **CloudWatch metrics** (2).
 
-The 11 known gaps, by root cause:
+The 17 known gaps, by root cause:
 
 | `FidelityGap` | Checks | What the library doesn't do |
 |---|---|---|
-| `DynamoDbAuthentication` | 4 | Signature checks: an unsigned, incompletely signed or tampered request is served |
+| `DynamoDbAuthentication` | 5 | Signature checks: an unsigned, incompletely signed or tampered request is served |
 | `DynamoDbThroughput` | 4 | Throttling: provisioned throughput is reported, never enforced |
-| `DynamoDbDetail` | 1 | Several constraint violations are listed in the model's member order, not in AWS's own order |
-| `EmulatorBudget` | 2 | (see below) |
+| `EmulatorBudget` | 8 | (see below) |
 
-Two checks, `dynamodb.batch-write-item-and-delete-item-index-capacity-arms-follow-item-estate` and
-`dynamodb.update-item-index-capacity-ladder-follows-key-vs-projected-change`, wait until
-`time_left() - 60` seconds, which is no time at all under the runner's 60-second emulator budget,
-so they fail against any emulator. With a longer budget the rest of the first one passes.
+Eight checks wait for their tables until `time_left() - 60` seconds, which is no time at all under
+the runner's 60-second emulator budget, so they fail against any emulator:
+`dynamodb.batch-write-item-and-delete-item-index-capacity-arms-follow-item-estate`,
+`dynamodb.batch-write-item-capacity-per-table-entries-include-delete-requests`,
+`dynamodb.batch-write-item-index-capacity-arms-mixed-sparse-lsi-item`,
+`dynamodb.batch-write-item-oversized-gsi-partition-key-value-rejected-whole`,
+`dynamodb.update-item-creates-and-grows-items-across-the-1kb-write-capacity-boundary`,
+`dynamodb.update-item-gsi-key-move-recharges-an-all-projected-lsi`,
+`dynamodb.update-item-gsi-partition-key-value-over-2048-bytes-rejected` and
+`dynamodb.update-item-index-capacity-ladder-follows-key-vs-projected-change`. With a longer budget
+the six added in v1.0.1 pass, and so does the rest of the first one.
 
 Every port gets its Python check's verdict, except the 10 checks that call STS only for the
 account id: they errored in Python, because the server has no STS, and pass here (among them
@@ -265,9 +272,9 @@ ranges and conditional requests, multipart uploads, copies, renames and appends,
 versioning, listing, tagging, Object Lock, ACLs and Object Ownership, bucket policies and Block
 Public Access, presigned URLs, POST uploads and SigV4, CORS, website hosting, lifecycle,
 replication, encryption and SSE-C, storage classes and restores, S3 Metadata and object
-annotations, the stored-only bucket configurations, and notifications: 517 of the 537 checks in
+annotations, the stored-only bucket configurations, and notifications: 573 of the 598 checks in
 `behavioral/s3`, `behavioral/s3__sqs`, `behavioral/s3__sns__sqs` and `behavioral/events__s3__sqs`.
-513 pass and 4 are known gaps: the two in `events__s3__sqs` (EventBridge delivering to a queue with
+569 pass and 4 are known gaps: the two in `events__s3__sqs` (EventBridge delivering to a queue with
 no policy), and the two bucket policies that deny plain HTTP, because `aws:SecureTransport` is
 always true, so a deny-unless-TLS guardrail doesn't lock out a client of the plain-HTTP server.
 
@@ -286,12 +293,12 @@ configuration), requests it reorders or won't send (CompleteMultipartUpload sort
 writer refuses some characters, it can't resolve an endpoint for some bucket names), and HEAD errors,
 which botocore reports as `("404", "Not Found")`.
 
-These 20 checks are not ported, because they need another service ([UPSTREAM.md](UPSTREAM.md)
+These 25 checks are not ported, because they need another service ([UPSTREAM.md](UPSTREAM.md)
 gives each one's reason):
 
 - **CloudFormation stacks** (9).
-- **KMS keys** (6): SSE-KMS with customer-managed keys, and UpdateObjectEncryption.
-- **IAM roles, users and identity policies, or role assumption** (4).
+- **KMS keys** (9): SSE-KMS with customer-managed keys, and UpdateObjectEncryption.
+- **IAM roles, users and identity policies, or role assumption** (6).
 - **Lambda functions, with IAM roles** (1): a notification to a Lambda function.
 
 The 2 known gaps:
@@ -309,7 +316,7 @@ suite stays green. To work on a gap, run the skipped tests too:
 INMEMORYAWS_RUN_KNOWN_GAPS=1 dotnet run --project tests/InMemoryAws.Tests -c Release -- \
   --treenode-filter "/*/InMemoryAws.Tests.AwsEvaluationSuite.*/*/*"
 
-# One service: .Sqs, .Sns, .SnsSqs, .Events, .EventsSqs, .DynamoDb, .DynamoDbStreams, .S3, .S3Sqs, .S3SnsSqs or .EventsS3Sqs
+# One service: .Sqs, .Sns, .SnsSqs, .Events, .EventsSqs, .DynamoDb, .DynamoDbStreams, .DynamoDbDynamoDbStreams, .S3, .S3Sqs, .S3SnsSqs or .EventsS3Sqs
 INMEMORYAWS_RUN_KNOWN_GAPS=1 dotnet run --project tests/InMemoryAws.Tests -c Release -- \
   --treenode-filter "/*/InMemoryAws.Tests.AwsEvaluationSuite.Sns/*/*"
 

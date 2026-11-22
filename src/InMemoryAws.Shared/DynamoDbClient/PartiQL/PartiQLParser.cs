@@ -223,7 +223,8 @@ internal sealed class PartiQLParser
         {
             if (parameter.Depth() > DynamoValueRules.MaxDepth)
             {
-                throw DynamoDbErrors.Validation(DynamoValueRules.NestingExceeded);
+                // A parameter is refused on its own, with the rule's first sentence alone.
+                throw DynamoDbErrors.Validation("Nesting Levels have exceeded supported limits");
             }
 
             oversized |= parameter.Size() > DynamoValueRules.MaxItemBytes;
@@ -863,10 +864,16 @@ internal sealed class PartiQLParser
             throw Unexpected();
         }
 
-        var value = Value();
+        // The tuple is the item, not a value in it: each attribute may nest 32 levels, as PutItem's do.
+        var value = RawValue();
         if (value.Type != DynamoType.M)
         {
             throw Refused("the VALUE an INSERT carries must be a tuple of attribute names and values");
+        }
+
+        if (DynamoValueRules.ExceedsDepth(value.M))
+        {
+            throw DynamoDbErrors.Validation(DynamoValueRules.NestingExceeded);
         }
 
         if (PeekWord("returning"))
@@ -1078,11 +1085,19 @@ internal sealed class PartiQLParser
         {
             if (PeekWord(function) && Peek(1) is { Kind: Kind.Open })
             {
+                var name = _tokens[_at];
                 _at += 2;
                 var target = FunctionPath(function);
                 if (!target.Equals(path))
                 {
                     throw Refused($"{function} adds to the attribute it is assigned to");
+                }
+
+                // Assigned, the function takes exactly the set and the value, and a call with any
+                // other count is refused at the function's name.
+                if (OperandsInCall(1) != 2)
+                {
+                    throw DynamoDbErrors.Validation($"{function.ToUpperInvariant()} must have exactly two arguments at {name.Line}:{name.Column}:{name.Width}");
                 }
 
                 ExpectOperand(function, 1);
@@ -1315,6 +1330,11 @@ internal sealed class PartiQLParser
             while (Accept(Kind.Comma));
 
             Expect(closing);
+            if (candidates.Count > ExpressionErrors.MaxInOperands)
+            {
+                throw DynamoDbErrors.Validation($"The IN operator is provided with too many operands; number of operands: {candidates.Count.ToString(CultureInfo.InvariantCulture)}");
+            }
+
             ExpressionCondition membership = new InCondition(left, candidates);
             return new Where(notted ? new NotCondition(membership) : membership, []);
         }

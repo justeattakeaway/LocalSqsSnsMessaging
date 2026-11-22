@@ -160,11 +160,17 @@ internal sealed partial class InternalDynamoDbClient
         lock (Store.Gate)
         {
             var plan = Plan("Scan", name, request.IndexName, request.Select, projection, request.AttributesToGet, filter, request.Limit, request.ConsistentRead, request.ReturnConsumedCapacity, request.FilterExpression ?? (request.ScanFilter is { Count: > 0 } ? "ScanFilter" : null));
+            CheckFilterKeyPathsScalar(plan, filter);
             var start = StartKey(plan, request.ExclusiveStartKey, scan: true);
             var candidates = All(plan, start);
             if (request.Segment is { } wanted)
             {
                 var total = request.TotalSegments!.Value;
+                if (start is not null && SegmentOf(start.Table.Partition, total) != wanted)
+                {
+                    throw DynamoDbErrors.Validation($"The provided starting key is invalid: Invalid ExclusiveStartKey. Please use ExclusiveStartKey with correct Segment. TotalSegments: {total} Segment: {wanted}");
+                }
+
                 candidates = candidates.Where(c => SegmentOf(c.TableKey.Partition, total) == wanted);
             }
 
@@ -328,12 +334,16 @@ internal sealed partial class InternalDynamoDbClient
     }
 
     /// <summary>The top-level attributes a filter reads.</summary>
-    private static IEnumerable<string> FilterAttributes(ExpressionCondition condition)
+    private static IEnumerable<string> FilterAttributes(ExpressionCondition condition) =>
+        FilterPaths(condition).Select(p => p.AttributeName);
+
+    /// <summary>The document paths a filter reads.</summary>
+    private static IEnumerable<DocumentPath> FilterPaths(ExpressionCondition condition)
     {
-        IEnumerable<string> Operand(Operand operand) => operand switch
+        IEnumerable<DocumentPath> Operand(Operand operand) => operand switch
         {
-            PathOperand path => [path.Path.AttributeName],
-            SizeOperand size => [size.Path.AttributeName],
+            PathOperand path => [path.Path],
+            SizeOperand size => [size.Path],
             _ => [],
         };
 
@@ -342,13 +352,28 @@ internal sealed partial class InternalDynamoDbClient
             CompareCondition c => Operand(c.Left).Concat(Operand(c.Right)),
             BetweenCondition b => Operand(b.Value).Concat(Operand(b.Low)).Concat(Operand(b.High)),
             InCondition i => Operand(i.Value).Concat(i.Candidates.SelectMany(Operand)),
-            ExistsCondition e => [e.Path.AttributeName],
-            AttributeTypeCondition t => [t.Path.AttributeName],
+            ExistsCondition e => [e.Path],
+            AttributeTypeCondition t => [t.Path, .. Operand(t.Type)],
             BeginsWithCondition b => Operand(b.Value).Concat(Operand(b.Prefix)),
             ContainsCondition c => Operand(c.Haystack).Concat(Operand(c.Needle)),
-            LegacyComparison l => [l.Attribute],
-            _ => condition.Children.SelectMany(FilterAttributes),
+            LegacyComparison l => [DocumentPath.Attribute(l.Attribute)],
+            _ => condition.Children.SelectMany(FilterPaths),
         };
+    }
+
+    /// <summary>A Scan's filter can name a key attribute, but not a path into one: keys are scalars.</summary>
+    private static void CheckFilterKeyPathsScalar(ReadPlan plan, ExpressionCondition? filter)
+    {
+        if (filter is null)
+        {
+            return;
+        }
+
+        var keys = plan.Table.KeySchema.Attributes.Select(a => a.Name).ToList();
+        if (FilterPaths(filter).FirstOrDefault(p => !p.IsTopLevel && keys.Contains(p.AttributeName, StringComparer.Ordinal)) is { } nested)
+        {
+            throw DynamoDbErrors.Validation($"Key attributes must be scalars; list random access '[]' and map lookup '.' are not allowed: Key: {nested.AttributeName}");
+        }
     }
 
     /// <summary>
@@ -427,7 +452,9 @@ internal sealed partial class InternalDynamoDbClient
         var order = plan.Index is null ? table : plan.Index.KeySchema.KeyOf(canonical);
         if (table is null || order is null)
         {
-            throw DynamoDbErrors.Validation("The provided starting key is invalid: The provided key element does not match the schema");
+            // A key element of another type than the schema declares is no key of that schema
+            // either: the same sentence as a missing or extra attribute, with nothing appended.
+            throw DynamoDbErrors.Validation("The provided starting key is invalid");
         }
 
         return new ResumePoint(order, table);
@@ -550,6 +577,12 @@ internal sealed partial class InternalDynamoDbClient
         if (!stopped && plan.Limit is { } exact && scanned == exact && last is not null)
         {
             // DynamoDB stops at the limit without looking ahead, so it answers with the key it stopped at.
+            stopped = true;
+        }
+
+        if (!stopped && bytes >= MaxPageBytes && last is not null)
+        {
+            // Likewise for the 1 MB budget: the item that crosses it ends the page, even when it is the last one.
             stopped = true;
         }
 

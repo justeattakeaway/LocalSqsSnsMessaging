@@ -13,7 +13,7 @@ internal static partial class DynamoDbStreamsJsonSerializers
 {
     internal static Dictionary<string, InMemoryAws.DynamoDb.DynamoValue> Read_AttributeMap(JsonElement element)
     {
-        AwsJsonReader.ExpectObject(element, "map");
+        AwsJsonReader.ExpectMap(element);
         var map = new Dictionary<string, InMemoryAws.DynamoDb.DynamoValue>(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
@@ -1020,14 +1020,6 @@ internal static partial class DynamoDbStreamsJsonSerializers
             }
         }
         {
-            var memberPath = (path.Length == 0 ? "limit" : path + "." + "limit");
-            if (value.Limit is not null)
-            {
-                if (value.Limit.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Limit.Value), memberPath, "Member must have value greater than or equal to 1"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "exclusiveStartShardId" : path + "." + "exclusiveStartShardId");
             if (value.ExclusiveStartShardId is not null)
             {
@@ -1042,6 +1034,14 @@ internal static partial class DynamoDbStreamsJsonSerializers
             if (value.ShardFilter is not null)
             {
                 Validate_ShardFilter(value.ShardFilter, memberPath, violations);
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "limit" : path + "." + "limit");
+            if (value.Limit is not null)
+            {
+                if (value.Limit.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Limit.Value), memberPath, "Member must have value greater than or equal to 1"));
             }
         }
     }
@@ -1074,6 +1074,16 @@ internal static partial class DynamoDbStreamsJsonSerializers
 
     internal static void Validate_GetShardIteratorInput(global::InMemoryAws.DynamoDbStreams.Model.GetShardIteratorRequest value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "sequenceNumber" : path + "." + "sequenceNumber");
+            if (value.SequenceNumber is not null)
+            {
+                if (value.SequenceNumber.Length < 21)
+                    violations.Add(AwsValidation.Clause(value.SequenceNumber, memberPath, "Member must have length greater than or equal to 21"));
+                if (value.SequenceNumber.Length > 40)
+                    violations.Add(AwsValidation.Clause(value.SequenceNumber, memberPath, "Member must have length less than or equal to 40"));
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "streamArn" : path + "." + "streamArn");
             if (value.StreamArn is null)
@@ -1114,20 +1124,18 @@ internal static partial class DynamoDbStreamsJsonSerializers
                     violations.Add(AwsValidation.Clause(value.ShardIteratorType, memberPath, "Member must satisfy enum value set: [TRIM_HORIZON, LATEST, AT_SEQUENCE_NUMBER, AFTER_SEQUENCE_NUMBER, AT_TIMESTAMP]"));
             }
         }
-        {
-            var memberPath = (path.Length == 0 ? "sequenceNumber" : path + "." + "sequenceNumber");
-            if (value.SequenceNumber is not null)
-            {
-                if (value.SequenceNumber.Length < 21)
-                    violations.Add(AwsValidation.Clause(value.SequenceNumber, memberPath, "Member must have length greater than or equal to 21"));
-                if (value.SequenceNumber.Length > 40)
-                    violations.Add(AwsValidation.Clause(value.SequenceNumber, memberPath, "Member must have length less than or equal to 40"));
-            }
-        }
     }
 
     internal static void Validate_ListStreamsInput(global::InMemoryAws.DynamoDbStreams.Model.ListStreamsRequest value, string path, List<string> violations)
     {
+        {
+            var memberPath = (path.Length == 0 ? "limit" : path + "." + "limit");
+            if (value.Limit is not null)
+            {
+                if (value.Limit.Value < 1)
+                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Limit.Value), memberPath, "Member must have value greater than or equal to 1"));
+            }
+        }
         {
             var memberPath = (path.Length == 0 ? "tableName" : path + "." + "tableName");
             if (value.TableName is not null)
@@ -1138,14 +1146,6 @@ internal static partial class DynamoDbStreamsJsonSerializers
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must have length less than or equal to 255"));
                 if (!Pattern0.IsMatch(value.TableName))
                     violations.Add(AwsValidation.Clause(value.TableName, memberPath, "Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"));
-            }
-        }
-        {
-            var memberPath = (path.Length == 0 ? "limit" : path + "." + "limit");
-            if (value.Limit is not null)
-            {
-                if (value.Limit.Value < 1)
-                    violations.Add(AwsValidation.Clause(JavaRendering.Number(value.Limit.Value), memberPath, "Member must have value greater than or equal to 1"));
             }
         }
         {
@@ -1163,14 +1163,6 @@ internal static partial class DynamoDbStreamsJsonSerializers
     internal static void Validate_ShardFilter(global::InMemoryAws.DynamoDbStreams.Model.ShardFilter value, string path, List<string> violations)
     {
         {
-            var memberPath = (path.Length == 0 ? "type" : path + "." + "type");
-            if (value.Type is not null)
-            {
-                if (!string.Equals(value.Type, "CHILD_SHARDS", StringComparison.Ordinal))
-                    violations.Add(AwsValidation.Clause(value.Type, memberPath, "Member must satisfy enum value set: [CHILD_SHARDS]"));
-            }
-        }
-        {
             var memberPath = (path.Length == 0 ? "shardId" : path + "." + "shardId");
             if (value.ShardId is not null)
             {
@@ -1178,6 +1170,14 @@ internal static partial class DynamoDbStreamsJsonSerializers
                     violations.Add(AwsValidation.Clause(value.ShardId, memberPath, "Member must have length greater than or equal to 28"));
                 if (value.ShardId.Length > 65)
                     violations.Add(AwsValidation.Clause(value.ShardId, memberPath, "Member must have length less than or equal to 65"));
+            }
+        }
+        {
+            var memberPath = (path.Length == 0 ? "type" : path + "." + "type");
+            if (value.Type is not null)
+            {
+                if (!string.Equals(value.Type, "CHILD_SHARDS", StringComparison.Ordinal))
+                    violations.Add(AwsValidation.Clause(value.Type, memberPath, "Member must satisfy enum value set: [CHILD_SHARDS]"));
             }
         }
     }

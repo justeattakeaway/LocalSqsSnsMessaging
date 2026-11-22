@@ -81,6 +81,18 @@ internal static class DynamoDbRequestChecks
         _ = violations;
     }
 
+    /// <summary>Scan states a <c>TotalSegments</c> over its maximum in the item-request form: the wire name, no value.</summary>
+    public static void Check(ScanRequest request, List<string> violations)
+    {
+        var tooMany = violations.FindIndex(v => v.EndsWith("' at 'totalSegments' failed to satisfy constraint: Member must have value less than or equal to 1000000", StringComparison.Ordinal));
+        if (tooMany >= 0)
+        {
+            violations[tooMany] = WireClause("TotalSegments", "Member must have value less than or equal to 1000000");
+        }
+
+        _ = request;
+    }
+
     public static void Check(BatchGetItemRequest request, List<string> violations)
     {
         if (request.RequestItems is not { } requestItems)

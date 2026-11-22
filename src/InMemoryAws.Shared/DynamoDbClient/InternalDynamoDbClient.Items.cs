@@ -180,7 +180,7 @@ internal sealed partial class InternalDynamoDbClient
                     }
                 }
 
-                changed = update.Apply(updated);
+                changed = update.Apply(updated, itemExists: old is not null);
             }
 
             CheckIndexKeys(table, updated, update: true);
@@ -529,15 +529,34 @@ internal sealed partial class InternalDynamoDbClient
         CheckVectorAttributes(table, item);
     }
 
+    /// <summary>
+    /// Refuses an item whose secondary index key attribute has another type than the index
+    /// declares, or is over the key size limit for its role (2048 bytes for a partition key,
+    /// 1024 for a sort key).
+    /// </summary>
     private static void CheckIndexKeyTypesOnly(DynamoTable table, Dictionary<string, DynamoValue> item)
     {
         foreach (var index in table.GlobalIndexes.Concat(table.LocalIndexes))
         {
             foreach (var attribute in index.KeySchema.Attributes)
             {
-                if (!table.KeySchema.IsKeyAttribute(attribute.Name) && item.TryGetValue(attribute.Name, out var value) && value.Type != attribute.Type)
+                if (table.KeySchema.IsKeyAttribute(attribute.Name) || !item.TryGetValue(attribute.Name, out var value))
+                {
+                    continue;
+                }
+
+                if (value.Type != attribute.Type)
                 {
                     throw DynamoDbErrors.InvalidParameter($"Type mismatch for Index Key {attribute.Name} Expected: {attribute.Type} Actual: {value.Type} IndexName: {index.Name}");
+                }
+
+                // An index key is held to the table key's limits: 2048 bytes for a HASH attribute, 1024 for a RANGE one.
+                var maxBytes = index.KeySchema.Hash.Contains(attribute) ? MaxPartitionKeyBytes : MaxSortKeyBytes;
+                var size = value.Type is DynamoType.S or DynamoType.B ? value.Size() : 0;
+                if (size > maxBytes)
+                {
+                    throw DynamoDbErrors.InvalidParameter(
+                        $"Size limit exceeded for Index Key {attribute.Name} Actual Size: {size.ToString(System.Globalization.CultureInfo.InvariantCulture)} bytes Max Size: {maxBytes.ToString(System.Globalization.CultureInfo.InvariantCulture)} bytes IndexName: {index.Name}");
                 }
             }
         }

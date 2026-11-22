@@ -66,14 +66,14 @@ internal sealed partial class InternalSqsClient
 
     /// <summary>
     /// Keeps only the message attributes the receive asked for, as SQS does: none unless named,
-    /// all for <c>All</c> or <c>.*</c>, names starting with the prefix for <c>prefix.*</c>, and
+    /// all for <c>All</c>, <c>*</c> or <c>.*</c>, names starting with the prefix for <c>prefix.*</c>, and
     /// otherwise exact (case-sensitive) names. The digest covers just the attributes returned.
     /// </summary>
     private static void FilterMessageAttributes(Message message, List<string>? requestedMessageAttributes)
     {
         if (message.MessageAttributes is { Count: > 0 } attributes && requestedMessageAttributes is { Count: > 0 })
         {
-            var returnAll = requestedMessageAttributes.Exists(name => name is "All" or ".*");
+            var returnAll = requestedMessageAttributes.Exists(name => name is "All" or ".*" or "*");
             message.MessageAttributes = returnAll
                 ? attributes
                 : attributes
