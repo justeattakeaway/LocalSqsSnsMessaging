@@ -12,8 +12,9 @@ internal static class SnsTagValidation
     private const int MaxValueLength = 256;
 
     /// <summary>
-    /// Refuses tags SNS wouldn't store: over-long keys or values, and keys in the reserved
-    /// <c>aws:</c> namespace. <paramref name="member"/> names the request list in a validation error.
+    /// Refuses tags SNS wouldn't store: a missing value (an empty one is kept), over-long keys or values,
+    /// and keys in the reserved <c>aws:</c> namespace. <paramref name="member"/> names the request list in a
+    /// validation error.
     /// </summary>
     public static void ValidateTags(IReadOnlyList<Tag>? tags, string member)
     {
@@ -25,7 +26,12 @@ internal static class SnsTagValidation
         for (var i = 0; i < tags.Count; i++)
         {
             var key = tags[i].Key ?? string.Empty;
-            var value = tags[i].Value ?? string.Empty;
+            if (tags[i].Value is not { } value)
+            {
+                throw ValidationError($"1 validation error detected: Value null at '{member}.{i + 1}.member.value' failed " +
+                                      "to satisfy constraint: Member must not be null");
+            }
+
             if (key.Length > MaxKeyLength)
             {
                 throw ValidationError($"1 validation error detected: Value '{key}' at '{member}.{i + 1}.member.key' failed " +
