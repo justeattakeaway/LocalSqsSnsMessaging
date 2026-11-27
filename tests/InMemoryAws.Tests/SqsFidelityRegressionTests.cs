@@ -159,6 +159,54 @@ public sealed class SqsFidelityRegressionTests
     }
 
     [Test]
+    public async Task FifoQueue_DelayRaisedWhileAMessageWaits_HoldsItUntilTheNewDelay()
+    {
+        var (_, time, sqs) = Create();
+        using var _ = sqs;
+        var url = (await sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = "raised-delay.fifo",
+            Attributes = new() { ["FifoQueue"] = "true", ["DelaySeconds"] = "5" },
+        })).QueueUrl;
+        await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "a", MessageGroupId = "g", MessageDeduplicationId = "a" });
+
+        time.Advance(TimeSpan.FromSeconds(2));
+        await sqs.SetQueueAttributesAsync(url, new() { ["DelaySeconds"] = "10" });
+
+        // t=6: past the original 5-second delay, short of the new 10.
+        time.Advance(TimeSpan.FromSeconds(4));
+        (await PollAsync(sqs, url, TimeSpan.FromMilliseconds(100))).ShouldBeEmpty();
+
+        time.Advance(TimeSpan.FromSeconds(4));
+        (await PollAsync(sqs, url, TimeSpan.FromSeconds(5))).ShouldHaveSingleItem().Body.ShouldBe("a");
+    }
+
+    [Test]
+    public async Task FifoQueue_DelayedMessagesInOneGroup_AreEachReleasedAtTheirOwnTime()
+    {
+        var (_, time, sqs) = Create();
+        using var _ = sqs;
+        var url = (await sqs.CreateQueueAsync(new CreateQueueRequest
+        {
+            QueueName = "delayed-group.fifo",
+            Attributes = new() { ["FifoQueue"] = "true", ["DelaySeconds"] = "5" },
+        })).QueueUrl;
+        await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "a", MessageGroupId = "g", MessageDeduplicationId = "a" });
+        time.Advance(TimeSpan.FromSeconds(3));
+        await sqs.SendMessageAsync(new SendMessageRequest { QueueUrl = url, MessageBody = "b", MessageGroupId = "g", MessageDeduplicationId = "b" });
+
+        // t=5: the first is due, the second (sent at t=3) is not.
+        time.Advance(TimeSpan.FromSeconds(2));
+        var first = (await PollAsync(sqs, url, TimeSpan.FromSeconds(5))).ShouldHaveSingleItem();
+        first.Body.ShouldBe("a");
+        await sqs.DeleteMessageAsync(url, first.ReceiptHandle);
+        (await PollAsync(sqs, url, TimeSpan.FromMilliseconds(100))).ShouldBeEmpty();
+
+        time.Advance(TimeSpan.FromSeconds(3));
+        (await PollAsync(sqs, url, TimeSpan.FromSeconds(5))).ShouldHaveSingleItem().Body.ShouldBe("b");
+    }
+
+    [Test]
     public async Task SnsDelivery_ToAFifoQueueWithADelay_WaitsOutTheDelay()
     {
         var (cloud, time, sqs) = Create();
