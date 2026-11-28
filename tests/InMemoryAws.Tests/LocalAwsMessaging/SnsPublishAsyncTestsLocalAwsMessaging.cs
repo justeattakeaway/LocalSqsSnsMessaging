@@ -20,4 +20,6 @@ public class SnsPublishAsyncTestsLocalAwsMessaging : SnsPublishAsyncTests
     protected override bool SupportsAttributeSizeValidation() => true;
 
     protected override bool ValidatesFilterPolicies() => true;
+
+    protected override bool RefusesCreateTopicWithDifferentTags() => true;
 }

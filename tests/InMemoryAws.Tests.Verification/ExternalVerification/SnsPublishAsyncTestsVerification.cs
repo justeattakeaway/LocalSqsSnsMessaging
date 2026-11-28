@@ -27,4 +27,7 @@ public class SnsPublishAsyncTestsVerification : SnsPublishAsyncTests
 
     // Floci stores filter policies verbatim without validating them.
     protected override bool ValidatesFilterPolicies() => IsRealAwsMode;
+
+    // Floci compares no tags on CreateTopic, returning the existing topic whatever they are.
+    protected override bool RefusesCreateTopicWithDifferentTags() => IsRealAwsMode;
 }

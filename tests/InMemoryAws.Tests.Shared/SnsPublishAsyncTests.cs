@@ -22,6 +22,10 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
     // Floci accepts any string as a filter policy; real AWS and the in-memory cloud reject malformed ones.
     protected abstract bool ValidatesFilterPolicies();
 
+    // Floci returns the existing topic from CreateTopic whatever tags the request names; real AWS and
+    // the in-memory cloud refuse a tag the topic doesn't have with that value.
+    protected abstract bool RefusesCreateTopicWithDifferentTags();
+
     [Test]
     public async Task PublishAsync_WithRawDelivery_ShouldDeliverMessageDirectly(CancellationToken cancellationToken)
     {
@@ -222,6 +226,60 @@ public abstract class SnsPublishAsyncTests : WaitingTestBase
                 Attributes = new Dictionary<string, string> { ["Policy"] = policy }
             });
         }
+    }
+
+    // Topic tags
+    [Test]
+    public async Task CreateTopic_OnExistingTopicWithSubsetOfItsTags_ShouldReturnExistingTopic(CancellationToken cancellationToken)
+    {
+        var topicName = UniqueName("TaggedTopic");
+        var arn = (await Sns.CreateTopicAsync(new CreateTopicRequest
+        {
+            Name = topicName,
+            Tags = [new() { Key = "Environment", Value = "Test" }, new() { Key = "Source", Value = "Brighter" }]
+        }, cancellationToken)).TopicArn;
+        TrackTopicForTeardown(arn);
+
+        var again = await Sns.CreateTopicAsync(new CreateTopicRequest
+        {
+            Name = topicName,
+            Tags = [new() { Key = "Source", Value = "Brighter" }]
+        }, cancellationToken);
+
+        again.TopicArn.ShouldBe(arn);
+        var tags = (await Sns.ListTagsForResourceAsync(new ListTagsForResourceRequest { ResourceArn = arn },
+            cancellationToken)).Tags;
+        tags.Select(t => $"{t.Key}={t.Value}").Order(StringComparer.Ordinal)
+            .ShouldBe(["Environment=Test", "Source=Brighter"]);
+    }
+
+    [Test]
+    [Arguments("Environment", "Prod")]
+    [Arguments("Extra", "Value")]
+    public async Task CreateTopic_OnExistingTopicWithTagItLacks_ShouldBeRefused(string key, string value,
+        CancellationToken cancellationToken)
+    {
+        if (!RefusesCreateTopicWithDifferentTags())
+        {
+            return;
+        }
+
+        var topicName = UniqueName("TaggedTopic");
+        var arn = (await Sns.CreateTopicAsync(new CreateTopicRequest
+        {
+            Name = topicName,
+            Tags = [new() { Key = "Environment", Value = "Test" }, new() { Key = "Source", Value = "Brighter" }]
+        }, cancellationToken)).TopicArn;
+        TrackTopicForTeardown(arn);
+
+        // A conflicting value, or a key the topic doesn't have, alongside tags it does have.
+        var exception = await Assert.ThrowsAsync<InvalidParameterException>(() => Sns.CreateTopicAsync(
+            new CreateTopicRequest
+            {
+                Name = topicName,
+                Tags = [new() { Key = "Source", Value = "Brighter" }, new() { Key = key, Value = value }]
+            }, cancellationToken));
+        exception!.Message.ShouldBe("Invalid parameter: Tags Reason: Topic already exists with different tags");
     }
 
     // Topic Attributes

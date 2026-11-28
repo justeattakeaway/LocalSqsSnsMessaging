@@ -136,9 +136,10 @@ internal sealed partial class InternalSnsClient
                 }
             }
 
+            // Every requested tag must already be on the topic with that value: fewer tags than
+            // the topic has is no difference, but a tag it lacks or another value is.
             if (request.Tags is { Count: > 0 } tags
-                && (tags.Count != existing.Tags.Count
-                    || tags.Any(t => !existing.Tags.TryGetValue(t.Key, out var v) || !string.Equals(v, t.Value, StringComparison.Ordinal))))
+                && tags.Any(t => !existing.Tags.TryGetValue(t.Key, out var v) || !string.Equals(v, t.Value, StringComparison.Ordinal)))
             {
                 throw new InternalInvalidParameterException(
                     "Invalid parameter: Tags Reason: Topic already exists with different tags");
